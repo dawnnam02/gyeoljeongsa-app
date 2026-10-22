@@ -195,12 +195,12 @@ export function createSurveyV2DemoClient(base: Pick<SupabaseClient, 'auth'>, opt
     set_politics(u, email, args) {
       if (scene(email, 'v2savefail')) return offline();
       if (!u.ck15) return { data: null, error: { code: '23514', message: 'consent_required: CK15' } };
-      if (!isInt(args.p_score, 0, 100)) return { data: null, error: { code: '22023', message: 'invalid_value' } };
-      u.politics = args.p_score as number;
-      return ok({ saved: true, score: u.politics });
+      if (!isInt(args.p_position, 0, 100)) return { data: null, error: { code: '22023', message: 'invalid_value' } };
+      u.politics = args.p_position as number;
+      return ok({ saved: true, position: u.politics });
     },
     get_politics(u) {
-      return ok({ consent: u.ck15, answered: u.politics !== null, score: u.politics });
+      return ok({ consent: u.ck15, answered: u.politics !== null, position: u.politics });
     },
     revoke_consent(u, _email, args) {
       if (args.p_item !== 'CK15') return bad('required_consent');

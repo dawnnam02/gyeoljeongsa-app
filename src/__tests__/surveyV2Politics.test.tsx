@@ -149,16 +149,16 @@ describe('서버 몫(데모 모의 서버 = 0029 이름 · 모양)', () => {
     expect((await politics.agree()).ok).toBe(true);
     expect(await politics.save(63.4)).toEqual({ ok: true, data: 63 });
     const loaded = await politics.load();
-    expect(loaded).toEqual({ ok: true, data: { consent: true, answered: true, score: 63 } });
+    expect(loaded).toEqual({ ok: true, data: { consent: true, answered: true, position: 63 } });
     expect(Object.keys(loaded.ok ? loaded.data : {})).not.toContain('band');
     await client.rpc('revoke_consent', { p_item: 'CK15' });
-    expect(await politics.load()).toEqual({ ok: true, data: { consent: false, answered: false, score: null } });
+    expect(await politics.load()).toEqual({ ok: true, data: { consent: false, answered: false, position: null } });
   });
 
   test('0~100 정수 밖은 서버가 거부하고, 앱은 늘 0~100 정수로 보낸다 · 인터넷 문제는 network', async () => {
     const { politics, client } = rig();
     await politics.agree();
-    const raw = await client.rpc('set_politics', { p_score: 101 });
+    const raw = await client.rpc('set_politics', { p_position: 101 });
     expect(raw.error?.message).toBe('invalid_value');
     expect(await politics.save(140)).toEqual({ ok: true, data: 100 });
     const off = rig(createDemoV2Memory(), 'v2savefail@email.com');

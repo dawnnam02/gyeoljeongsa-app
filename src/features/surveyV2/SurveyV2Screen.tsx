@@ -173,7 +173,7 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
     if (politics) {
       void politics.load().then((r) => {
         if (!alive.current || !r.ok) return;
-        setPol({ loaded: true, serverConsent: r.data.consent, checked: false, value: r.data.score, savedValue: r.data.answered ? r.data.score : null });
+        setPol({ loaded: true, serverConsent: r.data.consent, checked: false, value: r.data.position, savedValue: r.data.answered ? r.data.position : null });
       });
     }
   }, [local, entry, politics]);

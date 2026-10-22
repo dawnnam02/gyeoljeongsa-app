@@ -236,7 +236,7 @@ try {
   check('5', '09 위 데모 줄 "데모 · 끼리끼리: 내 등급 4 (누르면 5)"', (await wait(`!!${visQ('kin-demo')}`, 6000)) && (await visText('kin-demo')) === '데모 · 끼리끼리: 내 등급 4 (누르면 5)', await visText('kin-demo'));
   const k4 = await heads(3);
   check('5', "'나' 4: 나보다 위(이OO 3) → 같은 등급(문OO 4) → 한 단계 아래(장OO 5) — 같은 등급 가까운 분만", startsAll(k4, ['이OO · 31 · 서울 서초', '문OO · 32 · 서울 마포', '장OO · 37 · 부산 해운대']), k4.join(' / '));
-  check('5', '구독자 칩은 지금 규칙대로(동의한 분만): 3등급 · 4등급 · 장OO 은 칩 없음', (await visText('rec-grade-0')).includes('3등급') && (await visText('rec-grade-1')).includes('4등급') && !(await vis('rec-grade-2')), `${await visText('rec-grade-0')} / ${await visText('rec-grade-1')}`);
+  check('5', '구독자 칩은 지금 규칙대로(동의한 분만, W9: 아이콘만 · 숫자 글 0): 이OO · 문OO 칩 · 장OO 은 칩 없음', (await vis('rec-grade-0')) && (await vis('rec-grade-1')) && !/\d/.test(await visText('rec-grade-0')) && !(await vis('rec-grade-2')), `${await visText('rec-grade-0')} / ${await visText('rec-grade-1')}`);
   const pk = await allPhotos([
     ['rec-photo-0', 'p17_face'],
     ['rec-photo-1', 'p18_face'],
@@ -255,7 +255,7 @@ try {
   check('5', '16 상점 탭으로', await goTab('상점', '/shop'), await path0());
   await wait(`!!window.__q('shop-grade-my')`);
   await tap('shop-grade-my');
-  check('5', '내 등급 화면 = "9단계 중 5등급 · 같은 나이대 기준"(데모 줄 값과 같다)', (await wait(`!!window.__q('grade-big')`)) && (await visText('grade-big')) === '9단계 중 5등급 · 같은 나이대 기준', await visText('grade-big'));
+  check('5', '내 등급 화면(W9 · D-154) = 내 무리 "산"(데모 줄 값 5 의 가정 짝, iconBridge) · 숫자 등급 0', (await wait(`!!window.__q('grade-flock')`)) && (await visText('grade-flock-name')) === '산' && !/\d\s*등급/.test(await b.evaluate('document.body.innerText')), await visText('grade-flock-name'));
   await shot('16G_내등급5');
 
   // ═══ 6. 남성 '나'(asmale) ═══

@@ -10,7 +10,7 @@ import { Platform, StyleSheet, View, type AccessibilityActionEvent, type Gesture
 import { AppText } from '@/components/AppText';
 import { colors, radius, size, space } from '@/theme/tokens';
 
-import { bandOf, clampScore } from './politics';
+import { bandOf, clampPos } from './politics';
 import { POL } from './politicsCopy';
 
 export const POL_STEP = 5; // 화살표 한 번
@@ -26,14 +26,14 @@ export function keyStep(key: string, v: number | null): number | null {
   switch (key) {
     case 'ArrowLeft':
     case 'ArrowDown':
-      return clampScore(base - POL_STEP);
+      return clampPos(base - POL_STEP);
     case 'ArrowRight':
     case 'ArrowUp':
-      return clampScore(base + POL_STEP);
+      return clampPos(base + POL_STEP);
     case 'PageDown':
-      return clampScore(base - POL_BIG_STEP);
+      return clampPos(base - POL_BIG_STEP);
     case 'PageUp':
-      return clampScore(base + POL_BIG_STEP);
+      return clampPos(base + POL_BIG_STEP);
     case 'Home':
       return 0;
     case 'End':
@@ -50,7 +50,7 @@ export function PoliticsSlider({ value, onChange, disabled = false, testID = 'po
   const start = useRef({ loc: 0, page: 0 }); // 누른 곳(막대 안 x · 화면 x) — 손을 움직이는 동안만 쓴다
 
   const put = (x: number) => {
-    if (width > 0 && !disabled) onChange(clampScore((x / width) * 100));
+    if (width > 0 && !disabled) onChange(clampPos((x / width) * 100));
   };
   // RN 기본 응답자(새 패키지 0): 막대를 누르면 그 자리로, 끌면 따라온다. 가로로 끄는 동안 위 스크롤에 넘기지 않는다
   const touch = {
