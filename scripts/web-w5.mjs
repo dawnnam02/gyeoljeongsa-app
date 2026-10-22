@@ -4,8 +4,8 @@
 //  2 방: 위 띠 = '12월 30일 수요일 오후 6시까지 열려 있어요.'(카운트다운 · 재촉 말 0) · 사진 말풍선이 실제로 읽힘 · 음성 말풍선 · 글쓰기 줄
 //  3 글: 보내기 → 내 말풍선 → 1.5초 뒤 상대 답(실시간 흉내) · 연락처는 보내짐 · 금전 요구는 '보낼 수 없는 표현' + [다시 보내기][지우기]
 //  4 음성: 마이크 → 녹음 줄 → 보내기 → 음성 말풍선 하나 더 · 재생 → 멈춤 단추 / 5 사진: 보내기 → 크게 보기 → 닫기
-//  6 연장(혼자): 띠가 '연장을 원한다고 골랐어요…' / 7 나가기 → 닫힌 방(글쓰기 줄 없음 · 지우는 날) → 목록 '닫힌 대화방'
-//  8 데모 장면: 마지막 날 띠 '오늘 오후 6시까지…' · 상대가 연장을 원함 → 연장 → '1월 6일 …' · 닫힌 방(7일 지남) · 방 없음
+//  6 연장(혼자): 띠가 '연장을 원한다고 골랐어요…' / 7 나가기 → 목록으로 · 내 목록에서 방이 사라짐(0031)
+//  8 데모 장면: 마지막 날 띠 '오늘 오후 6시까지…' · 상대가 연장을 원함 → 연장 → '1월 6일 …' · 상대가 나감 · 닫힌 방(7일 지남) · 방 없음
 //  9 차단: 신고 · 차단 시트 → 차단 → 목록으로 · 토스트 · 방이 목록에서 빠짐
 //  M 화면마다 폭(SHOT_WIDTH, 기본 390) 가로 넘침 0 · 글자 13 이상 · 터치 48 이상 / R --reduced-motion: 새 말풍선 · 시트 · 화면 넘김에 transform 바뀜 0
 //  Z 콘솔 오류 0 · 바깥 요청 0
@@ -189,11 +189,8 @@ try {
   await tap('chat-menu-leave');
   check('7', '나가기 확인창', await wait(`!!${visQ('chat-leave-confirm')}`, 4000), '');
   await tap('chat-leave-confirm');
-  await sleep(800);
-  check('7', '닫힌 방: 글쓰기 줄 없음 · 지우는 날 안내', !(await vis('chat-composer')) && /^대화방에서 나왔어요\. 지난 글은 .+까지 읽을 수 있어요\.$/.test(await visText('chat-room-closed-body')), await visText('chat-room-closed-body'));
-  await shot('09_나간방');
-  await measure('닫힌 방');
-  check('7', "목록으로 돌아가면 '닫힌 대화방'", (await backToList()) && (await visText('chat-row-0-last')) === '닫힌 대화방', await visText('chat-row-0-last'));
+  check('7', "나가면 목록으로 · '대화방에서 나왔어요.' · 내 목록에서 방이 사라짐(0031)", (await wait(`location.pathname === '/chat'`, 6000)) && (await wait(`window.__text().includes('대화방에서 나왔어요.')`, 4000)) && (await wait(`!!${visQ('chat-list-empty')}`, 4000)), '');
+  await shot('09_나간뒤목록');
 
   // ═══ 8. 데모 장면 ═══
   await nextScene('마지막 날');
@@ -209,6 +206,12 @@ try {
   await sleep(800);
   check('8', "둘 다 원하면 7일 더 → 띠 '1월 6일 수요일 오후 6시까지…' · 토스트", (await visText('chat-room-banner-text')) === '1월 6일 수요일 오후 6시까지 열려 있어요.' && (await b.evaluate('window.__text()')).includes('둘 다 원해서 7일 더 열렸어요.'), await visText('chat-room-banner-text'));
   await shot('11_연장됨');
+  await backToList();
+  await nextScene('상대가 나감');
+  await openFirstRoom();
+  await sleep(500);
+  check('8', "상대가 나간 방: 가운데 줄 '상대가 대화를 마쳤어요.' · 읽기만", (await b.evaluate('window.__text()')).includes('상대가 대화를 마쳤어요.') && !(await vis('chat-composer')), await visText('chat-room-closed-body'));
+  await shot('12a_상대나감');
   await backToList();
   await nextScene('닫힌 방');
   await openFirstRoom();

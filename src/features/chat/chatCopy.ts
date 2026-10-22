@@ -36,7 +36,7 @@ export const CHAT = {
   },
   composer: {
     label: '메시지',
-    placeholder: '메시지를 입력해 주세요',
+    placeholder: '메시지 쓰기',
     send: '보내기',
     photo: '사진 보내기',
     voice: '음성 녹음하기',
