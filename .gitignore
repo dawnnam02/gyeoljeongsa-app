@@ -1,0 +1,43 @@
+# 의존성
+node_modules/
+
+# Expo
+.expo/
+dist/
+dist-demo/
+web-build/
+expo-env.d.ts
+
+# 네이티브 폴더는 만들어 쓰고 올리지 않는다(prebuild)
+/ios
+/android
+.kotlin/
+
+# 비밀: 값이 든 환경 파일은 올리지 않는다. 키 이름만 있는 예시 파일만 올린다.
+.env
+.env.*
+!.env.example
+
+# 서명 · 인증서(EAS가 관리한다)
+*.jks
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+
+# Metro · 디버그
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# 기타
+.DS_Store
+*.tsbuildinfo
+*.orig.*
+
+# 공개 저장소에서 뺌: 검증 캡처 · 내부 보고(용량 큼), 임시 빌드
+확인/
+dist-*/
+repro*.png
