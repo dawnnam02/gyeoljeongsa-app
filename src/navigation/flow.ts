@@ -149,14 +149,18 @@ const FLOW_MAIN: readonly Arrow[] = [
   a('T3', 'T5', '찾지 못함 → [크레딧 보기]', 'v5 4-1 7'),
   a('T3', 'entry', '‹ · [탑승권으로]', 'v5 6-1 T3'),
   a('T5', 'entry', '‹', 'v5 6-1 T5'),
+  // V5 W5 채팅 목록(T4 탭) · 대화방(T4R) — 청사진 v5 초안 5장 8 · 6-1 T4
+  a('T4', 'T4R', '대화방 줄', 'v5 6-1 T4'),
+  a('T4R', 'entry', '‹ · 나가기 · 차단 뒤 목록으로', 'v5 5장 8'),
+  a('T4R', 'stay', '글 · 사진 · 음성 보내기 · 연장 · 신고', 'v5 5장 8'),
 
   // 어느 화면에서든
   a('ANY', '02', '로그인 풀림(세션 만료 · 다른 기기 로그인)', '2-2 ⑦', 7),
 ];
 
 // 탭바 이동(K2 R6 · K7): 09 · 11 · 16 · 12 와 그 상태 13 · 14 에서 네 탭(추천 · 호감 · 상점 · 설정)으로.
-const TAB_FROM: readonly ScreenId[] = ['T1', '09', '11', '16', '12', '13', '14'];
-const TAB_TO: readonly ScreenId[] = ['T1', '09', '11', '16', '12']; // V5: T1 탑승권이 첫 탭(09 · 11 · 16 은 스위치로 숨긴 탭)
+const TAB_FROM: readonly ScreenId[] = ['T1', 'T4', '09', '11', '16', '12', '13', '14'];
+const TAB_TO: readonly ScreenId[] = ['T1', 'T4', '09', '11', '16', '12']; // V5: T1 탑승권 · T4 채팅(W5)이 앞 탭(09 · 11 · 16 은 스위치로 숨긴 탭)
 
 const FLOW_TABS: readonly Arrow[] = TAB_FROM.flatMap((from) =>
   TAB_TO.filter((to) => to !== from).map(

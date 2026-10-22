@@ -1,8 +1,7 @@
 // 채팅 첨부(사진 · 음성) — 기기 쪽. 화면은 이 모양(ChatMedia)만 알고, 시험은 가짜를 넣는다.
 //  · 사진: 05 사진과 같은 고르기 · 다시 그리기(features/photosLite: 웹 <input type=file> → canvas JPEG · EXIF · GPS 없음 · 긴 변 1600 · 10MB)
 //  · 음성: 웹 = MediaRecorder(녹음) · <audio>(재생). 녹음은 최대 1분(VOICE_MAX_MS), 1초보다 짧으면 보내지 않음
-//  · iOS · Android: 사진 고르기(expo-image-picker) · 녹음 · 재생(expo-audio) 패키지가 아직 없다(package.json 은 공용 — 설치는 팀장 신호 뒤).
-//    그때까지는 '쓸 수 없음' → 화면이 사진 · 음성 단추를 그리지 않는다(글은 됨). 설치하면 nativeMedia 를 채운다(app/W5_변경기록.md 5장)
+//  · iOS · Android: chatMediaNative.ts(expo-image-picker · expo-audio — D-159 설치 승인)
 //  · 데모 모드: 고르지 않고 데모 '나' 사진(p01 free)을 보내고, 녹음은 길이만 잰다(마이크 · 소리 0). 재생은 길이만큼 시간이 흐르는 흉내
 //  · 녹음 · 사진 원본은 메모리에만 있다(기기 · 브라우저 저장소 0, 로그 0)
 import { Platform } from 'react-native';
@@ -14,6 +13,7 @@ import { defaultPicker, type PhotoPicker } from '@/features/photosLite/photoPick
 import { preparePhoto } from '@/features/photosLite/photoPipeline';
 
 import { VOICE_MAX_MS } from './chatLogic';
+import { createNativeMedia } from './chatMediaNative';
 
 export type PickedPhoto = { ok: true; bytes: Uint8Array; uri: string; demoKey?: string } | { ok: false; reason: 'cancel' | 'format' | 'size' | 'unavailable' };
 export type Recording = { bytes: Uint8Array; contentType: string; durationMs: number; uri: string };
@@ -197,9 +197,9 @@ export const unavailableMedia: ChatMedia = {
   stop: () => undefined,
 };
 
-// 앱이 쓰는 것: 데모 → 흉내 · 웹 → 브라우저 · iOS · Android → 패키지 설치 전까지 쓸 수 없음
+// 앱이 쓰는 것: 데모 → 흉내 · 웹 → 브라우저 · iOS · Android → expo-image-picker · expo-audio
 export function defaultChatMedia(email: () => string): ChatMedia {
   if (env.demoMode) return createDemoMedia({ email });
   if (Platform.OS === 'web' && typeof document !== 'undefined') return createWebMedia();
-  return unavailableMedia;
+  return createNativeMedia();
 }

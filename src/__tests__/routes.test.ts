@@ -33,9 +33,9 @@ function routeFiles(dir: string, base = ''): string[] {
 }
 
 describe('화면 ID 16개 = 라우트 16개 (F-1)', () => {
-  test('화면 ID는 01~16 열여섯 개 + V5 새 화면 T1 · T3 · T5 이고 겹치지 않는다', () => {
-    expect(SCREEN_IDS).toHaveLength(19);
-    expect(new Set(SCREENS.map((s) => s.id)).size).toBe(19);
+  test('화면 ID는 01~16 열여섯 개 + V5 새 화면 T1 · T3 · T5 · T4 · T4R 이고 겹치지 않는다', () => {
+    expect(SCREEN_IDS).toHaveLength(21);
+    expect(new Set(SCREENS.map((s) => s.id)).size).toBe(21);
     expect(SCREENS.map((s) => s.id)).toEqual([...SCREEN_IDS]);
   });
 
@@ -43,19 +43,20 @@ describe('화면 ID 16개 = 라우트 16개 (F-1)', () => {
     const files = routeFiles(APP_DIR).sort();
     const registry = SCREENS.map((s) => s.route).sort();
     expect(files).toEqual(registry);
-    expect(files).toHaveLength(19);
+    expect(files).toHaveLength(21);
   });
 
   test('13 · 14 · 15 는 09 · 11 · 02 의 상태이고, 나머지 13개는 K2 화면이다(16 상점 포함)', () => {
     expect(screenById('13').stateOf).toBe('09');
     expect(screenById('14').stateOf).toBe('11');
     expect(screenById('15').stateOf).toBe('02');
-    expect(SCREENS.filter((s) => !s.stateOf)).toHaveLength(16); // K2 13 + V5 T1 · T3 · T5
+    expect(SCREENS.filter((s) => !s.stateOf)).toHaveLength(18); // K2 13 + V5 T1 · T3 · T5 · T4 · T4R
   });
 
   test('탭바는 추천 · 호감 · 상점 · 설정 4개이고 탭 화면은 09 · 11 · 16 · 12 (그리고 상태 13 · 14). 08 내 프로필은 탭 밖 화면이다(F11)', () => {
     expect(TAB_SCREEN_IDS.map((id) => screenById(id).route)).toEqual([
       '/boarding',
+      '/chat',
       '/recommendations',
       '/likes',
       '/shop',
@@ -65,14 +66,14 @@ describe('화면 ID 16개 = 라우트 16개 (F-1)', () => {
       SCREENS.filter((s) => s.tabBar)
         .map((s) => s.id)
         .sort(),
-    ).toEqual(['09', '11', '12', '13', '14', '16', 'T1']);
+    ).toEqual(['09', '11', '12', '13', '14', '16', 'T1', 'T4']);
     expect(screenById('08').tabBar).toBe(false);
     expect(fs.existsSync(path.join(APP_DIR, '(tabs)', 'profile.tsx'))).toBe(false); // 08 은 (tabs) 그룹 밖 src/app/profile.tsx
     expect(fs.existsSync(path.join(APP_DIR, 'profile.tsx'))).toBe(true);
     const layout = fs.readFileSync(path.join(APP_DIR, '(tabs)', '_layout.tsx'), 'utf8');
     const order = [...layout.matchAll(/<Tabs\.Screen name="([a-z-]+)"/g)].map((m) => m[1]);
-    expect(order.slice(0, 5)).toEqual(['boarding', 'recommendations', 'likes', 'shop', 'settings']); // V5: 탑승권이 첫 탭(09 · 11 · 16 은 스위치로 숨김)
-    expect(order.slice(5)).toEqual(['recommendations-empty', 'likes-empty']); // 탭 칸 없는 상태 화면
+    expect(order.slice(0, 6)).toEqual(['boarding', 'chat', 'recommendations', 'likes', 'shop', 'settings']); // V5: 탑승권 · 채팅 · (숨긴 09 · 11 · 16) · 설정
+    expect(order.slice(6)).toEqual(['recommendations-empty', 'likes-empty']); // 탭 칸 없는 상태 화면
   });
 });
 
@@ -168,13 +169,13 @@ describe('화살표 (K2 2-1 · 2-2 · 2-3 · 4장)', () => {
   });
 
   // F11(K7 A5 · A6 · A7): 탭바 이동은 09 · 11 · 16 · 12 · 13 · 14 에서 네 탭으로, 원형 사진은 같은 여섯 화면에서 08 로, 08 의 ‹ 는 들어온 화면으로
-  test('탭 화면 일곱에서 원형 사진 → 08, 탭바 이동은 탭 5개 중 나머지, 08 → 들어온 화면(F11 · V5 T1 더함)', () => {
-    const tabScreens = ['T1', '09', '11', '16', '12', '13', '14'] as const;
+  test('탭 화면 여덟에서 원형 사진 → 08, 탭바 이동은 탭 6개 중 나머지, 08 → 들어온 화면(F11 · V5 T1 · T4 더함)', () => {
+    const tabScreens = ['T1', 'T4', '09', '11', '16', '12', '13', '14'] as const;
     for (const from of tabScreens) {
       const photo = arrowsFrom(from).filter((x) => x.to === '08' && x.label === '오른쪽 위 원형 사진');
       expect(photo).toHaveLength(1);
       expect(photo[0].tab).toBeUndefined(); // 탭바 이동이 아니다
-      expect(arrowsFrom(from).filter((x) => x.tab)).toHaveLength(from === '13' || from === '14' ? 5 : 4);
+      expect(arrowsFrom(from).filter((x) => x.tab)).toHaveLength(from === '13' || from === '14' ? 6 : 5);
     }
     expect(FLOW.filter((x) => x.tab && x.to === '08')).toHaveLength(0); // 탭바에 프로필 칸은 없다
     expect(arrowsFrom('08').some((x) => x.to === 'entry')).toBe(true);

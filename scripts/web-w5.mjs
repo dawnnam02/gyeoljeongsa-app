@@ -116,6 +116,8 @@ try {
   check('1', '얼굴 원 = 데모 인물 사진(기본 그림 아님)', face.src.includes('/demo/people/') && !face.def, face.src.split('/').pop());
   await shot('01_목록');
   await measure('목록');
+  const tabs = await b.evaluate(`[...document.querySelectorAll('[role=tab]')].filter((el) => window.__visible(el)).map((el) => el.getAttribute('aria-label'))`);
+  check('1', "탭바에 '채팅' 칸 · 탑승권 바로 다음 · 지금 탭 알약(D-159)", tabs.indexOf('채팅') > 0 && tabs.indexOf('채팅') === tabs.indexOf('탑승권') + 1 && (await vis('tab-pill-chat')), tabs.join(' · '));
 
   // ═══ 2. 방 ═══
   await noMotionDuring('목록 → 방 넘김', async () => {

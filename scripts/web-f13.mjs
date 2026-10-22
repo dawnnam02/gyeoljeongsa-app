@@ -102,7 +102,7 @@ try {
   await toShop();
   check('B', '16 상점 목록: 테스트 화면 띠(NV56) · 등급 구독 카드 · 1회 매칭 카드 · 상품 줄 · 무료 구역 · 링크 3', (await has('테스트 화면이에요. 실제 결제는 일어나지 않아요.')) && (await q('shop-card-grade')) && (await q('shop-card-match')) && (await q('shop-free')) && (await q('shop-link-inventory')), '');
   check('B', '등급 구독 카드 혜택 첫 줄 = "나보다 위 등급 분을 먼저 추천받기"', (await inner('shop-grade-benefit-0')) === '나보다 위 등급 분을 먼저 추천받기', await inner('shop-grade-benefit-0'));
-  check('B', '목록은 탭 화면: 탭바 4개 + 오른쪽 위 원형 사진', (await tabCount()) === 4 && (await q('profile-button')), `탭 ${await tabCount()}`);
+  check('B', '목록은 탭 화면: 탭바 6개(V5 탑승권 · 채팅 + 데모에서 켜진 추천 · 호감 · 상점 + 설정, W5 D-159) + 오른쪽 위 원형 사진', (await tabCount()) === 6 && (await q('profile-button')), `탭 ${await tabCount()}`);
   await shot('16_상점_목록_위');
   await measure('16 목록(위)');
   await scrollTo('shop-match-detail', 'center');
@@ -192,7 +192,7 @@ try {
   await shot('16-G3_목표');
   await tap('shop-sub-header-back');
   await tap('shop-sub-header-back');
-  check('G1', '목록으로 돌아오면 탭바가 다시 보인다', (await wait(`!!window.__q('screen-16')`)) && (await tabCount()) === 4, `탭 ${await tabCount()}`);
+  check('G1', '목록으로 돌아오면 탭바가 다시 보인다(6칸, W5 D-159)', (await wait(`!!window.__q('screen-16')`)) && (await tabCount()) === 6, `탭 ${await tabCount()}`);
 
   // ═══ 09 / 10 배지 (구독자) ═══
   await goTab('추천', '/recommendations');

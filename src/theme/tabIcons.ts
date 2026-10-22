@@ -9,14 +9,18 @@ const RECOMMEND_ICONS = {
   inactive: require('../../assets/icons/tab/recommend-off.png'),
 };
 
+const LIKES_ICONS = {
+  active: require('../../assets/icons/tab/likes-on-filled.png'),
+  inactive: require('../../assets/icons/tab/likes-off.png'),
+};
+
 export const TAB_ICONS = {
   // V5 W6 탑승권 탭: 디자인 W12 아이콘이 오기 전까지 추천 탭 그림을 임시로 같이 쓴다(아이콘이 오면 이 줄만 새 require 둘로)
   boarding: RECOMMEND_ICONS,
   recommendations: RECOMMEND_ICONS,
-  likes: {
-    active: require('../../assets/icons/tab/likes-on-filled.png'),
-    inactive: require('../../assets/icons/tab/likes-off.png'),
-  },
+  // V5 W5 채팅 탭: 디자인 W12 아이콘이 오기 전까지 호감 탭 그림을 임시로 같이 쓴다(아이콘이 오면 이 줄만 새 require 둘로)
+  chat: LIKES_ICONS,
+  likes: LIKES_ICONS,
   shop: {
     active: require('../../assets/icons/tab/shop-on-filled.png'),
     inactive: require('../../assets/icons/tab/shop-off.png'),

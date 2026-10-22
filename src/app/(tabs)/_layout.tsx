@@ -6,6 +6,7 @@ import { TabIcon, TabLabel } from '@/components/TabBarParts';
 import { useV4Screens } from '@/navigation/v5Hide';
 import { useChromeStore } from '@/store/chromeStore';
 import { BOARDING } from '@/features/boarding/boardingCopy';
+import { CHAT } from '@/features/chat/chatCopy';
 import { TABS } from '@/content/copy';
 import type { TabIconName } from '@/theme/tabIcons';
 import { colors, size } from '@/theme/tokens';
@@ -48,6 +49,8 @@ export default function TabsLayout() {
         tabBarItemStyle: { minHeight: size.touchMin },
       }}>
       <Tabs.Screen name="boarding" options={tabOptions('boarding', BOARDING.headerTitle)} />
+      {/* V5 W5(D-159): 채팅 탭 — 청사진 v5 초안 6-1 탭 순서 탑승권 · 채팅 · 설정 */}
+      <Tabs.Screen name="chat" options={tabOptions('chat', CHAT.tabTitle)} />
       <Tabs.Screen name="recommendations" options={v4.dailyRecs ? tabOptions('recommendations', TABS.recommendations) : hidden} />
       <Tabs.Screen name="likes" options={v4.likes ? tabOptions('likes', TABS.likes) : hidden} />
       <Tabs.Screen name="shop" options={v4.shop ? tabOptions('shop', TABS.shop) : hidden} />
