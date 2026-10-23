@@ -1,8 +1,5 @@
 // 11 호감의 규칙 · 서버 연결 · 모의 서버 · T2 숨김 규칙 · 글 원본 대조(F6 1단계, 세부청사진 F6 조건 1 · 3 · 4 · 6 · T2)
 //  화면 시험은 likesScreen.test.tsx
-import fs from 'node:fs';
-import path from 'node:path';
-
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { LIKES } from '@/content/likesCopy';
@@ -11,8 +8,9 @@ import { cardHead, expiryOf, LIKE_EXPIRY_MS, newestFirst, timeAgo } from '@/feat
 import { createLikesApi, parseLikes } from '@/lib/likesApi';
 import { createDemoLikes } from '@/lib/likesDemo';
 
-const ROOT = path.resolve(__dirname, '..', '..', '..');
-const read = (...parts: string[]) => fs.readFileSync(path.join(ROOT, ...parts), 'utf8');
+import { describeOutside, readOutside } from './helpers/outsideDocs';
+
+const read = (...parts: string[]) => readOutside(parts.join('/'), { keepCrlf: true }); // 저장소 밖 문서(없으면 빈 글, 그 묶음은 건너뜀)
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -279,7 +277,7 @@ describe('10 하단 버튼 규칙 (likeGate, 0011 뒤)', () => {
   });
 });
 
-describe('글 원본 대조 (카피 그대로)', () => {
+describeOutside(['마케팅/카피.md', '기획/화면_요구사항.md', '기획/정책.md'])('글 원본 대조 (카피 그대로)', () => {
   const copyMd = read('마케팅', '카피.md');
   const k2 = read('기획', '화면_요구사항.md');
   const policy = read('기획', '정책.md');

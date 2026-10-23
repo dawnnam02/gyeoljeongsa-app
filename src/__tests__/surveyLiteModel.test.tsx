@@ -37,8 +37,9 @@ import { SIDO, SIGUNGU } from '@/features/surveyLite/regions';
 import { splitForServer, uploadFailCode } from '@/lib/surveyLiteApi';
 import { demoValueOk } from '@/lib/surveyLiteDemo';
 
-const ROOT = path.resolve(__dirname, '..', '..', '..');
-const read = (...parts: string[]) => fs.readFileSync(path.join(ROOT, ...parts), 'utf8').replace(/\r\n/g, '\n');
+import { APP_DIR, readOutside, testOutside } from './helpers/outsideDocs';
+
+const read = (...parts: string[]) => readOutside(parts.join('/')); // 저장소 밖 문서(없으면 빈 글, 그 시험은 건너뜀)
 const TODAY = '2026-10-15';
 
 // CSV 한 줄 나누기(따옴표 칸 지원)
@@ -66,7 +67,7 @@ function csvRows(text: string): Record<string, string>[] {
 describe('조건 1: 문항 12개 · 실제 ID · 입력형태 11종', () => {
   const csv = csvRows(read('기획', '설문_문항표.csv'));
 
-  test('12문항이고, 모두 문항표에 있는 사용 문항이며 질문 · 입력형태 · 선택지 · 필수 · 공개 · 매칭 · 민감 칸이 CSV 와 글자까지 같다', () => {
+  testOutside(['기획/설문_문항표.csv'])('12문항이고, 모두 문항표에 있는 사용 문항이며 질문 · 입력형태 · 선택지 · 필수 · 공개 · 매칭 · 민감 칸이 CSV 와 글자까지 같다', () => {
     expect(LITE_QUESTIONS).toHaveLength(12);
     expect(new Set(LITE_QUESTIONS.map((q) => q.id)).size).toBe(12);
     for (const q of LITE_QUESTIONS) {
@@ -79,7 +80,7 @@ describe('조건 1: 문항 12개 · 실제 ID · 입력형태 11종', () => {
     }
   });
 
-  test('입력형태 11종(CSV 의 종류 전부)이 한 번 이상 나온다', () => {
+  testOutside(['기획/설문_문항표.csv'])('입력형태 11종(CSV 의 종류 전부)이 한 번 이상 나온다', () => {
     const csvTypes = new Set(csv.filter((r) => r['상태'] === '사용').map((r) => r['입력형태']));
     expect(csvTypes.size).toBe(11);
     expect([...csvTypes].sort()).toEqual([...LITE_TYPES].sort());
@@ -91,7 +92,7 @@ describe('조건 1: 문항 12개 · 실제 ID · 입력형태 11종', () => {
     expect(['A', 'B', 'C', 'D', 'E', 'T', 'F', 'G'].map(count)).toEqual([3, 1, 1, 1, 2, 1, 1, 2]);
   });
 
-  test('04 는 10쪽(한 쪽에 한 문항), 05 는 G01 사진 · G03 스타일 = 12', () => {
+  testOutside(['기획/화면_요구사항.md'])('04 는 10쪽(한 쪽에 한 문항), 05 는 G01 사진 · G03 스타일 = 12', () => {
     expect(LITE_PAGES.map((p) => p.id)).toEqual(['A01', 'A03', 'A05', 'B01', 'C05', 'D03', 'E08', 'E13', 'T01', 'F01']);
     expect([...LITE_PAGES.map((p) => p.id), ...PHOTO_PAGE_IDS].sort()).toEqual(LITE_QUESTIONS.map((q) => q.id).sort());
     // 쪽 번호는 정식 설문에서 그 문항이 놓이는 쪽(화면_요구사항 3-2). A01 은 02 에서 받는 문항이라 임시판 01 쪽
@@ -272,7 +273,7 @@ describe('조건 5 · 7: 글은 원본 그대로 · 임시 표시', () => {
   const copyMd = read('마케팅', '카피.md');
   const plan = read('기획', '화면_요구사항.md');
 
-  test('04 · 05 글이 카피.md 에 글자 그대로 있다', () => {
+  testOutside(['마케팅/카피.md'])('04 · 05 글이 카피.md 에 글자 그대로 있다', () => {
     const fixed = [
       SURVEY_LITE.headerTitle, SURVEY_LITE.tempSave, SURVEY_LITE.publicLine, SURVEY_LITE.parentBanner, SURVEY_LITE.parentRangeLine, SURVEY_LITE.freeTextGuide,
       SURVEY_LITE.savedToast, SURVEY_LITE.required, SURVEY_LITE.regionRequired, SURVEY_LITE.saveFailed,
@@ -289,7 +290,7 @@ describe('조건 5 · 7: 글은 원본 그대로 · 임시 표시', () => {
     expect(fixed.filter((text) => !scope.includes(text))).toEqual([]);
   });
 
-  test('카피에 없는 글은 화면_요구사항 6장 N문구 그대로(N03 · N04 · N05 · N08 · N12)', () => {
+  testOutside(['기획/화면_요구사항.md'])('카피에 없는 글은 화면_요구사항 6장 N문구 그대로(N03 · N04 · N05 · N08 · N12)', () => {
     const n = plan.slice(plan.indexOf('# 6. 새 문구 요청'), plan.indexOf('# 7.'));
     const fixed = [SURVEY_LITE.resume, SURVEY_LITE.rangeLine, SURVEY_LITE.hiddenUsedLine, SURVEY_LITE.hiddenLine, SURVEY_LITE.toggleSuffix, SURVEY_LITE.rankConfirm, SURVEY_LITE.minChars('{n}' as unknown as number), SURVEY_LITE.maxChars('{n}' as unknown as number), SURVEY_LITE.missing];
     expect(fixed.filter((text) => !n.includes(text))).toEqual([]);
@@ -298,7 +299,7 @@ describe('조건 5 · 7: 글은 원본 그대로 · 임시 표시', () => {
   });
 
   test("새로 만든 파일은 모두 첫 줄이 '// 임시(F2L) — AYLA'S 설문으로 교체 예정'이다", () => {
-    const app = path.join(ROOT, 'app');
+    const app = APP_DIR;
     const files = [
       ...fs.readdirSync(path.join(app, 'src', 'features', 'surveyLite')).map((f) => path.join('src', 'features', 'surveyLite', f)),
       ...fs.readdirSync(path.join(app, 'src', 'features', 'photosLite')).map((f) => path.join('src', 'features', 'photosLite', f)),
@@ -314,7 +315,7 @@ describe('조건 5 · 7: 글은 원본 그대로 · 임시 표시', () => {
   });
 
   test('임시 설문 코드에 등급 · 점수 말(영문 grade · rating · score, 한글 등급 · 점수)이 없다', () => {
-    const app = path.join(ROOT, 'app', 'src');
+    const app = path.join(APP_DIR, 'src');
     const files = [
       ...fs.readdirSync(path.join(app, 'features', 'surveyLite')).map((f) => path.join(app, 'features', 'surveyLite', f)),
       ...fs.readdirSync(path.join(app, 'features', 'photosLite')).map((f) => path.join(app, 'features', 'photosLite', f)),

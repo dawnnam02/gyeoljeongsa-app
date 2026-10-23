@@ -8,6 +8,8 @@ import { LEGAL_PRIVACY } from '@/content/legalPrivacy';
 import { LEGAL_TERMS } from '@/content/legalTerms';
 import type { LegalBlock } from '@/content/types';
 
+import { CHECK_COPY_DOCS, describeOutside } from './helpers/outsideDocs';
+
 const APP_DIR = path.resolve(__dirname, '..', '..');
 
 const headings = (blocks: readonly LegalBlock[], level: number) => blocks.filter((b): b is Extract<LegalBlock, { type: 'h' }> => b.type === 'h' && b.level === level).map((b) => b.text);
@@ -88,7 +90,7 @@ describe('이용약관 · 개인정보 처리방침 전체 (읽기 화면)', () 
   });
 });
 
-describe('글 점검 스크립트(npm run check:copy)', () => {
+describeOutside(CHECK_COPY_DOCS)('글 점검 스크립트(npm run check:copy)', () => {
   test('카피.md · 동의문구.md · 화면_요구사항.md · 정책.md 와 앱 글이 모두 같고 생성 파일이 낡지 않았다', () => {
     let output = '';
     try {

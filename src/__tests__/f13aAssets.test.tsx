@@ -13,6 +13,7 @@ import { forgetMyFace } from '@/store/myFaceStore';
 import { colors } from '@/theme/tokens';
 import { H2_DONE_ART, H2_EMPTY_ART, H2_INFO_ART, H2_LINK_ART, H2_PHOTO_GUIDE, H2_SETTING_ICONS, H2_STATE_ART, SHOP_ICONS, STATE_ART, TIER_BADGE_LOCKED, TIER_BADGES } from '@/theme/uiAssets';
 
+import { testOutside } from './helpers/outsideDocs';
 import { has, mount } from './renderHelpers';
 import { makeShopRig } from './shopRig';
 
@@ -59,7 +60,7 @@ describe('조건 1 · 그림 파일 23종 × 밀도 3', () => {
     }
   });
 
-  test('디자인 원본(투명 25~37 · 등급)이 옆에 있으면 앱 그림이 그 원본을 줄인 것이다: 원본 개수 일치', () => {
+  testOutside(['디자인/아이콘'])('디자인 원본(투명 25~37 · 등급)이 옆에 있으면 앱 그림이 그 원본을 줄인 것이다: 원본 개수 일치', () => {
     if (!fs.existsSync(DESIGN)) return;
     const transparent = fs.readdirSync(path.join(DESIGN, '투명')).filter((f) => /^(2[5-9]|3[0-7])_/.test(f));
     expect(transparent).toHaveLength(13);

@@ -7,11 +7,13 @@ import path from 'node:path';
 import golden from '@/data/schools/schoolSearch.golden.json';
 import { jamo, normalize, schoolIndex, type SchoolCourse } from '@/data/schools/schoolSearch';
 
-const DATA_DIR = path.resolve(__dirname, '..', '..', '..', '데이터', '학교');
+import { outsidePath, testOutside } from './helpers/outsideDocs';
+
+const VERSION_FILE = '데이터/학교/school_index.version.txt'; // 저장소 밖 원본(없으면 그 시험만 건너뛴다)
 
 describe('앱 내장 학교 목록(M14 11-5 판)', () => {
-  test('판 · 원본 해시가 데이터/학교/school_index.version.txt 한 줄과 같다', () => {
-    const line = fs.readFileSync(path.join(DATA_DIR, 'school_index.version.txt'), 'utf8').trim();
+  testOutside([VERSION_FILE])('판 · 원본 해시가 데이터/학교/school_index.version.txt 한 줄과 같다', () => {
+    const line = fs.readFileSync(outsidePath(VERSION_FILE), 'utf8').trim();
     const idx = schoolIndex();
     expect(line).toContain(`version=${idx.version}`);
     expect(line).toContain(`sha256=${idx.sourceSha256}`);

@@ -3,16 +3,17 @@
 //  · 공통 글(copy.ts SV2 · SECTION_COPY): 9장 키 · 4장 공통 · 3장 04(임시 저장 · 순위 버튼 이름) · 화면_요구사항 N03 · N12
 //  · 규칙: 느낌표 0 · 사과 말 0 · 합니다체 0 · '등급'은 카피 16-J L-7 세 자리(declineHint · A06 도움말 · 세부사항 머리)만 · '점수' 0
 //  · 카피에 아직 없는 글은 PROPOSED 에만 있다(변경기록 '카피 키 제안')
-import fs from 'node:fs';
-import path from 'node:path';
-
 import { PROPOSED, SECTION_COPY, SV2 } from '@/features/surveyV2/copy';
 import { QUESTION_COPY } from '@/features/surveyV2/questionCopy';
 import { QUESTIONS } from '@/features/surveyV2/questions';
 
-const ROOT = path.resolve(__dirname, '..', '..', '..');
-const copyDoc = fs.readFileSync(path.join(ROOT, '마케팅', '카피.md'), 'utf8').replace(/\r\n/g, '\n');
-const reqDoc = fs.readFileSync(path.join(ROOT, '기획', '화면_요구사항.md'), 'utf8').replace(/\r\n/g, '\n');
+import { readOutside, testOutside } from './helpers/outsideDocs';
+
+// 저장소 밖 문서(없으면 빈 글 — 이 문서를 대조하는 시험만 건너뛴다)
+const COPY_DOC = '마케팅/카피.md';
+const REQ_DOC = '기획/화면_요구사항.md';
+const copyDoc = readOutside(COPY_DOC);
+const reqDoc = readOutside(REQ_DOC);
 
 // 9장 표: 키 칸의 `survey.X.part(.{코드 · …})` → '→ 개선안' 글(여럿이면 ' / ' 로 나뉨)
 const from9 = copyDoc.indexOf('## 9. 설문 v2 문구');
@@ -41,7 +42,7 @@ describe('문항 글 = 카피 9장', () => {
     for (const q of QUESTIONS) expect([q.id, typeof QUESTION_COPY[q.id]?.q]).toEqual([q.id, 'string']);
   });
 
-  test.each(QUESTIONS.map((q) => [q.id]))('%s 질문 · 도움말 · 보기 · 양 끝 · 공개 글 · 예시', (id) => {
+  testOutside([COPY_DOC]).each(QUESTIONS.map((q) => [q.id]))('%s 질문 · 도움말 · 보기 · 양 끝 · 공개 글 · 예시', (id) => {
     const c = QUESTION_COPY[id];
     expect(c.q).toBe(cellOf(`survey.${id}.q`).text);
     if (c.help) expect(c.help).toBe(cellOf(`survey.${id}.help`).text);
@@ -71,12 +72,12 @@ describe('공통 글 = 카피 9장 · 4장 · 3장 04 · 화면_요구사항', (
   walk(SV2);
   walk(SECTION_COPY);
 
-  test('글자 그대로 있는 글(고정 글)은 모두 카피.md 개선안 칸 또는 화면_요구사항 N 문구에 있다', () => {
+  testOutside([COPY_DOC, REQ_DOC])('글자 그대로 있는 글(고정 글)은 모두 카피.md 개선안 칸 또는 화면_요구사항 N 문구에 있다', () => {
     const lost = flat.filter((t) => !improved.includes(t) && !reqDoc.includes(t));
     expect(lost).toEqual([]);
   });
 
-  test('틀 글(숫자 · 이름이 들어가는 글)은 카피의 틀과 같다', () => {
+  testOutside([COPY_DOC])('틀 글(숫자 · 이름이 들어가는 글)은 카피의 틀과 같다', () => {
     expect(cellOf('survey.common.count(n, max)').text).toBe('{n}/{최대} / {지금}/{최대}');
     expect(SV2.common.count(2, 5)).toBe('2/5');
     expect(cellOf('survey.common.progressA11y(n, total)').text).toBe('설문 진행, {n}/{전체}');
@@ -94,7 +95,7 @@ describe('공통 글 = 카피 9장 · 4장 · 3장 04 · 화면_요구사항', (
     expect(SV2.rankDown('가족')).toBe('가족 아래로 옮기기');
   });
 
-  test('섹션 이름 · 머리 한 줄 11개가 9장 survey.section.{key} 와 같다', () => {
+  testOutside([COPY_DOC])('섹션 이름 · 머리 한 줄 11개가 9장 survey.section.{key} 와 같다', () => {
     for (const [key, v] of Object.entries(SECTION_COPY)) expect(`${v.name} / ${v.lead}`).toBe(cellOf(`survey.section.${key}.name`).text);
   });
 

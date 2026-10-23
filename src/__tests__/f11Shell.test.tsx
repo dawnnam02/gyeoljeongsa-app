@@ -14,6 +14,7 @@ import { forgetMyFace, isFaceStale, refreshMyFace, useMyFaceStore, FACE_FRESH_MS
 import { layout } from '@/theme/layout';
 import { alpha, size } from '@/theme/tokens';
 
+import { testOutside } from './helpers/outsideDocs';
 import { allTexts, find, has, hasText, mount, must, press, textOf } from './renderHelpers';
 import { makeShopRig } from './shopRig';
 
@@ -191,7 +192,7 @@ describe('조건 1 · 4 · 파일', () => {
   const APP = path.resolve(__dirname, '..', '..');
   const DESIGN = path.resolve(APP, '..', '디자인', '아이콘');
 
-  test('탭 아이콘 · 기본 프로필 그림이 디자인 원본과 바이트까지 같다(디자인 폴더가 옆에 있을 때)', () => {
+  testOutside(['디자인/아이콘'])('탭 아이콘 · 기본 프로필 그림이 디자인 원본과 바이트까지 같다(디자인 폴더가 옆에 있을 때)', () => {
     if (!fs.existsSync(DESIGN)) return;
     const pairs: [string, string][] = [
       ['탭바/03_상점_비활성.png', 'tab/shop-off.png'],

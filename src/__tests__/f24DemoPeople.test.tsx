@@ -15,6 +15,7 @@ import { createDemoClient } from '@/lib/demoClient';
 import { createProfileApi } from '@/lib/profileApi';
 import { createRecsApi } from '@/lib/recsApi';
 
+import { testOutside } from './helpers/outsideDocs';
 import { has, mount } from './renderHelpers';
 
 const T0 = Date.UTC(2026, 9, 16, 3, 0, 0);
@@ -54,7 +55,7 @@ describe('인물 24명 데이터 모양(P8)', () => {
     expect([Math.min(...ages), Math.max(...ages)]).toEqual([24, 39]);
   });
 
-  test('사진 짝: B24 인물목록.csv 의 성별이 같고 나이 느낌(20대 · 30대)이 만 나이와 맞는다(30~31세 네 분만 20대 후반 그림)', () => {
+  testOutside(['디자인/데모인물/인물목록.csv'])('사진 짝: B24 인물목록.csv 의 성별이 같고 나이 느낌(20대 · 30대)이 만 나이와 맞는다(30~31세 네 분만 20대 후반 그림)', () => {
     const csv = path.join(APP, '..', '디자인', '데모인물', '인물목록.csv');
     if (!fs.existsSync(csv)) return; // 디자인 폴더가 없는 곳에서는 건너뛴다
     const rows = new Map(fs.readFileSync(csv, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/).slice(1).filter(Boolean).map((l) => l.split(',')).map((c) => [c[0], { gender: c[1] === '남' ? 'M' : 'F', decade: c[2].startsWith('20') ? 20 : 30 }]));

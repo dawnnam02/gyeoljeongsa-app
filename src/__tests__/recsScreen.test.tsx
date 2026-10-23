@@ -16,6 +16,7 @@ import { onHaptic, scene } from '@/motion';
 import { StyleSheet } from 'react-native';
 import { act } from 'react-test-renderer';
 
+import { APP_DIR, outsidePath, whenOutside } from './helpers/outsideDocs';
 import { allTexts, find, has, hasText, isOpen, mount, must, press, textOf, typeInto } from './renderHelpers';
 
 const mockRouter = { setParams: jest.fn(), push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: jest.fn(() => true), canDismiss: jest.fn(() => false), dismissAll: jest.fn() };
@@ -374,8 +375,10 @@ describe('09 오늘의 추천 (조건 1 · 2)', () => {
     expect(find(tree2, 'recs-empty-body')?.props.tone).toBe('sub');
     const fs = jest.requireActual<typeof import('node:fs')>('node:fs');
     const path = jest.requireActual<typeof import('node:path')>('node:path');
-    const ROOT = path.resolve(__dirname, '..', '..', '..');
-    expect(fs.readFileSync(path.join(ROOT, 'app', 'assets', 'icons', 'ui', 'empty_recs.png')).equals(fs.readFileSync(path.join(ROOT, '디자인', '아이콘', '투명', '20_빈상태_추천없음.png')))).toBe(true);
+    const ORIGINAL = '디자인/아이콘/투명/20_빈상태_추천없음.png';
+    whenOutside([ORIGINAL], () => {
+      expect(fs.readFileSync(path.join(APP_DIR, 'assets', 'icons', 'ui', 'empty_recs.png')).equals(fs.readFileSync(outsidePath(ORIGINAL)))).toBe(true);
+    });
   });
 
   test('13 은 같은 화면의 빈 상태: 서버에 카드가 있어도 카드 자리를 비운다', async () => {

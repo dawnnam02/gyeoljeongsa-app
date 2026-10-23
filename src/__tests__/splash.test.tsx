@@ -12,6 +12,7 @@ import { reduceMotionStore } from '@/lib/reduceMotion';
 import { layout } from '@/theme/layout';
 import { colors } from '@/theme/tokens';
 
+import { APP_DIR, outsidePath, testOutside } from './helpers/outsideDocs';
 import { find, has, hasText, mount as mountRaw, must } from './renderHelpers';
 
 // 시험이 끝나면 그린 것을 모두 치운다(남은 애니메이션이 다음 시험으로 새지 않게)
@@ -154,10 +155,9 @@ describe('이미지 파일(D15)', () => {
   const fs = require('node:fs') as typeof import('node:fs');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const path = require('node:path') as typeof import('node:path');
-  const ROOT = path.resolve(__dirname, '..', '..', '..');
-  const same = (from: string, to: string) => fs.readFileSync(path.join(ROOT, from)).equals(fs.readFileSync(path.join(ROOT, 'app', to)));
+  const same = (from: string, to: string) => fs.readFileSync(outsidePath(from)).equals(fs.readFileSync(path.join(APP_DIR, to)));
 
-  test('스플래시 3개 · 소개 그림 3장(+@2x)이 디자인 원본과 같다', () => {
+  testOutside(['디자인/스플래시', '디자인/온보딩'])('스플래시 3개 · 소개 그림 3장(+@2x)이 디자인 원본과 같다', () => {
     expect(same('디자인/스플래시/splash_1284x2778.png', 'assets/splash/splash_1284x2778.png')).toBe(true);
     expect(same('디자인/스플래시/splash_android_1080x1920.png', 'assets/splash/splash_android_1080x1920.png')).toBe(true);
     expect(same('디자인/스플래시/splash_icon_288.png', 'assets/splash/splash_icon.png')).toBe(true);
@@ -168,12 +168,12 @@ describe('이미지 파일(D15)', () => {
   });
 
   test('app.json 스플래시: 배경 bg 토큰 · contain · Android 12 아이콘(drawable.icon)이 288 아이콘', () => {
-    const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'app', 'app.json'), 'utf8')) as { expo: { plugins: unknown[] } };
+    const config = JSON.parse(fs.readFileSync(path.join(APP_DIR, 'app.json'), 'utf8')) as { expo: { plugins: unknown[] } };
     const entry = config.expo.plugins.find((p) => Array.isArray(p) && p[0] === 'expo-splash-screen') as [string, Record<string, unknown>];
     expect(entry[1].backgroundColor).toBe(colors.bg);
     expect(entry[1].resizeMode).toBe('contain');
     expect(entry[1].image).toBe('./assets/splash/splash_icon.png');
     expect((entry[1].android as { drawable: { icon: string } }).drawable.icon).toBe('./assets/splash/splash_icon.png');
-    for (const file of ['splash_icon.png', 'splash_1284x2778.png', 'splash_android_1080x1920.png']) expect(fs.existsSync(path.join(ROOT, 'app', 'assets', 'splash', file))).toBe(true);
+    for (const file of ['splash_icon.png', 'splash_1284x2778.png', 'splash_android_1080x1920.png']) expect(fs.existsSync(path.join(APP_DIR, 'assets', 'splash', file))).toBe(true);
   });
 });

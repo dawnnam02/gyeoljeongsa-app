@@ -1,12 +1,11 @@
 // F20 조건 1: 설문 v2 문항 정의가 원본 CSV(기획/설문_v2_문항표.csv)와 한 칸씩 같다(설문_인수조건 A-1 · A-2 · A-4 정신: CSV 가 원본).
 //  화면 04 의 78행: 순서 · ID · 섹션 · 형식 · 보기 코드 · 필수 · 공개 범위 · 토글 열 · '말하고 싶지 않아요' · 글자/숫자 범위
-import fs from 'node:fs';
-import path from 'node:path';
-
 import { FLOW, STORY, APPEAL } from '@/features/surveyV2/model';
 import { QUESTIONS } from '@/features/surveyV2/questions';
 
-const CSV = path.resolve(__dirname, '..', '..', '..', '기획', '설문_v2_문항표.csv');
+import { describeOutside, hasOutside, readOutside } from './helpers/outsideDocs';
+
+const CSV = '기획/설문_v2_문항표.csv'; // 저장소 밖 원본(없으면 이 파일의 시험을 건너뛴다)
 
 function parseCsv(text: string): Record<string, string>[] {
   const rows: string[][] = [];
@@ -42,7 +41,7 @@ function parseCsv(text: string): Record<string, string>[] {
   return body.map((r) => Object.fromEntries(head.map((h, i) => [h, r[i] ?? ''])));
 }
 
-const rows = parseCsv(fs.readFileSync(CSV, 'utf8').replace(/^﻿/, '')).filter((r) => r['화면'] === '04');
+const rows = hasOutside(CSV) ? parseCsv(readOutside(CSV, { keepCrlf: true }).replace(/^﻿/, '')).filter((r) => r['화면'] === '04') : [];
 const SEC: Record<string, string> = { 기본: 'basic', 학력: 'edu', 직업: 'job', 경제: 'money', 가족: 'family', 생활: 'life', 가치관: 'values', 결혼관: 'marriage', '희망 조건': 'wish', '결혼 이야기': 'story', 세부사항: 'appeal' };
 const VIS: Record<string, string> = { 나만: 'private', '구간 공개': 'bucket', 공개: 'public' };
 function formatOf(r: Record<string, string>): string {
@@ -57,7 +56,7 @@ function formatOf(r: Record<string, string>): string {
   return ({ '한 줄': 'line', '여러 줄': 'para', '질문 카드': 'story', '어필 카드': 'appeal' } as Record<string, string>)[v];
 }
 
-describe('설문 v2 문항 = CSV 화면 04 의 78행', () => {
+describeOutside([CSV])('설문 v2 문항 = CSV 화면 04 의 78행', () => {
   test('78행 · 필수 흐름 64(9섹션) · 결혼 이야기 8 · 세부사항 6', () => {
     expect(rows).toHaveLength(78);
     expect(QUESTIONS).toHaveLength(78);

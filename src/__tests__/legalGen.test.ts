@@ -9,6 +9,8 @@ import { LEGAL_TERMS } from '@/content/legalTerms';
 import { CONSENT_ITEMS } from '@/content/consentContent';
 import { CONSENT_TEXT_FINGERPRINTS, CONSENT_TEXT_VERSIONS, LEGAL_DOC_FINGERPRINTS, LEGAL_DOC_VERSIONS } from '@/config/consent';
 
+import { describeOutside, LEGAL_DOCS } from './helpers/outsideDocs';
+
 const APP_DIR = path.resolve(__dirname, '..', '..');
 const LIB = path.join(APP_DIR, 'scripts', 'lib');
 
@@ -31,7 +33,7 @@ function runModule(body: string): unknown {
 const allText = (blocks: readonly { type: string }[]) => JSON.stringify(blocks);
 const BANNED = ['변호사 확인', '법무 제안', '가정 D-', '결정 대기', 'app:', '상태: 초안'];
 
-describe('법무 게시본 생성 규칙 (F10)', () => {
+describeOutside(LEGAL_DOCS)('법무 게시본 생성 규칙 (F10)', () => {
   test('1. 게시 결과에 작업 표시 · 표식 · 부록 · 목차가 없다', () => {
     const texts = [allText(LEGAL_TERMS), allText(LEGAL_PRIVACY), JSON.stringify(CONSENT_ITEMS)];
     for (const text of texts) for (const word of BANNED) expect(text).not.toContain(word);

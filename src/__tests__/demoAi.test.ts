@@ -1,7 +1,6 @@
 // F3 서버 쪽 흐름: 모의 서버(데모 모드)의 ai-profile · ai_results · confirm_profile 을 처음부터 끝까지 따라간다.
 //  통과 조건 1(상태 읽기 · 지연) · 2(실패 → 다시 시도 → 직접 입력) · 3(스키마 값 그대로) · 4(user_edited 저장 · 원본 보존) · 진행 단계(progress.ts)
 import fs from 'node:fs';
-import path from 'node:path';
 
 import { CONSENT_CODES, type ConsentCode } from '@/content/types';
 import { REQUIRED_SET } from '@/features/consent/consentLogic';
@@ -12,6 +11,8 @@ import { buildConsentRows, recordConsents } from '@/lib/consentApi';
 import { createDemoBackend, DEMO_AI_DELAY_MS, DEMO_OTP_CODE } from '@/lib/demoBackend';
 import { DEMO_AI_RESULT } from '@/lib/demoAiSample';
 import { createDemoClient } from '@/lib/demoClient';
+
+import { outsidePath, testOutside } from './helpers/outsideDocs';
 
 const START = Date.UTC(2026, 9, 14, 3, 0, 0);
 
@@ -60,13 +61,13 @@ describe('정상 응답(ok): 정리 중 → 정리 끝', () => {
     expect(await loadProgressStage(s.client)).toMatchObject({ ok: true, stage: 'traits-pending' });
   });
 
-  test('결과의 5축 · 태그 · 요약 · 근거가 모의 20건(ai/시험/mock_20.json)의 첫 사례 출력과 같다(스키마 값 그대로)', async () => {
+  testOutside(['ai/시험/mock_20.json'])('결과의 5축 · 태그 · 요약 · 근거가 모의 20건(ai/시험/mock_20.json)의 첫 사례 출력과 같다(스키마 값 그대로)', async () => {
     const s = await setup();
     void s.ai.startDemo('ok');
     await pass(s, DEMO_AI_DELAY_MS.ok);
     const latest = await s.ai.loadLatest();
     if (!latest.ok || !latest.row?.original) throw new Error('결과가 없어요');
-    const file = path.resolve(__dirname, '..', '..', '..', 'ai', '시험', 'mock_20.json');
+    const file = outsidePath('ai/시험/mock_20.json');
     const mock = JSON.parse(fs.readFileSync(file, 'utf8')) as { cases: { output: Record<string, unknown> }[] };
     const want = mock.cases[0].output;
     expect(latest.row.original.traits).toEqual(want.traits);

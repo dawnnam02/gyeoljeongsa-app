@@ -15,6 +15,8 @@ import { a11yJoin, roleWordIn } from '@/lib/a11yLabel';
 import { findContactShapes, hintFor } from '@/lib/contactShape';
 import { FLAGS_FALLBACK, isOn, parseFlags, type FeatureFlags } from '@/lib/featureFlagsApi';
 
+import { testOutside } from './helpers/outsideDocs';
+
 const APP = path.resolve(__dirname, '..', '..');
 const ROOT = path.resolve(APP, '..');
 const node = (script: string, args: string[] = []) => {
@@ -45,7 +47,7 @@ describe('스위치 키 한 목록(K19 2-5) · 앱이 87키를 읽는다', () =>
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'K20').map((k) => k.key)).toEqual(['prelaunch', 'avoid_org', 'vouch']);
   });
 
-  test('K19 2-5 표의 키 75개와 글자 그대로 같다(문서가 옆에 있을 때 · 키 칸 괄호 안 설명의 이름은 키가 아니다)', () => {
+  testOutside(['기획/K19_기능총목록.md'])('K19 2-5 표의 키 75개와 글자 그대로 같다(문서가 옆에 있을 때 · 키 칸 괄호 안 설명의 이름은 키가 아니다)', () => {
     const doc = path.join(ROOT, '기획', 'K19_기능총목록.md');
     if (!fs.existsSync(doc)) return;
     const text = fs.readFileSync(doc, 'utf8').replace(/\r\n/g, '\n');
@@ -208,14 +210,14 @@ describe('V10 연락처 모양 판정(K15 10-03 · T10-01 문장 세트)', () =>
     for (const s of strings) expect(section).toContain(s);
   });
 
-  test('연락 수단 이름 사본(contactWords.ts)이 서버 금칙어 표(0016 시드)와 같다', () => {
+  testOutside(['backend/migrations'])('연락 수단 이름 사본(contactWords.ts)이 서버 금칙어 표(0016 시드)와 같다', () => {
     if (!fs.existsSync(path.join(ROOT, 'backend', 'migrations'))) return;
     expect(node('gen-contact-words.mjs', ['--check']).code).toBe(0);
   });
 });
 
 describe('T04 · K11 글 규칙 도구(check-copy-rules.mjs) — check:copy 그룹 T04 · K11', () => {
-  test('지금 앱 글: 실패 0(허용 목록은 이유와 함께 [참고]로 나온다)', () => {
+  testOutside(['마케팅/카피.md'])('지금 앱 글: 실패 0(허용 목록은 이유와 함께 [참고]로 나온다)', () => {
     const r = node('check-copy-rules.mjs', ['--json']);
     const out = JSON.parse(r.out) as { results: { group: string; title: string; ok: boolean }[]; notes: string[] };
     expect(out.results.filter((x) => !x.ok).map((x) => x.title)).toEqual([]);

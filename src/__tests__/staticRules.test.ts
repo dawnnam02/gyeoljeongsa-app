@@ -4,6 +4,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { testOutside } from './helpers/outsideDocs';
+
 const APP_DIR = path.resolve(__dirname, '..', '..');
 const SRC_DIR = path.join(APP_DIR, 'src');
 
@@ -254,7 +256,7 @@ describe('누르는 효과 · 탭바 (팀장 지시 2026-10-14, 디자인 D10)',
   });
 
   // 디자인 폴더가 옆에 있을 때만 비교한다(앱만 따로 떼어 두면 건너뛴다). 원본이 바뀌면 다시 복사해야 한다.
-  test('앱에 복사한 탭 아이콘 8개가 디자인 원본(디자인/아이콘/탭바)과 바이트까지 같다', () => {
+  testOutside(['디자인/아이콘/탭바'])('앱에 복사한 탭 아이콘 8개가 디자인 원본(디자인/아이콘/탭바)과 바이트까지 같다', () => {
     const designDir = path.resolve(APP_DIR, '..', '디자인', '아이콘', '탭바');
     if (!fs.existsSync(designDir)) return;
     const pairs: Record<string, string> = {
@@ -287,7 +289,7 @@ describe('05 사진 칸 카메라 아이콘 (본인 지시 · 팀장 결정 2026
     expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20), bytes[25]]).toEqual([512, 512, 6]);
   });
 
-  test('디자인 원본(디자인/아이콘/색변형/06_카메라추가_보조.png)과 바이트까지 같다', () => {
+  testOutside(['디자인/아이콘/색변형/06_카메라추가_보조.png'])('디자인 원본(디자인/아이콘/색변형/06_카메라추가_보조.png)과 바이트까지 같다', () => {
     const original = path.resolve(APP_DIR, '..', '디자인', '아이콘', '색변형', '06_카메라추가_보조.png');
     if (!fs.existsSync(original)) return; // 디자인 폴더가 옆에 없으면 건너뛴다
     const copy = fs.readFileSync(path.join(APP_DIR, 'assets', 'icons', 'photo', 'camera-add-sub.png'));
