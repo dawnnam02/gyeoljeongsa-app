@@ -104,6 +104,13 @@ export const REVEAL = {
   failed: '만난 분을 불러오지 못했어요. 다시 시도해 주세요.',
 } as const;
 
+// 공개 전 도착 화면(D42-M · D-178). 원본 = 마케팅/카피.md 12장(check:copy V 가 글자 그대로 대조). 해요체 · 느낌표 0 · 재촉 0
+export const ARRIVE = {
+  title: '여행지에 도착했어요',
+  body: '이번 주에 만날 한 분이 정해졌어요. 준비되면 열어 보세요.',
+  open: '지금 열어 보기',
+} as const;
+
 export const CREDITS = {
   headerTitle: '크레딧',
   balanceLabel: '쓸 수 있는 크레딧',

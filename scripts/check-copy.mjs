@@ -16,6 +16,7 @@
 //  Q. 11 호감 글(F6, likesCopy.ts)이 카피.md 11 · 화면_요구사항 · 정책과 같은가
 //  R. 16 상점 글(F11, copy.ts 의 SHOP · TABS)이 카피.md 16 · 디자인 가이드 11-5 와 같은가
 //  S. 16 상점 · 등급 화면 글(F13, shopCopy.ts · productCopy.ts)이 카피.md 16장과 한 글자씩 같은가 · 상품 46개/빨간 라벨 이유 27줄 · 금지어 · '매칭'은 1회 매칭만 · 등급/점수 허용 구역 · 작업 표시 새지 않음 · 카피 밖 글 목록
+//  V. 공개 전 도착 화면 글(D42-M · D-178, boardingCopy.ts ARRIVE)이 카피.md 12장과 같은가 · 느낌표 · 재촉 0
 //  J. 06 AI 정리 중 · 07 내 성향의 글이 카피.md 06 · 07 · 화면_요구사항(N13 · N14)에 그대로 있는가 · 근거 문항 이름 · 직접 입력 태그 후보(F3)
 // 사용: node scripts/check-copy.mjs   (npm run check:copy)
 // 종료 코드: 0 통과 · 1 실패
@@ -667,6 +668,18 @@ try {
   // N14(K5 확정): 칩 글자 수 안내는 "2~8자로 써 주세요." 이다(서버 검사 8자 이하 · 태그 스키마 2~8자). 기획 원본 문서가 아직 2~10자면 참고로 알린다.
   check('J', '07 N14 칩 글자 수 안내가 기획 확정값 "2~8자로 써 주세요."이고 입력칸 자리표시("2~8자")와 같다',
     copy.TRAITS.errors.tagLength === '2~8자로 써 주세요.' && copy.TRAITS.addTagPlaceholder === '2~8자', `"${copy.TRAITS.errors.tagLength}" / "${copy.TRAITS.addTagPlaceholder}"`);
+
+  // ── V. 공개 전 도착 화면(D42-M · D-178, boardingCopy.ts ARRIVE)이 카피.md 12장 표와 글자 그대로 같은가 · 느낌표 · 재촉 0 ──
+  {
+    const bc = await load(path.join(APP_DIR, 'src', 'features', 'boarding', 'boardingCopy.ts'));
+    const sec12 = copyText.slice(copyText.search(/^## 12\. V5 공개 전 도착 화면/m));
+    const rows = sec12.split(/\r?\n/).filter((l) => /^\| (제목|안내|버튼) \|/.test(l)).map(cells);
+    const want = { title: rows.find((r) => r[0] === '제목')?.[2], body: rows.find((r) => r[0] === '안내')?.[2], open: rows.find((r) => r[0] === '버튼')?.[2] };
+    const diffs = Object.entries(want).filter(([k, v]) => bc.ARRIVE?.[k] !== v).map(([k, v]) => `ARRIVE.${k}: 앱 "${bc.ARRIVE?.[k]}" / 카피 "${v}"`);
+    check('V', '도착 화면 제목 · 부제 · 버튼(ARRIVE 3줄)이 카피.md 12장과 같다', rows.length === 3 && diffs.length === 0, diffs.join('\n') || `표 줄 ${rows.length}`);
+    const bad = Object.values(bc.ARRIVE ?? {}).filter((t) => /[!！]|서두르|마감|지금 바로|놓치지|남은 (시간|자리)/.test(t));
+    check('V', '도착 화면 글에 느낌표 · 재촉 말 0', bad.length === 0, bad.join(' / '));
+  }
 
   // R1 A⑦ T04 · K11: 오류 · 안내 문구 규칙(카피.md 1-1)과 v4 글 대조(카피.md 7장). 규칙 본문은 check-copy-rules.mjs
   runCopyRules({ check, note, appDir: APP_DIR });

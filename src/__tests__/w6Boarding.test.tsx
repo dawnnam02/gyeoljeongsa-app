@@ -3,10 +3,11 @@ import { act } from 'react-test-renderer';
 
 import { createDemoBoarding } from '@/demo/boardingDemo';
 import { createBoardingApi, parseBoarding, parseLedger, type BoardingState } from '@/features/boarding/boardingApi';
-import { BOARDING, CREDITS, REVEAL } from '@/features/boarding/boardingCopy';
-import { boardingView, daysUntil, nextSaleOpen, whenText } from '@/features/boarding/boardingLogic';
+import { ARRIVE, BOARDING, CREDITS, REVEAL } from '@/features/boarding/boardingCopy';
+import { arriveWhen, boardingView, daysUntil, nextSaleOpen, whenText } from '@/features/boarding/boardingLogic';
 import { BoardingScreen } from '@/features/boarding/BoardingScreen';
 import { CreditScreen } from '@/features/boarding/CreditScreen';
+import { createOpenedRounds } from '@/features/boarding/openedRounds';
 import { RevealScreen } from '@/features/boarding/RevealScreen';
 import { createDemoBackend, DEMO_OTP_CODE } from '@/lib/demoBackend';
 import { createDemoClient } from '@/lib/demoClient';
@@ -61,6 +62,24 @@ describe('서버 응답 읽기(가정 이름 get_boarding_state · buy_ticket ·
     expect(boardingView(base({ phase: 'revealed', result: { roundNo: 1, kind: 'no_match', reason: null } }))).toBe('no_match');
   });
 
+  test('도착 화면 날짜 알약: "12월 23일(수) 18:00"(정해진 시각 한 줄)', () => {
+    expect(arriveWhen(MATCH)).toBe('12월 23일(수) 18:00');
+  });
+
+  test('열어 본 회차 저장소: 한 회차 한 번 · 지우기 · 기기 저장에서 읽기', async () => {
+    const saved: number[][] = [];
+    const store = createOpenedRounds({ read: async () => [3], write: async (r) => void saved.push(r) });
+    expect(store.get().ready).toBe(false);
+    await store.load();
+    expect(store.get()).toEqual({ ready: true, rounds: [3] });
+    store.mark(4);
+    store.mark(4);
+    expect(store.get().rounds).toEqual([3, 4]);
+    store.forget(3);
+    expect(store.get().rounds).toEqual([4]);
+    expect(saved).toEqual([[3, 4], [4]]);
+  });
+
   test('시각 글 · 날 단위: "12월 23일 수요일 오후 6시" · 사흘 전 3 · 당일 0 · 지난 뒤 0 · 다음 판매 = 목요일 0시', () => {
     expect(whenText(MATCH)).toBe('12월 23일 수요일 오후 6시');
     expect(daysUntil(MATCH, MATCH - 3 * 86_400_000)).toBe(3);
@@ -72,7 +91,7 @@ describe('서버 응답 읽기(가정 이름 get_boarding_state · buy_ticket ·
 
 describe('글 규칙', () => {
   const texts = (o: unknown): string[] => (typeof o === 'string' ? [o] : typeof o === 'function' ? [String((o as (...a: unknown[]) => unknown)(2, '12월 23일 수요일 오후 6시'))] : o && typeof o === 'object' ? Object.values(o).flatMap(texts) : []);
-  const all = [...texts(BOARDING), ...texts(REVEAL), ...texts(CREDITS)];
+  const all = [...texts(BOARDING), ...texts(REVEAL), ...texts(CREDITS), ...texts(ARRIVE)];
   test('느낌표 · 재촉(남은 자리 · 매진 임박 · 서두르 · 마감 임박 · 지금 바로) · 순번 · 카운트다운 · 등급 · 점수 · 사과 · 합니다체 0', () => {
     const bad = all.filter((t) => /[!！]|남은 (자리|좌석|시간)|매진|서두르|마감 임박|지금 바로|놓치지|\d+번째|\d+:\d\d|초 후|등급|점수|순위|죄송|미안|(습니다|입니다|합니다)\.?$/.test(t));
     expect(bad).toEqual([]);
@@ -157,13 +176,30 @@ describe('화면', () => {
   });
 
   test('T1 공개 뒤: 만난 분 있음 → [만난 분 보기] /reveal · 찾지 못함 → 제목 · 크레딧 안내 · [크레딧 보기] /credits · 좌석 모두 참은 다음 판매 시각만', async () => {
-    const m = await mount(<BoardingScreen deps={{ api: createBoardingApi(await demoClient('boardmatch@email.com')), newId: () => 'x' }} />);
+    // 도착 화면(D-178): 아직 안 연 회차는 도착 화면 → [지금 열어 보기] → 열어 봄 표시 + 공개 순간(?moment=1)
+    const opened = createOpenedRounds();
+    const matchApi = createBoardingApi(await demoClient('boardmatch@email.com'));
+    const a = await mount(<BoardingScreen deps={{ api: matchApi, newId: () => 'x', opened }} />);
     await act(async () => undefined);
+    expect(textOf(a, 'boarding-arrive-title')).toBe(ARRIVE.title);
+    expect(textOf(a, 'boarding-arrive-body')).toBe(ARRIVE.body);
+    expect(textOf(a, 'boarding-arrive-when')).toBe('12월 23일(수) 18:00');
+    expect(has(a, 'boarding-arrive-art')).toBe(true);
+    expect(has(a, 'boarding-status-matched')).toBe(false);
+    await press(a, 'boarding-arrive-open');
+    expect(mockRouter.push).toHaveBeenCalledWith('/reveal?moment=1');
+    expect(opened.get().rounds).toEqual([1]);
+    act(() => a.unmount());
+    // 이미 열어 본 회차: 도착 화면 없이 지금처럼 만난 분 카드 → [만난 분 보기] /reveal
+    const m = await mount(<BoardingScreen deps={{ api: matchApi, newId: () => 'x', opened }} />);
+    await act(async () => undefined);
+    expect(has(m, 'boarding-arrive')).toBe(false);
     await press(m, 'boarding-open-reveal');
     expect(mockRouter.push).toHaveBeenCalledWith('/reveal');
     act(() => m.unmount());
-    const n = await mount(<BoardingScreen deps={{ api: createBoardingApi(await demoClient('boardnone@email.com')), newId: () => 'x' }} />);
+    const n = await mount(<BoardingScreen deps={{ api: createBoardingApi(await demoClient('boardnone@email.com')), newId: () => 'x', opened: createOpenedRounds() }} />);
     await act(async () => undefined);
+    expect(has(n, 'boarding-arrive')).toBe(false); // 못 찾은 회차는 도착 화면 없이 크레딧 안내
     expect(textOf(n, 'boarding-status-title')).toBe('완벽한 사람을 찾지 못했어요');
     await press(n, 'boarding-open-credits');
     expect(mockRouter.push).toHaveBeenCalledWith('/credits');
@@ -177,8 +213,15 @@ describe('화면', () => {
 
   test('T3 공개 순간: 회차 · 제목 · 만난 분 이름 줄 · [대화 시작하기] → /chat/{id} · [프로필 자세히 보기] → 10 / 찾지 못함 변형', async () => {
     const client = await demoClient('boardmatch@email.com');
-    const tree = await mount(<RevealScreen deps={{ api: createBoardingApi(client), photoUrl: async () => 'https://x/p.webp' }} />);
+    const opened = createOpenedRounds();
+    const tree = await mount(<RevealScreen deps={{ api: createBoardingApi(client), photoUrl: async () => 'https://x/p.webp', opened }} />);
     await act(async () => undefined);
+    // 푸시로 바로 온 아직 안 연 회차: 이 화면에서 먼저 도착 화면
+    expect(textOf(tree, 'reveal-arrive-title')).toBe(ARRIVE.title);
+    expect(has(tree, 'reveal-matched')).toBe(false);
+    await press(tree, 'reveal-arrive-open');
+    expect(opened.get().rounds).toEqual([1]);
+    expect(has(tree, 'reveal-arrive')).toBe(false);
     expect(textOf(tree, 'reveal-kicker')).toBe('1회차 · 수요일 오후 6시');
     expect(textOf(tree, 'reveal-title')).toBe(REVEAL.title);
     expect(textOf(tree, 'reveal-name')).toBe('문OO · 32 · 서울 마포구');
@@ -188,7 +231,7 @@ describe('화면', () => {
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/candidate/[id]', params: { id: 'demo-cand-4' } });
     expect(allTexts(tree).join(' ')).not.toMatch(/점수|등급|%|\d+점/);
     act(() => tree.unmount());
-    const none = await mount(<RevealScreen deps={{ api: createBoardingApi(await demoClient('boardnone@email.com')), photoUrl: async () => null }} />);
+    const none = await mount(<RevealScreen deps={{ api: createBoardingApi(await demoClient('boardnone@email.com')), photoUrl: async () => null, opened: createOpenedRounds() }} />);
     await act(async () => undefined);
     expect(textOf(none, 'reveal-title')).toBe('완벽한 사람을 찾지 못했어요');
     expect(has(none, 'reveal-credits')).toBe(true);

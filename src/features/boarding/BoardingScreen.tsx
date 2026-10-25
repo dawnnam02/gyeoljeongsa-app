@@ -24,10 +24,12 @@ import { colors, size, space } from '@/theme/tokens';
 import type { BoardingApi, BoardingLoad, BoardingState, BuyFailure } from './boardingApi';
 import { SCENE_OF } from './boardingArt';
 import { BOARDING } from './boardingCopy';
-import { boardingView, canUseCredit, daysUntil, nextSaleOpen, whenText, type BoardingView } from './boardingLogic';
+import { arriveWhen, boardingView, canUseCredit, daysUntil, nextSaleOpen, whenText, type BoardingView } from './boardingLogic';
 import { TicketCard } from './TicketCard';
+import { ArriveView } from './ArriveView';
+import { defaultOpenedRounds, useOpenedRounds, type OpenedRounds } from './openedRounds';
 
-export type BoardingDeps = { api: Pick<BoardingApi, 'load' | 'buy'>; newId: () => string; toastMs?: number; demoBar?: (reload: () => void) => ReactNode };
+export type BoardingDeps = { api: Pick<BoardingApi, 'load' | 'buy'>; newId: () => string; toastMs?: number; opened?: OpenedRounds; demoBar?: (reload: () => void) => ReactNode };
 
 // 새 주소(탑승권 · 공개 · 크레딧)는 이 파일이 만든 라우트라 자동 주소 타입에 아직 없을 수 있다 — 문자열 그대로 넘긴다
 export const hrefOf = (path: string): Href => path as unknown as Href;
@@ -42,6 +44,8 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   const [toast, setToast] = useState<string | null>(null);
   const [stamp, setStamp] = useState(0); // 탑승권을 받은 순간 로고 타일을 한 번 찍는다
   const toastMs = deps.toastMs ?? TOAST_MS;
+  const openedStore = deps.opened ?? defaultOpenedRounds;
+  const opened = useOpenedRounds(openedStore);
 
   const reload = useCallback(() => {
     void deps.api.load().then(setLoad);
@@ -61,6 +65,9 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   const state = load?.ok ? load.state : null;
   const view = state ? boardingView(state) : null;
   const scene = view ? SCENE_OF[view] : null;
+  // 공개된 만난 분 회차 · 아직 이 기기에서 열어 보지 않았으면 도착 화면(못 찾음 회차는 도착 화면 없이 지금처럼)
+  const arrivedRound = view === 'matched' && state?.result?.kind === 'matched' ? state.result.roundNo : null;
+  const arriving = arrivedRound !== null && opened.ready && !opened.rounds.includes(arrivedRound);
 
   const buy = async (useCredit: boolean) => {
     if (busy) return;
@@ -83,7 +90,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   return (
     <Screen edges={['top']} backdrop="recommendations" testID="screen-boarding">
       <TabHeader title={BOARDING.headerTitle} testID="boarding-header" />
-      {load === null ? (
+      {load === null || (arrivedRound !== null && !opened.ready) ? (
         <View style={styles.pad}>
           <SkeletonPulse>
             <SkeletonCard testID="boarding-skeleton" />
@@ -97,6 +104,19 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
           </AppText>
           <Button label={BOARDING.retry} variant="secondary" onPress={reload} testID="boarding-retry" />
         </View>
+      ) : arriving && arrivedRound !== null && state.round ? (
+        // 도착 화면(D-178): 공개 시각이 지난 회차를 처음 볼 때 한 번. [지금 열어 보기] → 열어 봄 표시 → 공개 순간(표지 넘김)
+        <ScrollView contentContainerStyle={[styles.pad, styles.gap]} testID="boarding-scroll">
+          <ArriveView
+            when={arriveWhen(state.round.matchAt)}
+            onOpen={() => {
+              openedStore.mark(arrivedRound);
+              router.push(hrefOf('/reveal?moment=1'));
+            }}
+            testID="boarding-arrive"
+          />
+          {deps.demoBar ? deps.demoBar(reload) : null}
+        </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={[styles.pad, styles.gap]} testID="boarding-scroll">
           {state.credits > 0 ? <TextButton label={BOARDING.creditsLink(state.credits)} align="start" onPress={() => router.push(hrefOf('/credits'))} testID="boarding-credits" /> : null}

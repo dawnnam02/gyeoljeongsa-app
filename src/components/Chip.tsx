@@ -5,7 +5,7 @@
 //             role tab · 선택 상태를 스크린리더에 알리고, 누르면 카드처럼 작아진다(scale)
 // onPress 가 있으면 공통 Pressable 로 누르고, 터치 영역은 높이 48(안의 칩은 32)다.
 // 움직임(2안 '지면' D42-M 명세 4-1 chip · 5-4): 누르는 selected ↔ inactive 칩은 바탕 · 테두리 · 글자 색이 150 std 로 바뀌고(interpolateColor),
-//  체크는 켤 때 150 std · 끌 때 120 in 투명도. 체크 자리는 처음부터 비워 두어 고를 때 칩 폭이 변하지 않는다. 색 변화는 움직임이 아니라 동작 줄이기여도 같다
+//  체크는 켤 때 150 std · 끌 때 120 in 투명도. 좌우 여백을 '체크 자리'만큼 똑같이 두고 체크는 왼쪽 여백 안에 겹쳐 나타나, 고를 때 폭이 변하지 않고 꺼진 칩도 글자가 가운데다(D-179). 색 변화는 움직임이 아니라 동작 줄이기여도 같다
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -77,8 +77,8 @@ function PickChip({ label, on, testID }: { label: string; on: boolean; testID?: 
   });
   const check = useAnimatedStyle(() => ({ opacity: c.get() }));
   return (
-    <Animated.View style={[styles.chip, styles.pick, styles.withCheck, face]}>
-      <Animated.View style={check}>
+    <Animated.View style={[styles.chip, styles.pick, face]}>
+      <Animated.View style={[styles.pickCheck, check]}>
         <Icon name="check" size={space.s16} color={colors.accent} testID={on && testID ? `${testID}-check` : undefined} />
       </Animated.View>
       <Animated.Text style={[type.captionMedium, ink]}>{label}</Animated.Text>
@@ -87,7 +87,9 @@ function PickChip({ label, on, testID }: { label: string; on: boolean; testID?: 
 }
 
 const styles = StyleSheet.create({
-  pick: { borderWidth: 1 },
+  // 고를 수 있는 칩: 좌우 여백 = 왼쪽 8 + 체크 16 + 4(같은 값을 오른쪽에도) → 글자는 늘 가운데, 체크는 왼쪽 여백 안 8 자리에 겹친다
+  pick: { borderWidth: 1, paddingHorizontal: space.s8 + space.s16 + space.s4, alignItems: 'center' },
+  pickCheck: { position: 'absolute', left: space.s8, top: 0, bottom: 0, justifyContent: 'center' },
   touch: { minHeight: size.touchMin, justifyContent: 'center', alignSelf: 'flex-start' },
   chip: { minHeight: size.chip, borderRadius: radius.pill, paddingHorizontal: space.s12, justifyContent: 'center', alignSelf: 'flex-start' },
   withCheck: { flexDirection: 'row', alignItems: 'center', gap: space.s4, paddingLeft: space.s8 },

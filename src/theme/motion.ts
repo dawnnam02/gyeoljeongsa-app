@@ -73,6 +73,8 @@ export const scene2 = {
     scrimIn: 300, sheetIn: 520, sheetOut: 340, sheetTitle: 560, sheetTitleDelay: 300,
     ctaOut: 160, stamp: 560, title: 560, titleDelay: 200, sub: 600, subDelay: 280, msg: 600, msgDelay: 360,
   },
+  // 4-3 핵심 ② 앞 도착 화면(D-178, 명세 4-3 reveal.arrive): 알약 0 · 그림 90 · 제목 180 · 부제 270 · 버튼 360
+  arrive: { pill: 480, art: 560, artDelay: 90, title: 560, titleDelay: 180, sub: 600, subDelay: 270, cta: 300, ctaDelay: 360 },
   // 4-3 핵심 ② 수 18:00 공개(공개 화면이 열린 순간부터). 시 · 분 · 초 카운트다운 0, 폭죽 0
   reveal: {
     swap: 240, cover: dur.hero, coverDelay: 160, coverDeg: -150, perspective: 1_400,

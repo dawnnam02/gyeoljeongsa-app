@@ -4,8 +4,11 @@
 import type { ReactNode } from 'react';
 
 import { createBoardingApi, type BoardingApi } from './boardingApi';
+import { createOpenedRounds, openedMemoryOnly, type OpenedMemory, type OpenedRounds } from './openedRounds';
 
-export type BoardingServices = { api: BoardingApi; newId: () => string; demoBar?: (reload: () => void) => ReactNode };
+const OPENED_KEY = 'boarding.openedRounds.v1'; // 공개를 열어 본 회차 번호(도착 화면은 한 회차에 한 번, D-178)
+
+export type BoardingServices = { api: BoardingApi; newId: () => string; opened: OpenedRounds; demoBar?: (reload: () => void) => ReactNode };
 
 let made: BoardingServices | null = null;
 
@@ -15,12 +18,26 @@ export function boardingServices(): BoardingServices {
     const { env } = require('@/config/env') as typeof import('@/config/env');
     const { supabase } = require('@/lib/supabase') as typeof import('@/lib/supabase');
     const { newRequestId } = require('@/lib/requestId') as typeof import('@/lib/requestId');
+    const { Platform } = require('react-native') as typeof import('react-native');
     const api = createBoardingApi(supabase);
+    let memory: OpenedMemory = openedMemoryOnly;
+    if (Platform.OS !== 'web') {
+      const AsyncStorage = (require('@react-native-async-storage/async-storage') as typeof import('@react-native-async-storage/async-storage')).default;
+      memory = {
+        read: async () => {
+          const raw = await AsyncStorage.getItem(OPENED_KEY);
+          const v: unknown = raw ? JSON.parse(raw) : null;
+          return Array.isArray(v) ? v.filter((n): n is number => Number.isInteger(n)) : null;
+        },
+        write: async (rounds) => AsyncStorage.setItem(OPENED_KEY, JSON.stringify(rounds)),
+      };
+    }
+    const opened = createOpenedRounds(memory);
     if (env.demoMode) {
       const { boardingDemoBar } = require('@/demo/boardingDemoBar') as typeof import('@/demo/boardingDemoBar');
-      made = { api, newId: () => newRequestId(), demoBar: boardingDemoBar(supabase) };
+      made = { api, newId: () => newRequestId(), opened, demoBar: boardingDemoBar(supabase, opened) };
     } else {
-      made = { api, newId: () => newRequestId() };
+      made = { api, newId: () => newRequestId(), opened };
     }
     /* eslint-enable @typescript-eslint/no-require-imports */
   }

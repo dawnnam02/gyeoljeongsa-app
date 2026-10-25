@@ -7,7 +7,13 @@ import { AppText } from '@/components/AppText';
 import { Chip } from '@/components/Chip';
 import { colors, radius, space } from '@/theme/tokens';
 
+import type { OpenedRounds } from '@/features/boarding/openedRounds';
+
 import type { BoardingScene } from './boardingDemo';
+
+// 데모 회차는 1회차(boardingDemo ROUNDS[0]). '도착(아직 안 엶)' = 공개 장면 + 열어 본 표시 지움 · '수요일 18:00 공개' = 이미 열어 본 회차(D-178)
+const DEMO_ROUND = 1;
+type DemoChip = BoardingScene | 'arrived';
 
 export const BOARDING_DEMO = {
   note: '데모 모드예요. 탑승권 장면을 골라 볼 수 있어요.',
@@ -17,14 +23,15 @@ export const BOARDING_DEMO = {
     ['credit', '크레딧 1장'],
     ['full', '좌석 모두 참'],
     ['boarded', '탑승 완료'],
+    ['arrived', '도착(아직 안 엶)'],
     ['matched', '수요일 18:00 공개'],
     ['none', '찾지 못함'],
     ['closed', '판매 끝'],
     ['politics', '정치 문항 빈칸'],
-  ] as readonly (readonly [BoardingScene, string])[],
+  ] as readonly (readonly [DemoChip, string])[],
 } as const;
 
-export function boardingDemoBar(client: Pick<SupabaseClient, 'rpc'>) {
+export function boardingDemoBar(client: Pick<SupabaseClient, 'rpc'>, opened?: OpenedRounds) {
   return function DemoBar(reload: () => void) {
     return (
       <View style={styles.bar} testID="boarding-demo">
@@ -38,7 +45,9 @@ export function boardingDemoBar(client: Pick<SupabaseClient, 'rpc'>) {
               label={label}
               variant="inactive"
               onPress={() => {
-                void Promise.resolve(client.rpc('demo_boarding_scene', { p_scene: scene })).then(reload);
+                if (scene === 'arrived') opened?.forget(DEMO_ROUND);
+                if (scene === 'matched') opened?.mark(DEMO_ROUND);
+                void Promise.resolve(client.rpc('demo_boarding_scene', { p_scene: scene === 'arrived' ? 'matched' : scene })).then(reload);
               }}
               testID={`boarding-demo-${scene}`}
             />

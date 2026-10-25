@@ -5,7 +5,7 @@
 //  동작 줄이기면 표지 없이 모두 투명도 150(motion/CoverTurn · MaskLine · Wipe)
 //  · 못 찾은 회차는 같은 자리에 "완벽한 사람을 찾지 못했어요" + 크레딧 안내 + [크레딧 보기] — 위에 장면 그림 '못 찾음'(D42-I 4안 · 돌아온 탑승권 한 장)
 //  · 대화방 주소는 채팅(앱 D)의 /chat/[id] 를 가정 — 채팅 라우트가 생기면 그대로 이어진다
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -21,9 +21,12 @@ import { radius, size, space } from '@/theme/tokens';
 
 import type { BoardingApi, BoardingLoad } from './boardingApi';
 import { BOARDING, REVEAL } from './boardingCopy';
+import { ArriveView } from './ArriveView';
+import { arriveWhen } from './boardingLogic';
 import { hrefOf } from './BoardingScreen';
+import { defaultOpenedRounds, useOpenedRounds, type OpenedRounds } from './openedRounds';
 
-export type RevealDeps = { api: Pick<BoardingApi, 'load'>; photoUrl: (photoId: string) => Promise<string | null> };
+export type RevealDeps = { api: Pick<BoardingApi, 'load'>; photoUrl: (photoId: string) => Promise<string | null>; opened?: OpenedRounds };
 
 const PHOTO = 240;
 const R = scene2.reveal;
@@ -46,49 +49,69 @@ export function RevealScreen({ deps }: { deps: RevealDeps }) {
   }, [deps]);
   const back = () => (router.canGoBack() ? router.back() : router.replace(hrefOf('/boarding')));
   const result = load?.ok ? load.state.result : null;
+  // 도착 화면(D-178): 푸시 등으로 바로 온 아직 안 연 회차는 이 화면에서 먼저 도착 → [지금 열어 보기] → 공개 순간.
+  //  공개 순간(표지 넘김 · 줄 가림 · 걷힘)은 처음 열 때 한 번만: 탑승권 탭의 [지금 열어 보기](?moment=1) 또는 여기서 연 때. 이미 열어 본 회차는 바로 상대 화면(움직임 없이)
+  const { moment } = useLocalSearchParams<{ moment?: string }>();
+  const openedStore = deps.opened ?? defaultOpenedRounds;
+  const opened = useOpenedRounds(openedStore);
+  const [openedHere, setOpenedHere] = useState(false);
+  const round = result?.kind === 'matched' ? result.roundNo : null;
+  const matchAt = load?.ok ? (load.state.round?.matchAt ?? null) : null;
+  const arriving = round !== null && matchAt !== null && opened.ready && !opened.rounds.includes(round) && !openedHere;
+  const play = moment === '1' || openedHere;
+  const openNow = () => {
+    if (round === null) return;
+    setOpenedHere(true);
+    openedStore.mark(round);
+  };
 
   return (
     <Screen edges={['top', 'bottom']} backdrop="connected" testID="screen-reveal">
       <ScreenHeader title="" onBack={back} testID="reveal-header" />
-      {load === null ? null : !result ? (
+      {load === null || (round !== null && !opened.ready) ? null : !result ? (
         <View style={[styles.pad, styles.gap]} testID="reveal-error">
           <AppText variant="body" tone="sub" accessibilityRole="alert">
             {REVEAL.failed}
           </AppText>
           <Button label={REVEAL.back} variant="secondary" onPress={back} testID="reveal-back" />
         </View>
+      ) : arriving && matchAt !== null ? (
+        <ScrollView contentContainerStyle={[styles.pad, styles.gap]} testID="reveal-arrive-scroll">
+          <ArriveView when={arriveWhen(matchAt)} onOpen={openNow} testID="reveal-arrive" />
+        </ScrollView>
       ) : result.kind === 'matched' ? (
         <ScrollView contentContainerStyle={[styles.pad, styles.gap, styles.center]} testID="reveal-matched">
-          <Fade visible duration={R.swap} name="edOut">
+          <Fade visible duration={play ? R.swap : 0} name="edOut">
             <AppText variant="captionMedium" tone="accent" testID="reveal-kicker">
               {REVEAL.kicker(BOARDING.round(result.roundNo))}
             </AppText>
           </Fade>
-          <MaskLine variant="title" accessibilityRole="header" style={styles.textCenter} wrapStyle={styles.stretch} delay={R.titleDelay} duration={R.title} testID="reveal-title">{REVEAL.title}</MaskLine>
-          <CoverTurn radius={radius.lg} style={styles.card} testID="reveal-card">
-            <Wipe delay={R.photoDelay} duration={R.photo}>
+          <MaskLine variant="title" accessibilityRole="header" style={styles.textCenter} wrapStyle={styles.stretch} play={play} delay={R.titleDelay} duration={R.title} testID="reveal-title">{REVEAL.title}</MaskLine>
+          <CoverTurn play={play} radius={radius.lg} style={styles.card} testID="reveal-card">
+            <Wipe play={play} delay={R.photoDelay} duration={R.photo}>
               <PhotoBox state="approved" uri={uri} label={REVEAL.photoA11y} style={styles.photo} testID="reveal-photo" />
             </Wipe>
             <MaskLine
               variant="bodyBold"
               style={styles.textCenter}
               wrapStyle={styles.name}
+              play={play}
               delay={R.nameDelay}
               duration={R.name}
               testID="reveal-name">{[result.partner.name, result.partner.age !== null ? String(result.partner.age) : null, regionText(result.partner.region)].filter(Boolean).join(' · ')}</MaskLine>
           </CoverTurn>
-          <Wipe delay={R.infoDelay} duration={R.info}>
+          <Wipe play={play} delay={R.infoDelay} duration={R.info}>
             <AppText variant="body" tone="sub" style={styles.textCenter} testID="reveal-body">
               {REVEAL.body}
             </AppText>
           </Wipe>
           <View style={styles.actions}>
             {result.chatId ? (
-              <Fade visible delay={R.ctaDelay} duration={R.cta} name="edOut">
+              <Fade visible delay={play ? R.ctaDelay : 0} duration={play ? R.cta : 0} name="edOut">
                 <Button label={REVEAL.chat} onPress={() => router.push(hrefOf(`/chat/${result.chatId}`))} testID="reveal-chat" />
               </Fade>
             ) : null}
-            <Fade visible delay={R.cta2Delay} duration={R.cta} name="edOut">
+            <Fade visible delay={play ? R.cta2Delay : 0} duration={play ? R.cta : 0} name="edOut">
               <Button label={REVEAL.profile} variant="secondary" onPress={() => router.push({ pathname: '/candidate/[id]', params: { id: result.partnerId } })} testID="reveal-profile" />
             </Fade>
           </View>

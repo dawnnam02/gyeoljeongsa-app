@@ -19,6 +19,14 @@ export function whenText(ms: number): string {
   return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 ${WEEKDAYS[d.getUTCDay()]}요일 ${half} ${hh}시${m ? ` ${m}분` : ''}`;
 }
 
+// 도착 화면 날짜 알약(D-178): '12월 23일(수) 18:00' — 정해진 공개 시각 한 줄(남은 시간 · 카운트다운 아님)
+export function arriveWhen(ms: number): string {
+  const d = new Date(ms + KST);
+  const hh = String(d.getUTCHours()).padStart(2, '0');
+  const mm = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일(${WEEKDAYS[d.getUTCDay()]}) ${hh}:${mm}`;
+}
+
 // 매칭 날까지 며칠(한국 달력 날짜 차이). 지났으면 0
 export const daysUntil = (target: number, now: number): number => Math.max(0, kstDayNo(target) - kstDayNo(now));
 

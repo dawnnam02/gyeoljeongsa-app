@@ -1,6 +1,6 @@
 // D42-M 2안 '지면' 웹 점검(핵심 3곳 + 스플래시 캡처 · 동작 줄이기). 무료 · 네트워크 없음(로컬 서버 + 로컬 브라우저, 데모 모드 모의 서버).
 //  먼저 데모 모드 웹 번들을 만든 뒤 쓴다(npm run check:web:demo → dist-demo/).
-//  보통: 스플래시(선 · 잉크 · 글자 중간 / 다 그려짐) · 탑승권 받기(시트 올라옴 · 도장 잉크 번짐 중간 / 끝) · 공개(표지 넘김 중간 / 끝) · 채팅 첫 글(걷힘 중간 / 끝) 캡처
+//  보통: 스플래시(선 · 잉크 · 글자 중간 / 다 그려짐) · 탑승권 받기(시트 올라옴 · 도장 잉크 번짐 중간 / 끝) · 도착 화면(D-178, 중간 / 끝) · 공개(표지 넘김 중간 / 끝) · 채팅 첫 글(걷힘 중간 / 끝) 캡처
 //  --reduced-motion: 같은 순서를 동작 줄이기로 — 넘김 · 시트 · 도장 · 표지 · 첫 글 동안 transform 이 바뀐 요소 0(투명도만)
 //  캡처: 확인/스크린샷/[SHOT_SUBDIR 기본 D42M_<폭>(_줄이기)]/D42M_*.png
 // 사용: node scripts/web-d42m.mjs [번들 폴더] [--reduced-motion]   SHOT_WIDTH=360 node scripts/web-d42m.mjs
@@ -115,8 +115,25 @@ try {
   }
   check('S', `스플래시가 걷힌다(보통 1.9초 + 0.64초 · 줄이기 1.5초 + 0.15초)`, await wait(`!window.__q('splash')`, 6000), '');
 
+  // ═══ C. 칩 글자 가운데(D-179): 문서 탭 칩(켬 · 끔) · 데모 장면 칩(끔) ═══
+  if (!reduced) {
+    await tap('signin-privacy-link', 600);
+    if (await waitVis('legal-tab-terms', 5000)) {
+      const off = await b.evaluate(`(() => { const el = ${visQ('legal-tab-terms')}; const chip = el && el.firstElementChild; const t = chip && [...chip.querySelectorAll('div')].find((d) => d.innerText && !d.children.length); if (!chip || !t) return 99; const c = chip.getBoundingClientRect(); const r = t.getBoundingClientRect(); return Math.abs((r.left - c.left) - (c.right - r.right)); })()`);
+      check('C', '끈 칩(문서 탭)도 글자가 가운데(좌우 여백 차 2px 이하)', off <= 2, `차 ${off}px`);
+      await shot('C1_문서탭칩');
+    }
+  }
+
   // ═══ 1. 탑승권 받기 ═══
   check('1', '데모 가입 → 탑승권 탭(판매 중)', await signUp(`d42m${width}${reduced ? 'r' : ''}@email.com`), '');
+  if (!reduced) {
+    await b.evaluate(`(() => { const el = ${visQ('boarding-demo')}; if (el) el.scrollIntoView({ block: 'center' }); })()`);
+    await sleep(400);
+    await shot('C2_데모장면칩');
+    await b.evaluate(`(() => { const el = ${visQ('boarding-scroll')}; if (el) el.scrollTop = 0; })()`);
+    await sleep(300);
+  }
   await sleep(800);
   await moment('1', '결제 시트 열림', () => tap('boarding-buy', 0), ['1a_시트_올라옴', '1b_시트', 260]);
   await waitVis('boarding-sheet-summary');
@@ -124,11 +141,11 @@ try {
   await moment('1', '결제 확인 → 시트 닫힘 · 도장 잉크 번짐 · 제목 줄 가림 · 부제 걷힘', () => tap('boarding-pay', 0), ['1c_도장_번짐중', '1d_탑승권받음', 520]);
   check('1', `탑승 완료 카드 · 로고 타일 도장 · '3일 뒤에 만나요'`, (await wait(`!!${visQ('boarding-status-boarded')}`, 6000)) && (await vis('boarding-stamp')), '');
 
-  // ═══ 2. 수 18:00 공개 ═══
-  await tap('boarding-demo-matched', 700);
-  await b.evaluate(`(() => { const el = ${visQ('boarding-scroll')}; if (el) el.scrollTop = 0; })()`);
-  await sleep(300);
-  await moment('2', '공개 화면(표지 넘김 · 사진 걷힘 · 이름 줄 가림)', () => tap('boarding-open-reveal', 0), ['2a_표지_넘김중', '2b_공개', 520]);
+  // ═══ 2. 수 18:00 공개: 도착 화면(D-178) → [지금 열어 보기] → 공개 순간 ═══
+  await moment('2', '도착 화면(알약 · 그림 걷힘 · 제목 줄 가림 · 부제 · 버튼)', () => tap('boarding-demo-arrived', 0), ['2a_도착_중간', '2b_도착', 350]);
+  check('2', `도착 화면: 알약 '12월 23일(수) 18:00' · "여행지에 도착했어요" · 부제 · [지금 열어 보기] · 그림`, (await waitVis('boarding-arrive-open')) && (await b.evaluate(`(${visQ('boarding-arrive-when')} || {}).innerText === '12월 23일(수) 18:00'`)) && (await b.evaluate(`(${visQ('boarding-arrive-title')} || {}).innerText === '여행지에 도착했어요'`)) && (await vis('boarding-arrive-art')), '');
+  check('2', '도착 화면에 카운트다운 · 재촉 · 느낌표 0', !/남은 시간|서두르|마감|지금 바로|d+:dd:dd|[!！]/.test(await b.evaluate(`(${visQ('boarding-arrive')} || {}).innerText || ''`)), '');
+  await moment('2', '공개 화면(표지 넘김 · 사진 걷힘 · 이름 줄 가림)', () => tap('boarding-arrive-open', 0), ['2c_표지_넘김중', '2d_공개', 520]);
   check('2', '공개 화면: 제목 · 사진 · 이름 · [대화 시작하기]', (await wait(`location.pathname === '/reveal' && !!${visQ('reveal-name')}`, 8000)) && (await vis('reveal-photo')) && (await vis('reveal-chat')), '');
   check('2', '표지는 넘긴 뒤 치워진다', !(await vis('reveal-card-cover')), '');
 
