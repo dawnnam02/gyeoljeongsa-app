@@ -5,6 +5,7 @@ import { ActivityIndicator, BackHandler, ScrollView, StyleSheet, View, type Imag
 
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
+import { Icon } from '@/components/Icon';
 import { Pressable } from '@/components/Pressable';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { OfflineArt, StateArt } from '@/components/StateArt';
@@ -31,7 +32,8 @@ export function GroupLabel({ text, testID }: { text: string; testID?: string }) 
   );
 }
 
-// 이동 줄: 왼쪽 이름 · 오른쪽 보조 글(예: "준비 중") 또는 ›
+// 이동 줄: 왼쪽 이름 · 오른쪽 보조 글(예: "준비 중") 또는 ›(D42-C 1안 chevron 20 · sub)
+const CHEVRON = 20;
 export function NavRow({ label, right, last = false, onPress, testID }: { label: string; right?: string; last?: boolean; onPress: () => void; testID?: string }) {
   return (
     <Pressable
@@ -44,7 +46,7 @@ export function NavRow({ label, right, last = false, onPress, testID }: { label:
       <AppText variant="body" style={styles.flex}>
         {label}
       </AppText>
-      {right ? <AppText variant="caption">{right}</AppText> : <AppText variant="body" tone="sub" accessibilityElementsHidden importantForAccessibility="no">›</AppText>}
+      {right ? <AppText variant="caption">{right}</AppText> : <Icon name="chevron" size={CHEVRON} color={colors.sub} testID={testID ? `${testID}-chevron` : undefined} />}
     </Pressable>
   );
 }

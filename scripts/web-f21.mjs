@@ -127,10 +127,10 @@ try {
   // 기한 알약: 글(testID)을 감싼 알약 면
   const pill = await b.evaluate(`(() => { const t = [...document.querySelectorAll('[data-testid="recs-remaining"]')].filter((e) => window.__visible(e)).pop(); if (!t) return null; const p = t.parentElement; const r = p.getBoundingClientRect(); const s = getComputedStyle(p); return { h: r.height, bg: s.backgroundColor, rad: s.borderTopLeftRadius }; })()`);
   const card = await box('rec-card-0');
-  const tabPill = await box('tab-pill-recommendations');
+  const tabPill = await box('tab-bar-recommendations'); // D42-C: 알약 → 라벨 아래 20 × 3 막대(accent)
   check('1', '다음 추천까지 = accentSoft 알약', !pill || (pill.bg === 'rgb(246, 233, 236)' && parseFloat(pill.rad) >= pill.h / 2 - 1), JSON.stringify(pill));
   check('1', '추천 카드 = 종이(bg · line 1 · 둥글기 20)', !!card && card.bg === 'rgb(255, 251, 247)' && card.bw === '1px' && card.rad === '20px', JSON.stringify(card));
-  check('1', '탭바 현재 탭 = 아이콘 뒤 accentSoft 알약 56 × 28', !!tabPill && Math.round(tabPill.w) === 56 && Math.round(tabPill.h) === 28 && tabPill.bg === 'rgb(246, 233, 236)', JSON.stringify(tabPill));
+  check('1', '탭바 현재 탭 = 라벨 아래 accent 막대 20 × 3(D42-C 1안)', !!tabPill && Math.round(tabPill.w) === 20 && Math.round(tabPill.h) === 3 && tabPill.bg === 'rgb(155, 59, 82)', JSON.stringify(tabPill));
   check('1', '09 주 버튼 1개 이하', (await primaries()) <= 1, `${await primaries()}`);
   await measure('09 추천');
 
@@ -238,7 +238,7 @@ try {
   await wait(`location.pathname === '/likes'`);
   await sleep(400);
   await shot('11_호감');
-  check('7', '탭 넘김(첫 방문): 화면 이동 없음 · 현재 탭 알약이 11 로 옮겨 감', moved === 0 && (await box('tab-pill-likes')) !== null && (await box('tab-pill-recommendations')) === null, `가장 흐린 투명도 ${mid.toFixed(2)} · 움직이는 요소 ${moved}`);
+  check('7', '탭 넘김(첫 방문): 화면 이동 없음 · 현재 탭 막대가 11 로 옮겨 감', moved === 0 && (await box('tab-bar-likes')) !== null && (await box('tab-bar-recommendations')) === null, `가장 흐린 투명도 ${mid.toFixed(2)} · 움직이는 요소 ${moved}`);
   check('7', '11 주 버튼 1개 이하', (await primaries()) <= 1, `${await primaries()}`);
   await measure('11 호감');
   // 두 번째 방문: 09 로 갔다가 11 로 돌아오며 화면 그리기마다 11 의 실제 투명도를 잰다

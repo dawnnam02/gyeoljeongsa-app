@@ -4,12 +4,13 @@
 //  F16(B15 · Q3c): 상점 닫힘(shop_status closed)이면 구매 단추 자리에 '지금은 구매할 수 없어요.' 한 줄. 등급 구독이 준비 중(sub_gate preparing, 구독 중이 아닐 때)이면 구매 단추 · 가격 · 선택지 · 구매 전 확인 없이
 //   '나보다 위 등급 분을 먼저 추천받는 구독은 함께하는 분이 더 모이면 열려요. 지금은 구매할 수 없어요.' 안내만(서버 값 그대로, 사람 수 · 날짜 없음)
 import { useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { CTA_PADDING, CtaFade } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { Icon } from '@/components/Icon';
 import { Pressable } from '@/components/Pressable';
 import { BEFORE_BUY, REFUND_GUIDE, SHOP16 } from '@/content/shopCopy';
 import type { ShopProduct, ShopState } from '@/lib/shopApi';
@@ -73,11 +74,16 @@ export function ProductDetailBody({ product, shop, threeMonth, onBuy, onTake, on
     bottom = <Button label={SHOP16.comingButton} dimmed testID="detail-soon" />;
   }
 
+  const productIcon = iconOf(product.catalogId);
   return (
     <View style={styles.wrap}>
       <View style={styles.body} testID="detail-body">
         <View style={styles.head}>
-          {iconOf(product.catalogId) ? <Image source={iconOf(product.catalogId)} style={styles.icon} resizeMode="contain" accessibilityIgnoresInvertColors /> : null}
+          {productIcon ? (
+            <View style={styles.icon}>
+              <Icon name={productIcon} size={layout.shopRowIcon} />
+            </View>
+          ) : null}
           <View style={styles.headText}>
             <AppText variant="title" testID="detail-name">
               {nameOf(product)}

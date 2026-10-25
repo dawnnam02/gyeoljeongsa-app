@@ -1,15 +1,15 @@
 // 화면 가득 올라오는 시트(요약 · 전문 읽기). 위에 제목과 닫기(✕), 아래로 읽을 내용이 스크롤된다.
 // 03 의 '보기 ›' 요약 시트와 이용약관 · 개인정보 처리방침 읽기 화면이 쓴다. Android 뒤로가기는 시트를 닫는다.
 import type { ReactNode } from 'react';
-import { Image, Modal, StyleSheet, View } from 'react-native';
+import { Modal, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { A11Y } from '@/content/copy';
 import { layout } from '@/theme/layout';
 import { alpha, colors, size, space } from '@/theme/tokens';
-import { UI_ICONS } from '@/theme/uiAssets';
 
 import { AppText } from './AppText';
+import { Icon } from './Icon';
 import { Pressable } from './Pressable';
 
 type Props = {
@@ -34,7 +34,7 @@ export function FullSheet({ visible, title, onClose, children, testID }: Props) 
             effect="none"
             testID={testID ? `${testID}-close` : undefined}
             style={({ pressed }) => [styles.close, pressed ? styles.pressed : null]}>
-            <Image source={UI_ICONS.close} style={styles.icon} />
+            <Icon name="close" size={layout.headerIcon} />
           </Pressable>
         </View>
         <View style={styles.body}>{children}</View>
@@ -56,7 +56,6 @@ const styles = StyleSheet.create({
   },
   title: { flex: 1, paddingVertical: space.s8 },
   close: { width: size.touchMin, height: size.touchMin, alignItems: 'center', justifyContent: 'center' },
-  icon: { width: layout.headerIcon, height: layout.headerIcon },
   pressed: { opacity: alpha.pressed },
   body: { flex: 1 },
 });

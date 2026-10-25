@@ -9,9 +9,10 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
+import { Illustration } from '@/components/Illustration';
 import { Pressable } from '@/components/Pressable';
 import { Screen } from '@/components/Screen';
-import { OfflineArt, StateArt } from '@/components/StateArt';
+import { OfflineArt } from '@/components/StateArt';
 import { TabHeader } from '@/components/TabHeader';
 import { Toast } from '@/components/Toast';
 import { COMMON } from '@/content/copy';
@@ -19,7 +20,6 @@ import { usePhotoUrls } from '@/features/recs/usePhotoUrls';
 import { takeToast } from '@/lib/toastBus';
 import { SkeletonLines, TOAST_MS, WaitState } from '@/motion';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
-import { H2_EMPTY_ART } from '@/theme/uiAssets';
 
 import type { ChatApi, Room } from './chatApi';
 import { CHAT } from './chatCopy';
@@ -89,7 +89,7 @@ export function ChatListScreen({ api: given, onOpen, toastMs = TOAST_MS }: { api
         ) : null}
         {load.kind === 'ready' && rooms.length === 0 ? (
           <View style={styles.center} testID="chat-list-empty">
-            <StateArt source={H2_EMPTY_ART.emptyHistory} />
+            <Illustration scene="chatEmpty" testID="chat-list-empty-art" />
             <AppText variant="bodyBold" style={styles.centerText}>
               {CHAT.list.emptyTitle}
             </AppText>

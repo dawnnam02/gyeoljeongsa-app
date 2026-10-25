@@ -1,13 +1,13 @@
-// 앱 안 스플래시(D15 · F17 D25 장면 1) · 도는 원(D8 2차): 로고 타일 찍힘 + 글자 로고 + 한 줄 · 3초 넘으면 링 + "불러오는 중이에요" · 2100ms 뒤(준비가 끝나면) 종이 펼침으로 걷힘 ·
-// 동작 줄이기에서 링 정지 · 투명도만 150 ·
+// 앱 안 스플래시(D15 · D42-M 2안 명세 4-5) · 도는 원(D8 2차): 선 + 로고 타일 잉크 번짐 + 글자 줄 가림 + 한 줄 · 3초 넘으면 링 + "불러오는 중이에요" · 1900ms 뒤(준비가 끝나면) 장 넘김 640 ·
+// 동작 줄이기에서 링 정지 · 투명도만 150(1.5초 뒤) ·
 // 바탕 원은 line 토큰, 호는 accent(accent 20% 아님)
 import { StyleSheet } from 'react-native';
 import { act } from 'react-test-renderer';
 
 import { Ring } from '@/components/Ring';
 import { COMMON, ONBOARDING } from '@/content/copy';
-import { AppSplash, SPLASH_REDUCED_WAIT } from '@/features/splash/AppSplash';
-import { scene } from '@/motion';
+import { AppSplash } from '@/features/splash/AppSplash';
+import { reduced, scene2 } from '@/motion';
 import { reduceMotionStore } from '@/lib/reduceMotion';
 import { layout } from '@/theme/layout';
 import { colors } from '@/theme/tokens';
@@ -66,30 +66,30 @@ describe('스플래시', () => {
     expect(hasText(tree, COMMON.loading)).toBe(true);
   });
 
-  test('준비가 3초 안에 끝나면 안내 없이 걷힌다: 2100ms 전에는 펼치지 않고, 펼침(700ms)이 끝나면 사라진다', async () => {
+  test('준비가 3초 안에 끝나면 안내 없이 걷힌다: 1900ms 전에는 넘기지 않고, 장 넘김(640ms)이 끝나면 사라진다', async () => {
     const tree = await mount(<AppSplash ready={false} />);
     await tick(1000);
     await act(async () => {
       tree.update(<AppSplash ready />);
     });
-    await tick(scene.splash.unfoldAt - 1000 - 10);
-    expect(find(tree, 'splash')).not.toBeNull(); // 찍힘 · 글자가 다 보일 때까지는 남는다
+    await tick(scene2.splash.nextAt - 1000 - 10);
+    expect(find(tree, 'splash')).not.toBeNull(); // 선 · 잉크 · 글자가 다 보일 때까지는 남는다
     await tick(20);
-    await tick(scene.splash.unfold - 10);
-    expect(find(tree, 'splash')).not.toBeNull(); // 펼치는 중
+    await tick(scene2.splash.next - 10);
+    expect(find(tree, 'splash')).not.toBeNull(); // 넘기는 중
     await tick(20);
     expect(has(tree, 'splash-slow')).toBe(false);
     expect(find(tree, 'splash')).toBeNull();
   });
 
-  test('준비가 늦으면(3초 넘음) 준비가 끝나는 때 바로 펼친다', async () => {
+  test('준비가 늦으면(3초 넘음) 준비가 끝나는 때 바로 넘긴다', async () => {
     const tree = await mount(<AppSplash ready={false} />);
     await tick(4000);
     expect(has(tree, 'splash-slow')).toBe(true);
     await act(async () => {
       tree.update(<AppSplash ready />);
     });
-    await tick(scene.splash.unfold + 10);
+    await tick(scene2.splash.next + 10);
     expect(find(tree, 'splash')).toBeNull();
   });
 
@@ -102,14 +102,16 @@ describe('스플래시', () => {
     expect(onShown).toHaveBeenCalledTimes(1);
   });
 
-  test('동작 줄이기: 펼침 없이 투명도만 150ms 로 사라지고, 기다림도 0.35배', async () => {
+  test('동작 줄이기: 장 넘김 없이 1.5초 뒤 투명도만 150ms 로 사라진다', async () => {
     reduceMotionStore.set(true);
     const tree = await mount(<AppSplash ready={false} />);
     await act(async () => {
       tree.update(<AppSplash ready />);
     });
-    await tick(Math.round(scene.splash.unfoldAt * SPLASH_REDUCED_WAIT) + 10);
-    await tick(160);
+    await tick(scene2.splash.reducedWait - 10);
+    expect(find(tree, 'splash')).not.toBeNull();
+    await tick(20);
+    await tick(reduced.fadeMs + 10);
     expect(find(tree, 'splash')).toBeNull();
   });
 

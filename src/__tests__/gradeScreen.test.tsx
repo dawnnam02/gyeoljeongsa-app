@@ -1,8 +1,12 @@
 // F13 조건 2: 내 등급(16-G1 · G2 · G3 · G4 · G5) — 구독자 = '9단계 중 {n}등급 · 같은 나이대 기준' + 배지 그림 + 막대 '조건 / 인증 / 답변 성실도' + 올리는 방법 3줄
 //  비구독자 잠금 화면(잠김 그림은 여기만) · 무료 열람 요청 시트 · '등급은 어떻게 정해지나요'. 모의 서버(lib/shopDemo)를 실제 gradeApi 위에서 돌린다.
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { Image } from 'react-native';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 
+import { Icon } from '@/components/Icon';
 import { COMMON } from '@/content/copy';
 import { GRADE16, SHOP16 } from '@/content/shopCopy';
 import { areaBars, barRatio, goalChoices, goalTasks, ptsText, reasonText, upTasks } from '@/features/grade/gradeLogic';
@@ -10,7 +14,7 @@ import { ShopScreen } from '@/features/shop/ShopScreen';
 import type { ShopDeps } from '@/features/shop/shopTypes';
 import { GI } from '@/features/grade/iconCopy';
 import { takeToast } from '@/lib/toastBus';
-import { STATE_ART, TIER_BADGE_LOCKED, TIER_BADGES } from '@/theme/uiAssets';
+import { STATE_ART } from '@/theme/uiAssets';
 
 import { allTexts, has, hasText, isOpen, mount, must, press, textOf } from './renderHelpers';
 import { makeShopRig } from './shopRig';
@@ -110,7 +114,7 @@ describe('조건 2 · 16-G1 내 등급 (구독자)', () => {
     expect(has(tree, 'grade-direction')).toBe(false);
     expect(textOf(tree, 'grade-reference')).toBe('결혼 조건을 중심으로 본 참고 값이라, 내 인생을 대변하지는 않아요.');
     expect(textOf(tree, 'grade-shown')).toBe('10월 16일 새벽에 반영했어요.');
-    expect(tree.root.findAllByType(Image).some((i) => TIER_BADGES.includes(i.props.source))).toBe(false);
+    expect(fs.existsSync(path.join(__dirname, '..', '..', 'assets', 'icons', 'tier'))).toBe(false); // 숫자 그림 tier-N.png 는 지웠다(D42-C)
     expect(has(tree, 'grade-merged')).toBe(false);
     expect(allTexts(tree).join(' ')).not.toMatch(/\d\s*등급|숫자가 작을수록|위 등급|\d+점/);
   });
@@ -197,13 +201,14 @@ describe('조건 2 · 16-G1 비구독자 잠금 · 16-G5 무료 열람 요청', 
     expect(textOf(tree, 'grade-locked-text')).toBe(GI.locked);
     expect(GI.locked).not.toMatch(/위 등급/);
     const art = tree.root.findAll((n) => n.props.testID === 'grade-locked-art').at(-1)!;
-    expect(art.props.source).toBe(TIER_BADGE_LOCKED);
+    expect(tree.root.findAllByType(Icon).find((n) => n.props.testID === 'grade-locked-art')?.props).toMatchObject({ name: 'grade_locked', size: 64 });
+    expect(art).toBeTruthy();
     expect(must(tree, 'grade-locked-access').props.label).toBe('내 등급 알려 주세요');
     expect(must(tree, 'grade-locked-sub').props.label).toBe('구독 알아보기');
     expect(must(tree, 'grade-locked-how').props.label).toBe('등급은 어떻게 정해지나요?');
     expect(has(tree, 'grade-flock')).toBe(false);
     expect(has(tree, 'grade-bars')).toBe(false);
-    expect(tree.root.findAllByType(Image).some((i) => TIER_BADGES.includes(i.props.source))).toBe(false); // 번호 배지는 하나도 없다
+    expect(tree.root.findAllByType(Icon).some((i) => /^tier/.test(String(i.props.name)) && i.props.name !== 'tier_subscription')).toBe(false); // 번호 배지는 하나도 없다(tier-N.png 는 지웠다)
     expect(allTexts(tree).join(' ')).not.toMatch(/\d등급/);
   });
 

@@ -1,22 +1,19 @@
 // 가입 흐름(01 ~ 03)이 쓰는 그림 파일. 원본은 디자인/ 이고 앱에는 assets/ 로 복사해 쓴다(복사본이 원본과 같은지 시험이 본다).
-//  back  = 디자인/아이콘/투명/05_뒤로가기.png  (상단 바 ‹ · 512×512 · 선 2 · 어두운 선, 투명 배경)
-//  check = 디자인/아이콘/투명/07_체크.png       (체크 칸 안 · accent 면 위에서는 흰색으로 칠해 쓴다: 가이드 '체크 칸 규격')
-//  close = 디자인/아이콘/투명/08_닫기.png      (시트 닫기)
 //  wordmark = 디자인/로고/최종/결정사_로고_가로_tight.png (1x 622×272) + _2x_tight(1244×544) → wordmark@2x.png + _3x_tight(1866×816) → wordmark@3x.png. 투명 · 여백 0 · 최종 로고 D17 A1 · 2절 ≈ 2.287:1.
 //            RN 이 화면 밀도에 맞는 것을 고른다. 높이는 theme/layout.ts 의 WORDMARK_PX 비율로 폭에서 계산: 01 120×52.5 · 스플래시 160×70.0
-// 아이콘을 바꾸면 이 파일의 require 경로만 고친다.
+// D42-C(1안 실선 1.5, D-176): 뒤로 · 체크 · 닫기 같은 아이콘은 PNG 대신 공용 아이콘(components/Icon, 이름 'back' · 'check' · 'close' …)으로 그린다. 옛 PNG(ui/back · check · close)는 지웠다.
+import type { IconName } from '@/components/iconPaths';
+
+// 빈 상태 그림(그림 직원 범위, 아이콘 아님)
 export const UI_ICONS = {
-  back: require('../../assets/icons/ui/back.png'),
-  check: require('../../assets/icons/ui/check.png'),
-  close: require('../../assets/icons/ui/close.png'),
   emptyRecs: require('../../assets/icons/ui/empty_recs.png'),
   emptyLikes: require('../../assets/icons/ui/empty_likes.png'), // 디자인/아이콘/투명/21_빈상태_호감없음.png — 14 호감 없음 그림(F6) // 디자인/아이콘/투명/20_빈상태_추천없음.png(576 투명) — 13 · NK01 · NK02 그림(D8 4차 M10)
 } as const;
 
-// 기본 프로필 그림(D19 A5 · A7, 가이드 11장): profile = 원 32 안에 사람이 든 그림(@2x · @3x 는 RN 이 고른다), person = 사람 모양만(accent, 투명 512) — 사각 · 큰 자리는 accentSoft 면 위에 얹는다
+// 기본 프로필 그림(D42-P · D-176): 사진이 아직 없는 회원의 자리 = 4안 '빛 실루엣' 한 장(디자인/D42_새판/인물/1안_원본/webp/기본이미지_실루엣.webp, 640×800 · 성별 · 나이 단서 없음).
+//  원 · 사각 어느 자리든 칸을 꽉 채워(cover) 그린다. 데모 · 실서버 같은 그림. 옛 default-profile · default-person 그림은 쓰는 곳이 없어 지웠다
 export const AVATAR_ART = {
-  profile: require('../../assets/icons/avatar/default-profile.png'),
-  person: require('../../assets/icons/avatar/default-person.png'),
+  silhouette: require('../../assets/icons/avatar/default-silhouette.webp'),
 } as const;
 
 export const BRAND = {
@@ -35,19 +32,19 @@ export const INTRO_ART = [
 // ── F13a: 힉스필드 새 그림(H1) 등록. 원본은 디자인/아이콘/투명/25~37 · 디자인/아이콘/등급/ 이고, app/assets/icons/{shop,state,tier}/ 에 RN 밀도별(이름.png · @2x · @3x)로 줄여 놓았다.
 //  RN 이 화면 밀도에 맞는 파일을 고른다. 기준 크기(dp): shop 32 · state 144 · tier 64. 등급 계산 · 상점 결제 · 등급 화면은 F13 본체가 이 등록을 가져다 쓴다(지금은 연결하지 않은 것이 있다)
 
-// 상점 상품 6(25~30) · 등급 관리 4(31~34) — 24 격자 선 2 · 투명. 기준 32
+// 상점 상품 6(25~30) · 등급 관리 4(31~34) — D42-C 1안 아이콘 이름(components/Icon 으로 그린다, 기준 32 · 상점 줄 28). 옛 PNG(assets/icons/shop/*)는 지웠다
 export const SHOP_ICONS = {
-  tierSubscription: require('../../assets/icons/shop/product-tier-subscription.png'), // 25 등급 구독
-  oneMatch: require('../../assets/icons/shop/product-one-match.png'), // 26 1회 매칭
-  traitReport: require('../../assets/icons/shop/product-trait-report.png'), // 27 내 성향 리포트 — 16 상점 카드에 연결됨
-  myTierView: require('../../assets/icons/shop/product-my-tier-view.png'), // 28 내 등급 열람
-  likeLetter: require('../../assets/icons/shop/product-like-letter.png'), // 29 호감 편지
-  pastRecsPass: require('../../assets/icons/shop/product-past-recs-pass.png'), // 30 지난 추천 열람권
-  tierVerifyUpload: require('../../assets/icons/shop/tier-verify-upload.png'), // 31 인증 올리기
-  tierHistory: require('../../assets/icons/shop/tier-history.png'), // 32 변화 기록
-  tierHowTo: require('../../assets/icons/shop/tier-how-to.png'), // 33 올리는 방법
-  tierViewRequest: require('../../assets/icons/shop/tier-view-request.png'), // 34 열람 요청
-} as const;
+  tierSubscription: 'tier_subscription', // 25 등급 구독
+  oneMatch: 'one_match', // 26 1회 매칭
+  traitReport: 'trait_report', // 27 내 성향 리포트 — 16 상점 카드에 연결됨
+  myTierView: 'my_icon_view', // 28 내 등급 열람
+  likeLetter: 'letter', // 29 호감 편지
+  pastRecsPass: 'past_pass', // 30 지난 추천 열람권
+  tierVerifyUpload: 'doc_verify', // 31 서류 인증
+  tierHistory: 'history', // 32 바뀐 기록
+  tierHowTo: 'how_to', // 33 아이콘이 바뀔 수 있는 일(전구, 서열 말 · 그림 0)
+  tierViewRequest: 'view_request', // 34 열람 요청
+} as const satisfies Record<string, IconName>;
 
 // 오류 · 빈 상태 그림 3(35~37, 144 격자 · 기준 144 · 그림 140). 아직 붙인 화면이 없다(15 는 기획상 빈 상태가 없는 02 의 상태, 상점은 불러오는 길이 아직 없고, 등급 화면은 F13 본체)
 export const STATE_ART = {
@@ -56,19 +53,7 @@ export const STATE_ART = {
   noTier: require('../../assets/icons/state/empty-no-tier.png'), // 37
 } as const;
 
-// 등급 배지 9 + 잠김(64 격자 · 기준 64). 등급 번호 1~9 → 배열 [번호 - 1]. 화면은 F13 본체(등급 계산은 다른 직원)
-export const TIER_BADGES = [
-  require('../../assets/icons/tier/tier-1.png'),
-  require('../../assets/icons/tier/tier-2.png'),
-  require('../../assets/icons/tier/tier-3.png'),
-  require('../../assets/icons/tier/tier-4.png'),
-  require('../../assets/icons/tier/tier-5.png'),
-  require('../../assets/icons/tier/tier-6.png'),
-  require('../../assets/icons/tier/tier-7.png'),
-  require('../../assets/icons/tier/tier-8.png'),
-  require('../../assets/icons/tier/tier-9.png'),
-] as const;
-export const TIER_BADGE_LOCKED = require('../../assets/icons/tier/tier-locked.png');
+// 등급 배지: 숫자가 그려진 옛 tier-1~9.png · tier-locked.png 와 TIER_BADGES 는 지웠다(D42-C, V5 6-2 숫자 노출 0). 등급 그림은 풍경 아이콘 9 · 잠김은 공용 아이콘 자물쇠
 
 // ── F13a 추가(H2 새 그림 38~75). 원본 디자인/아이콘/투명/ · app/assets/icons/art(576 → 기준 144 · @2x 288 · @3x 432) · settings(512 → 기준 32). 이름 붙여 등록하고, 붙인 곳은 묶음마다 적는다
 
@@ -128,12 +113,12 @@ export const H2_DONE_ART = {
   infoSecurity: require('../../assets/icons/art/info-security.png'),
 } as const;
 
-// 설정 · 사진 아이콘 6(62~67, 24 격자 · 기준 32). 선 굵기는 24dp 에서 기존 선형 아이콘과 맞다(app/F13a_변경기록.md 측정 · 확인/스크린샷/F13a_설정아이콘_24dp_비교.png). 12 설정 줄에는 지금 아이콘 자리가 없고 팀장 지시가 보고만이라 붙이지 않았다
+// 설정 · 사진 아이콘 6(62~67) — D42-C 1안 아이콘 이름(components/Icon 으로 그린다, 기준 24). 12 설정 줄에는 아직 아이콘 자리가 없어 등록만. 옛 PNG(assets/icons/settings/*)는 지웠다
 export const H2_SETTING_ICONS = {
-  settingVisibility: require('../../assets/icons/settings/setting-visibility.png'),
-  settingSecurity: require('../../assets/icons/settings/setting-security.png'),
-  settingConsent: require('../../assets/icons/settings/setting-consent.png'),
-  photoDelete: require('../../assets/icons/settings/photo-delete.png'),
-  photoReupload: require('../../assets/icons/settings/photo-reupload.png'),
-  settingSafety: require('../../assets/icons/settings/setting-safety.png'),
-} as const;
+  settingVisibility: 'visibility',
+  settingSecurity: 'security',
+  settingConsent: 'consent',
+  photoDelete: 'photo_delete',
+  photoReupload: 'photo_reupload',
+  settingSafety: 'safety',
+} as const satisfies Record<string, IconName>;

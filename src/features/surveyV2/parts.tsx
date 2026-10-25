@@ -6,15 +6,15 @@
 //  QuestionHead: 질문 · 도움말 · 공개 범위 줄 · 자물쇠 · AI 미전송 줄
 // 색 · 간격 · 글자는 토큰만, 누름은 공통 Pressable 만 쓴다.
 import { useState, type ReactNode } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
+import { Icon } from '@/components/Icon';
 import { Pressable } from '@/components/Pressable';
 import { TextField } from '@/components/TextField';
 import { Toggle } from '@/components/Toggle';
 import { haptic } from '@/motion';
 import { layout } from '@/theme/layout';
-import { UI_ICONS } from '@/theme/uiAssets';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 
 import { PROPOSED } from './copy';
@@ -39,7 +39,7 @@ export function OptionRow({ label, selected, dense = false, disabled = false, on
       <AppText variant="body" tone="text" style={styles.rowText}>
         {label}
       </AppText>
-      {selected ? <Image source={UI_ICONS.check} style={styles.check} tintColor={colors.accent} accessibilityIgnoresInvertColors /> : null}
+      {selected ? <Icon name="check" size={layout.headerIcon} color={colors.accent} /> : null}
     </Pressable>
   );
 }
@@ -70,7 +70,7 @@ export function OptionChip({ label, selected, disabled = false, order = null, ac
             </AppText>
           </View>
         ) : selected ? (
-          <Image source={UI_ICONS.check} style={styles.chipCheck} tintColor={colors.accent} accessibilityIgnoresInvertColors />
+          <Icon name="check" size={space.s16} color={colors.accent} />
         ) : null}
         <AppText variant="captionMedium" tone={selected ? 'accent' : 'text'}>
           {label}
@@ -92,9 +92,7 @@ export function Stepper({ label, stepLabel, text, unit, min, max, start, disable
   return (
     <View style={styles.stepper}>
       <Pressable accessibilityLabel={PROPOSED.minusA11y(stepLabel)} disabled={disabled || (n !== null && n <= min)} effect="scale" scaleTo="button" onPress={() => bump(-1)} testID={`${testID}-minus`} style={[styles.round, disabled ? styles.off : null]}>
-        <AppText variant="title" tone="text">
-          −
-        </AppText>
+        <Icon name="minus" size={layout.headerIcon} />
       </Pressable>
       <View style={styles.valueField}>
         <TextField
@@ -110,9 +108,7 @@ export function Stepper({ label, stepLabel, text, unit, min, max, start, disable
       </View>
       {unit ? <AppText variant="body">{unit}</AppText> : null}
       <Pressable accessibilityLabel={PROPOSED.plusA11y(stepLabel)} disabled={disabled || (n !== null && n >= max)} effect="scale" scaleTo="button" onPress={() => bump(1)} testID={`${testID}-plus`} style={[styles.round, disabled ? styles.off : null]}>
-        <AppText variant="title" tone="text">
-          +
-        </AppText>
+        <Icon name="plus" size={layout.headerIcon} />
       </Pressable>
     </View>
   );
@@ -186,7 +182,6 @@ const styles = StyleSheet.create({
   rowDense: { minHeight: size.touchMin },
   rowOn: { backgroundColor: colors.bg, borderColor: colors.accent, borderWidth: layout.inputBorderActive },
   rowText: { flex: 1, minWidth: 0 },
-  check: { width: layout.headerIcon, height: layout.headerIcon },
   off: { opacity: alpha.disabled },
   chipTouch: { minHeight: size.touchMin, justifyContent: 'center', alignSelf: 'flex-start' },
   chip: {
@@ -201,7 +196,6 @@ const styles = StyleSheet.create({
     gap: space.s4,
   },
   chipOn: { backgroundColor: colors.bg, borderColor: colors.accent, borderWidth: layout.inputBorderActive },
-  chipCheck: { width: space.s16, height: space.s16 },
   order: { width: space.s20, height: space.s20, borderRadius: radius.pill, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: space.s8 },
   round: { width: size.touchMin, height: size.touchMin, borderRadius: radius.pill, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },

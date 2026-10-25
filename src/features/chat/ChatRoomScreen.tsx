@@ -23,7 +23,7 @@ import { COMMON, REPORT_SHEET } from '@/content/copy';
 import { setToast as setNextToast } from '@/lib/toastBus';
 import { MoreButton } from '@/features/safety/MoreButton';
 import { ReportBlockSheet } from '@/features/safety/ReportBlockSheet';
-import { haptic, Rise, SkeletonLines, TOAST_MS, WaitState } from '@/motion';
+import { haptic, Rise, scene2, SkeletonLines, TOAST_MS, WaitState, Wipe } from '@/motion';
 import { alpha, colors, size, space } from '@/theme/tokens';
 
 import type { ChatApi, Message, Outgoing, Room, SendFailure } from './chatApi';
@@ -290,6 +290,8 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
               const prev = shown[i - 1]?.m;
               const divider = !prev || dayKey(prev.createdAt) !== dayKey(m.createdAt);
               const fresh = seen !== null && !seen.has(m.id) && state === 'sent';
+              // 2안 핵심 ③: 이 방의 첫 보낸 말풍선(처음 불러올 때 내 글이 없던 방)만 보낸 쪽에서 걷힘 420(위쪽 바탕 그라데이션이라 덮개 대신 역이동), 나머지 새 말풍선은 일상 240 · 6px
+              const firstMine = fresh && m.mine && shown.findIndex((x) => x.m.mine) === i;
               const bubble = (
                 <MessageBubble
                   message={m}
@@ -312,7 +314,17 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
               return (
                 <View key={m.id}>
                   {divider ? <DayDivider text={dayText(m.createdAt)} testID={`chat-day-${i}`} /> : null}
-                  {fresh ? <Rise>{bubble}</Rise> : bubble}
+                  {firstMine ? (
+                    <Wipe from="right" duration={scene2.chat.first}>
+                      {bubble}
+                    </Wipe>
+                  ) : fresh ? (
+                    <Rise distance={scene2.bubble.rise} duration={scene2.bubble.in}>
+                      {bubble}
+                    </Rise>
+                  ) : (
+                    bubble
+                  )}
                 </View>
               );
             })}

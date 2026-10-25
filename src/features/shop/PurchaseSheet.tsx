@@ -4,11 +4,12 @@
 //  실결제 모드(payment_mode = live)에서는 구매를 시작하지 않는다(NV32). 같은 구매의 [다시 시도]는 같은 요청 ID 를 쓴다(서버가 한 번만 지급, R9).
 //  구매 완료(D25 장면 7 · D31, F17): 지급이 확인된 순간 Success 햅틱 + 로고 타일이 찍히고(700) 500ms 뒤 글이 올라온다(250). 실패는 Error 햅틱. 동작 줄이기: 투명도만
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/Button';
+import { Icon } from '@/components/Icon';
 import { StateArt } from '@/components/StateArt';
 import { BEFORE_BUY, SHOP16 } from '@/content/shopCopy';
 import { haptic, logoTile, Rise, scene, StampTile } from '@/motion';
@@ -162,10 +163,11 @@ export function PurchaseSheet({ visible, product, shop, deps, onClose, onReload,
     'sub-not-ready': SHOP16.subPrepDetail,
   };
 
+  const productIcon = iconOf(product.catalogId);
   const price = (
     <View style={styles.summary} testID="purchase-summary">
       <View style={styles.nameRow}>
-        {iconOf(product.catalogId) ? <Image source={iconOf(product.catalogId)} style={styles.icon} resizeMode="contain" accessibilityIgnoresInvertColors /> : null}
+        {productIcon ? <Icon name={productIcon} size={layout.shopCardIcon} /> : null}
         <AppText variant="bodyBold" testID="purchase-name">
           {nameOf(product)}
         </AppText>
@@ -273,7 +275,6 @@ export function PurchaseSheet({ visible, product, shop, deps, onClose, onReload,
 const styles = StyleSheet.create({
   summary: { gap: space.s8 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: space.s8 },
-  icon: { width: layout.shopCardIcon, height: layout.shopCardIcon },
   center: { gap: space.s12, alignItems: 'stretch', paddingVertical: space.s8 },
   centered: { textAlign: 'center' },
 });

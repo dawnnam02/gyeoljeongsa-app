@@ -2,12 +2,12 @@
 //  칸마다 이름 + 상태 글(아직 · 확인 중 · 확인됨 · 보완 필요 · 준비 중)만. 진행 % · 앞에 몇 명 · 예상 시간 숫자 0. 상태는 서버가 계산한 그대로(앱이 정하지 않음)
 //  표시: 확인됨 = accent 면 + 흰 체크 · 확인 중 = accentSoft 면 + accent 선 · 보완 필요 = accent 굵은 선 · 아직 = sub 선 · 준비 중 = line 점선. 종이 카드(card) 위
 //  스크린리더: 표 전체를 한 번에 읽는다('확정까지 단계. 본인 확인 · 나이 확인됨, …', NP-22)
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Card } from '@/components/Card';
+import { Icon } from '@/components/Icon';
 import { layout } from '@/theme/layout';
-import { UI_ICONS } from '@/theme/uiAssets';
 import { colors, size, space } from '@/theme/tokens';
 
 import type { StepKey, StepState } from './launchApi';
@@ -44,7 +44,7 @@ export function StepTable({ steps, testID = 'prelaunch-steps' }: Props) {
 function Mark({ state, testID }: { state: StepState; testID: string }) {
   return (
     <View style={[styles.mark, markStyle[state]]} testID={testID}>
-      {state === 'done' ? <Image source={UI_ICONS.check} style={styles.check} /> : null}
+      {state === 'done' ? <Icon name="check" size={layout.checkIcon} color={colors.onAccent} /> : null}
     </View>
   );
 }
@@ -56,7 +56,6 @@ const styles = StyleSheet.create({
   markCol: { width: MARK, alignItems: 'center', alignSelf: 'stretch' },
   rail: { flex: 1, width: layout.checkBoxBorder, backgroundColor: colors.line, marginTop: space.s4 },
   mark: { width: MARK, height: MARK, borderRadius: MARK / 2, alignItems: 'center', justifyContent: 'center' },
-  check: { width: layout.checkIcon, height: layout.checkIcon, tintColor: colors.onAccent },
   name: { flex: 1 },
 });
 

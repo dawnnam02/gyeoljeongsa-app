@@ -3,16 +3,18 @@
 //  · 1회 매칭 카드: 설명 · 가격 · 오늘 가능 인원(NV50 · NV50b · NV21 · NV59) · 남은 명분(NV60) · 안내 NV45
 //  · 그 밖 상품 줄: 이름 · 한 줄 · 가격 + 오른쪽 상태(준비 중 · 구독에 포함 · 무료 · 보류). 테스트 화면의 위험 C 상품에는 빨간 라벨 + 이유
 //  · F16(B15 · Q3c): 등급 구독 카드가 준비 중(구독 판매 문턱 미만, 구독 중이 아닐 때)이면 '함께하는 분이 더 모이면 열려요' + 흐린 [준비 중이에요](누르면 상세의 준비 중 안내). 상점 닫힘이면 구매 단추 자리에 '지금은 구매할 수 없어요.' 한 줄
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
+import { Icon } from '@/components/Icon';
 import { SHOP16 } from '@/content/shopCopy';
 import type { ShopProduct, ShopState } from '@/lib/shopApi';
 import { layout } from '@/theme/layout';
 import { colors, size, space } from '@/theme/tokens';
+import { SHOP_ICONS } from '@/theme/uiAssets';
 
 import { RiskNote } from './parts';
 import { formatDay, iconOf, lineOf, nameOf, priceOf, riskReasonOf, rowModeOf, rowOpens, shopClosed, showsRiskLabel, subPreparing, type SubView } from './shopLogic';
@@ -53,7 +55,9 @@ export function GradeSubCard({
   return (
     <Card variant="paper" style={styles.card} testID="shop-card-grade">
       <View style={styles.titleRow}>
-        <Image source={iconOf('N01')} style={styles.cardIcon} resizeMode="contain" accessibilityIgnoresInvertColors />
+        <View style={styles.cardIcon}>
+          <Icon name={SHOP_ICONS.tierSubscription} size={layout.shopCardIcon} />
+        </View>
         <AppText variant="bodyBold" style={styles.flex} testID="shop-grade-name">
           {nameOf(product)}
         </AppText>
@@ -145,7 +149,9 @@ export function MatchCard({ shop, product, onDetail, onTake }: { shop: ShopState
   return (
     <Card variant="paper" style={styles.card} testID="shop-card-match">
       <View style={styles.titleRow}>
-        <Image source={iconOf('N02')} style={styles.cardIcon} resizeMode="contain" accessibilityIgnoresInvertColors />
+        <View style={styles.cardIcon}>
+          <Icon name={SHOP_ICONS.oneMatch} size={layout.shopCardIcon} />
+        </View>
         <AppText variant="bodyBold" style={styles.flex} testID="shop-match-name">
           {nameOf(product)}
         </AppText>
@@ -205,7 +211,11 @@ export function ProductRow({ product, shop, onOpen }: { product: ShopProduct; sh
   const icon = iconOf(product.catalogId);
   const inner = (
     <View style={styles.rowWrap}>
-      {icon ? <Image source={icon} style={styles.rowIcon} resizeMode="contain" accessibilityIgnoresInvertColors /> : null}
+      {icon ? (
+        <View style={styles.rowIcon}>
+          <Icon name={icon} size={layout.shopRowIcon} />
+        </View>
+      ) : null}
       {body}
     </View>
   );

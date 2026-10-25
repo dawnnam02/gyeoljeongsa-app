@@ -104,7 +104,7 @@ try {
   await sleep(800);
   const tabs = await tabLabels();
   check('1', `탭 바 첫 칸 '탑승권' · 추천 · 호감 · 상점 칸 없음 · 설정 있음`, tabs[0] === '탑승권' && !tabs.includes('추천') && !tabs.includes('호감') && !tabs.includes('상점') && tabs.includes('설정'), tabs.join(' · '));
-  check('1', '탑승권 탭이 켜진 탭(알약)', await vis('tab-pill-boarding'), '');
+  check('1', '탑승권 탭이 켜진 탭(막대, D42-C)', await vis('tab-bar-boarding'), '');
 
   // ═══ 2. T1 판매 중 ═══
   check('2', `상태 카드 '이번 주 탑승권' + 수락 없이 대화방 한 줄 + [탑승권 사기]`, (await visText('boarding-status-title')) === '이번 주 탑승권' && (await visText('boarding-status-body')).includes('수락 단계 없이') && (await vis('boarding-buy')), await visText('boarding-status-title'));

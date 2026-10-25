@@ -8,8 +8,9 @@ import { BottomSheet, shouldDragClose } from '@/components/BottomSheet';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
+import { Icon } from '@/components/Icon';
 import { BottomCTA, CtaPair, Screen } from '@/components/Screen';
-import { TabIcon } from '@/components/TabBarParts';
+import { TabIcon, TabLabel } from '@/components/TabBarParts';
 import { TabHeader } from '@/components/TabHeader';
 import { TextField } from '@/components/TextField';
 import { Toggle } from '@/components/Toggle';
@@ -21,7 +22,6 @@ import { SwitchRow } from '@/features/settings/SettingsParts';
 import { buttonFace, buttonShadow, shadowStyle } from '@/theme/buttonLook';
 import { mix, withAlpha } from '@/theme/color';
 import { alpha, button, colors, motion, radius, size, space, type } from '@/theme/tokens';
-import { UI_ICONS } from '@/theme/uiAssets';
 
 import { mount, press } from './renderHelpers';
 
@@ -59,8 +59,8 @@ describe('F21 조건 1 · 토큰 v2(tokens.ts = 가이드 8장, check:tokens)', 
     expect(springFollow).toEqual({ duration: 400, dampingRatio: 1 });
     expect(scene.roll.digitGap).toBe(30);
     expect(waitStage).toEqual({ blank: 300, still: 1_000, long: 10_000 });
-    expect([scene.fadeThrough.out, scene.fadeThrough.in, scene.collapse.range, scene.sheetDrag.closeRatio, scene.sheetDrag.closeVelocity]).toEqual([100, 150, 48, 0.4, 800]);
-    const lengths = [scene.handoff.photo, scene.handoff.back, scene.roll.dur, scene.survey.slide, scene.toggle.revert, scene.buy.sheetIn, scene.buy.sheetOut];
+    expect([scene.fadeThrough.out, scene.fadeThrough.in, scene.collapse.range, scene.sheetDrag.closeRatio, scene.sheetDrag.closeVelocity]).toEqual([100, 200, 48, 0.4, 800]); // 탭 넘김은 2안 tab.in(100 뒤 200)
+    const lengths = [scene.handoff.photo, scene.handoff.back, scene.roll.dur, scene.survey.slide, scene.toggle.revert];
     expect(Math.max(...lengths)).toBeLessThanOrEqual(700);
   });
 });
@@ -170,7 +170,7 @@ describe('F21 · 버튼 v3 A안(D-141)', () => {
   });
 
   test('아이콘 버튼: 원 = 아이보리 면 + line 1 선 + 옅은 그림자 · 눌리면 card 면 · 그림자 없음 · 1px', async () => {
-    const tree = await mount(<IconButton icon={UI_ICONS.back} accessibilityLabel="다음 사진" onPress={() => undefined} testID="i" />);
+    const tree = await mount(<IconButton icon="back" accessibilityLabel="다음 사진" onPress={() => undefined} testID="i" />);
     expect(flat(host(tree, 'i-circle'))).toMatchObject({ backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.line, boxShadow: buttonShadow.icon });
     const pressable = tree.root.findAll((n) => n.props?.testID === 'i' && typeof n.props.onPressIn === 'function')[0];
     expect(pressable.props).toMatchObject({ pressShift: 1, clip: false, effect: 'scale' });
@@ -230,7 +230,7 @@ describe('F21 조건 1 · 그 밖 부품 v2', () => {
   test('칩 선택됨 = accentSoft 면 + accent 1 선 + 체크', async () => {
     const tree = await mount(<Chip label="고름" variant="selected" testID="c" />);
     expect(flat(host(tree, 'c'))).toMatchObject({ backgroundColor: colors.accentSoft, borderWidth: 1, borderColor: colors.accent });
-    expect(host(tree, 'c-check')?.props.source).toBe(UI_ICONS.check);
+    expect(tree.root.findAllByType(Icon).find((n) => n.props.testID === 'c-check')?.props).toMatchObject({ name: 'check', size: 16, color: colors.accent });
   });
 
   test('카드: 면 = card · 16 / 종이 = bg + line 1 · 20', async () => {
@@ -263,15 +263,20 @@ describe('F21 조건 1 · 그 밖 부품 v2', () => {
     expect(flat(host(tree, 't'))).toMatchObject({ borderWidth: 2, borderColor: colors.accent });
   });
 
-  test('탭바 현재 탭: 아이콘 뒤 accentSoft 알약 56 × 28, 다른 탭은 없음', async () => {
+  test('탭바 현재 탭(D42-C 1안 다): 알약 대신 닫힌 면 accentSoft(on) + 라벨 아래 20 × 3 막대, 다른 탭은 없음', async () => {
     const tree = await mount(
       <>
         <TabIcon name="recommendations" />
         <TabIcon name="likes" />
+        <TabLabel name="recommendations" title="추천" />
+        <TabLabel name="likes" title="호감" />
       </>,
     );
-    expect(flat(host(tree, 'tab-pill-recommendations'))).toMatchObject({ width: 56, height: 28, backgroundColor: colors.accentSoft });
-    expect(host(tree, 'tab-pill-likes')).toBeNull();
+    const icons = tree.root.findAllByType(Icon);
+    expect(icons.map((n) => n.props.on)).toEqual([true, false]);
+    expect(flat(host(tree, 'tab-bar-recommendations'))).toMatchObject({ width: 20, height: 3, backgroundColor: colors.accent });
+    expect(host(tree, 'tab-bar-likes')).toBeNull();
+    expect(host(tree, 'tab-pill-recommendations')).toBeNull();
   });
 
   test('인증 표시는 확인된 항목만(없으면 아무것도 없음) · 한눈에 줄은 값 있는 칸만 · 기한 알약 · 결과 틀', async () => {
@@ -284,7 +289,7 @@ describe('F21 조건 1 · 그 밖 부품 v2', () => {
         <GlanceRow cells={[{ label: '결혼 시기', value: null }]} testID="none" />
         <TimePill testID="pill">다음 추천까지 3시간</TimePill>
         <ResultView title="추천이 없어요" testID="r" />
-        <IconButton icon={UI_ICONS.back} accessibilityLabel="다음 사진" onPress={() => undefined} testID="i" />
+        <IconButton icon="back" accessibilityLabel="다음 사진" onPress={() => undefined} testID="i" />
       </>,
     );
     expect(hosts(tree, 'v-item')).toHaveLength(1);
@@ -399,20 +404,20 @@ describe('F21 조건 2 · 움직임 v2', () => {
     expect(flat(host(tree, 'h-line')).opacity).toBe(0);
   });
 
-  test('화면 넘김: enter=depth 는 오른쪽 16 에서 · 줄이기면 제자리 + 투명도만', async () => {
+  test('화면 넘김(2안): enter=depth 는 화면 안에서 옆 이동이 없다(native-stack fade 320 이 맡음) · 줄이기여도 같다', async () => {
     const tree = await mount(
       <Screen enter="depth" testID="s">
         <Text>본문</Text>
       </Screen>,
     );
-    expect(allStyles(tree).some((st) => JSON.stringify(st.transform ?? null) === JSON.stringify([{ translateX: 16 }]))).toBe(true);
+    expect(allStyles(tree).some((st) => JSON.stringify(st.transform ?? null).includes('translateX'))).toBe(false);
     act(() => reduceMotionStore.set(true));
     const calm = await mount(
       <Screen enter="depth" testID="s2">
         <Text>본문</Text>
       </Screen>,
     );
-    expect(allStyles(calm).some((st) => JSON.stringify(st.transform ?? null) === JSON.stringify([{ translateX: 16 }]))).toBe(false);
+    expect(allStyles(calm).some((st) => JSON.stringify(st.transform ?? null).includes('translateX'))).toBe(false);
   });
 
   test('레이아웃 메움 줄(AnimatedRow)은 안의 줄을 그대로 그린다', async () => {

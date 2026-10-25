@@ -1,9 +1,10 @@
-// 탭바(가이드 5장 · 10-1): 현재 탭 = 채움 아이콘 + 라벨 Bold 브랜드색, 나머지 = 선형 회색 아이콘 + 라벨 Regular 회색.
+// 탭바(가이드 5장 · 10-1 · D42-C 1안): 현재 탭 = 와인 선 + 닫힌 면 accentSoft + 라벨 Bold 브랜드색 + 라벨 아래 20 × 3 막대, 나머지 = sub 선 + 라벨 Regular 회색.
 //  현재 탭은 한 번에 1개이고, 13 추천 없음 · 14 호감 없음에서도 추천 · 호감 탭이 켜진다.
-//  탭 칸은 ripple 만 쓰고(크기 변화 없음), 눌린 동안 아이콘 · 라벨이 85%가 된다.
+//  탭 칸은 눌림 덮개만 쓰고(크기 변화 없음, 2안), 눌린 동안 아이콘 · 라벨이 85%가 된다.
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
-import { Animated, Image, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 
+import { Icon } from '@/components/Icon';
 import { TabBarButton } from '@/components/TabBarButton';
 import { TabIcon, TabLabel } from '@/components/TabBarParts';
 import { tabRouteOf } from '@/navigation/activeTab';
@@ -77,15 +78,19 @@ describe('아이콘 · 라벨', () => {
     ['/likes-empty', 'likes'],
     ['/shop', 'shop'],
     ['/settings', 'settings'],
-  ])('%s 에서는 %s 탭 하나만 채움 아이콘 + Bold 브랜드색이다', async (pathname, active) => {
+  ])('%s 에서는 %s 탭 하나만 와인 선 + accentSoft 면 + Bold 브랜드색 + 막대다', async (pathname, active) => {
     mockPathname.mockReturnValue(pathname);
     let activeCount = 0;
     for (const { name, title } of TABS) {
       const isActive = name === active;
       const icon = await mount(<TabIcon name={name} />);
-      expect(icon.root.findByType(Image).props.source).toBe(isActive ? TAB_ICONS[name].active : TAB_ICONS[name].inactive);
+      expect(icon.root.findByType(Icon).props).toMatchObject({ name: TAB_ICONS[name], color: isActive ? colors.accent : colors.sub, on: isActive });
 
-      const label = labelStyle(await mount(<TabLabel name={name} title={title} />));
+      const labelTree = await mount(<TabLabel name={name} title={title} />);
+      const bar = labelTree.root.findAll((n) => typeof n.type === 'string' && n.props.testID === `tab-bar-${name}`);
+      if (isActive) expect(StyleSheet.flatten(bar[0].props.style)).toMatchObject({ width: 20, height: 3, backgroundColor: colors.accent });
+      else expect(bar).toHaveLength(0);
+      const label = labelStyle(labelTree);
       expect(label).toMatchObject(
         isActive
           ? { fontFamily: font.bold, color: colors.accent, fontSize: 13 }
@@ -96,11 +101,11 @@ describe('아이콘 · 라벨', () => {
     expect(activeCount).toBe(1); // 현재 탭은 한 번에 1개
   });
 
-  test('탭이 없는 화면에서는 네 탭 모두 선형 회색이다', async () => {
+  test('탭이 없는 화면에서는 네 탭 모두 sub 선 · 면 없음이다', async () => {
     mockPathname.mockReturnValue('/onboarding');
     for (const { name, title } of TABS) {
       const icon = await mount(<TabIcon name={name} />);
-      expect(icon.root.findByType(Image).props.source).toBe(TAB_ICONS[name].inactive);
+      expect(icon.root.findByType(Icon).props).toMatchObject({ name: TAB_ICONS[name], color: colors.sub, on: false });
       expect(labelStyle(await mount(<TabLabel name={name} title={title} />)).fontFamily).toBe(font.regular);
     }
   });
@@ -113,7 +118,7 @@ describe('아이콘 · 라벨', () => {
   test('아이콘 24 × 24', async () => {
     mockPathname.mockReturnValue('/likes');
     const icon = await mount(<TabIcon name="likes" />);
-    expect(StyleSheet.flatten(icon.root.findByType(Image).props.style)).toMatchObject({ width: 24, height: 24 });
+    expect(icon.root.findByType(Icon).props.size).toBe(24);
   });
 });
 
@@ -132,18 +137,17 @@ describe('탭 칸 (TabBarButton)', () => {
     expect(target(likes).props.role).toBe('tab');
   });
 
-  test('ripple 만 쓰고 크기는 바꾸지 않는다. 원은 칸 안에서 가운데서 퍼진다', async () => {
+  test('눌림 덮개만 쓰고 크기는 바꾸지 않는다(2안 — 물결 대신 text 6% 덮개). 덮개는 칸 안에 머문다', async () => {
     mockPathname.mockReturnValue('/likes');
     const tree = await mount(<TabBarButton tab="likes" {...props} />);
-    await act(async () => target(tree).props.onLayout(fakeEvent));
     await act(async () => target(tree).props.onPressIn(fakeEvent));
     expect(timing.mock.calls.some(([, config]) => config.toValue === 0.97 || config.toValue === 0.985)).toBe(false); // scale 없음
-    expect(timing.mock.calls.some(([, config]) => config.duration === 250)).toBe(true); // 250ms 퍼짐
-    const circle = tree.root
+    expect(timing.mock.calls.some(([, config]) => config.toValue === 1 && config.duration === 100)).toBe(true); // 덮개 100ms
+    const lid = tree.root
       .findAllByType(View)
       .map((node) => StyleSheet.flatten(node.props.style))
       .find((style) => style?.position === 'absolute');
-    expect(circle?.width).toBeCloseTo(Math.hypot(90, 56));
+    expect(lid).toMatchObject({ top: 0, left: 0, right: 0, bottom: 0 });
     expect(StyleSheet.flatten(target(tree).props.style)?.overflow).toBe('hidden'); // 칸 밖으로 나가지 않는다
   });
 

@@ -1,4 +1,4 @@
-// 글쓰기 줄(V5 W5): [사진][마이크][글 칸][보내기 ↑]. 녹음 중에는 같은 자리가 [취소] '녹음 중 0:05 / 1:00' [보내기]로 바뀐다.
+// 글쓰기 줄(V5 W5): [사진][마이크][글 칸][보내기(D42-C 1안 send)]. 녹음 중에는 같은 자리가 [취소] '녹음 중 0:05 / 1:00' [보내기]로 바뀐다.
 //  · 글 칸은 공통 TextField(F23 한글 입력 규칙 — 웹 조합 중 되쓰기 · 자르기 0). 보내기 · Enter 는 조합을 먼저 끝낸 뒤 최신 글로 보낸다(commitThenPress)
 //  · 한 번에 1000자. 넘으면 칸 아래 이유(보내지 않음) — 조합이 끝난 뒤에만 잰다. 빈 글은 보내기 꺼짐
 //  · 사진 · 음성 단추는 기기가 할 수 있을 때만(chatMedia — iOS · Android 는 패키지 설치 전까지 없음)
@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
+import { Icon } from '@/components/Icon';
 import { useCommitThenPress } from '@/components/commitThenPress';
 import { Pressable } from '@/components/Pressable';
 import { TextField } from '@/components/TextField';
@@ -156,13 +157,13 @@ function SendCircle({ label, onPress, disabled = false, testID }: { label: strin
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} effect="scale" surface="accent" style={styles.sendTouch} testID={testID}>
       <View style={[styles.sendCircle, disabled ? styles.sendOff : null]}>
-        <AppText variant="bodyBold" tone="inverse">
-          ↑
-        </AppText>
+        <Icon name="send" size={SEND_ICON} color={colors.onAccent} />
       </View>
     </Pressable>
   );
 }
+
+const SEND_ICON = 20; // 1안 명세: 보내기 원 안은 20(선 1.75) — 공통 SendButton 과 같다
 
 const styles = StyleSheet.create({
   sendTouch: { width: size.touchMin, height: size.touchMin, alignItems: 'center', justifyContent: 'center' },

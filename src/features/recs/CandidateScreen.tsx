@@ -38,7 +38,6 @@ import { goBackOr, openShopPage } from '@/navigation/go';
 import { useV4Screens } from '@/navigation/v5Hide';
 import { layout } from '@/theme/layout';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
-import { UI_ICONS } from '@/theme/uiAssets';
 import { ReportBlockSheet } from '@/features/safety/ReportBlockSheet';
 
 import { PhotoBox } from './PhotoBox';
@@ -294,12 +293,12 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
           </ScrollView>
           {page > 0 ? (
             <View style={[styles.arrow, styles.arrowLeft]}>
-              <IconButton icon={UI_ICONS.back} accessibilityLabel={CANDIDATE.prevPhoto} onPress={() => goTo(page - 1)} testID="candidate-photo-prev" />
+              <IconButton icon="back" accessibilityLabel={CANDIDATE.prevPhoto} onPress={() => goTo(page - 1)} testID="candidate-photo-prev" />
             </View>
           ) : null}
           {page < total - 1 ? (
             <View style={[styles.arrow, styles.arrowRight]}>
-              <IconButton icon={UI_ICONS.back} flip accessibilityLabel={CANDIDATE.nextPhoto} onPress={() => goTo(page + 1)} testID="candidate-photo-next" />
+              <IconButton icon="back" flip accessibilityLabel={CANDIDATE.nextPhoto} onPress={() => goTo(page + 1)} testID="candidate-photo-next" />
             </View>
           ) : null}
           {total > 1 ? (

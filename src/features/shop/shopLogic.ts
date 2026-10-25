@@ -3,6 +3,7 @@
 //  · 상품 이름 · 한 줄 · 가격은 카피 글(content/productCopy.ts)을 먼저 쓴다. 서버 이름은 카피에 없는 상품의 대비책이다
 import { PRODUCT_COPY, RISK_REASONS, type ProductCopy } from '@/content/productCopy';
 import type { PurchaseReason, ShopProduct, ShopState } from '@/lib/shopApi';
+import type { IconName } from '@/components/iconPaths';
 import { SHOP_ICONS } from '@/theme/uiAssets';
 
 const KST_MS = 9 * 3_600_000;
@@ -90,8 +91,8 @@ export function rowOpens(product: ShopProduct, paymentMode: ShopState['paymentMo
 // 빨간 라벨은 테스트 화면(payment_mode = demo)에서만 보인다(카피 16-C · 실사용자 화면 숨김)
 export const showsRiskLabel = (product: ShopProduct, shop: ShopState): boolean => product.riskLabel && shop.paymentMode === 'demo';
 
-// 상품 줄 그림(상점 아이콘 25~30, 살 수 있는 상품 4개만)
-export function iconOf(catalogId: string) {
+// 상품 줄 그림(상점 아이콘 25~30, 살 수 있는 상품 4개만) — D42-C 1안 아이콘 이름(components/Icon 으로 그린다)
+export function iconOf(catalogId: string): IconName | null {
   switch (catalogId) {
     case 'N01':
       return SHOP_ICONS.tierSubscription;

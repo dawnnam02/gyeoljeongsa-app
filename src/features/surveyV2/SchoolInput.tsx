@@ -5,17 +5,17 @@
 //  · 고른 뒤: 한 장으로 접히고 [바꾸기] · 상태: 기본 · 입력 중 · 결과 없음 · 고름 · 불러오는 중
 //  · 검색어는 로그 · 서버로 보내지 않는다(데모는 같은 기기 안 모의 서버)
 import { useEffect, useRef, useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Pressable } from '@/components/Pressable';
 import { Ring } from '@/components/Ring';
 import { TextButton } from '@/components/TextButton';
 import { TextField } from '@/components/TextField';
+import { Icon } from '@/components/Icon';
 import { schoolIndex, normalize, type SchoolCourse } from '@/data/schools/schoolSearch';
 import { haptic } from '@/motion';
 import { layout } from '@/theme/layout';
-import { UI_ICONS } from '@/theme/uiAssets';
 import { colors, radius, size, space } from '@/theme/tokens';
 
 import type { SchoolResult, SearchOutcome } from './api';
@@ -86,7 +86,7 @@ export function SchoolInput({ q, draft, onChange, search }: Props) {
     const label = 'key' in pick ? schoolLabel(pick.key) ?? pick.key : optText(q.id, pick.code);
     return (
       <View style={styles.picked} testID={id('picked')}>
-        <Image source={UI_ICONS.check} style={styles.check} tintColor={colors.accent} accessibilityIgnoresInvertColors />
+        <Icon name="check" size={layout.headerIcon} color={colors.accent} />
         <AppText variant="bodyMedium" style={styles.grow} testID={id('picked-name')}>
           {label}
         </AppText>
@@ -163,7 +163,6 @@ const styles = StyleSheet.create({
     borderWidth: layout.inputBorderActive,
     borderColor: colors.accent,
   },
-  check: { width: layout.headerIcon, height: layout.headerIcon },
   loading: { flexDirection: 'row', alignItems: 'center', gap: space.s8, minHeight: size.touchMin },
   results: { borderRadius: radius.md, backgroundColor: colors.card, overflow: 'hidden' },
   hit: { minHeight: size.listRow, justifyContent: 'center', paddingHorizontal: space.s16, paddingVertical: space.s8, gap: space.s4 },

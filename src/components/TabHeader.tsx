@@ -6,7 +6,7 @@
 import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import type { useCollapsingTitle } from '@/motion';
+import { MaskLine, scene2, type useCollapsingTitle } from '@/motion';
 import { layout } from '@/theme/layout';
 import { colors, size } from '@/theme/tokens';
 
@@ -19,9 +19,8 @@ export function TabHeader({ title, collapse, testID }: Props) {
   return (
     <View style={styles.bar} testID={testID}>
       <Animated.View style={[styles.title, collapse?.big]}>
-        <AppText variant="title" accessibilityRole="header" numberOfLines={1} maxFontSizeMultiplier={HEADER_MAX_SCALE}>
-          {title}
-        </AppText>
+        {/* 2안 일상 줄 가림: 탭을 처음 열 때 한 번(탭 복귀 때는 다시 하지 않는다) */}
+        <MaskLine variant="title" accessibilityRole="header" numberOfLines={1} maxFontSizeMultiplier={HEADER_MAX_SCALE} delay={scene2.nav.titleDelay}>{title}</MaskLine>
       </Animated.View>
       {collapse ? (
         <Animated.View style={[styles.small, collapse.small]} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">

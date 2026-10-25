@@ -1,9 +1,10 @@
 // 16 상점 화면 조각(Figma D20 305:48): 테스트 화면 띠 · 빨간 라벨 · 구매 전 확인 줄 · 구역 제목 · 누르는 줄. 색 · 글자 · 간격은 토큰만 쓴다.
 //  글은 content/shopCopy.ts · productCopy.ts. 이 파일은 글을 만들지 않고 놓을 자리만 정한다.
 import type { ReactNode } from 'react';
-import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
+import { Icon, type IconName } from '@/components/Icon';
 import { Pressable } from '@/components/Pressable';
 import { BEFORE_BUY, SHOP16 } from '@/content/shopCopy';
 import { FILL_INS } from '@/content/fillIns';
@@ -81,17 +82,16 @@ export function sellerText(text: string): string | null {
   return withoutLead.length > 0 ? withoutLead.join(' · ') : null;
 }
 
-// 목록의 이동 줄(›): 한 줄 전체가 터치 영역
-export function LinkRow({ label, onPress, last = false, icon, testID }: { label: string; onPress: () => void; last?: boolean; icon?: ImageSourcePropType | null; testID?: string }) {
+// 목록의 이동 줄(›, D42-C 1안 chevron 20 · sub): 한 줄 전체가 터치 영역
+const CHEVRON = 20;
+export function LinkRow({ label, onPress, last = false, icon, testID }: { label: string; onPress: () => void; last?: boolean; icon?: IconName | null; testID?: string }) {
   return (
     <Pressable accessibilityLabel={label} onPress={onPress} effect="none" testID={testID} style={({ pressed }) => [styles.linkRow, !last && styles.linkDivider, pressed && styles.linkPressed]}>
-      {icon ? <Image source={icon} style={styles.linkIcon} resizeMode="contain" accessibilityIgnoresInvertColors /> : null}
+      {icon ? <Icon name={icon} size={layout.shopRowIcon} /> : null}
       <AppText variant="body" style={styles.flex}>
         {label}
       </AppText>
-      <AppText variant="body" tone="sub" accessibilityElementsHidden importantForAccessibility="no">
-        ›
-      </AppText>
+      <Icon name="chevron" size={CHEVRON} color={colors.sub} />
     </Pressable>
   );
 }
@@ -114,7 +114,6 @@ const styles = StyleSheet.create({
   linkRow: { minHeight: size.listRow, flexDirection: 'row', alignItems: 'center', gap: space.s12, paddingHorizontal: space.s16, paddingVertical: space.s8 },
   linkDivider: { borderBottomWidth: 1, borderBottomColor: colors.line },
   linkPressed: { backgroundColor: colors.line },
-  linkIcon: { width: layout.shopRowIcon, height: layout.shopRowIcon },
   flex: { flex: 1, flexShrink: 1 },
   row: { flexDirection: 'row', alignItems: 'center' },
 });

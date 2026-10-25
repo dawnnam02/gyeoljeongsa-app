@@ -11,7 +11,9 @@ import { LoadState } from '@/features/settings/SettingsParts';
 import { ShopScreen } from '@/features/shop/ShopScreen';
 import { forgetMyFace } from '@/store/myFaceStore';
 import { colors } from '@/theme/tokens';
-import { H2_DONE_ART, H2_EMPTY_ART, H2_INFO_ART, H2_LINK_ART, H2_PHOTO_GUIDE, H2_SETTING_ICONS, H2_STATE_ART, SHOP_ICONS, STATE_ART, TIER_BADGE_LOCKED, TIER_BADGES } from '@/theme/uiAssets';
+import { Icon } from '@/components/Icon';
+import { ICON_PATHS } from '@/components/iconPaths';
+import { H2_DONE_ART, H2_EMPTY_ART, H2_INFO_ART, H2_LINK_ART, H2_PHOTO_GUIDE, H2_SETTING_ICONS, H2_STATE_ART, SHOP_ICONS, STATE_ART } from '@/theme/uiAssets';
 
 import { testOutside } from './helpers/outsideDocs';
 import { has, mount } from './renderHelpers';
@@ -35,13 +37,8 @@ const APP = path.resolve(__dirname, '..', '..');
 const ICONS = path.join(APP, 'assets', 'icons');
 const DESIGN = path.resolve(APP, '..', '디자인', '아이콘');
 
-// [폴더, 이름, 기준 dp]
-const FILES: [string, string, number][] = [
-  ...['product-tier-subscription', 'product-one-match', 'product-trait-report', 'product-my-tier-view', 'product-like-letter', 'product-past-recs-pass', 'tier-verify-upload', 'tier-history', 'tier-how-to', 'tier-view-request'].map((n): [string, string, number] => ['shop', n, 32]),
-  ...['empty-error-15', 'empty-shop-fail', 'empty-no-tier'].map((n): [string, string, number] => ['state', n, 144]),
-  ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i): [string, string, number] => ['tier', `tier-${i}`, 64]),
-  ['tier', 'tier-locked', 64],
-];
+// [폴더, 이름, 기준 dp] — 상점 · 등급 관리 아이콘 10 · 등급 배지 10 은 D42-C 에서 공용 아이콘(1안)으로 바뀌어 PNG 를 지웠다. 남은 것은 상태 그림 3
+const FILES: [string, string, number][] = [...['empty-error-15', 'empty-shop-fail', 'empty-no-tier'].map((n): [string, string, number] => ['state', n, 144])];
 
 function pngSize(file: string): { w: number; h: number; alpha: boolean } {
   const b = fs.readFileSync(file);
@@ -49,9 +46,9 @@ function pngSize(file: string): { w: number; h: number; alpha: boolean } {
   return { w: b.readUInt32BE(16), h: b.readUInt32BE(20), alpha: b[25] === 6 };
 }
 
-describe('조건 1 · 그림 파일 23종 × 밀도 3', () => {
+describe('조건 1 · 그림 파일 3종 × 밀도 3', () => {
   test('이름.png · @2x · @3x 가 기준 dp 의 1 · 2 · 3배 정사각 PNG(알파 있음)다', () => {
-    expect(FILES).toHaveLength(23);
+    expect(FILES).toHaveLength(3);
     for (const [dir, name, base] of FILES) {
       for (const [suffix, k] of [['', 1], ['@2x', 2], ['@3x', 3]] as const) {
         const info = pngSize(path.join(ICONS, dir, `${name}${suffix}.png`));
@@ -70,12 +67,12 @@ describe('조건 1 · 그림 파일 23종 × 밀도 3', () => {
 });
 
 describe('조건 1 · uiAssets 등록', () => {
-  test('상품 · 관리 10 · 상태 3 · 등급 9 + 잠김이 이름 붙여 등록돼 있다(RN 에서는 모두 asset 번호)', () => {
+  test('상품 · 관리 10(1안 아이콘 이름) · 상태 3 이 이름 붙여 등록돼 있고, 숫자 등급 배지(TIER_BADGES)는 없다', () => {
     expect(Object.keys(SHOP_ICONS)).toHaveLength(10);
+    for (const name of Object.values(SHOP_ICONS)) expect(Object.keys(ICON_PATHS)).toContain(name);
     expect(Object.keys(STATE_ART)).toEqual(['error15', 'shopFail', 'noTier']);
-    expect(TIER_BADGES).toHaveLength(9);
-    expect(TIER_BADGE_LOCKED).toBeDefined();
     const source = fs.readFileSync(path.join(APP, 'src', 'theme', 'uiAssets.ts'), 'utf8');
+    expect(source).not.toMatch(/export const TIER_BADGE/);
     for (const [dir, name] of FILES) expect(source).toContain(`../../assets/icons/${dir}/${name}.png`);
   });
 });
@@ -89,12 +86,11 @@ describe('조건 2 · 16 상점 카드 상품 아이콘', () => {
     const tree = await mount(<ShopScreen deps={deps} />);
     shown.push(tree);
     await act(async () => void (await new Promise((resolve) => setTimeout(resolve, 0))));
-    const imageIn = (id: string) => tree.root.findAll((n) => n.props.testID === id).at(-1)!.findAllByType(Image)[0];
-    const report = imageIn('shop-report-icon');
-    expect(report.props.source).toBe(SHOP_ICONS.traitReport);
-    expect(StyleSheet.flatten(report.props.style)).toMatchObject({ width: 28, height: 28 });
-    const sources = tree.root.findAllByType(Image).map((i) => i.props.source);
-    for (const icon of [SHOP_ICONS.tierSubscription, SHOP_ICONS.oneMatch, SHOP_ICONS.myTierView, SHOP_ICONS.pastRecsPass, SHOP_ICONS.likeLetter]) expect(sources).toContain(icon);
+    const icons = tree.root.findAllByType(Icon);
+    const report = icons.find((n) => n.props.testID === 'shop-report-icon')!;
+    expect(report.props).toMatchObject({ name: SHOP_ICONS.traitReport, size: 28 });
+    const names = icons.map((i) => i.props.name);
+    for (const icon of [SHOP_ICONS.tierSubscription, SHOP_ICONS.oneMatch, SHOP_ICONS.myTierView, SHOP_ICONS.pastRecsPass, SHOP_ICONS.likeLetter]) expect(names).toContain(icon);
   });
 });
 
@@ -122,10 +118,10 @@ describe('조건 5 · H2 새 그림 38~75', () => {
   const shown: ReactTestRenderer[] = [];
   afterEach(() => act(() => shown.splice(0).forEach((t) => t.unmount())));
 
-  test('그림 32종은 기준 144, 설정 아이콘 6종은 기준 32 · 각 밀도 1 · 2 · 3배 PNG(알파 있음)', () => {
+  test('그림 32종은 기준 144 · 각 밀도 1 · 2 · 3배 PNG(알파 있음) — 설정 아이콘 6종은 D42-C 에서 1안 아이콘이 되어 PNG 를 지웠다', () => {
     expect(ART).toHaveLength(32);
     for (const name of ART) for (const [suffix, k] of [['', 1], ['@2x', 2], ['@3x', 3]] as const) expect(pngSize(path.join(ICONS, 'art', `${name}${suffix}.png`))).toEqual({ w: 144 * k, h: 144 * k, alpha: true });
-    for (const name of SETTING) for (const [suffix, k] of [['', 1], ['@2x', 2], ['@3x', 3]] as const) expect(pngSize(path.join(ICONS, 'settings', `${name}${suffix}.png`))).toEqual({ w: 32 * k, h: 32 * k, alpha: true });
+    for (const name of SETTING) expect(fs.existsSync(path.join(ICONS, 'settings', `${name}.png`))).toBe(false);
   });
 
   test('uiAssets 에 38개 모두 이름 붙여 등록돼 있다', () => {
@@ -134,7 +130,7 @@ describe('조건 5 · H2 새 그림 38~75', () => {
     expect(Object.keys(H2_SETTING_ICONS)).toHaveLength(6);
     const source = fs.readFileSync(path.join(APP, 'src', 'theme', 'uiAssets.ts'), 'utf8');
     for (const name of ART) expect(source).toContain(`../../assets/icons/art/${name}.png`);
-    for (const name of SETTING) expect(source).toContain(`../../assets/icons/settings/${name}.png`);
+    for (const name of Object.values(H2_SETTING_ICONS)) expect(Object.keys(ICON_PATHS)).toContain(name);
   });
 
   test('12 목록 빈 상태: 그림이 붙는다(art 를 주면), 안 주면 글만', async () => {

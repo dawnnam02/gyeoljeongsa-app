@@ -4,6 +4,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { ICON_PATHS } from '@/components/iconPaths';
+import { PHOTO_ICONS } from '@/theme/photoIcons';
+import { TAB_ICONS } from '@/theme/tabIcons';
+
 import { testOutside } from './helpers/outsideDocs';
 
 const APP_DIR = path.resolve(__dirname, '..', '..');
@@ -65,6 +69,7 @@ const GRADE_ALLOWED_FILES = [
   'lib/settingsDemo.ts', // 모의 서버 12
   'content/shopCopy.ts', // 16 상점 · 등급 화면 글 묶음 이름
   'config/gradeConsent.ts', // CK10 내 등급 보이기 문구 판
+  'components/iconPaths.ts', // D42-C 1안 아이콘 원본(paths.json) 이름 grade_locked — 등급 잠김 자물쇠 그림 이름일 뿐 값 아님
   'store/gradeSettingsStore.ts', // 12 등급 계산 멈추기 스위치 값
   'features/settings/GradeSwitches.tsx', // 12 내 등급 보이기 · 등급 계산 멈추기
   'features/settings/SettingsScreen.tsx', // 12: 등급 스위치 · 탈퇴 확인창 구독 안내 연결
@@ -235,65 +240,40 @@ describe('누르는 효과 · 탭바 (팀장 지시 2026-10-14, 디자인 D10)',
     expect(button).toContain('effect="ripple"'); // 가이드 10-3: 탭 칸은 ripple 만
   });
 
-  test('현재 탭은 채움 아이콘 + 라벨 Bold(captionBold 토큰) 브랜드색, 나머지는 Regular 회색 토큰이다', () => {
+  test('현재 탭은 와인 선 + 닫힌 면 accentSoft + 라벨 Bold(captionBold 토큰) 브랜드색 + 막대, 나머지는 sub 선 · Regular 회색 토큰이다(D42-C 1안)', () => {
     const parts = fs.readFileSync(path.join(SRC_DIR, 'components', 'TabBarParts.tsx'), 'utf8');
     expect(parts).toContain("variant={active ? 'captionBold' : 'caption'}");
     expect(parts).toContain("tone={active ? 'accent' : 'sub'}");
-    expect(parts).toContain('active ? TAB_ICONS[name].active : TAB_ICONS[name].inactive');
+    expect(parts).toContain('color={active ? colors.accent : colors.sub} on={active}');
     expect(tabsLayout).toContain('tabBarIcon: () => <TabIcon name={name} />');
     expect(tabsLayout).toContain('tabBarLabel: () => <TabLabel name={name} title={title} />');
     expect(tabsLayout).not.toContain('captionMedium'); // 가이드 5장의 '활성 Medium'은 Bold 로 바뀌었다
   });
 
-  test('탭 아이콘 파일 8개가 모두 있고 512×512 PNG(알파 있음)이다', () => {
-    const files = [...tabIcons.matchAll(/require\('([^']+)'\)/g)].map((m) => path.resolve(SRC_DIR, 'theme', m[1]));
-    expect(files).toHaveLength(8);
-    for (const file of files) {
-      const bytes = fs.readFileSync(file);
-      expect(bytes.subarray(1, 4).toString('latin1')).toBe('PNG');
-      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20), bytes[25]]).toEqual([512, 512, 6]);
-    }
+  test('탭 아이콘 6개는 공용 아이콘(1안) 이름이고, 옛 PNG(require)는 없다(D42-C)', () => {
+    expect(tabIcons).not.toMatch(/require\(/);
+    for (const name of Object.values(TAB_ICONS)) expect(Object.keys(ICON_PATHS)).toContain(name);
+    expect(TAB_ICONS).toEqual({ boarding: 'boarding', chat: 'chat', recommendations: 'recommend', likes: 'like', shop: 'shop', settings: 'settings' });
+    expect(fs.existsSync(path.join(APP_DIR, 'assets', 'icons', 'tab'))).toBe(false);
   });
 
-  // 디자인 폴더가 옆에 있을 때만 비교한다(앱만 따로 떼어 두면 건너뛴다). 원본이 바뀌면 다시 복사해야 한다.
-  testOutside(['디자인/아이콘/탭바'])('앱에 복사한 탭 아이콘 8개가 디자인 원본(디자인/아이콘/탭바)과 바이트까지 같다', () => {
-    const designDir = path.resolve(APP_DIR, '..', '디자인', '아이콘', '탭바');
-    if (!fs.existsSync(designDir)) return;
-    const pairs: Record<string, string> = {
-      '01_추천_활성_채움': 'recommend-on-filled',
-      '01_추천_비활성': 'recommend-off',
-      '02_호감_활성_채움': 'likes-on-filled',
-      '02_호감_비활성': 'likes-off',
-      '03_상점_활성_채움': 'shop-on-filled', // D19 A1 · A2 (프로필 탭은 빠지고 상점이 들어왔다, F11)
-      '03_상점_비활성': 'shop-off',
-      '04_설정_활성_채움': 'settings-on-filled',
-      '04_설정_비활성': 'settings-off',
-    };
-    for (const [designName, appName] of Object.entries(pairs)) {
-      const original = fs.readFileSync(path.join(designDir, designName + '.png'));
-      const copy = fs.readFileSync(path.join(APP_DIR, 'assets', 'icons', 'tab', appName + '.png'));
-      expect(copy.equals(original)).toBe(true);
-    }
-    expect([...tabIcons.matchAll(/require\('[^']*-on-filled\.png'\)/g)]).toHaveLength(4); // 현재 탭은 채움 아이콘
+  // 디자인 폴더가 옆에 있을 때만 비교한다(앱만 따로 떼어 두면 건너뛴다). 원본이 바뀌면 iconPaths.ts 를 다시 만든다.
+  testOutside(['디자인/D42_새판/아이콘/1안_원본/paths.json'])('공용 아이콘 경로(components/iconPaths)가 디자인 1안 원본 paths.json 61개와 같다', () => {
+    const original = JSON.parse(fs.readFileSync(path.resolve(APP_DIR, '..', '디자인', 'D42_새판', '아이콘', '1안_원본', 'paths.json'), 'utf8')) as { strokeWidth: number; strokeWidthSmall: number; icons: Record<string, unknown> };
+    expect(Object.keys(original.icons)).toHaveLength(61);
+    expect(JSON.parse(JSON.stringify(ICON_PATHS))).toEqual(original.icons);
+    expect([original.strokeWidth, original.strokeWidthSmall]).toEqual([1.5, 1.75]);
   });
 });
 
-describe('05 사진 칸 카메라 아이콘 (본인 지시 · 팀장 결정 2026-10-14: A안 정리본)', () => {
+describe('05 사진 칸 카메라 아이콘 (D42-C 1안 camera_add)', () => {
   const photoIcons = fs.readFileSync(path.join(SRC_DIR, 'theme', 'photoIcons.ts'), 'utf8');
 
-  test('theme/photoIcons.ts 가 색변형/06_카메라추가_보조 복사본(512×512 PNG, 알파 있음)을 가리킨다', () => {
-    const match = /require\('([^']+)'\)/.exec(photoIcons);
-    expect(match?.[1]).toBe('../../assets/icons/photo/camera-add-sub.png');
-    const bytes = fs.readFileSync(path.resolve(SRC_DIR, 'theme', match?.[1] ?? ''));
-    expect(bytes.subarray(1, 4).toString('latin1')).toBe('PNG');
-    expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20), bytes[25]]).toEqual([512, 512, 6]);
-  });
-
-  testOutside(['디자인/아이콘/색변형/06_카메라추가_보조.png'])('디자인 원본(디자인/아이콘/색변형/06_카메라추가_보조.png)과 바이트까지 같다', () => {
-    const original = path.resolve(APP_DIR, '..', '디자인', '아이콘', '색변형', '06_카메라추가_보조.png');
-    if (!fs.existsSync(original)) return; // 디자인 폴더가 옆에 없으면 건너뛴다
-    const copy = fs.readFileSync(path.join(APP_DIR, 'assets', 'icons', 'photo', 'camera-add-sub.png'));
-    expect(copy.equals(fs.readFileSync(original))).toBe(true);
+  test('theme/photoIcons.ts 가 공용 아이콘 camera_add 를 가리키고 옛 PNG 는 없다', () => {
+    expect(photoIcons).not.toMatch(/require\(/);
+    expect(PHOTO_ICONS.cameraAdd).toBe('camera_add');
+    expect(Object.keys(ICON_PATHS)).toContain(PHOTO_ICONS.cameraAdd);
+    expect(fs.existsSync(path.join(APP_DIR, 'assets', 'icons', 'photo', 'camera-add-sub.png'))).toBe(false);
   });
 });
 
@@ -313,14 +293,13 @@ describe('F1: 01 온보딩 · 02 가입 · 03 동의 · 15 인증 실패', () =>
     }
   });
 
-  test('앱에 복사한 UI 아이콘(뒤로 · 체크 · 닫기)은 512×512 PNG(알파 있음)이고 디자인 원본과 바이트까지 같다', () => {
-    const pairs: Record<string, string> = { back: '05_뒤로가기', check: '07_체크', close: '08_닫기' };
-    for (const [appName, designName] of Object.entries(pairs)) {
-      const copy = path.join(APP_DIR, 'assets', 'icons', 'ui', `${appName}.png`);
-      expect(pngSize(copy)).toEqual([512, 512, 6]);
-      const original = path.resolve(APP_DIR, '..', '디자인', '아이콘', '투명', `${designName}.png`);
-      if (fs.existsSync(original)) expect(fs.readFileSync(copy).equals(fs.readFileSync(original))).toBe(true); // 디자인 폴더가 옆에 있을 때만 비교한다
+  test('UI 아이콘(뒤로 · 체크 · 닫기)은 공용 아이콘(1안)으로 그리고, 옛 PNG 와 숫자 등급 배지 PNG 는 없다(D42-C)', () => {
+    for (const name of ['back', 'check', 'close']) {
+      expect(Object.keys(ICON_PATHS)).toContain(name);
+      expect(fs.existsSync(path.join(APP_DIR, 'assets', 'icons', 'ui', `${name}.png`))).toBe(false);
     }
+    expect(fs.existsSync(path.join(APP_DIR, 'assets', 'icons', 'tier'))).toBe(false); // tier-1~9.png(숫자 그림) · tier-locked.png
+    expect(fs.readFileSync(path.join(SRC_DIR, 'theme', 'uiAssets.ts'), 'utf8')).not.toMatch(/export const TIER_BADGE/);
   });
 
   test('최종 로고(D17 A1~A6): 가로 로고 여백 없는 판 1244×544 투명 · 심볼 · 앱 아이콘 · adaptive 전경/배경 · 파비콘이 디자인 원본과 바이트까지 같고, 화면 높이는 폭 ÷ 2.287', () => {
@@ -348,7 +327,7 @@ describe('F1: 01 온보딩 · 02 가입 · 03 동의 · 15 인증 실패', () =>
 
   test('theme/uiAssets.ts 가 복사한 파일을 가리킨다', () => {
     const source = fs.readFileSync(path.join(SRC_DIR, 'theme', 'uiAssets.ts'), 'utf8');
-    for (const file of ['icons/ui/back.png', 'icons/ui/check.png', 'icons/ui/close.png', 'logo/wordmark.png']) {
+    for (const file of ['logo/wordmark.png']) {
       expect(source).toContain(`../../assets/${file}`);
       expect(fs.existsSync(path.join(APP_DIR, 'assets', file))).toBe(true);
     }

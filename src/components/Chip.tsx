@@ -4,12 +4,18 @@
 //  tab      : 화면 안 탭 칸(11 호감 '보낸 호감 · 받은 호감 · 연결됨', 팀장 결정 10-15). 고르지 않음 = card 면 · text 글자 Medium, 고름(selected) = bg 면 · accent 선 · accent 글자 Bold.
 //             role tab · 선택 상태를 스크린리더에 알리고, 누르면 카드처럼 작아진다(scale)
 // onPress 가 있으면 공통 Pressable 로 누르고, 터치 영역은 높이 48(안의 칩은 32)다.
-import { Image, StyleSheet, View } from 'react-native';
+// 움직임(2안 '지면' D42-M 명세 4-1 chip · 5-4): 누르는 selected ↔ inactive 칩은 바탕 · 테두리 · 글자 색이 150 std 로 바뀌고(interpolateColor),
+//  체크는 켤 때 150 std · 끌 때 120 in 투명도. 체크 자리는 처음부터 비워 두어 고를 때 칩 폭이 변하지 않는다. 색 변화는 움직임이 아니라 동작 줄이기여도 같다
+import { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { colors, radius, size, space } from '@/theme/tokens';
-import { UI_ICONS } from '@/theme/uiAssets';
+import { curve, scene2 } from '@/motion';
+
+import { colors, radius, size, space, type } from '@/theme/tokens';
 
 import { AppText } from './AppText';
+import { Icon } from './Icon';
 import { Pressable } from './Pressable';
 
 export type ChipVariant = 'selected' | 'tag' | 'inactive' | 'tab';
@@ -22,13 +28,20 @@ export function Chip({ label, variant = 'tag', selected = false, onPress, access
   const checked = !tab && variant === 'selected';
   const body = (
     <View style={[styles.chip, look, checked && styles.withCheck]} testID={onPress ? undefined : testID}>
-      {checked ? <Image source={UI_ICONS.check} style={styles.check} tintColor={colors.accent} accessibilityIgnoresInvertColors testID={testID ? `${testID}-check` : undefined} /> : null}
+      {checked ? <Icon name="check" size={space.s16} color={colors.accent} testID={testID ? `${testID}-check` : undefined} /> : null}
       <AppText variant={tab && selected ? 'captionBold' : 'captionMedium'} tone={tab ? (selected ? 'accent' : 'text') : variant === 'inactive' ? 'sub' : 'accent'}>
         {label}
       </AppText>
     </View>
   );
   if (!onPress) return body;
+  if (variant === 'selected' || variant === 'inactive') {
+    return (
+      <Pressable accessibilityLabel={accessibilityLabel ?? label} aria-selected={variant === 'selected'} onPress={onPress} effect="none" testID={testID} style={styles.touch}>
+        <PickChip label={label} on={variant === 'selected'} testID={testID} />
+      </Pressable>
+    );
+  }
   if (tab) {
     return (
       <Pressable accessibilityRole="tab" accessibilityLabel={accessibilityLabel ?? label} accessibilityState={{ selected }} aria-selected={selected} onPress={onPress} effect="scale" scaleTo="button" testID={testID} style={styles.touch}>
@@ -37,17 +50,47 @@ export function Chip({ label, variant = 'tag', selected = false, onPress, access
     );
   }
   return (
-    <Pressable accessibilityLabel={accessibilityLabel ?? label} aria-selected={variant === 'selected'} onPress={onPress} effect="none" testID={testID} style={styles.touch}>
+    <Pressable accessibilityLabel={accessibilityLabel ?? label} onPress={onPress} effect="none" testID={testID} style={styles.touch}>
       {body}
     </Pressable>
   );
 }
 
+// 고를 수 있는 칩: 끔(inactive) ↔ 켬(selected) 색이 150 으로 바뀐다
+function PickChip({ label, on, testID }: { label: string; on: boolean; testID?: string }) {
+  const p = useSharedValue(on ? 1 : 0);
+  const c = useSharedValue(on ? 1 : 0);
+  useEffect(() => {
+    p.set(withTiming(on ? 1 : 0, { duration: scene2.chip.color, easing: curve('std') }));
+    c.set(withTiming(on ? 1 : 0, on ? { duration: scene2.chip.checkOn, easing: curve('std') } : { duration: scene2.chip.checkOff, easing: curve('in') }));
+  }, [on, p, c]);
+  // 멈춰 있을 때는 토큰 색 그대로(가운데에서만 섞은 색)
+  const face = useAnimatedStyle(() => {
+    const v = p.get();
+    if (v <= 0) return { backgroundColor: colors.bg, borderColor: colors.line };
+    if (v >= 1) return { backgroundColor: colors.accentSoft, borderColor: colors.accent };
+    return { backgroundColor: interpolateColor(v, [0, 1], [colors.bg, colors.accentSoft]), borderColor: interpolateColor(v, [0, 1], [colors.line, colors.accent]) };
+  });
+  const ink = useAnimatedStyle(() => {
+    const v = p.get();
+    return { color: v <= 0 ? colors.sub : v >= 1 ? colors.accent : interpolateColor(v, [0, 1], [colors.sub, colors.accent]) };
+  });
+  const check = useAnimatedStyle(() => ({ opacity: c.get() }));
+  return (
+    <Animated.View style={[styles.chip, styles.pick, styles.withCheck, face]}>
+      <Animated.View style={check}>
+        <Icon name="check" size={space.s16} color={colors.accent} testID={on && testID ? `${testID}-check` : undefined} />
+      </Animated.View>
+      <Animated.Text style={[type.captionMedium, ink]}>{label}</Animated.Text>
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
+  pick: { borderWidth: 1 },
   touch: { minHeight: size.touchMin, justifyContent: 'center', alignSelf: 'flex-start' },
   chip: { minHeight: size.chip, borderRadius: radius.pill, paddingHorizontal: space.s12, justifyContent: 'center', alignSelf: 'flex-start' },
   withCheck: { flexDirection: 'row', alignItems: 'center', gap: space.s4, paddingLeft: space.s8 },
-  check: { width: space.s16, height: space.s16 },
 });
 
 const variantStyle = StyleSheet.create({

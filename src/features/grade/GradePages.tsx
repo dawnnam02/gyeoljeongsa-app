@@ -8,12 +8,13 @@
 // 서버 값만 그린다: 총 원점수 · 추천 점수는 받지도 보이지도 않는다. 영역 점수(areas)도 W9 부터 그리지 않는다.
 import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
+import { Icon } from '@/components/Icon';
 import { StateArt } from '@/components/StateArt';
 import { GRADE16, SHOP16 } from '@/content/shopCopy';
 import type { MyGrade } from '@/lib/gradeApi';
@@ -24,8 +25,8 @@ import type { ShopDeps, ShopNav } from '@/features/shop/shopTypes';
 import { LoadState } from '@/features/settings/SettingsParts';
 import { useLoad } from '@/features/settings/useLoad';
 import { layout } from '@/theme/layout';
-import { space } from '@/theme/tokens';
-import { H2_EMPTY_ART, STATE_ART, TIER_BADGE_LOCKED } from '@/theme/uiAssets';
+import { colors, space } from '@/theme/tokens';
+import { H2_EMPTY_ART, STATE_ART } from '@/theme/uiAssets';
 
 import { GradeIcon, MyFlock } from './GradeIcon';
 import { iconOf } from './iconBridge';
@@ -56,7 +57,7 @@ export function GradeBody({ shop, deps, nav, onAccess }: { shop: ShopState; deps
           </Card>
         ) : null}
         <View style={styles.lockedHead}>
-          <Image source={TIER_BADGE_LOCKED} style={styles.bigBadge} resizeMode="contain" accessibilityIgnoresInvertColors accessibilityElementsHidden importantForAccessibility="no" testID="grade-locked-art" />
+          <Icon name="grade_locked" size={layout.tierBadgeBig} color={colors.accent} testID="grade-locked-art" />
           <AppText variant="body" tone="text" style={styles.flex} testID="grade-locked-text">
             {GI.locked}
           </AppText>
@@ -294,7 +295,6 @@ const styles = StyleSheet.create({
   linksCard: { padding: 0, overflow: 'hidden' },
   flex: { flex: 1, flexShrink: 1 },
   centered: { textAlign: 'center' },
-  bigBadge: { width: layout.tierBadgeBig, height: layout.tierBadgeBig },
   lockedHead: { flexDirection: 'row', alignItems: 'flex-start', gap: space.s12 },
   task: { flexDirection: 'row', alignItems: 'center', gap: space.s12 },
   empty: { alignItems: 'center', gap: space.s8, paddingVertical: space.s24 },

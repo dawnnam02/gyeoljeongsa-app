@@ -175,11 +175,12 @@ describe('F17 09 움직임 · 바탕(D25 장면 3 · 6)', () => {
     expect(has(tree, 'rec-card-1')).toBe(true);
   });
 
-  test('목록이 오면 카드가 편지처럼 놓인다: 처음 그려질 때 오른쪽 위(10, -30) · 3° 안 기울기 · 0.97배 · 투명에서 시작', async () => {
+  test('목록이 오면 카드가 놓인다(2안 card.in): 처음 그려질 때 8 아래 · 투명에서 시작 · 기울기 · 크기 변화 0', async () => {
     const tree = await mount(<RecommendationsScreen deps={recsDeps(today([card({ id: 'a' }), card({ id: 'b' })])).deps} />);
-    const landed = tree.root.findAll((n) => typeof n.type === 'string' && JSON.stringify(flatStyle(n).transform ?? null).includes('"translateY":-30'));
-    expect(landed.length).toBe(2);
-    expect(flatStyle(landed[0]).transform).toEqual([{ translateX: 10 }, { translateY: -30 }, { rotate: `${scene.today.tilts[0]}deg` }, { scale: 0.97 }]);
+    const landed = tree.root.findAll((n) => typeof n.type === 'string' && n.props?.testID === undefined && JSON.stringify(flatStyle(n).transform ?? null) === JSON.stringify([{ translateY: 8 }]) && flatStyle(n).opacity === 0);
+    expect(landed.length).toBeGreaterThanOrEqual(2);
+    const all = tree.root.findAll((n) => typeof n.type === 'string').map((n) => JSON.stringify(flatStyle(n).transform ?? null));
+    expect(all.some((t) => t.includes('rotate'))).toBe(false);
   });
 
   test('당겨서 새로고침을 놓으면 Light 햅틱(D25 4장)', async () => {

@@ -12,6 +12,8 @@ import { A11Y, SHOP, TABS } from '@/content/copy';
 import { ShopScreen } from '@/features/shop/ShopScreen';
 import { forgetMyFace, isFaceStale, refreshMyFace, useMyFaceStore, FACE_FRESH_MS, FACE_RETRY_MS } from '@/store/myFaceStore';
 import { layout } from '@/theme/layout';
+import { TAB_ICONS } from '@/theme/tabIcons';
+import { AVATAR_ART } from '@/theme/uiAssets';
 import { alpha, size } from '@/theme/tokens';
 
 import { testOutside } from './helpers/outsideDocs';
@@ -62,7 +64,7 @@ beforeEach(() => {
 });
 
 describe('조건 2 · 기본 프로필 그림 부품(ProfileAvatar)', () => {
-  test('지름 32 원: 사진이 없으면 기본_프로필_32 한 장(원 + 사람), 테두리 없음', async () => {
+  test('지름 32 원: 사진이 없으면 빛 실루엣 한 장(D42-P), 테두리 없음', async () => {
     const tree = await show(<ProfileAvatar width={size.avatar} testID="av" />);
     expect(has(tree, 'av-default')).toBe(true);
     expect(flat(host(tree, 'av').props.style)).toMatchObject({ width: 32, height: 32, borderRadius: 16 });
@@ -78,18 +80,22 @@ describe('조건 2 · 기본 프로필 그림 부품(ProfileAvatar)', () => {
     expect(has(tree, 'av-default')).toBe(true);
   });
 
-  test('자리별 사람 칸: 72 원 = 45 · 96×120 사각 = 60 · 348×220 = 최대 64 · 44 원은 그림 한 장(28 칸 자리)', async () => {
-    const person = (tree: ReactTestRenderer) => flat(host(tree, 'av-default').props.style);
-    const t72 = await show(<ProfileAvatar width={72} testID="av" />);
-    expect(person(t72)).toMatchObject({ width: 45, height: 45 });
-    expect(flat(host(t72, 'av').props.style).backgroundColor).toBeTruthy(); // accentSoft 면
+  test('기본 그림은 자리 크기 · 모양과 상관없이 칸을 꽉 채운다(cover) — 32 · 72 원 · 96×120 · 348×220 사각', async () => {
+    const art = (tree: ReactTestRenderer) => host(tree, 'av-default').props;
+    for (const el of [
+      <ProfileAvatar key="a" width={32} testID="av" />,
+      <ProfileAvatar key="b" width={72} testID="av" />,
+      <ProfileAvatar key="c" width={96} height={120} round={false} radiusSize={8} testID="av" />,
+      <ProfileAvatar key="d" width={348} height={220} round={false} radiusSize={12} testID="av" />,
+    ]) {
+      const t = await show(el);
+      expect(flat(art(t).style)).toMatchObject({ width: '100%', height: '100%' });
+      expect(art(t).resizeMode).toBe('cover');
+      expect(art(t).source).toBe(AVATAR_ART.silhouette);
+      expect(flat(host(t, 'av').props.style).backgroundColor).toBeTruthy(); // accentSoft 면
+    }
     const card = await show(<ProfileAvatar width={96} height={120} round={false} radiusSize={8} testID="av" />);
-    expect(person(card)).toMatchObject({ width: 60, height: 60 });
     expect(flat(host(card, 'av').props.style)).toMatchObject({ borderRadius: 8 });
-    const wide = await show(<ProfileAvatar width={348} height={220} round={false} radiusSize={12} testID="av" />);
-    expect(person(wide)).toMatchObject({ width: 64, height: 64 });
-    const row = await show(<ProfileAvatar width={44} testID="av" />);
-    expect(flat(host(row, 'av-default').props.style)).toMatchObject({ width: '100%' });
   });
 });
 
@@ -190,21 +196,18 @@ describe('조건 3 · 16 상점', () => {
 
 describe('조건 1 · 4 · 파일', () => {
   const APP = path.resolve(__dirname, '..', '..');
-  const DESIGN = path.resolve(APP, '..', '디자인', '아이콘');
 
-  testOutside(['디자인/아이콘'])('탭 아이콘 · 기본 프로필 그림이 디자인 원본과 바이트까지 같다(디자인 폴더가 옆에 있을 때)', () => {
-    if (!fs.existsSync(DESIGN)) return;
-    const pairs: [string, string][] = [
-      ['탭바/03_상점_비활성.png', 'tab/shop-off.png'],
-      ['탭바/03_상점_활성_채움.png', 'tab/shop-on-filled.png'],
-      ['기본_프로필_32.png', 'avatar/default-profile.png'],
-      ['기본_프로필_32@2x.png', 'avatar/default-profile@2x.png'],
-      ['기본_프로필_32@3x.png', 'avatar/default-profile@3x.png'],
-      ['기본_프로필_사람_512.png', 'avatar/default-person.png'],
-    ];
-    for (const [design, app] of pairs) {
-      expect(fs.readFileSync(path.join(APP, 'assets', 'icons', app)).equals(fs.readFileSync(path.join(DESIGN, design)))).toBe(true);
-    }
+  test('상점 탭 아이콘은 공용 아이콘(1안 shop)이고 옛 PNG(tab/shop-off · shop-on-filled)는 지웠다(D42-C)', () => {
+    expect(TAB_ICONS.shop).toBe('shop');
+    expect(fs.existsSync(path.join(APP, 'assets', 'icons', 'tab'))).toBe(false);
+  });
+
+  testOutside(['디자인/D42_새판'])('기본 그림 = D42-P 빛 실루엣(원본과 바이트까지 같다) · 옛 default-profile · default-person 은 지웠다', () => {
+    const avatar = path.join(APP, 'assets', 'icons', 'avatar');
+    expect(fs.readdirSync(avatar)).toEqual(['default-silhouette.webp']);
+    const src = path.resolve(APP, '..', '디자인', 'D42_새판', '인물', '1안_원본', 'webp', '기본이미지_실루엣.webp');
+    if (!fs.existsSync(src)) return;
+    expect(fs.readFileSync(path.join(avatar, 'default-silhouette.webp')).equals(fs.readFileSync(src))).toBe(true);
   });
 
   test('프로필 탭 아이콘은 지웠고, 08 은 (tabs) 밖 · 16 은 (tabs) 안에 있다', () => {

@@ -16,6 +16,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { Pressable } from '@/components/Pressable';
+import { Icon } from '@/components/Icon';
 import { OfflineArt, StateArt } from '@/components/StateArt';
 import { TabHeader } from '@/components/TabHeader';
 import { SkeletonCard, TOAST_MS, useCollapsingTitle, WaitState } from '@/motion';
@@ -209,7 +210,7 @@ export function ShopScreen({ deps = defaultDeps }: { deps?: ShopDeps }) {
       <SectionTitle text={SHOP16.freeTitle} testID="shop-free-title" />
       <Card style={styles.links} testID="shop-free">
         <Pressable accessibilityRole="button" accessibilityLabel={`${SHOP16.freeRows.report}, ${SHOP16.free}. ${SHOP.reportBody}`} onPress={() => nav.push({ name: 'report' })} effect="none" style={styles.reportRow} testID="shop-report">
-          <StateArt source={SHOP_ICONS.traitReport} size={layout.shopRowIcon} testID="shop-report-icon" />
+          <Icon name={SHOP_ICONS.traitReport} size={layout.shopRowIcon} testID="shop-report-icon" />
           <View style={styles.reportText}>
             <View style={styles.reportTitle}>
               <AppText variant="bodyBold" testID="shop-report-title">

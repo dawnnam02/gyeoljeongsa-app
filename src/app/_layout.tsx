@@ -8,7 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { bindAuthAppState } from '@/lib/supabase';
 import { safeLog } from '@/lib/log';
 import { AppSplash } from '@/features/splash/AppSplash';
-import { dur, PhotoHandoffLayer } from '@/motion';
+import { PhotoHandoffLayer, reduced, scene2, useReduceMotion } from '@/motion';
 import { useAppFonts } from '@/theme/fonts';
 import { colors } from '@/theme/tokens';
 
@@ -30,6 +30,7 @@ const navigationTheme: Theme = {
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useAppFonts();
   const ready = fontsLoaded || fontError != null;
+  const reduce = useReduceMotion();
 
   useEffect(() => {
     if (fontError) safeLog({ event: 'font.load.fail' }); // 오류가 나도 시스템 글꼴로 계속 뜬다
@@ -44,9 +45,11 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={navigationTheme}>
       <StatusBar style="dark" />
-      {/* 시트 끌어 닫기 · 넘김 놓기(손 제스처)를 UI 스레드에서 받으려고 맨 바깥을 제스처 뿌리로(D-118 ⑤). 깊이 이동 시간은 토큰 base 250(D25 3장) */}
+      {/* 시트 끌어 닫기 · 넘김 놓기(손 제스처)를 UI 스레드에서 받으려고 맨 바깥을 제스처 뿌리로(D-118 ⑤).
+          화면 전환(2안 '지면' D42-M 명세 5-5 · D-175): native-stack fade 320(동작 줄이기 150). animationDuration 은 iOS 에만 먹고 안드로이드는 시스템 시간.
+          iOS 가장자리 스와이프 뒤로: animationMatchesGesture 기본 false 라 손으로 끌 때는 기본 밀기로 돌아간다(실기기 시험 항목 — 안 되면 animation 줄을 지워 기본 slide 로) */}
       <GestureHandlerRootView style={styles.root}>
-        {ready ? <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg }, animationDuration: dur.base }} /> : null}
+        {ready ? <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg }, animation: 'fade', animationDuration: reduce ? reduced.fadeMs : scene2.nav.in, gestureEnabled: true }} /> : null}
         <PhotoHandoffLayer />
         <AppSplash ready={ready} onShown={hideSystemSplash} />
       </GestureHandlerRootView>

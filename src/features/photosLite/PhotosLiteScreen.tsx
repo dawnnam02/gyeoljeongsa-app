@@ -19,6 +19,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Pressable } from '@/components/Pressable';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { OfflineArt } from '@/components/StateArt';
+import { Icon } from '@/components/Icon';
 import { LITE_COMMON, PHOTOS_LITE, SURVEY_LITE, SURVEY_LITE_DRAFT } from '@/content/surveyLiteCopy';
 import type { RunOutcome } from '@/lib/aiApi';
 import { kstToday } from '@/lib/birthDate';
@@ -403,7 +404,9 @@ function SlotBox({ slot, view, locked, onPress }: { slot: PhotoSlot; view: SlotV
             <AppText variant="caption" tone="text">
               {name}
             </AppText>
-            <Image source={PHOTO_ICONS.cameraAdd} style={styles.camera} accessibilityIgnoresInvertColors />
+            <View style={styles.camera}>
+              <Icon name={PHOTO_ICONS.cameraAdd} size={space.s24} color={colors.sub} />
+            </View>
           </View>
         )}
         {view.working ? (

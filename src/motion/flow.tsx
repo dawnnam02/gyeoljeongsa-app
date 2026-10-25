@@ -2,7 +2,7 @@
 //  releaseSpring : 손을 놓은 속도에서 출발하는 스프링(감쇠 1 · 체감 400, spring-follow)
 //  RollingNumber : 숫자가 바뀌면 자리마다 위로 굴러 새 숫자에 멈춤(400 out · 오른쪽 자리부터 30 간격 · 새 자리는 8 아래에서). 등급 · 점수 · 남은 시간에는 쓰지 않는다(D-94)
 //  ProgressBar   : 진행 막대 안쪽을 scaleX 로 채움(250 std, 왼쪽 기준). 너비를 움직이지 않는다
-//  useWaitStage · WaitState : 대기 단계표(0.3초 안 아무것도 · 1초 안 정지된 뼈대 · 10초 안 뼈대 반짝임 · 10초 넘음 반짝임 멈춤 + 글 한 줄). 가운데 큰 스피너 단독 0
+//  useWaitStage · WaitState : 대기 단계표(0.3초 안 아무것도 · 1초 안 정지된 뼈대 · 10초 안 뼈대 + 머리 아래 2px 선 왕복(2안 load.line) · 10초 넘음 선 멈춤 + 글 한 줄). 가운데 큰 스피너 단독 0
 //  AnimatedRow   : 목록에서 한 줄이 빠지면 투명해지며 접히고 아래 줄이 미끄러져 메움(250 std · 사라짐 150)
 //  useCollapsingTitle : 큰 제목이 스크롤 0 → 48 동안 투명해지며 8 위로 · 0.9배, 머리 막대 가운데 작은 제목(16 Bold)이 나타나고 48 에서 아래 선
 //  동작 줄이기: 굴림 · 채움은 바로 + 투명도 150, 메움은 바로 빠짐, 제목은 투명도만, 뼈대 반짝임 멈춤(D25 10-6)
@@ -121,7 +121,7 @@ export function ProgressBar({ ratio, height = size.barProgress, style, fillTestI
 }
 
 // ── 대기 단계표 ──────────────────────────────────────────────────────────────
-export type WaitStage = 0 | 1 | 2 | 3; // 0 아무것도 · 1 정지된 뼈대 · 2 뼈대 반짝임 · 3 반짝임 멈춤 + 글
+export type WaitStage = 0 | 1 | 2 | 3; // 0 아무것도 · 1 정지된 뼈대 · 2 뼈대 + 로딩 선 · 3 선 멈춤 + 글
 
 export function useWaitStage(waiting: boolean): WaitStage {
   const [stage, setStage] = useState<WaitStage>(0);
@@ -145,7 +145,7 @@ export function WaitState({ waiting, skeleton, note, testID }: { waiting: boolea
   if (stage === 0) return <View style={styles.blank} testID={testID ? `${testID}-blank` : undefined} />;
   return (
     <View style={styles.wait} accessible accessibilityLiveRegion="polite" testID={testID} accessibilityState={{ busy: true }}>
-      {stage === 2 ? <SkeletonPulse>{skeleton}</SkeletonPulse> : <View style={styles.still}>{skeleton}</View>}
+      {stage === 2 ? <SkeletonPulse delay={0}>{skeleton}</SkeletonPulse> : <View style={styles.still}>{skeleton}</View>}
       {stage === 3 ? note : null}
     </View>
   );

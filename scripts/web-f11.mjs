@@ -48,13 +48,12 @@ const q = (id) => b.evaluate(`!!window.__q(${JSON.stringify(id)})`);
 const rect = (selector) =>
   b.evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null; const r = el.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: r.width, h: r.height }; })()`);
 const tabs = () =>
-  b.evaluate(`(() => [...document.querySelectorAll('[role=tab]')].filter((el) => el.querySelector('img, div[style*="background-image"]')).map((el) => {
+  b.evaluate(`(() => [...document.querySelectorAll('[role=tab]')].filter((el) => el.querySelector('svg')).map((el) => {
     const label = [...el.querySelectorAll('*')].find((n) => [...n.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim()));
-    const img = el.querySelector('img');
-    const bg = el.querySelector('div[style*="background-image"]');
-    const src = img ? img.src : (bg ? getComputedStyle(bg).backgroundImage : '');
+    const svg = el.querySelector('svg');
+    const faced = [...svg.querySelectorAll('path')].some((p) => (p.getAttribute('fill') || '').toUpperCase() === '#F6E9EC' || getComputedStyle(p).fill === 'rgb(246, 233, 236)');
     const ls = label ? getComputedStyle(label) : null;
-    return { text: label ? label.textContent.trim() : '', x: Math.round(el.getBoundingClientRect().left), selected: el.getAttribute('aria-selected'), family: ls ? ls.fontFamily : '', icon: /on-filled/.test(src) ? 'filled' : /-off/.test(src) ? 'line' : src.slice(-30) };
+    return { text: label ? label.textContent.trim() : '', x: Math.round(el.getBoundingClientRect().left), selected: el.getAttribute('aria-selected'), family: ls ? ls.fontFamily : '', icon: faced ? 'filled' : 'line' }; // D42-C: 켜진 탭 = 닫힌 면 accentSoft, 꺼진 탭 = 선만
   }).sort((a, c) => a.x - c.x))()`);
 // 눈에 보이는 것만 센다(웹에서는 가려진 앞 화면도 DOM 에 남아 있다)
 const visibleCount = (selector) => b.evaluate(`[...document.querySelectorAll(${JSON.stringify(selector)})].filter((el) => window.__visible(el)).length`);
@@ -127,7 +126,7 @@ try {
   const t1 = await tabs();
   check('A', '탭 4개: 추천 · 호감 · 상점 · 설정 순서, 프로필 칸 없음', t1.map((t) => t.text).join(',') === '추천,호감,상점,설정' && t1.map((t) => t.text).join(',') === Object.values(TABS).join(','), t1.map((t) => t.text).join(','));
   const on1 = t1.filter((t) => t.selected === 'true');
-  check('A', '현재 탭 1개(추천) = 채움 아이콘 + Bold, 나머지 3개 = 선형', on1.length === 1 && on1[0].text === '추천' && on1[0].icon === 'filled' && /Bold/.test(on1[0].family) && t1.filter((t) => t.icon === 'line').length === 3, JSON.stringify(t1.map((t) => `${t.text}:${t.icon}`)));
+  check('A', '현재 탭 1개(추천) = 면 accentSoft 아이콘 + Bold, 나머지 3개 = 선만(D42-C)', on1.length === 1 && on1[0].text === '추천' && on1[0].icon === 'filled' && /Bold/.test(on1[0].family) && t1.filter((t) => t.icon === 'line').length === 3, JSON.stringify(t1.map((t) => `${t.text}:${t.icon}`)));
 
   // B. 09 머리 오른쪽 위 원형 사진
   const btn = await rect('[aria-label="내 프로필"]');

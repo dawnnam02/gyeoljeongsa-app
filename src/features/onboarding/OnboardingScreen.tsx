@@ -3,7 +3,8 @@
 //  가운데: 소개 그림 · 제목 · 부제 · 장 표시 점 3개. 점을 누르거나 좌우로 밀면 장이 바뀐다. 자동으로 넘기지 않는다
 //  아래(고정): [시작하기] · [이미 계정이 있어요] — 모든 장에서 보인다. 건너뛰기 버튼은 없다. 둘 다 02 로 간다
 // 뒤로가기: 2 · 3장에서는 이전 장으로 가고, 1장에서 Android 뒤로가기는 앱을 백그라운드로 보낸다. 상단 '<' 는 없다.
-// 소개 그림 3장(디자인/온보딩/intro_1~3, 정사각 1:1)은 카드(둥글기 16 · 잘라 담기) 안에 담는다. 그림을 못 불러오면 회색 자리만 보이고 문구는 없다(K2).
+// 소개 그림 3장(D42-I 4안 확정 · D-176): 장면 그림 온보딩 1~3(react-native-svg, 4:3)을 카드(둥글기 20 · 잘라 담기) 안에 담는다. 다크 모드면 다크 판.
+//  옛 사진 intro_1~3(정사각 1:1)은 쓰지 않는다. 그림 위에 글자는 올리지 않는다(K2).
 // 움직임(D25 장면 2 · F17): 장이 바뀌면 새 장이 넘긴 쪽에서 40px 옆으로 들어온다(400 out) · 그림은 1.06배에서 700ms 로 천천히 안착(팀장 10-17) ·
 //  제목 · 부제는 8px 아래에서 250(60ms 간격) · 지금 점은 알약으로 늘어난다(250 std). 자동으로 넘기지 않는다. 동작 줄이기: 투명도만 150. 햅틱 없음
 //  바탕 bgGrad 높이 360(Screen backdrop="onboarding")
@@ -15,14 +16,16 @@ import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanima
 import { CTA_PADDING, CtaFade, Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
+import { Illustration } from '@/components/Illustration';
 import { Pressable } from '@/components/Pressable';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextButton } from '@/components/TextButton';
 import { A11Y, ONBOARDING } from '@/content/copy';
 import { OnboardingLaunchLine } from '@/features/prelaunch/OnboardingLaunchLine';
 import { dist, Fade, releaseSpring, Rise, scene, tween, useReduceMotion } from '@/motion';
+import { illustration, INTRO_SCENES } from '@/theme/illustrations';
 import { layout } from '@/theme/layout';
-import { BRAND, INTRO_ART } from '@/theme/uiAssets';
+import { BRAND } from '@/theme/uiAssets';
 import { colors, radius, size, space } from '@/theme/tokens';
 
 import { stepIndex, swipeDelta } from './pager';
@@ -108,9 +111,9 @@ export function OnboardingScreen() {
           testID="intro-slide">
           <Rise key={index} play={dir !== 0} axis="x" distance={dir * dist.xl} duration={scene.onboarding.slide} style={styles.slide}>
             <View style={styles.art} testID="intro-art">
-              {/* 소개 그림(정사각 1:1)은 칸 안에서 비율을 지킨 채 가운데에 놓는다. 그림 위에 글자는 올리지 않는다 */}
+              {/* 소개 그림(4:3)은 칸을 꽉 채운다. 그림 위에 글자는 올리지 않는다 */}
               <Settle play={dir !== 0}>
-                <Image source={INTRO_ART[index]} style={styles.artImage} resizeMode="cover" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" testID="intro-art-image" />
+                <Illustration scene={INTRO_SCENES[index]} style={styles.artImage} testID="intro-art-image" />
               </Settle>
             </View>
             <Rise play={dir !== 0} duration={scene.onboarding.text}>
@@ -172,9 +175,9 @@ const styles = StyleSheet.create({
   logoSlot: { height: layout.logoHeight + space.s12, alignItems: 'center', justifyContent: 'center' },
   logo: { width: layout.logoWidth, height: layout.logoHeight },
   slide: { gap: space.s12 },
-  // 소개 그림 칸: 정사각 1:1(폭 348까지). 작은 화면에서는 본문이 위아래로 스크롤되고 버튼 둘은 아래에 고정된다
-  art: { alignSelf: 'stretch', maxWidth: layout.introArt, aspectRatio: 1, borderRadius: radius.lg, backgroundColor: colors.card, overflow: 'hidden' },
-  artImage: { width: '100%', height: '100%' },
+  // 소개 그림 칸: 4:3(폭 348까지, D42-I). 작은 화면에서는 본문이 위아래로 스크롤되고 버튼 둘은 아래에 고정된다
+  art: { alignSelf: 'stretch', maxWidth: illustration.hero, aspectRatio: illustration.ratio, borderRadius: radius.xl, backgroundColor: colors.card, overflow: 'hidden' },
+  artImage: { width: '100%', height: '100%', maxWidth: undefined, borderRadius: 0 },
   dots: { flexDirection: 'row', marginLeft: -dotPad, marginTop: -dotPad },
   dotTouch: { width: size.touchMin, height: size.touchMin, alignItems: 'center', justifyContent: 'center' },
   dot: { width: layout.dot, height: layout.dot, borderRadius: radius.pill },

@@ -4,17 +4,17 @@
 //  · answered → 한 줄 '답해 주셨어요' + [고치기](서버가 고칠 수 있다고 했고 48시간이 안 지났을 때만)
 //  · 숫자 · 별 모양 · 시계 · 배지 없음. 누르면 부모에게 알리기만 하고, 서버 호출(dismiss)과 시트 열기는 부모가 한다
 //  · 글은 키 자리(content/v4Wave01Copy.ts, 1단계 임시)
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Pressable } from '@/components/Pressable';
 import { TextButton } from '@/components/TextButton';
+import { Icon } from '@/components/Icon';
 import { V4W01 } from '@/content/v4Wave01Copy';
 import type { MeetPrompt } from '@/lib/meetFeedbackApi';
 import { layout } from '@/theme/layout';
-import { UI_ICONS } from '@/theme/uiAssets';
 import { alpha, size, space } from '@/theme/tokens';
 
 import { canEditNow } from './meetFeedbackLogic';
@@ -60,7 +60,7 @@ export function MeetFeedbackCard({ prompt, now, onAnswer, onDismiss, onEdit, bus
           effect="none"
           testID={`${testID}-dismiss`}
           style={({ pressed }) => [styles.close, pressed ? styles.pressed : null]}>
-          <Image source={UI_ICONS.close} style={styles.icon} />
+          <Icon name="close" size={layout.headerIcon} />
         </Pressable>
       </View>
       <AppText variant="caption" testID={`${testID}-sub`}>
@@ -76,7 +76,6 @@ const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'flex-start', gap: space.s8 },
   flex: { flex: 1 },
   close: { width: size.touchMin, height: size.touchMin, alignItems: 'center', justifyContent: 'center', marginTop: -space.s12, marginRight: -space.s12 },
-  icon: { width: layout.headerIcon, height: layout.headerIcon },
   pressed: { opacity: alpha.pressed },
   answered: { flexDirection: 'row', alignItems: 'center', gap: space.s8, minHeight: size.touchMin },
 });

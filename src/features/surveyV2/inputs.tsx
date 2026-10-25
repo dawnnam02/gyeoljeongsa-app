@@ -4,15 +4,15 @@
 //  순위 전부 = 줄마다 위 · 아래 + [이대로 괜찮아요] · 상위 3개 = 누른 차례 번호 칩 · 짧은 글 = 한 줄 · 여러 줄 + '{지금}/{최대}' + 연락처 안내(막지 않음)
 //  지역 2단 = 시·도 칩 → 시·군·구 칩(세종은 자동)
 // 글은 questionCopy.ts · copy.ts 만 쓴다. 색 · 간격은 토큰만.
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
+import { Icon } from '@/components/Icon';
 import { ContactHint } from '@/components/ContactHint';
 import { Pressable } from '@/components/Pressable';
 import { TextField } from '@/components/TextField';
 import { haptic } from '@/motion';
 import { layout } from '@/theme/layout';
-import { UI_ICONS } from '@/theme/uiAssets';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 
 import { SV2, PROPOSED } from './copy';
@@ -246,7 +246,7 @@ export function QuestionInput({ q, draft, answers, onChange, invalid }: Props) {
 function Arrow({ label, up, disabled, onPress, testID }: { label: string; up: boolean; disabled: boolean; onPress: () => void; testID: string }) {
   return (
     <Pressable accessibilityLabel={label} disabled={disabled} effect="none" onPress={onPress} testID={testID} style={({ pressed }) => [styles.arrow, pressed ? styles.pressed : null, disabled ? styles.off : null]}>
-      <Image source={UI_ICONS.back} style={[styles.icon, up ? styles.up : styles.down]} />
+      <Icon name="back" size={layout.headerIcon} rotate={up ? 90 : -90} />
     </Pressable>
   );
 }
@@ -270,9 +270,6 @@ const styles = StyleSheet.create({
   rankNo: { width: space.s24 + space.s4, height: space.s24 + space.s4, borderRadius: radius.pill, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
   rowText: { flex: 1, minWidth: 0 },
   arrow: { width: size.touchMin, height: size.touchMin, alignItems: 'center', justifyContent: 'center' },
-  icon: { width: layout.headerIcon, height: layout.headerIcon },
-  up: { transform: [{ rotate: '90deg' }] },
-  down: { transform: [{ rotate: '-90deg' }] },
   pressed: { opacity: alpha.pressed },
   off: { opacity: alpha.disabled },
   counter: { alignSelf: 'flex-end' },

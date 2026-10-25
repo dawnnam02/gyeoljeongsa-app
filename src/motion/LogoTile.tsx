@@ -1,17 +1,19 @@
 // 로고 타일(D31 · D25 용어 줄): A안 앱 아이콘 그림(assets/icon/app-icon.png = 디자인/로고/최종/결정사_앱아이콘_1024.png)을 모서리 22.5% 로 둥글게 잘라 쓴다.
-//  옛 '씰(밀랍 도장)'이 있던 세 자리 — 스플래시(104) · 서로 수락 순간(48) · 구매 완료(48) — 에 같은 타일이 '찍힌다'.
-//  찍힘(시제품 keyframes sealStamp 700ms ease-out): 위 26px · 1.2배 · -6° 에서 투명 → 50% 에 제자리 0.92배 · 보임 → 72% 1.04배 → 1. 퍼짐 고리는 300ms 뒤 700ms(0.4 → 0, 0.95 → 1.7배)
-//  동작 줄이기: 투명도만 150ms, 퍼짐 고리 없음
-import { useEffect } from 'react';
+//  2안 '지면'(D42-M · 명세 6장 A안): 타일은 '찍히지' 않고 잉크가 번지듯 원이 가운데서 퍼지며 드러난다(InkTile). 튕김 · 기울기 · 퍼지는 고리는 지웠다.
+//   방법 A: 지름 = 타일 대각선인 둥근 틀(overflow hidden)을 scale 0.02 → 1 로 키우고, 안쪽 타일은 1/s 로 크기를 지킨다. 새 의존성 0 · transform 만.
+//   둥근 잘림 비용 때문에 번지는 동안에만 renderToHardwareTextureAndroid 를 켠다(명세 9장). 안드로이드에서 원 가장자리가 계단처럼 보이면 B(MaskedView, 설치 승인 필요)로.
+//  쓰는 곳: 스플래시 104 · 공개 72 · 탑승권 도장 52 · (v4) 서로 수락 · 구매 완료 48
+//  동작 줄이기: 투명도만 150ms
+import { useEffect, useState } from 'react';
 import { Image, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSequence } from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { useReduceMotion } from '@/lib/reduceMotion';
-import { LOGO_TILE_RADIUS, scene } from '@/theme/motion';
+import { LOGO_TILE_RADIUS, scene2 } from '@/theme/motion';
 import { colors } from '@/theme/tokens';
 import { BRAND } from '@/theme/uiAssets';
 
-import { fadeIn, tween } from './primitives';
+import { curve, fadeIn } from './primitives';
 
 type TileProps = { size: number; style?: StyleProp<ViewStyle>; testID?: string };
 
@@ -23,52 +25,50 @@ export function LogoTile({ size, style, testID }: TileProps) {
   );
 }
 
-// 찍히는 로고 타일. delay 뒤 시작, play=false 면 처음부터 놓여 있다
-export function StampTile({ size, delay = 0, play = true, ripple = false, style, testID }: TileProps & { delay?: number; play?: boolean; ripple?: boolean }) {
+// 잉크 번짐으로 드러나는 로고 타일. delay 뒤 duration(기본 탑승권 560) 동안, play=false 면 처음부터 놓여 있다
+export function InkTile({ size, delay = 0, duration = scene2.ticket.stamp, play = true, style, testID }: TileProps & { delay?: number; duration?: number; play?: boolean }) {
   const reduce = useReduceMotion();
-  const total = scene.splash.stamp; // hero 700
-  const a = Math.round(total * 0.5);
-  const b = Math.round(total * 0.22);
-  const c = total - a - b;
-  const move = play && !reduce; // 동작 줄이기면 처음부터 제자리(투명도만 바뀐다)
-  const o = useSharedValue(play ? 0 : 1);
-  const ty = useSharedValue(move ? -26 : 0);
-  const rot = useSharedValue(move ? -6 : 0);
-  const sc = useSharedValue(move ? 1.2 : 1);
-  const ro = useSharedValue(0); // 퍼짐 고리 투명도
-  const rs = useSharedValue(0.95);
+  const move = play && !reduce;
+  const from = scene2.ink.from;
+  const s = useSharedValue(move ? from : 1); // 둥근 틀의 크기
+  const o = useSharedValue(play && reduce ? 0 : 1); // 동작 줄이기 때 투명도
+  const [busy, setBusy] = useState(move);
   useEffect(() => {
     if (!play) return;
     if (reduce) {
-      ty.set(0);
-      rot.set(0);
-      sc.set(1);
+      s.set(1);
       fadeIn(o);
       return;
     }
-    o.set(withDelay(delay, tween(1, a)));
-    ty.set(withDelay(delay, tween(0, a)));
-    rot.set(withDelay(delay, tween(0, a)));
-    sc.set(withDelay(delay, withSequence(tween(0.92, a), tween(1.04, b), tween(1, c))));
-    if (ripple) {
-      ro.set(withDelay(delay + scene.splash.rippleDelay, withSequence(tween(0.4, 1), tween(0, total))));
-      rs.set(withDelay(delay + scene.splash.rippleDelay, tween(1.7, total)));
-    }
-  }, [play, reduce, delay, ripple, a, b, c, total, o, ty, rot, sc, ro, rs]);
-  const tile = useAnimatedStyle(() => ({ opacity: o.get(), transform: [{ translateY: ty.get() }, { rotate: `${rot.get()}deg` }, { scale: sc.get() }] }));
-  const ring = useAnimatedStyle(() => ({ opacity: ro.get(), transform: [{ scale: rs.get() }] }));
+    const done = (finished?: boolean) => {
+      'worklet';
+      if (finished) runOnJS(setBusy)(false);
+    };
+    s.set(withDelay(delay, withTiming(1, { duration, easing: curve('edOut') }, done)));
+  }, [play, reduce, delay, duration, s, o]);
+  const diameter = Math.ceil(size * Math.SQRT2); // 타일 대각선 — 다 퍼지면 모서리까지 덮는다
+  const offset = (size - diameter) / 2;
+  const circle = useAnimatedStyle(() => ({ opacity: o.get(), transform: [{ scale: s.get() }] }));
+  const inner = useAnimatedStyle(() => ({ transform: [{ scale: 1 / Math.max(s.get(), from) }] }));
   return (
     <View style={[{ width: size, height: size }, style]} testID={testID}>
-      {ripple && !reduce ? <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.ring, { borderRadius: size * LOGO_TILE_RADIUS }, ring]} /> : null}
-      <Animated.View style={tile}>
-        <LogoTile size={size} testID={testID ? `${testID}-tile` : undefined} />
+      <Animated.View
+        renderToHardwareTextureAndroid={busy && move}
+        style={[styles.circle, { width: diameter, height: diameter, borderRadius: diameter / 2, left: offset, top: offset }, circle]}>
+        {/* 타일의 가운데 = 둥근 틀의 가운데라 역배율도 가운데 기준 */}
+        <Animated.View style={[{ position: 'absolute', left: -offset, top: -offset, width: size, height: size }, inner]}>
+          <LogoTile size={size} testID={testID ? `${testID}-tile` : undefined} />
+        </Animated.View>
       </Animated.View>
     </View>
   );
 }
 
+// 옛 이름(찍히는 타일)을 쓰던 v4 화면(서로 수락 · 사전 오픈 · 구매 완료)도 같은 잉크 번짐으로 나타난다
+export const StampTile = InkTile;
+
 const styles = StyleSheet.create({
   clip: { overflow: 'hidden', backgroundColor: colors.accent },
   fill: { width: '100%', height: '100%' },
-  ring: { borderWidth: 2, borderColor: colors.accentAlt },
+  circle: { position: 'absolute', overflow: 'hidden' },
 });

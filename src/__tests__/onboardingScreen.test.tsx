@@ -6,7 +6,7 @@ import { OnboardingScreen } from '@/features/onboarding/OnboardingScreen';
 import { stepIndex, swipeDelta } from '@/features/onboarding/pager';
 import { A11Y, ONBOARDING } from '@/content/copy';
 import { layout } from '@/theme/layout';
-import { INTRO_ART } from '@/theme/uiAssets';
+import { illustration, INTRO_SCENES } from '@/theme/illustrations';
 
 import { allTexts, hasText, mount, must, press, textOf } from './renderHelpers';
 
@@ -58,7 +58,7 @@ describe('소개 3장', () => {
     const tree = await mount(<OnboardingScreen />);
     expect(hasText(tree, ONBOARDING.logo)).toBe(true); // 상단 바 글자(목업의 '온보딩' 자리)
     expect(textOf(tree, 'intro-title')).toBe('결혼을 정말 하고 싶은 사람들');
-    expect(textOf(tree, 'intro-body')).toBe('설문에 답하면 AI가 내용을 정리하고, 성향과 조건을 살펴 하루 세 분을 추천해요.');
+    expect(textOf(tree, 'intro-body')).toBe('설문 · 사진 · 인증으로 결혼 조건을 꼼꼼히 살펴요.');
     expect([1, 2, 3].map((n) => dotSelected(tree, n))).toEqual([true, false, false]);
     expect(allTexts(tree)).not.toContain('온보딩'); // 시안용 화면 이름은 쓰지 않는다
   });
@@ -103,19 +103,20 @@ describe('소개 3장', () => {
     }
   });
 
-  test('소개 그림 칸: 정사각(1:1) · 둥글기 16 · 잘라 담기, 장마다 그림이 바뀌고, 그림 위에 글자가 없다', async () => {
+  test('소개 그림 칸(D42-I 4안): 4:3 · 둥글기 20 · 잘라 담기, 장마다 장면 그림(온보딩 1~3 · 라이트 판)이 바뀌고, 그림 위에 글자가 없다', async () => {
     const tree = await mount(<OnboardingScreen />);
     const card = StyleSheet.flatten(must(tree, 'intro-art').props.style);
-    expect(card.aspectRatio).toBe(1);
-    expect(card.borderRadius).toBe(16);
+    expect(card.aspectRatio).toBe(illustration.ratio);
+    expect(card.borderRadius).toBe(20);
     expect(card.overflow).toBe('hidden');
-    const sources = [];
+    const scenes = [];
     for (const dot of [1, 2, 3]) {
       await press(tree, `intro-dot-${dot}`);
-      sources.push(must(tree, 'intro-art-image').props.source);
+      const svg = must(tree, 'intro-art-image').findAll((n) => typeof n.props.testID === 'string' && n.props.testID.startsWith('illustration-'));
+      scenes.push(svg[0].props.testID);
     }
-    expect(sources).toEqual([...INTRO_ART]);
-    expect(new Set(sources).size).toBe(3);
+    expect(scenes).toEqual(INTRO_SCENES.map((s) => `illustration-${s}-light`));
+    expect(new Set(scenes).size).toBe(3);
     // 그림 칸 안에는 글자(Text)가 없다. 제목 · 부제는 그림 아래에 있다
     expect(must(tree, 'intro-art').findAllByType(Text)).toHaveLength(0);
   });

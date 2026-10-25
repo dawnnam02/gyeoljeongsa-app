@@ -1,5 +1,5 @@
 // 아래에서 올라오는 시트(Figma 16-3 · 16-5 · 16-G5 · 16-M · 11b, UI v2 D36 #16 · F21): 위 모서리 24 · 손잡이 36 × 4(터치 44) · 최대 90% · 뒤 덮개 text 40%.
-// 움직임(D25 3장 · 10-4 '시트 끌어 닫기' · D-118): 열림 = 아래에서 400(out) 올라옴 + 덮개 투명도 · 닫힘 = 250(in) 내려감 뒤 사라짐.
+// 움직임(2안 '지면' D42-M 명세 4-1 · 4-2): 일상 = 열림 아래에서 360(edOut) + 덮개 240 · 닫힘 240(in). 핵심(core, 탑승권 결제) = 열림 520 · 덮개 300 · 닫힘 340(edInOut).
 //  손잡이 칸을 아래로 끌면 손을 따라 내려오고 덮개가 함께 옅어진다. 놓을 때 높이 40% 를 넘었거나 초당 800px 넘게 튕겼으면 닫히고, 아니면 제자리 —
 //  둘 다 놓은 속도에서 출발하는 스프링(감쇠 1 · 체감 400). 닫힘 햅틱 없음(보여 주기만, D25 10-5).
 //  동작 줄이기: 손을 따라가는 것은 그대로, 열림 · 닫힘 · 놓은 뒤는 투명도 150 만.
@@ -11,7 +11,7 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { A11Y } from '@/content/copy';
-import { curve, releaseSpring, scene, useReduceMotion } from '@/motion';
+import { curve, reduced, releaseSpring, scene, scene2, useReduceMotion } from '@/motion';
 import { withAlpha } from '@/theme/color';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 
@@ -21,6 +21,7 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   dismissable?: boolean;
+  core?: boolean; // 핵심 순간(탑승권 받기)의 결제 시트 — 열림 · 닫힘이 조금 더 길고 edInOut
   children: ReactNode;
   testID?: string;
 };
@@ -32,7 +33,7 @@ export function shouldDragClose(dy: number, height: number, velocityY: number): 
   return dy > height * scene.sheetDrag.closeRatio || velocityY > scene.sheetDrag.closeVelocity;
 }
 
-export function BottomSheet({ visible, onClose, dismissable = true, children, testID }: Props) {
+export function BottomSheet({ visible, onClose, dismissable = true, core = false, children, testID }: Props) {
   const reduce = useReduceMotion();
   const { height: windowHeight } = useWindowDimensions();
   const [mounted, setMounted] = useState(visible);
@@ -47,14 +48,17 @@ export function BottomSheet({ visible, onClose, dismissable = true, children, te
   };
 
   useEffect(() => {
-    const fade = { duration: scene.toast.out, easing: curve('std') };
+    const fade = { duration: reduced.fadeMs, easing: curve('std') };
+    const t = core
+      ? { scrim: scene2.ticket.scrimIn, in: scene2.ticket.sheetIn, out: scene2.ticket.sheetOut, open: curve('edInOut'), shut: curve('edInOut') }
+      : { scrim: scene2.sheet.scrimIn, in: scene2.sheet.in, out: scene2.sheet.out, open: curve('edOut'), shut: curve('in') };
     if (visible) {
       if (reduce) {
         y.set(0);
         shade.set(withTiming(1, fade));
       } else {
-        shade.set(withTiming(1, { duration: scene.buy.sheetIn, easing: curve('out') }));
-        y.set(withTiming(0, { duration: scene.buy.sheetIn, easing: curve('out') }));
+        shade.set(withTiming(1, { duration: t.scrim, easing: curve('edOut') }));
+        y.set(withTiming(0, { duration: t.in, easing: t.open }));
       }
       return;
     }
@@ -65,10 +69,10 @@ export function BottomSheet({ visible, onClose, dismissable = true, children, te
     };
     if (reduce) shade.set(withTiming(0, fade, hide));
     else {
-      shade.set(withTiming(0, { duration: scene.buy.sheetOut, easing: curve('in') }));
-      y.set(withTiming(far, { duration: scene.buy.sheetOut, easing: curve('in') }, hide));
+      shade.set(withTiming(0, { duration: t.out, easing: t.shut }));
+      y.set(withTiming(far, { duration: t.out, easing: t.shut }, hide));
     }
-  }, [visible, reduce, far, y, shade]);
+  }, [visible, reduce, core, far, y, shade]);
 
   // 손잡이 칸 끌기(아래로만)
   const drag = Gesture.Pan()

@@ -77,7 +77,7 @@ try {
   check('A', '01 온보딩이 열리고 "시작하기"가 보인다', ready01);
   const first = await b.evaluate(`({ lang: document.documentElement.lang, title: document.title, text: window.__text(), storage: localStorage.length + sessionStorage.length })`);
   check('A', '상단 바 글자 "결정사" · 제목 "결혼을 정말 하고 싶은 사람들" · 부제 · 두 버튼이 카피 그대로 보인다',
-    first.text.includes('결정사') && first.text.includes('결혼을 정말 하고 싶은 사람들') && first.text.includes('설문에 답하면 AI가 내용을 정리하고, 성향과 조건을 살펴 하루 세 분을 추천해요.') &&
+    first.text.includes('결정사') && first.text.includes('결혼을 정말 하고 싶은 사람들') && first.text.includes('설문 · 사진 · 인증으로 결혼 조건을 꼼꼼히 살펴요.') &&
       first.text.includes('시작하기') && first.text.includes('이미 계정이 있어요'),
     first.text.slice(0, 80));
   check('A', '시안용 글자 "온보딩"은 화면에 없다(K2 4장 01)', !/\b온보딩\b/.test(first.text), '');
@@ -90,11 +90,11 @@ try {
 
   await b.click('[data-testid="intro-dot-2"]');
   const slide2 = await b.evaluate(`window.__text()`);
-  check('A', '점 2를 누르면 2장으로 바뀐다(제목 "설문은 20~30분쯤 걸려요")', slide2.includes('설문은 20~30분쯤 걸려요') && slide2.includes('중간에 저장하고 나가도 돼요.'), '');
+  check('A', '점 2를 누르면 2장으로 바뀐다(제목 "일주일에 한 번, 한 분")', slide2.includes('일주일에 한 번, 한 분') && slide2.includes('탑승권 한 장으로 수요일 18:00에'), '');
   await note('F1_01_온보딩_2장_360x740.png');
   await b.click('[data-testid="intro-dot-3"]');
   const slide3 = await b.evaluate(`window.__text()`);
-  check('A', '점 3을 누르면 3장으로 바뀐다(제목 "하루 세 분, 서로 수락하면 연결돼요")', slide3.includes('하루 세 분, 서로 수락하면 연결돼요'), '');
+  check('A', '점 3을 누르면 3장으로 바뀐다(제목 "여행지에서 천천히")', slide3.includes('여행지에서 천천히'), '');
   check('A', '2 · 3장에서도 [시작하기] · [이미 계정이 있어요]가 그대로 있다', slide3.includes('시작하기') && slide3.includes('이미 계정이 있어요'), '');
   await note('F1_01_온보딩_3장_360x740.png');
 
@@ -112,14 +112,14 @@ try {
   };
   await drag(120);
   const afterSwipeRight = await text();
-  check('A', '오른쪽으로 밀면 이전 장(2장)으로 간다', afterSwipeRight.includes('설문은 20~30분쯤 걸려요'), '');
+  check('A', '오른쪽으로 밀면 이전 장(2장)으로 간다', afterSwipeRight.includes('일주일에 한 번, 한 분'), '');
   await drag(-120);
   const afterSwipeLeft = await text();
-  check('A', '왼쪽으로 밀면 다음 장(3장)으로 간다', afterSwipeLeft.includes('하루 세 분, 서로 수락하면 연결돼요'), '');
+  check('A', '왼쪽으로 밀면 다음 장(3장)으로 간다', afterSwipeLeft.includes('여행지에서 천천히'), '');
   await drag(-120);
-  check('A', '끝(3장)에서 더 밀어도 그 자리에 머문다', (await text()).includes('하루 세 분, 서로 수락하면 연결돼요'), '');
+  check('A', '끝(3장)에서 더 밀어도 그 자리에 머문다', (await text()).includes('여행지에서 천천히'), '');
   await sleep(2500);
-  check('A', '자동으로 넘기지 않는다(2.5초 뒤에도 3장)', (await text()).includes('하루 세 분, 서로 수락하면 연결돼요'), '');
+  check('A', '자동으로 넘기지 않는다(2.5초 뒤에도 3장)', (await text()).includes('여행지에서 천천히'), '');
 
   // 390 × 844(Figma 프레임 크기)
   await b.viewport(390, 844);
@@ -323,10 +323,10 @@ try {
   await note('F1_15_인증실패_360x740.png');
 
   // ═══ F. 스플래시 · 01 소개 그림(D15) ═══
-  // F-1. 01 소개 그림: 장마다 다른 그림 · 정사각 · 둥글기 16 · 그림 칸 안에 글자 없음
+  // F-1. 01 소개 그림(D42-I 4안 · SVG): 장마다 다른 장면 그림(온보딩 1 · 2 · 3) · 4:3 · 둥글기 20 · 그림 칸 안에 글자 없음
   await b.open('/onboarding', `document.body.innerText.includes('시작하기')`);
   await b.waitFor(`!!window.__q('intro-art-image')`);
-  const artInfo = async () => b.evaluate(`(() => { const card = window.__q('intro-art'); const img = window.__q('intro-art-image'); const r = card.getBoundingClientRect(); const bg = getComputedStyle(img).backgroundImage; const src = img.tagName === 'IMG' ? img.src : ((img.querySelector('img') || {}).src || bg); return { w: Math.round(r.width), h: Math.round(r.height), radius: parseFloat(getComputedStyle(card).borderTopLeftRadius), src: String(src).slice(-60), text: card.innerText.trim() }; })()`);
+  const artInfo = async () => b.evaluate(`(() => { const card = window.__q('intro-art'); const img = window.__q('intro-art-image'); const r = card.getBoundingClientRect(); const bg = getComputedStyle(img).backgroundImage; const src = (/id="(d42\\d\\d[ld])/.exec(card.innerHTML) || [])[1] || bg; return { w: Math.round(r.width), h: Math.round(r.height), radius: parseFloat(getComputedStyle(card).borderTopLeftRadius), src: String(src).slice(-60), text: card.innerText.trim() }; })()`);
   const art1 = await artInfo();
   await note('F11_01_소개그림_1장_360x740.png');
   await b.click('[data-testid="intro-dot-2"]');
@@ -335,8 +335,8 @@ try {
   await b.click('[data-testid="intro-dot-3"]');
   const art3 = await artInfo();
   await note('F11_01_소개그림_3장_360x740.png');
-  check('F', '01 소개 그림 칸: 정사각(가로 = 세로) · 둥글기 16 · 그림 위에 글자 없음', [art1, art2, art3].every((a) => Math.abs(a.w - a.h) <= 1 && a.radius === 16 && a.text === ''), `${art1.w}x${art1.h} · 둥글기 ${art1.radius}`);
-  check('F', '01 소개 그림: 장마다 다른 그림이 보인다(1 · 2 · 3장)', new Set([art1.src, art2.src, art3.src]).size === 3 && [art1, art2, art3].every((a) => /intro_[123]/.test(a.src)), [art1.src, art2.src, art3.src].map((x) => x.slice(-28)).join(' | '));
+  check('F', '01 소개 그림 칸: 4:3(세로 = 가로 × 3/4) · 둥글기 20 · 그림 위에 글자 없음', [art1, art2, art3].every((a) => Math.abs(a.w * 0.75 - a.h) <= 1 && a.radius === 20 && a.text === ''), `${art1.w}x${art1.h} · 둥글기 ${art1.radius}`);
+  check('F', '01 소개 그림: 장마다 다른 그림이 보인다(1 · 2 · 3장)', new Set([art1.src, art2.src, art3.src]).size === 3 && [art1.src, art2.src, art3.src].join() === 'd4201l,d4202l,d4203l', [art1.src, art2.src, art3.src].map((x) => x.slice(-28)).join(' | '));
   const m01art = await measure('01 소개 그림');
   check('F', '01 소개 그림 있는 모양: 360 폭 가로 넘침 0 · 글자 12 이상 · 터치 44 이상', m01art.scrollW <= m01art.innerW && m01art.over.length === 0 && m01art.minFont >= 12 && m01art.small.length === 0, `넘침 ${m01art.over.length} · 최소 글자 ${m01art.minFont}`);
 

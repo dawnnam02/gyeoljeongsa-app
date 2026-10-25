@@ -2,7 +2,9 @@
 //  위에서 아래: 머리(탑승권 + 프로필 원) → (크레딧이 있으면) 크레딧 줄 → 상태 카드(제목 · 한두 줄 · 버튼) → 탑승권 한 장 → 기다리는 동안 할 일 → (데모) 장면 줄
 //  · 판매 전 · 판매 중 · 좌석 모두 참 · 판매 끝 · 탑승 완료(기다림) · 공개(만난 분 있음 / 완벽한 사람을 찾지 못함) · 살 수 없음(정치 문항 · 계산 멈춤)
 //  · 재촉 0: 남은 좌석 수 · 매진 임박 · 서두르세요 0. 남은 때는 날 단위(오늘 · n일 뒤)만, 시 · 분 · 초 카운트다운 0
-//  · 탑승권 받기 순간(6-3 ①): 로고 타일이 한 번 찍힌다 — 동작 줄이기면 투명도만(motion/StampTile)
+//  · 탑승권 받기 순간(6-3 ① · 2안 '지면' 핵심 ①, 명세 4-2): 결제 시트 520 edInOut + 시트 제목 줄 가림 → 결제 확인 햅틱 Success → 시트 340 으로 닫힘 →
+//    도장 자리에 로고 타일 52 가 잉크 번짐(560) · 상태 카드 제목 줄 가림(200 뒤) · 부제(280 뒤) · 남은 날(360 뒤)이 위에서 걷힘. 동작 줄이기면 모두 투명도 150
+//  · 장면 그림(D42-I 4안 · D-176): 상태 카드 위에 상태마다 한 장(boardingArt.ts SCENE_OF). 불러오기 실패는 '오류' 그림. 살 수 없음(ineligible)은 그림 없음
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -11,14 +13,16 @@ import { AppText } from '@/components/AppText';
 import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { Illustration } from '@/components/Illustration';
 import { Screen } from '@/components/Screen';
 import { TabHeader } from '@/components/TabHeader';
 import { TextButton } from '@/components/TextButton';
 import { Toast } from '@/components/Toast';
-import { SkeletonCard, SkeletonPulse, StampTile, TOAST_MS } from '@/motion';
-import { size, space } from '@/theme/tokens';
+import { haptic, InkTile, logoTile, MaskLine, scene2, SkeletonCard, SkeletonPulse, TOAST_MS, Wipe } from '@/motion';
+import { colors, size, space } from '@/theme/tokens';
 
 import type { BoardingApi, BoardingLoad, BoardingState, BuyFailure } from './boardingApi';
+import { SCENE_OF } from './boardingArt';
 import { BOARDING } from './boardingCopy';
 import { boardingView, canUseCredit, daysUntil, nextSaleOpen, whenText, type BoardingView } from './boardingLogic';
 import { TicketCard } from './TicketCard';
@@ -56,6 +60,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
 
   const state = load?.ok ? load.state : null;
   const view = state ? boardingView(state) : null;
+  const scene = view ? SCENE_OF[view] : null;
 
   const buy = async (useCredit: boolean) => {
     if (busy) return;
@@ -68,6 +73,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
       if (r.reason === 'sold_out' || r.reason === 'closed' || r.reason === 'already') reload();
       return;
     }
+    haptic.success(); // 구매가 확인됨(D25 4장)
     setSheet(false);
     setStamp((n) => n + 1);
     setToast(BOARDING.bought);
@@ -85,6 +91,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
         </View>
       ) : !state || !view ? (
         <View style={[styles.pad, styles.gap]} testID="boarding-error">
+          <Illustration scene="error" testID="boarding-art" />
           <AppText variant="body" tone="sub" accessibilityRole="alert">
             {BOARDING.loadFailed}
           </AppText>
@@ -93,7 +100,8 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
       ) : (
         <ScrollView contentContainerStyle={[styles.pad, styles.gap]} testID="boarding-scroll">
           {state.credits > 0 ? <TextButton label={BOARDING.creditsLink(state.credits)} align="start" onPress={() => router.push(hrefOf('/credits'))} testID="boarding-credits" /> : null}
-          <StatusCard state={state} view={view} onBuy={() => setSheet(true)} onOpen={(path) => router.push(path)} />
+          {scene ? <Illustration scene={scene} testID="boarding-art" /> : null}
+          <StatusCard state={state} view={view} moment={stamp > 0} onBuy={() => setSheet(true)} onOpen={(path) => router.push(path)} />
           <View>
             <TicketCard
               roundNo={state.round?.no ?? null}
@@ -101,18 +109,16 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
               when={state.round ? whenText(state.round.matchAt) : null}
               status={state.ticket ? (state.ticket.paidWith === 'credit' ? BOARDING.stateCredit : BOARDING.stateBoarded) : BOARDING.stateNone}
             />
-            {stamp > 0 ? <StampTile key={stamp} size={space.s48} style={styles.stamp} testID="boarding-stamp" /> : null}
+            {stamp > 0 ? <InkTile key={stamp} size={logoTile.ticket} duration={scene2.ticket.stamp} style={styles.stamp} testID="boarding-stamp" /> : null}
           </View>
           {view === 'boarded' || view === 'matched' || view === 'no_match' || view === 'before_sale' ? <Tasks state={state} onOpen={(path) => router.push(path)} /> : null}
           {deps.demoBar ? deps.demoBar(reload) : null}
         </ScrollView>
       )}
-      <BottomSheet visible={sheet} onClose={() => (busy ? undefined : setSheet(false))} testID="boarding-sheet">
+      <BottomSheet visible={sheet} core onClose={() => (busy ? undefined : setSheet(false))} testID="boarding-sheet">
         {state?.round ? (
           <View style={styles.gap}>
-            <AppText variant="title" accessibilityRole="header">
-              {BOARDING.sheet.title}
-            </AppText>
+            <MaskLine variant="title" accessibilityRole="header" delay={scene2.ticket.sheetTitleDelay} duration={scene2.ticket.sheetTitle}>{BOARDING.sheet.title}</MaskLine>
             <AppText variant="body" testID="boarding-sheet-summary">
               {BOARDING.sheet.summary(BOARDING.round(state.round.no), whenText(state.round.matchAt))}
             </AppText>
@@ -147,19 +153,26 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   );
 }
 
-function StatusCard({ state, view, onBuy, onOpen }: { state: BoardingState; view: BoardingView; onBuy: () => void; onOpen: (href: Href) => void }) {
+// moment: 방금 탑승권을 받았다(핵심 ①) — 탑승 완료 카드의 제목 · 부제 · 남은 날이 차례로 드러난다. 그 밖에는 움직임 없음
+function StatusCard({ state, view, moment = false, onBuy, onOpen }: { state: BoardingState; view: BoardingView; moment?: boolean; onBuy: () => void; onOpen: (href: Href) => void }) {
   const next = state.round ? whenText(nextSaleOpen(state.round.matchAt)) : null;
+  const play = moment && view === 'boarded';
+  const T = scene2.ticket;
   const card = (title: string, body: string | null, action?: ReactNode, extra?: ReactNode) => (
     <Card style={styles.gapSmall} testID={`boarding-status-${view}`}>
-      <AppText variant="bodyBold" accessibilityRole="header" testID="boarding-status-title">
-        {title}
-      </AppText>
+      <MaskLine variant="bodyBold" accessibilityRole="header" play={play} delay={T.titleDelay} duration={T.title} testID="boarding-status-title">{title}</MaskLine>
       {body ? (
-        <AppText variant="body" testID="boarding-status-body">
-          {body}
-        </AppText>
+        <Wipe play={play} delay={T.subDelay} duration={T.sub} cover={colors.card}>
+          <AppText variant="body" testID="boarding-status-body">
+            {body}
+          </AppText>
+        </Wipe>
       ) : null}
-      {extra}
+      {extra ? (
+        <Wipe play={play} delay={T.msgDelay} duration={T.msg} cover={colors.card}>
+          {extra}
+        </Wipe>
+      ) : null}
       {action}
     </Card>
   );
