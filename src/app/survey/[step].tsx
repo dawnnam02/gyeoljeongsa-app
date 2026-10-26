@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { DemoSkipBar } from '@/features/ai/DemoSkipBar';
+import { SurveyChatScreen } from '@/features/surveyChat/SurveyChatScreen';
+import { surveyChatOn } from '@/features/surveyChat/switch';
 import { liteEntryOf } from '@/features/surveyLite/liteModel';
 import { SurveyLiteScreen } from '@/features/surveyLite/SurveyLiteScreen';
 import { SurveyV2Screen } from '@/features/surveyV2/SurveyV2Screen';
@@ -35,7 +37,7 @@ export default function SurveyScreen() {
   if (!isSurveyStep(step)) {
     return <Redirect href={{ pathname: '/survey/[step]', params: { step: '01' } }} />;
   }
-  const body = !ready ? <View style={{ flex: 1 }} testID="survey-flags-wait" /> : surveyV2On(flags) ? <SurveyV2Screen key={`v2-${notice ?? ''}`} entry={v2Entry} /> : <SurveyLiteScreen key={`${step}-${notice ?? ''}`} entry={liteEntryOf(step, notice)} />;
+  const body = !ready ? <View style={{ flex: 1 }} testID="survey-flags-wait" /> : surveyChatOn(flags) ? <SurveyChatScreen key={`chat-${notice ?? ''}`} /> : surveyV2On(flags) ? <SurveyV2Screen key={`v2-${notice ?? ''}`} entry={v2Entry} /> : <SurveyLiteScreen key={`${step}-${notice ?? ''}`} entry={liteEntryOf(step, notice)} />; // V6-F: 대화형 설문 스위치(survey_chat) 켜짐이면 대화형
   return (
     <View style={{ flex: 1 }}>
       {body}

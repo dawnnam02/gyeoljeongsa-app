@@ -104,6 +104,8 @@
 
     { "key": "v4_daily_recs", "group": "V5", "id": "W10-1", "live": false, "demo": false },
     { "key": "v4_likes", "group": "V5", "id": "W10-2", "live": false, "demo": false },
-    { "key": "v4_shop", "group": "V5", "id": "W10-3", "live": false, "demo": false }
+    { "key": "v4_shop", "group": "V5", "id": "W10-3", "live": false, "demo": false },
+
+    { "key": "survey_chat", "group": "V6", "id": "V6-F", "live": false }
   ]
 }

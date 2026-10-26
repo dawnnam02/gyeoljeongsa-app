@@ -34,12 +34,14 @@ describe('스위치 키 한 목록(K19 2-5) · 앱이 87키를 읽는다', () =>
   const NEW_KEYS = 75; // K19 2-5 표(10-18 D-122 · D-126판): R0 38 · R2 36 · 출시 뒤 1 — waitlist → review_required, rude_warn 넣고 꺼 둠, contact_reveal 새로
 
   const V5_KEYS = ['v4_daily_recs', 'v4_likes', 'v4_shop']; // V5(W10 · D-152): 숨긴 v4 화면 스위치 — K19 표 밖의 묶음 V5
-  const k19 = () => FEATURE_KEY_LIST.filter((k) => !['K12', 'K15', 'V5'].includes(k.group));
+  const V6_KEYS = ['survey_chat']; // V6-F(D-182): 대화형 설문 화면 스위치 — K19 표 밖의 묶음 V6(서버 0033 과 같은 이름)
+  const k19 = () => FEATURE_KEY_LIST.filter((k) => !['K12', 'K15', 'V5', 'V6'].includes(k.group));
 
-  test('90키 = K12 9 · K15 3 · 새 키 75 · V5 3, 이름은 겹치지 않고 snake_case', () => {
-    expect(FEATURE_KEYS).toHaveLength(12 + NEW_KEYS + V5_KEYS.length);
-    expect(new Set(FEATURE_KEYS).size).toBe(12 + NEW_KEYS + V5_KEYS.length);
+  test('91키 = K12 9 · K15 3 · 새 키 75 · V5 3 · V6 1, 이름은 겹치지 않고 snake_case', () => {
+    expect(FEATURE_KEYS).toHaveLength(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length);
+    expect(new Set(FEATURE_KEYS).size).toBe(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'V5').map((k) => k.key)).toEqual(V5_KEYS);
+    expect(FEATURE_KEY_LIST.filter((k) => k.group === 'V6').map((k) => k.key)).toEqual(V6_KEYS);
     for (const k of FEATURE_KEYS) expect(k).toMatch(/^[a-z][a-z0-9_]*$/);
     const old = ['featured_pick', 'meet_feedback', 'safe_share', 'risk_flags', 'contact_block', 'profile_prompts', 'doc_verify', 'selfie_verify', 'ai_feedback', 'contact_hint', 'quiet_hours', 'login_notice'];
     expect(FEATURE_KEYS.slice(0, 12)).toEqual(old);

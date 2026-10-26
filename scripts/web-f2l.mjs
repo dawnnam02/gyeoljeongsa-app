@@ -2,7 +2,7 @@
 // F2L 화면 점검(04 설문 · 05 사진 등록). 무료 · 네트워크 없음(로컬 서버 + 로컬 브라우저, 데모 모드 모의 서버).
 //  먼저 `npm run check:web:demo`(= 데모 모드 웹 번들 dist-demo/)를 만든 뒤 쓴다.
 //  F20(팀장 결정 D-123): 스위치 survey_v2 가 켜지면(데모 처음값) 04 는 정식 설문 v2 다. 이 점검은 새 흐름(v2 → 05)을 따라간다.
-//   A. 02 → 03 → 04: /survey/01 = 정식 설문 v2 시작 안내 + 데모 건너뛰기 줄
+//   A. 02 → 03 → 04: /survey/01(데모 = 대화형 V6-F) → 로그인 그대로 /survey/v2 = 정식 설문 v2 시작 안내(D-186)
 //   B. v2 필수 흐름을 끝까지(scripts/lib/surveyV2Driver) → 검토 → [제출하고 사진 올리기] → 05 · 모의 서버에 첫 빈 문항 없음
 //   C. 05: 사진 3칸(데모 예시 그림) → '확인 중' 행 3 · 스타일(여러 개) · 안내 박스 5줄 · 내부 평가 고지
 //   D. [올리고 설문 마치기](05 가 v2 진행을 본다) → ai-profile start → 06 → 07(모의 정상 4초)
@@ -74,6 +74,11 @@ async function toSurvey(email) {
   await b.evaluate(`(() => { const el = window.__q('screen-03'); el.scrollTop = 0; })()`);
   await b.click(sel('consent-submit'));
   await b.waitFor(`location.pathname.startsWith('/survey/')`);
+  // V6-F(D-186): 데모는 대화형 설문(survey_chat)이 켜져 /survey/01 이 대화형이다. 이 점검은 v2 화면을 보므로 로그인을 지닌 채 /survey/v2 로 옮긴다
+  if (await b.waitFor(`!!window.__q('chat-screen')`, 5000)) {
+    await b.evaluate(`(() => { history.pushState(null, '', '/survey/v2'); dispatchEvent(new PopStateEvent('popstate', { state: null })); return true; })()`);
+    await b.waitFor(`location.pathname === '/survey/v2'`, 5000);
+  }
   return b.waitFor(`!!window.__q('v2-intro') || !!window.__q('v2-block-A12') || !!window.__q('surveylite-question')`, 10000);
 }
 const v2peek = () => b.evaluate('JSON.stringify(window.__surveyV2Peek ? window.__surveyV2Peek() : null)').then(JSON.parse);
@@ -82,7 +87,7 @@ const v2peek = () => b.evaluate('JSON.stringify(window.__surveyV2Peek ? window._
 try {
   // ═══ A · B. 04 = 정식 설문 v2(스위치 survey_v2 데모 켜짐) ═══
   await toSurvey('f2l@email.com');
-  check('A', '/survey/01 = 정식 설문 v2 시작 안내 · 데모 건너뛰기 줄', (await b.evaluate(`location.pathname`)) === '/survey/01' && (await q('v2-intro')) && (await q('demo-skip')), await path0());
+  check('A', '/survey/v2 = 정식 설문 v2 시작 안내(04 /survey/01 은 대화형 V6-F — D-186)', (await b.evaluate(`location.pathname`)) === '/survey/v2' && (await q('v2-intro')), await path0());
   await measure('04 v2 시작 안내');
   await note('F2L_04_v2시작_360x740.png');
   const walk = await fillSurveyV2(b);

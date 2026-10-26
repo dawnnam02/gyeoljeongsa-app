@@ -17,6 +17,7 @@
 //  R. 16 상점 글(F11, copy.ts 의 SHOP · TABS)이 카피.md 16 · 디자인 가이드 11-5 와 같은가
 //  S. 16 상점 · 등급 화면 글(F13, shopCopy.ts · productCopy.ts)이 카피.md 16장과 한 글자씩 같은가 · 상품 46개/빨간 라벨 이유 27줄 · 금지어 · '매칭'은 1회 매칭만 · 등급/점수 허용 구역 · 작업 표시 새지 않음 · 카피 밖 글 목록
 //  V. 공개 전 도착 화면 글(D42-M · D-178, boardingCopy.ts ARRIVE)이 카피.md 12장과 같은가 · 느낌표 · 재촉 0
+//  W. 대화형 설문 글(V6-F, surveyChatCopy.ts CHAT_V6)이 카피.md 13장 표와 한 글자씩 같은가 · 느낌표 · 등급 · 점수 말 0
 //  J. 06 AI 정리 중 · 07 내 성향의 글이 카피.md 06 · 07 · 화면_요구사항(N13 · N14)에 그대로 있는가 · 근거 문항 이름 · 직접 입력 태그 후보(F3)
 // 사용: node scripts/check-copy.mjs   (npm run check:copy)
 // 종료 코드: 0 통과 · 1 실패
@@ -679,6 +680,19 @@ try {
     check('V', '도착 화면 제목 · 부제 · 버튼(ARRIVE 3줄)이 카피.md 12장과 같다', rows.length === 3 && diffs.length === 0, diffs.join('\n') || `표 줄 ${rows.length}`);
     const bad = Object.values(bc.ARRIVE ?? {}).filter((t) => /[!！]|서두르|마감|지금 바로|놓치지|남은 (시간|자리)/.test(t));
     check('V', '도착 화면 글에 느낌표 · 재촉 말 0', bad.length === 0, bad.join(' / '));
+  }
+
+  // ── W. 대화형 설문 글(V6-F, content/surveyChatCopy.ts CHAT_V6)이 카피.md 13장 표와 한 글자씩 같은가 · 느낌표 · 등급 · 점수 말 0 ──
+  {
+    const cc = await load(path.join(APP_DIR, 'src', 'content', 'surveyChatCopy.ts'));
+    const sec13 = copyText.slice(copyText.search(/^## 13\. V6 대화형 설문/m));
+    const rows = new Map(sec13.split(/\r?\n/).filter((l) => /^\| `CHAT\./.test(l)).map(cells).map((r) => [r[0].replace(/`/g, ''), r[1]]));
+    const app = Object.entries(cc.CHAT_V6 ?? {});
+    const diffs = app.filter(([k, t]) => rows.get(k) !== t).map(([k, t]) => `${k}: 앱 "${t}" / 카피 "${rows.get(k)}"`);
+    const only = [...rows.keys()].filter((k) => !(k in (cc.CHAT_V6 ?? {})));
+    check('W', `대화형 설문 글 ${app.length}개가 카피.md 13장 표와 한 글자씩 같다(표 ${rows.size}줄)`, app.length > 400 && diffs.length === 0 && only.length === 0, [...diffs, ...only.map((k) => `카피에만 있음: ${k}`)].join('\n'));
+    const bad = app.filter(([, t]) => /[!！]|등급|점수/.test(t)).map(([k]) => k);
+    check('W', '대화형 설문 글에 느낌표 · 등급 · 점수 말 0', bad.length === 0, bad.join(' '));
   }
 
   // R1 A⑦ T04 · K11: 오류 · 안내 문구 규칙(카피.md 1-1)과 v4 글 대조(카피.md 7장). 규칙 본문은 check-copy-rules.mjs
