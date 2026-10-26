@@ -15,8 +15,8 @@ const APP_DIR = path.resolve(__dirname, '..', '..');
 const headings = (blocks: readonly LegalBlock[], level: number) => blocks.filter((b): b is Extract<LegalBlock, { type: 'h' }> => b.type === 'h' && b.level === level).map((b) => b.text);
 
 describe('동의 칸 9개의 글 (동의문구.md 4장)', () => {
-  test('요약 줄 수: CK1 6 · CK2 3 · CK3 6 · CK4 6 · CK5 7 · CK6 8 · CK7 7 · CK8 7 · CK9 5 (법무 L10 10-15: CK3 · CK6 한 줄씩 더함, B10 · L13 10-16: CK5 한 줄 더함)', () => {
-    expect(CONSENT_ITEMS.map((i) => i.summary.length)).toEqual([6, 3, 6, 6, 7, 8, 7, 7, 5]);
+  test('요약 줄 수: CK1 6 · CK2 3 · CK3 6 · CK4 6 · CK5 7 · CK6 8 · CK7 7 · CK8 8 · CK9 5 (법무 L17 10-26: CK8 대화형 설문 한 줄 더함, 법무 L10 10-15: CK3 · CK6 한 줄씩 더함, B10 · L13 10-16: CK5 한 줄 더함)', () => {
+    expect(CONSENT_ITEMS.map((i) => i.summary.length)).toEqual([6, 3, 6, 6, 7, 8, 7, 8, 5]);
   });
 
   test('모든 칸에 전문이 있다: CK1 은 이용약관 전체, 나머지 8개는 동의문구의 전문', () => {
@@ -67,10 +67,10 @@ describe('이용약관 · 개인정보 처리방침 전체 (읽기 화면)', () 
     expect(articles[28]).toMatch(/^제29조 /);
   });
 
-  test('처리방침: 장 15개 · 소절 39개, 부록 · 목차는 게시하지 않는다', () => {
+  test('처리방침: 장 15개 · 소절 42개, 부록 · 목차는 게시하지 않는다', () => {
     const chapters = headings(LEGAL_PRIVACY, 2).filter((t) => /^[0-9]+. /.test(t));
     expect(chapters).toHaveLength(15);
-    expect(headings(LEGAL_PRIVACY, 3)).toHaveLength(39); // 법무 L10: 6-3 · 7-3 · 9-4 신설
+    expect(headings(LEGAL_PRIVACY, 3)).toHaveLength(42); // 법무 L10: 6-3 · 7-3 · 9-4 신설 · L17: 5-7 · 8-5 · 9-5 신설
     expect(headings(LEGAL_PRIVACY, 2).filter((t) => t.startsWith('부록'))).toHaveLength(0);
   });
 

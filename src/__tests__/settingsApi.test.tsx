@@ -93,12 +93,12 @@ describe('settingsApi × 모의 서버', () => {
 
   test('선택 동의: CK4 끄기 = revoke_consent(철회 시각), CK9 켜기 = 지금 판으로 동의 행 더하기', async () => {
     const { api, user } = demoClient('a@example.test');
-    expect(await api.loadConsents()).toEqual({ ok: true, data: { CK4: true, CK9: false, CK10: false } });
+    expect(await api.loadConsents()).toEqual({ ok: true, data: { CK4: true, CK9: false, CK10: false, CK11: false, CK12: false, CK13: false, CK14: false, CK15: false, CK16: false } });
     expect(await api.setOptional('CK4', false)).toEqual({ ok: true });
     expect(user.consents[0].revoked_at).not.toBeNull();
     expect(await api.setOptional('CK9', true)).toEqual({ ok: true });
     expect(user.inserted).toEqual([expect.objectContaining({ user_id: 'me', item_code: 'CK9', agreed: true, app_version: 'test' })]);
-    expect(await api.loadConsents()).toEqual({ ok: true, data: { CK4: false, CK9: true, CK10: false } });
+    expect(await api.loadConsents()).toEqual({ ok: true, data: { CK4: false, CK9: true, CK10: false, CK11: false, CK12: false, CK13: false, CK14: false, CK15: false, CK16: false } });
   });
 
   test('탈퇴: start → 틀림(wrong) → 맞음(확정), 3분 지나면 맞는 번호도 wrong, 5번 틀리면 limit(잠금)', async () => {

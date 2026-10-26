@@ -2,14 +2,16 @@
 //  · 차단 목록 list_blocked_users → [{ user_id, blocked_at, name(성+OO), age, region }] · 해제 unblock_user(p_target)
 //  · 신고 내역 list_my_reports → [{ id, reason_code, status, created_at }] — 화면에는 신고한 날과 상태만(P5-11). 사유 코드는 읽지 않는다
 //  · 알림 profiles 의 notify_recommendation · notify_like · notify_match 열만 update(열 단위 권한)
-//  · 선택 동의 CK4 · CK9 · CK10(내 등급 보이기, F13): 켜기 = consents 에 동의 행 넣기(지금 판), 끄기 = revoke_consent(p_item). 필수 칸 철회는 서버가 required_consent 로 막는다
+//  · 선택 동의 CK4 · CK9 · CK10(내 등급 보이기, F13) · CK11 ~ CK16(03 밖 선택 동의, L17A): 켜기 = consents 에 동의 행 넣기(지금 판), 끄기 = revoke_consent(p_item). 필수 칸 철회는 서버가 required_consent 로 막는다
+//    CK11 ~ CK16 판은 config/laterConsent.ts(판_관리 2-1)
 //  · 탈퇴 delete-account { action:'start' } → 인증번호 발송, { action:'confirm', token } → 탈퇴 확정(즉시 비노출 · 30일 뒤 삭제 · 세션 정리)
 //  · 응답에서 아는 키만 읽는다. 로그는 이벤트 이름과 코드만(이름 · 이메일 · 인증번호 금지)
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { CONSENT_TEXT_VERSIONS } from '@/config/consent';
 import { CK10_TEXT_VERSION } from '@/config/gradeConsent';
-import type { ConsentCode } from '@/content/types';
+import { LATER_CONSENT_VERSIONS } from '@/config/laterConsent';
+import { LATER_CONSENT_CODES, type ConsentCode, type LaterConsentCode } from '@/content/types';
 
 import { loadActiveConsents, recordConsents } from './consentApi';
 import { safeLog } from './log';
@@ -24,7 +26,8 @@ export type ReportStatus = 'received' | 'reviewing' | 'done';
 export type MyReport = { id: string; status: ReportStatus; createdAt: string };
 export type NotifyKey = 'recommendation' | 'like' | 'match';
 export type NotifyPrefs = Readonly<Record<NotifyKey, boolean>>;
-export type OptionalCode = 'CK4' | 'CK9' | 'CK10';
+export type OptionalCode = 'CK4' | 'CK9' | 'CK10' | LaterConsentCode;
+export const OPTIONAL_CODES: readonly OptionalCode[] = ['CK4', 'CK9', 'CK10', ...LATER_CONSENT_CODES];
 export type OptionalConsents = Readonly<Record<OptionalCode, boolean>>;
 // 탈퇴 인증번호: limit = 24시간 5번 · 60초 · 10분 잠금(관문 코드 rate_limited · locked · daily_limit · too_soon) · send = 메일 발송 실패 · wrong = 번호 틀림
 export type WithdrawStartFailure = 'network' | 'server' | 'limit' | 'send' | 'session';
@@ -118,12 +121,12 @@ export function createSettingsApi(client: SupabaseClient, appVersion = 'dev') {
       return error ? { ok: false, reason: dbFail(error, 'settings.notify.save.fail') } : { ok: true };
     },
 
-    // 유효한 동의(철회 안 됨) 중 선택 2칸의 켜짐 여부
+    // 유효한 동의(철회 안 됨) 중 선택 칸(CK4 · CK9 · CK10 · CK11 ~ CK16)의 켜짐 여부
     async loadConsents(): Promise<Loaded<OptionalConsents>> {
       const result = await loadActiveConsents(client);
       if (!result.ok) return result;
       const has = (code: OptionalCode) => result.rows.some((r) => r.item_code === code);
-      return { ok: true, data: { CK4: has('CK4'), CK9: has('CK9'), CK10: has('CK10') } };
+      return { ok: true, data: Object.fromEntries(OPTIONAL_CODES.map((c) => [c, has(c)])) as Record<OptionalCode, boolean> };
     },
 
     // 선택 동의 켜기(동의 기록 더하기) · 끄기(철회 기록, CK4 면 서버가 종교 3문항을 '답하지 않음'으로)
@@ -135,10 +138,11 @@ export function createSettingsApi(client: SupabaseClient, appVersion = 'dev') {
         safeLog({ event: 'settings.consent.revoke.fail', code: f.code ?? (f.network ? 'network' : 'unknown') });
         return { ok: false, reason: f.network ? 'network' : f.code === '42501' ? 'session' : 'server' };
       }
+      const version = code === 'CK10' ? CK10_TEXT_VERSION : code === 'CK4' || code === 'CK9' ? CONSENT_TEXT_VERSIONS[code] : LATER_CONSENT_VERSIONS[code];
       const { data } = await client.auth.getSession();
       const userId = data.session?.user?.id;
       if (!userId) return { ok: false, reason: 'session' };
-      const saved = await recordConsents(client, [{ user_id: userId, item_code: code as ConsentCode /* CK10 은 생성 코드 목록 밖(config/gradeConsent.ts) */, agreed: true, text_version: code === 'CK10' ? CK10_TEXT_VERSION : CONSENT_TEXT_VERSIONS[code], app_version: appVersion }]);
+      const saved = await recordConsents(client, [{ user_id: userId, item_code: code as ConsentCode /* CK10 · CK11 ~ CK16 은 생성 코드 목록 밖(config/gradeConsent.ts · laterConsent.ts) */, agreed: true, text_version: version, app_version: appVersion }]);
       if (!saved.ok) safeLog({ event: 'settings.consent.agree.fail', code: saved.reason });
       return saved;
     },

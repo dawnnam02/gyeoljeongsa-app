@@ -8,6 +8,7 @@
 //  로그에는 이벤트 이름과 코드만(글 · 숫자 · 사용자 ID 0).
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { CK16_TEXT_VERSION } from '@/config/laterConsent';
 import type { ConsentCode } from '@/content/types';
 import { recordConsents } from '@/lib/consentApi';
 import { safeLog } from '@/lib/log';
@@ -24,7 +25,7 @@ export const CHAT_SERVER = {
   turn: 'survey-interview',
   analyze: 'survey-analyze',
   consentCode: 'CK16',
-  consentVersion: 'consent-2026.10.26-v1', // 법무 메모 판(팀장 D-186)
+  consentVersion: CK16_TEXT_VERSION, // 법무 메모 판(팀장 D-186 · 판_관리 2-1), config/laterConsent.ts 한 곳
 } as const;
 
 export type ChatFailure = 'network' | 'server' | 'off' | 'daily_limit' | 'turn_limit';

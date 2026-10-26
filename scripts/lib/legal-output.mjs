@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 
 import { editionReleaseProblems, filterAppText, readEditions, readFillInTable, readHistory, termsVersionLabel } from './legal-markers.mjs';
-import { APP_DIR, SOURCES, parseConsentDoc, parseLegalDoc, readDoc } from './legal-source.mjs';
+import { APP_DIR, SOURCES, parseConsentDoc, parseLaterConsents, parseLegalDoc, readDoc } from './legal-source.mjs';
 
 const js = (value) => JSON.stringify(value);
 
@@ -42,6 +42,7 @@ function parseAll() {
   return {
     editions,
     consent: parseConsentDoc(consentRaw),
+    later: parseLaterConsents(consentRaw),
     consentStats: filterAppText(consentRaw).stats,
     terms: parseLegalDoc(readDoc(SOURCES.terms), { version: termsVersionLabel(editions), history }),
     privacy: parseLegalDoc(readDoc(SOURCES.privacy), { history }),
@@ -49,19 +50,23 @@ function parseAll() {
 }
 
 export function buildGenerated() {
-  const { consent, consentStats, terms, privacy } = parseAll();
+  const { consent, later, consentStats, terms, privacy } = parseAll();
   const dir = path.join(APP_DIR, 'src', 'content');
 
   const consentTs =
-    `${HEADER('법무/동의문구.md (1장 · 3장 · 4장 · 5-1 · 5-2)', consentStats)}` +
-    `import type { ConsentItemContent } from './types';\n\n` +
+    `${HEADER('법무/동의문구.md (1장 · 1-1 · 3장 · 4장 · 4-11 ~ 4-16 · 5-1 · 5-2)', consentStats)}` +
+    `import type { ConsentItemContent, LaterConsentCode, LaterConsentContent } from './types';\n\n` +
     `// 맨 위 칸 "필수 항목 모두 동의"(필수 7개만 묶는다)\nexport const CONSENT_TOP = ${fmt(consent.top)} as const;\n\n` +
     `// 제목 아래 부제\nexport const CONSENT_SUBTITLE = ${js(consent.subtitle)};\n\n` +
     `// 체크 칸 9개(CK1 ~ CK9, 필수 7 · 선택 2). 위에서 아래 순서\nexport const CONSENT_ITEMS: readonly ConsentItemContent[] = ${fmt(consent.items)};\n\n` +
     `// 안내 상자(CK3 와 CK4 사이). 체크 칸이 아니라 알림이다\nexport const CONSENT_NOTICE = ${fmt(consent.notice)} as const;\n\n` +
     `// 칸 아래 링크 줄과 작은 글씨\nexport const CONSENT_LINKS = ${fmt(consent.links)} as const;\n\n` +
     `// 필수 칸이 비었을 때 문구\nexport const CONSENT_ERROR = ${js(consent.error)};\n\n` +
-    `// 02 화면 아래 가입 안내(5-2)와 만 19세 미만 안내\nexport const SIGNUP_NOTICE = ${fmt(consent.signup)} as const;\n`;
+    `// 02 화면 아래 가입 안내(5-2)와 만 19세 미만 안내\nexport const SIGNUP_NOTICE = ${fmt(consent.signup)} as const;\n\n` +
+    `// 03 밖에서 받는 선택 동의 CK11 ~ CK16(1-1 표 '이름(안)'). 12 동의 관리 줄 이름\nexport const CONSENT_LATER_NAMES: readonly { readonly code: LaterConsentCode; readonly name: string }[] = ${fmt(later.names)};\n\n` +
+    `// 03 밖 선택 동의 CK11 ~ CK16 의 글(4-11 ~ 4-16): 기능을 처음 쓸 때 시트 · 12 동의 관리 '보기 ›'. 요약 끝 '전문 보기 ›' 줄은 more
+export const CONSENT_LATER_ITEMS: readonly LaterConsentContent[] = ${fmt(later.items)};
+`;
 
   const legalTs = (name, doc, source) =>
     `${HEADER(source, doc.stats)}import type { LegalBlock } from './types';\n\n` +

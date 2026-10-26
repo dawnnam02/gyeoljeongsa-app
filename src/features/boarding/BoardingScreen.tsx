@@ -4,6 +4,7 @@
 //  · 재촉 0: 남은 좌석 수 · 매진 임박 · 서두르세요 0. 남은 때는 날 단위(오늘 · n일 뒤)만, 시 · 분 · 초 카운트다운 0
 //  · 탑승권 받기 순간(6-3 ① · 2안 '지면' 핵심 ①, 명세 4-2): 결제 시트 520 edInOut + 시트 제목 줄 가림 → 결제 확인 햅틱 Success → 시트 340 으로 닫힘 →
 //    도장 자리에 로고 타일 52 가 잉크 번짐(560) · 상태 카드 제목 줄 가림(200 뒤) · 부제(280 뒤) · 남은 날(360 뒤)이 위에서 걷힘. 동작 줄이기면 모두 투명도 150
+//  · 결제 시트 아래 '결혼중개 계약 설명 보기'(L17A · D-190 ⑤, 약관 제14조의2 ③ BR09): 약관 제14조의2 글 그대로 연다(사기 전 설명 · 다시 보기 자리)
 //  · 장면 그림(D42-I 4안 · D-176): 상태 카드 위에 상태마다 한 장(boardingArt.ts SCENE_OF). 불러오기 실패는 '오류' 그림. 살 수 없음(ineligible)은 그림 없음
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
@@ -18,6 +19,7 @@ import { Screen } from '@/components/Screen';
 import { TabHeader } from '@/components/TabHeader';
 import { TextButton } from '@/components/TextButton';
 import { Toast } from '@/components/Toast';
+import { TermsArticleSheet } from '@/features/consent/TermsArticleSheet';
 import { haptic, InkTile, logoTile, MaskLine, scene2, SkeletonCard, SkeletonPulse, TOAST_MS, Wipe } from '@/motion';
 import { colors, size, space } from '@/theme/tokens';
 
@@ -39,6 +41,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   const router = useRouter();
   const [load, setLoad] = useState<BoardingLoad | null>(null);
   const [sheet, setSheet] = useState(false);
+  const [contract, setContract] = useState(false); // 결혼중개 계약 설명(약관 제14조의2, L17A)
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<BuyFailure | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -155,6 +158,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
                 {r}
               </AppText>
             ))}
+            <TextButton label={BOARDING.sheet.contract} onPress={() => setContract(true)} testID="boarding-contract" />
             {error ? (
               <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" testID="boarding-sheet-error">
                 {BOARDING.buyErrors[error]}
@@ -168,6 +172,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
           </View>
         ) : null}
       </BottomSheet>
+      <TermsArticleSheet visible={contract} prefix="제14조의2" onClose={() => setContract(false)} testID="boarding-contract-sheet" />
       <Toast text={toast} testID="boarding-toast" />
     </Screen>
   );

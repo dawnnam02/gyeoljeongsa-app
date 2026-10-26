@@ -36,7 +36,7 @@ const load = (file) => import(pathToFileURL(file).href);
 const { REPORT_SHEET, SAFETY_GUIDE, CHILD_SAFETY, SUPPORT, SIGN_IN } = await load(path.join(APP_DIR, 'src', 'content', 'copy.ts'));
 const S = await load(path.join(APP_DIR, 'src', 'content', 'settingsCopy.ts'));
 
-const b = await openBrowser({ distDir, shotDir, width: 360, height: 740 });
+const b = await openBrowser({ distDir, shotDir, width: Number(process.env.SHOT_WIDTH ?? 360), height: 740 });
 let exitCode = 0;
 const note = async (name) => console.log(`       스크린샷 ${await b.shot(name)}`);
 const text = () => b.evaluate('window.__text()');
@@ -97,7 +97,7 @@ try {
   // ═══ A. 목록 ═══
   const EMAIL = 'settingsf7@email.com'; // 장면 settings: 차단 2명 · 신고 3건이 미리 있다
   check('A', '09 → 탭 "설정" → 12(/settings) 목록', await toSettings(EMAIL), `경로 ${await path0()}`);
-  const rowsShown = await b.evaluate(`[...document.querySelectorAll('[data-testid^="settings-row-"]')].map((el) => el.innerText.replace(/\\s+/g, ' ').trim())`);
+  const rowsShown = await b.evaluate(`[...document.querySelectorAll('[data-testid^="settings-row-"]:not([data-testid$="-chevron"])')].map((el) => el.innerText.replace(/\\s+/g, ' ').trim())`);
   check('A', '줄 12개가 Figma 12 차례 그대로(알림 … 안전 안내 · 정보 › 오픈소스 라이선스 · 이미지 출처 고지, 임시 설문 동안 희망 조건 수정 숨김 D-48), 인증 서류 제출 오른쪽 "준비 중"',
     rowsShown.length === 12 && rowsShown[0].startsWith(S.SETTINGS.rows.notifications) && rowsShown[2].includes(S.SETTINGS.verificationSoon) && rowsShown[9].startsWith(S.SETTINGS.rows.safety) && rowsShown[11].startsWith(S.SETTINGS.rows.imageCredit) && !rowsShown.some((r) => r.startsWith(S.SETTINGS.rows.preferences)), rowsShown.map((r) => r.split(' ')[0]).join(' / '));
   check('A', '"정보" 묶음 글 · [로그아웃] · [탈퇴하기]가 있고 "모든 데이터 삭제"라는 말은 없다', (await inner('settings-info-label')) === S.SETTINGS.rows.infoGroup && (await q('settings-logout')) && (await q('settings-withdraw')) && !(await has('모든 데이터 삭제')), '');
@@ -153,6 +153,24 @@ try {
   check('D', '보기 › → 03 과 같은 요약 시트', await b.waitFor(`!!window.__q('consent-summary-CK1')`), '');
   await b.click('[aria-label="닫기"]');
   await b.waitFor(`!window.__q('consent-summary-CK1')`);
+  // L17A: 03 밖 선택 동의 CK11 ~ CK16 줄 · CK16 켜기 → 끄기(확인창 → 철회) · CK15 보기 › 요약
+  const laterCodes = ['CK11', 'CK12', 'CK13', 'CK14', 'CK15', 'CK16'];
+  check('D', 'L17A: 선택 동의 CK11 ~ CK16 6줄 · 보기 › 6줄 · 꺼진 CK11 ~ CK15 잠김', (await b.evaluate(`${JSON.stringify(laterCodes)}.every((c) => !!window.__q('settings-consent-' + c) && !!window.__q('settings-consent-view-' + c))`)) && (await b.evaluate(`['CK11','CK12','CK13','CK14','CK15'].every((c) => window.__q('settings-consent-' + c).getAttribute('aria-disabled') === 'true')`)), '');
+  await b.click(sel('settings-consent-CK16'));
+  await b.waitFor(`window.__q('settings-consent-CK16').getAttribute('aria-checked') === 'true'`);
+  const c3 = await peekConsents(EMAIL);
+  check('D', 'L17A: CK16 켜기 → 동의 기록(판 consent-2026.10.26-v1)', c3.some((c) => c.item_code === 'CK16' && c.agreed && c.revoked_at === null && c.text_version === 'consent-2026.10.26-v1'), JSON.stringify(c3.filter((c) => c.item_code === 'CK16')));
+  await b.click(sel('settings-consent-CK16'));
+  check('D', 'L17A: CK16 끄기 → 확인창 "동의를 거둘까요?"', (await b.waitFor(`!!window.__q('settings-later-off-confirm')`)) && (await inner('settings-later-off-title')) === S.CONSENT_LATER.offTitle, '');
+  await b.click(sel('settings-later-off-confirm'));
+  await b.waitFor(`window.__q('settings-consent-CK16').getAttribute('aria-checked') === 'false'`);
+  const c4 = await peekConsents(EMAIL);
+  check('D', 'L17A: [거두기] → CK16 동의에 철회 시각(revoke_consent)', c4.filter((c) => c.item_code === 'CK16' && c.agreed).every((c) => c.revoked_at !== null), '');
+  await measure('12 동의 관리 CK11 ~ CK16');
+  await b.click(sel('settings-consent-view-CK15'));
+  check('D', 'L17A: CK15 보기 › → 동의문구 4-15 요약 시트', await b.waitFor(`!!window.__q('consent-summary-CK15')`), '');
+  await b.click('[aria-label="닫기"]');
+  await b.waitFor(`!window.__q('consent-summary-CK15')`);
   await back('consents');
 
   // ═══ E. 차단 목록 ═══

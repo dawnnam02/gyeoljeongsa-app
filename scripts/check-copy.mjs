@@ -17,7 +17,7 @@
 //  R. 16 상점 글(F11, copy.ts 의 SHOP · TABS)이 카피.md 16 · 디자인 가이드 11-5 와 같은가
 //  S. 16 상점 · 등급 화면 글(F13, shopCopy.ts · productCopy.ts)이 카피.md 16장과 한 글자씩 같은가 · 상품 46개/빨간 라벨 이유 27줄 · 금지어 · '매칭'은 1회 매칭만 · 등급/점수 허용 구역 · 작업 표시 새지 않음 · 카피 밖 글 목록
 //  V. 공개 전 도착 화면 글(D42-M · D-178, boardingCopy.ts ARRIVE)이 카피.md 12장과 같은가 · 느낌표 · 재촉 0
-//  W. 대화형 설문 글(V6-F, surveyChatCopy.ts CHAT_V6)이 카피.md 13장 표와 한 글자씩 같은가 · 느낌표 · 등급 · 점수 말 0
+//  W. 대화형 설문 글(V6-F, surveyChatCopy.ts CHAT_V6)이 카피.md 13장 표와 한 글자씩 같은가 · 느낌표 · 등급 · 점수 말 0 · CK16 카드 글 = 동의문구 4-16(L17A)
 //  J. 06 AI 정리 중 · 07 내 성향의 글이 카피.md 06 · 07 · 화면_요구사항(N13 · N14)에 그대로 있는가 · 근거 문항 이름 · 직접 입력 태그 후보(F3)
 // 사용: node scripts/check-copy.mjs   (npm run check:copy)
 // 종료 코드: 0 통과 · 1 실패
@@ -26,7 +26,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { VERSIONS_BEGIN, VERSIONS_END, buildGenerated, consentFingerprints, legalDocFingerprints, readAllEditions, versionsBlock } from './lib/legal-output.mjs';
-import { APP_DIR, SOURCES, cells, inline, parseConsentDoc, parseCopyConsent, readDoc } from './lib/legal-source.mjs';
+import { APP_DIR, SOURCES, cells, inline, parseConsentDoc, parseCopyConsent, parseLaterConsents, readDoc } from './lib/legal-source.mjs';
 import { runCopyRules } from './check-copy-rules.mjs'; // R1 A⑦: T04(B17 5장 R1~R18) · K11 글 규칙 — 그룹 'T04' · 'K11'
 
 // .ts 를 바로 불러올 때 Node 가 내는 안내(모듈 형식 미지정)는 글 점검과 상관없어서 끈다.
@@ -693,6 +693,20 @@ try {
     check('W', `대화형 설문 글 ${app.length}개가 카피.md 13장 표와 한 글자씩 같다(표 ${rows.size}줄)`, app.length > 400 && diffs.length === 0 && only.length === 0, [...diffs, ...only.map((k) => `카피에만 있음: ${k}`)].join('\n'));
     const bad = app.filter(([, t]) => /[!！]|등급|점수/.test(t)).map(([k]) => k);
     check('W', '대화형 설문 글에 느낌표 · 등급 · 점수 말 0', bad.length === 0, bad.join(' '));
+    // L17A: CK16 카드 글이 동의문구 4-16 화면 문구와 같다(요약 줄은 '모으는 것: ' 같은 머리를 뗀 글). title 은 기획 V6-K 글(법무 '글 쓰는 속도 분석 [선택]'과 다름 — 팀장 확인 대기)
+    const ck16 = parseLaterConsents(readDoc(SOURCES.consent)).items.find((i) => i.code === 'CK16');
+    const body = (head) => (ck16.summary.find((s) => s.startsWith(`${head}: `)) ?? '').slice(head.length + 2);
+    const want = { what: body('모으는 것'), why: ck16.why, keys: body('저장하지 않는 것'), keep: body('보관'), withdraw: body('거두기'), optional: ck16.note, more: ck16.more };
+    const ck16Diffs = Object.entries(want).filter(([k, v]) => !v || cc.CHAT_V6?.[`CHAT.CK16.${k}`] !== v).map(([k, v]) => `CHAT.CK16.${k}: 앱 "${cc.CHAT_V6?.[`CHAT.CK16.${k}`]}" / 동의문구 4-16 "${v}"`);
+    check('W', 'CK16 카드 글 7개(what · why · keys · keep · withdraw · optional · more)가 동의문구 4-16 화면 문구와 같다', ck16Diffs.length === 0, ck16Diffs.join('\n'));
+    // L17A · D-190: 정치 막대 동의 글 POL9 ~ POL12 = 동의문구 4-15 화면 문구 = 카피.md 13-1 표
+    const ck15 = parseLaterConsents(readDoc(SOURCES.consent)).items.find((i) => i.code === 'CK15');
+    // 앱 POL9 ~ POL12 는 생성 파일(CONSENT_LATER_ITEMS CK15)을 그대로 가리킨다(별칭 @/ 때문에 Node 로 읽지 않고 글에서 확인) — 생성 파일이 낡지 않았는지는 A 가 본다
+    const polSrc = fs.readFileSync(path.join(APP_DIR, 'src', 'features', 'surveyV2', 'politicsCopy.ts'), 'utf8');
+    const polField = { 'POL.consentTitle': 'title', 'POL.consentBody': 'why', 'POL.consentNote': 'note', 'POL.consentCheck': 'label' };
+    const polRows = new Map(sec13.split(/\r?\n/).filter((l) => /^\| `POL\./.test(l)).map(cells).map((r) => [r[0].replace(/`/g, '').split(' ')[0], r[1]]));
+    const polDiffs = Object.entries(polField).filter(([k, f]) => !ck15?.[f] || !new RegExp(`${k.slice(4)}: CK15\\.${f}\\b`).test(polSrc) || polRows.get(k) !== ck15[f]).map(([k, f]) => `${k}: 앱이 CK15.${f} 를 가리키나 / 카피 13-1 "${polRows.get(k)}" / 동의문구 4-15 "${ck15?.[f]}"`);
+    check('W', '정치 성향 동의 글 4개(POL9 ~ POL12)가 동의문구 4-15 화면 문구 · 카피.md 13-1 과 같다', polDiffs.length === 0, polDiffs.join('\n'));
   }
 
   // R1 A⑦ T04 · K11: 오류 · 안내 문구 규칙(카피.md 1-1)과 v4 글 대조(카피.md 7장). 규칙 본문은 check-copy-rules.mjs

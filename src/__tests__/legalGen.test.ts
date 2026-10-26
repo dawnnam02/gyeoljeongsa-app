@@ -49,10 +49,10 @@ describeOutside(LEGAL_DOCS)('법무 게시본 생성 규칙 (F10)', () => {
     articles.forEach((title, i) => expect(title.startsWith(`제${i + 1}조 `)).toBe(true));
   });
 
-  test('3. 처리방침 장 15 · 소절 39 · 1장 표 R행(R01 부터 빈 번호 없이 30개 이상)', () => {
+  test('3. 처리방침 장 15 · 소절 42 · 1장 표 R행(R01 부터 빈 번호 없이 30개 이상)', () => {
     const h = (level: number) => LEGAL_PRIVACY.filter((b) => b.type === 'h' && b.level === level);
     expect(h(2).filter((b) => /^\d+\. /.test((b as { text: string }).text))).toHaveLength(15);
-    expect(h(3)).toHaveLength(39); // 법무 L10: 6-3 · 7-3 · 9-4 신설
+    expect(h(3)).toHaveLength(42); // 법무 L10: 6-3 · 7-3 · 9-4 신설 · L17: 5-7 · 8-5 · 9-5 신설
     const rRows = LEGAL_PRIVACY.flatMap((b) => (b.type === 'table' ? b.rows : [])).filter((r) => /^R\d+$/.test(r[0]));
     // R행 수는 법무가 늘릴 수 있다: R01 부터 빈 번호 없이 이어지고 30개 이상이면 된다(R13 을 빼지 않고 전부 싣는다)
     expect(rRows.length).toBeGreaterThanOrEqual(30);

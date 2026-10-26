@@ -2,6 +2,7 @@
 //  구독 이용 중 탈퇴 확인창의 안내(NV36 + [구독 관리]) · 구독 끝남(NV65). 실제 settingsApi · gradeApi 를 모의 서버 위에서 돌린다.
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 
+import { WITHDRAW } from '@/content/settingsCopy';
 import { GRADE16, SETTINGS16, SHOP16, WITHDRAW_SUB_NOTE } from '@/content/shopCopy';
 import { SettingsScreen, type SettingsDeps } from '@/features/settings/SettingsScreen';
 import { createSettingsApi } from '@/lib/settingsApi';
@@ -211,10 +212,11 @@ describe('탈퇴 확인창 · 구독 이용 중(NV36, 법무 C5)', () => {
     expect(mockRouter.navigate).toHaveBeenCalledWith({ pathname: '/shop', params: { page: 'manage', from: '12' } });
   });
 
-  test('구독이 없으면 안내 줄이 없다', async () => {
+  test('구독이 없으면 구독 안내 대신 크레딧 줄(약관 제22조 ⑧, L17A)만 있다', async () => {
     const { tree } = await open('plain');
     await tap(tree, 'settings-withdraw');
-    expect(find(tree, 'withdraw-confirm-note')).toBeNull();
+    expect(textOf(tree, 'withdraw-confirm-note-text')).toBe(WITHDRAW.credit);
+    expect(find(tree, 'withdraw-confirm-note-action')).toBeNull();
     expect(allTexts(tree).some((t) => t.includes('구독 결제는 멈추지 않아요'))).toBe(false);
   });
 });

@@ -23,6 +23,7 @@ import { TextButton } from '@/components/TextButton';
 import { TextField } from '@/components/TextField';
 import { Toast } from '@/components/Toast';
 import { schoolIndex } from '@/data/schools/schoolSearch';
+import { LaterConsentLink } from '@/features/consent/LaterConsentLink';
 import type { LoadOutcome, SaveBatch } from '@/features/surveyV2/api';
 import { SV2 } from '@/features/surveyV2/copy';
 import { answersOf, blockMessage, check, draftFromValue, emptyDraft, FLOW, isPassable, normalizeAnswers, optText, PUBLIC_TOGGLE_IDS, qOf, type Draft } from '@/features/surveyV2/model';
@@ -960,6 +961,7 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
                     {t(`CHAT.CK16.${k}`)}
                   </AppText>
                 ))}
+                <LaterConsentLink code="CK16" label={t('CHAT.CK16.more')} full testID="chat-ck16-more" />
                 <View style={styles.pair}>
                   <View style={styles.half}>
                     <Button label={t('CHAT.CK16.agree')} variant="secondary" onPress={() => void answerCk16(true)} disabled={busy} testID="chat-ck16-agree" />

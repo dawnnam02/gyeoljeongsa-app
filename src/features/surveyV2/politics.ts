@@ -6,6 +6,7 @@
 //  · 로그에는 이벤트 이름과 코드만(값 금지)
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { CK15_TEXT_VERSION } from '@/config/laterConsent';
 import { recordConsents } from '@/lib/consentApi';
 import { safeLog } from '@/lib/log';
 import { readDbFailure } from '@/lib/serverError';
@@ -17,7 +18,7 @@ export const POL_SERVER = {
   set: 'set_politics', // (p_position integer 0~100) → {saved, position} · 오류 forbidden · consent_required: CK15 · invalid_value · rate_limited
   get: 'get_politics', // () → {consent, answered, position}
   consentCode: 'CK15', // consents.item_code(선택 · 별도)
-  consentVersion: 'consent-2026.10.22-가정', // 가정: 법무 판_관리.md 에 CK15 판이 생기면 맞춘다
+  consentVersion: CK15_TEXT_VERSION, // config/laterConsent.ts — DB 검사 모양(consent-YYYY.MM.DD-vN)의 임시 판. 법무 판_관리.md 에 CK15 판이 생기면 맞춘다(L17A)
 } as const;
 
 export type PoliticsState = { consent: boolean; answered: boolean; position: number | null };

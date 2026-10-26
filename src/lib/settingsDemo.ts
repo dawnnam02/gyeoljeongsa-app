@@ -1,6 +1,6 @@
 // 데모 모드 모의 서버의 12 설정 부분(F7). 실제 서버 계약(backend/스키마.md 9-6 · 9-7, migrations/0004 · functions/delete-account)과 같은 응답 모양 · 같은 오류 코드.
 //  rpc  list_blocked_users → [{ user_id, blocked_at, name, age, region }] · unblock_user(p_target) → null | not_found
-//       list_my_reports → [{ id, reason_code, status, created_at }] · revoke_consent(p_item) → 철회한 줄 수 | required_consent
+//       list_my_reports → [{ id, reason_code, status, created_at }] · revoke_consent(p_item) → 철회한 줄 수 | required_consent(선택 CK4 · CK9 · CK10 · CK11 ~ CK16 밖)
 //  표   profiles 의 notify_* 열 읽기 · 고치기(다른 열은 permission denied)
 //  함수 delete-account { action:'start' } → { ok:true } | 429 locked · daily_limit · too_soon | 502 send_failed
 //                      { action:'confirm', token } → { ok:true, scheduled_at } | 400 invalid_token | 429 locked
@@ -11,6 +11,7 @@ type Row = Record<string, unknown>;
 type DbError = { code: string; message: string };
 type DbResult<T> = { data: T | null; error: DbError | null };
 type Consent = { item_code: string; agreed: boolean; revoked_at: string | null };
+const OPTIONAL_ITEMS = new Set(['CK4', 'CK9', 'CK10', 'CK11', 'CK12', 'CK13', 'CK14', 'CK15', 'CK16']);
 
 export const DEMO_WITHDRAW_CODE = '123456'; // 데모 모드 인증번호(demoBackend 의 DEMO_OTP_CODE 와 같은 값)
 const VALID_MS = 180_000; // 3분
@@ -101,7 +102,7 @@ export function createDemoSettings(options: { now?: () => number; people?: (id: 
       return { data: rows, error: null };
     },
     revoke_consent(user, args) {
-      if (args.p_item !== 'CK4' && args.p_item !== 'CK9' && args.p_item !== 'CK10') return fail('P0001', 'required_consent');
+      if (!OPTIONAL_ITEMS.has(String(args.p_item))) return fail('P0001', 'required_consent'); // 0033: 선택 동의 CK4 · CK9 · CK10 · CK11 ~ CK16 만 철회
       let n = 0;
       const stamp = new Date(now()).toISOString();
       for (const c of user.consents) {

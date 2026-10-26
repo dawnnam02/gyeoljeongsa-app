@@ -23,3 +23,18 @@ export type ConsentItemContent = {
   readonly declined: string; // 동의하지 않으면 어떻게 되는지
   readonly fullText: readonly LegalBlock[] | 'terms'; // 전문. CK1 은 이용약관 전체('terms')
 };
+
+// 03 밖에서 기능을 처음 쓸 때 받는 선택 동의(동의문구 1-1, L17). DB 검사 0033: CK1 ~ CK16
+export const LATER_CONSENT_CODES = ['CK11', 'CK12', 'CK13', 'CK14', 'CK15', 'CK16'] as const;
+export type LaterConsentCode = (typeof LATER_CONSENT_CODES)[number];
+
+// 요약 시트(ConsentSummarySheet)가 그리는 모양 — 03 칸 · 03 밖 칸 공통
+export type ConsentSheetContent = Omit<ConsentItemContent, 'code'> & { readonly code: ConsentCode | LaterConsentCode };
+
+// 03 밖 칸의 글(동의문구 4-11 ~ 4-16): 03 칸 모양 + 시트 제목(없으면 null) · '전문 보기 ›' 글
+export type LaterConsentContent = Omit<ConsentItemContent, 'code' | 'fullText'> & {
+  readonly code: LaterConsentCode;
+  readonly fullText: readonly LegalBlock[];
+  readonly title: string | null; // 제목(시트 위) — CK15 · CK16 만 있다
+  readonly more: string; // 요약 끝 '전문 보기 ›'
+};

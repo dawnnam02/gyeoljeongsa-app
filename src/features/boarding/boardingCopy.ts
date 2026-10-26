@@ -78,6 +78,7 @@ export const BOARDING = {
     payCredit: '크레딧 1장으로 타기',
     close: '닫기',
     demo: '데모 결제예요. 실제 돈은 나가지 않아요.',
+    contract: '결혼중개 계약 설명 보기', // [제안 L17A · D-190 ⑤] 약관 제14조의2 ③(BR09) — 누르면 약관 제14조의2 글 그대로(TermsArticleSheet)
   },
   bought: '탑승했어요. 수요일 오후 6시에 만나요.',
   buyErrors: {

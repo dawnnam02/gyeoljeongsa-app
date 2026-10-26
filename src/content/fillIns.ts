@@ -17,4 +17,5 @@ export const FILL_INS: Readonly<Record<string, string | null>> = {
   "고객센터 운영 시간": null,
   "통신판매업 신고번호": null,
   "전화번호": null,
+  "결혼중개업 신고번호": null,
 };

@@ -13,6 +13,8 @@ import { InfoBox } from '@/components/InfoBox';
 import { Pressable } from '@/components/Pressable';
 import { CtaPair } from '@/components/Screen';
 import { TextButton } from '@/components/TextButton';
+import { CONSENT } from '@/content/copy';
+import { LaterConsentLink } from '@/features/consent/LaterConsentLink';
 import { SV2 } from '@/features/surveyV2/copy';
 import { QuestionInput } from '@/features/surveyV2/inputs';
 import { copyOf, maxPick, NO_AI_IDS, optText, SENSITIVE_IDS, type Draft } from '@/features/surveyV2/model';
@@ -164,6 +166,7 @@ export function PolCard({ pol, reason, busy, play, onCheck, onChange, onSend, on
         <AppText variant="caption" tone="text">
           {POL.consentNote}
         </AppText>
+        <LaterConsentLink code="CK15" label={CONSENT.more} testID="chat-pol-consent-more" />
         <View style={styles.card}>
           {pol.serverConsent ? (
             <AppText variant="captionMedium" tone="accent" testID="chat-pol-consent-done">

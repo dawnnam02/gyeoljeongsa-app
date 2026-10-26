@@ -219,6 +219,40 @@ export function parseConsentDoc(rawText) {
   };
 }
 
+// ── 동의문구 1-1 · 4-16: 03 밖에서 받는 선택 동의 CK11 ~ CK16 (L17A) ──────────
+//  · 1-1 표의 번호 · 이름(안) → 12 동의 관리 줄 이름
+//  · 4-11 ~ 4-16 절 → 4장 칸과 같은 모양(체크 문구 · 왜 · 덧붙임 · 요약 · 동의하지 않으면 · 전문) + 제목(시트 위, 없으면 null)
+//    요약 끝의 '전문 보기 ›' 줄은 글이 아니라 버튼이라 요약에서 빼고 more 로 둔다
+//  03 칸(CK1 ~ CK9 · CONSENT_ITEMS)과 지문 · 판 블록은 건드리지 않는다
+export const LATER_CODES = ['CK11', 'CK12', 'CK13', 'CK14', 'CK15', 'CK16'];
+
+export function parseLaterConsents(rawText) {
+  const lines = stripMarks(rawText).text.split('\n');
+  const at11 = lines.findIndex((l) => /^### 1-1\. /.test(l));
+  if (at11 < 0) throw new Error('동의문구.md 1-1 절(CK11 ~ CK16)을 찾지 못했어요');
+  const names = [];
+  for (let i = at11 + 1; i < lines.length && !/^#{2,3} /.test(lines[i]); i += 1) {
+    if (!/^\| CK1[1-6] \|/.test(lines[i])) continue;
+    const r = cells(lines[i]);
+    names.push({ code: r[0], name: r[2] });
+  }
+  if (names.map((x) => x.code).join() !== LATER_CODES.join()) throw new Error(`1-1 표가 ${LATER_CODES.join(' ')} 순서가 아니에요: ${names.map((x) => x.code).join(' ')}`);
+
+  const items = LATER_CODES.map((code) => {
+    const n = code.slice(2);
+    const at = lines.findIndex((l) => new RegExp(`^### 4-${n}\\. ${code} `).test(l));
+    if (at < 0) throw new Error(`동의문구.md 4-${n} 절(${code})을 찾지 못했어요`);
+    let end = at + 1;
+    while (end < lines.length && !/^#{2,3} /.test(lines[end])) end += 1;
+    const body = lines.slice(at + 1, end);
+    const item = parseItem(code, body);
+    const more = item.summary.find((s) => /^전문 보기/.test(s));
+    if (!more) throw new Error(`${code}: 요약 끝 전문 보기 줄을 찾지 못했어요`);
+    return { ...item, title: tick(body, '제목\\(시트 위\\)'), summary: item.summary.filter((s) => s !== more), more };
+  });
+  return { names, items };
+}
+
 // ── 마케팅/카피.md 03 ───────────────────────────────────────────────
 // 03-1 표(체크 칸 10줄)와 03-2 요약(칸마다 글머리)을 읽는다. 동의문구.md 와 같은지 비교하는 데 쓴다.
 export function parseCopyConsent(text) {

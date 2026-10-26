@@ -621,9 +621,9 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
         const item = String(r.item_code);
         const version = String(r.text_version);
         const agreed = r.agreed === true;
-        const bad = r.user_id !== account.id || !/^CK(10|[1-9])$/.test(item) || !/^consent-\d{4}\.\d{2}\.\d{2}-v\d+$/.test(version) || String(r.app_version ?? '').length > 32;
+        const bad = r.user_id !== account.id || !/^CK(1[0-6]|[1-9])$/.test(item) || !/^consent-\d{4}\.\d{2}\.\d{2}-v\d+$/.test(version) || String(r.app_version ?? '').length > 32;
         if (bad) return { data: null, error: { code: '23514', message: 'check violation' } };
-        if (!agreed && item !== 'CK4' && item !== 'CK9' && item !== 'CK10') return { data: null, error: { code: '23514', message: 'check violation' } }; // 필수 칸은 동의한 기록만
+        if (!agreed && !/^CK(4|9|1[0-6])$/.test(item)) return { data: null, error: { code: '23514', message: 'check violation' } }; // 필수 칸은 동의한 기록만(0033: 선택 CK4 · CK9 · CK10 ~ CK16)
         const duplicate = agreed && [...account.consents, ...pending].some((c) => c.agreed && c.revoked_at === null && c.item_code === item && c.text_version === version);
         if (duplicate) return { data: null, error: { code: '23505', message: 'duplicate key value' } };
         pending.push({ item_code: item, agreed, text_version: version, revoked_at: null });
