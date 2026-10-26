@@ -48,7 +48,8 @@ const inner = (id) => b.evaluate(`(window.__q(${JSON.stringify(id)})?.innerText 
 const checked = (id) => b.evaluate(`window.__q(${JSON.stringify(id)})?.getAttribute('aria-checked') === 'true'`);
 const peekSettings = (email) => b.evaluate(`JSON.stringify(window.__demoPeek.settings(${JSON.stringify(email.replace('@', 'v4on@'))}))`).then(JSON.parse);
 const peekConsents = (email) => b.evaluate(`JSON.stringify(window.__demoPeek.consents(${JSON.stringify(email.replace('@', 'v4on@'))}))`).then(JSON.parse);
-const noScore = async () => !/등급|점수|순위/.test(await text());
+// D-191(v5 청사진 6-2): 등급은 아이콘 + 짧은 설명으로 남는다 — '등급' 말 자체는 있어도 되고, 숫자 · 점수 · 순위 · 높음/낮음 · 'N등급'은 없어야 한다
+const noScore = async () => !/점수|순위|[0-9]s*등급|등급s*[0-9]|높은 등급|낮은 등급|상위|하위/.test(await text());
 const back = async (page) => {
   await b.click(sel(`settings-${page}-header-back`));
   return b.waitFor(`!!window.__q('settings-rows')`);
@@ -98,10 +99,11 @@ try {
   const EMAIL = 'settingsf7@email.com'; // 장면 settings: 차단 2명 · 신고 3건이 미리 있다
   check('A', '09 → 탭 "설정" → 12(/settings) 목록', await toSettings(EMAIL), `경로 ${await path0()}`);
   const rowsShown = await b.evaluate(`[...document.querySelectorAll('[data-testid^="settings-row-"]:not([data-testid$="-chevron"])')].map((el) => el.innerText.replace(/\\s+/g, ' ').trim())`);
-  check('A', '줄 12개가 Figma 12 차례 그대로(알림 … 안전 안내 · 정보 › 오픈소스 라이선스 · 이미지 출처 고지, 임시 설문 동안 희망 조건 수정 숨김 D-48), 인증 서류 제출 오른쪽 "준비 중"',
-    rowsShown.length === 12 && rowsShown[0].startsWith(S.SETTINGS.rows.notifications) && rowsShown[2].includes(S.SETTINGS.verificationSoon) && rowsShown[9].startsWith(S.SETTINGS.rows.safety) && rowsShown[11].startsWith(S.SETTINGS.rows.imageCredit) && !rowsShown.some((r) => r.startsWith(S.SETTINGS.rows.preferences)), rowsShown.map((r) => r.split(' ')[0]).join(' / '));
+  // D-191(v5 기준): 이 장면(v4on)은 숨긴 상점을 켜 두므로 '구매 · 등급 구독' 줄까지 13줄. 실서버 v5 처음값(상점 숨김)이면 이 줄이 빠져 12줄(SettingsScreen W10)
+  check('A', '줄 13개(v5 · v4on 장면): 알림 · 공개 · 인증(오른쪽 "준비 중") · 구매 · 등급 구독 · 차단 · 신고 · 보안 · 고객센터 · 동의 · 이용약관 · 안전 안내 · 정보 › 오픈소스 라이선스 · 이미지 출처 고지, 임시 설문 동안 희망 조건 수정 숨김 D-48',
+    rowsShown.length === 13 && rowsShown[0].startsWith(S.SETTINGS.rows.notifications) && rowsShown[2].includes(S.SETTINGS.verificationSoon) && rowsShown[3].startsWith('구매') && rowsShown[10].startsWith(S.SETTINGS.rows.safety) && rowsShown[12].startsWith(S.SETTINGS.rows.imageCredit) && !rowsShown.some((r) => r.startsWith(S.SETTINGS.rows.preferences)), rowsShown.map((r) => r.split(' ')[0]).join(' / '));
   check('A', '"정보" 묶음 글 · [로그아웃] · [탈퇴하기]가 있고 "모든 데이터 삭제"라는 말은 없다', (await inner('settings-info-label')) === S.SETTINGS.rows.infoGroup && (await q('settings-logout')) && (await q('settings-withdraw')) && !(await has('모든 데이터 삭제')), '');
-  check('A', '12 에 등급 · 점수 · 순위 말이 없다', await noScore(), '');
+  check('A', '12 에 등급 숫자 · 점수 · 순위 · 높음/낮음 말이 없다(v5 6-2: 등급 말은 아이콘 설명으로 남음)', await noScore(), '');
   await measure('12 목록 위');
   await note('F7_12_목록_360x740.png');
   await b.evaluate(`(() => { const el = window.__q('settings-list'); if (el) el.scrollTop = 99999; })()`);

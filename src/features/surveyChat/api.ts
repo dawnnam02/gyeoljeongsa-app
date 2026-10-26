@@ -127,7 +127,7 @@ export function createSurveyChatApi(client: SupabaseClient, appVersion = 'app', 
     try {
       const { data, error } = await client.rpc(name, args);
       if (error) {
-        safeLog({ event: 'chat.rpc.fail', code: name });
+        safeLog({ event: 'chat.rpc.fail', code: String(error.message ?? '').split(':')[0].slice(0, 30) }); // 로그는 오류 코드 앞머리만(P7-b) — 함수 이름 · 인자 · 본문은 남기지 않는다
         return { data: null, reason: failOf(error) };
       }
       if (isRecord(data) && data.off === true) return { data: null, reason: 'off' };
@@ -140,7 +140,7 @@ export function createSurveyChatApi(client: SupabaseClient, appVersion = 'app', 
     try {
       const { data, error } = await client.functions.invoke(name, { body });
       if (error) {
-        safeLog({ event: 'chat.fn.fail', code: name });
+        safeLog({ event: 'chat.fn.fail', code: String(error.message ?? '').split(':')[0].slice(0, 30) }); // 로그는 오류 코드 앞머리만(P7-b)
         return { data: null, reason: failOf(error) };
       }
       return { data, reason: null };
