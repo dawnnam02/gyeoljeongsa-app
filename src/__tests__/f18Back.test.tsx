@@ -1,6 +1,7 @@
 // F18 조건 2 (Q5A-14 · Q6 N2): 다른 화면이 연 16 상점 쪽의 ‹ 는 그 화면으로 돌아간다 — 모의 router 가 아니라 진짜 expo-router(스택 + 탭 묶음)로 돈다.
 //  앱과 같은 모양: 뿌리 Stack 위에 (tabs)(실제 탭 레이아웃, backBehavior initialRoute) · candidate/[id](10, 탭 밖) — 화면은 실제 CandidateScreen · ShopScreen · SettingsScreen 을
-//  데모 모의 서버 위에서 그린다. 10 → [등급 구독 안내 줄] → 등급 구독 상세 → ‹ = 10, 12 → [구매 · 등급 구독] → 이용권 쪽 → ‹ = 12.
+//  데모 모의 서버 위에서 그린다. v5(QP-A, 카피.md 12-Q · 14-1): 10 의 등급 구독 안내 줄 · 12 의 '구매 · 등급 구독' 줄은 없다 —
+//  10 에는 그 줄이 없음을 보고, 12 → [크레딧 · 구매 내역] → T5(/credits) → ‹ = 12 를 본다.
 //  Q6 에서 웹으로 본 실패: 10 위에 탭 묶음이 하나 더 쌓이고, 탭의 '뒤로'가 첫 탭(09)으로 가 버렸다. 시험 도구는 expo-router 의 시험 틀(ExpoRoot + 메모리 라우트)만 쓴다.
 import { Stack, router } from 'expo-router';
 import { ExpoRoot } from 'expo-router/build/ExpoRoot';
@@ -75,6 +76,7 @@ async function renderApp(scene: string, initial: string) {
     '(tabs)/recommendations-empty': () => <Text>13</Text>,
     '(tabs)/likes-empty': () => <Text>14</Text>,
     'candidate/[id]': () => <CandidateScreen deps={candidateDeps} />,
+    credits: () => <Text testID="screen-T5">T5</Text>,
   });
   let tree!: ReactTestRenderer;
   await act(async () => {
@@ -86,30 +88,26 @@ async function renderApp(scene: string, initial: string) {
 }
 
 describe('F18 조건 2: 다른 화면이 연 상점 쪽의 ‹ (진짜 router)', () => {
-  test('09 → 10 → [등급 구독 안내 줄] → 등급 구독 상세 → ‹ 를 누르면 10 으로 돌아온다(09 가 아님)', async () => {
+  test('09 → 10: v5 에는 등급 구독 안내 줄이 없고, ‹ 를 누르면 처음 들어온 09 로 간다', async () => {
     const tree = await renderApp('plain', '/recommendations');
     await act(async () => router.push('/candidate/demo-cand-1'));
     await settle();
     expect(pathname()).toBe('/candidate/demo-cand-1');
-    await tap(tree, 'candidate-grade-subscribe');
-    expect(pathname()).toBe('/shop');
-    expect(visibleIds(tree, 'shop-page-product')).toBeGreaterThan(0);
-    await tap(tree, 'shop-sub-header-back');
-    expect(pathname()).toBe('/candidate/demo-cand-1');
-    // 10 에서 한 번 더 ‹ 를 누르면 처음 들어온 09 로 간다(쌓인 탭 묶음이 남지 않았다)
+    expect(visibleIds(tree, 'candidate-grade-subscribe')).toBe(0);
     await tap(tree, 'candidate-header-back');
     expect(pathname()).toBe('/recommendations');
   });
 
-  test('12 → [구매 · 등급 구독] → 이용권 · 구매 내역 쪽 → ‹ 를 누르면 12 로 돌아온다', async () => {
+  test('12 → [크레딧 · 구매 내역] → T5(/credits) → 뒤로 가면 12 로 돌아온다', async () => {
     const tree = await renderApp('plain', '/recommendations');
     await act(async () => router.navigate('/settings'));
     await settle();
     expect(pathname()).toBe('/settings');
-    await tap(tree, 'settings-row-purchase');
-    expect(pathname()).toBe('/shop');
-    expect(visibleIds(tree, 'shop-page-inventory')).toBeGreaterThan(0);
-    await tap(tree, 'shop-sub-header-back');
+    await tap(tree, 'settings-row-credits');
+    expect(pathname()).toBe('/credits');
+    expect(visibleIds(tree, 'screen-T5')).toBeGreaterThan(0);
+    await act(async () => router.back());
+    await settle();
     expect(pathname()).toBe('/settings');
   });
 

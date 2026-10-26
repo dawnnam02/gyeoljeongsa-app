@@ -147,13 +147,13 @@ describe("'그 외' · '말하고 싶지 않아요' · 뒤로 · 임시 저장 �
     return tree;
   }
 
-  test("종교 '그 외'를 고르면 같은 선택끼리만 추천한다는 안내가 보이고 자동으로 넘어가지 않는다", async () => {
+  test("종교 '그 외'를 고르면 같은 선택끼리 이어진다는 안내(카피 14-2 v5)가 보이고 자동으로 넘어가지 않는다", async () => {
     const { deps } = rig();
     const tree = await toReligion(deps);
     await tap(tree, 'v2-A06-opt-other');
     await wait(700);
     expect(question(tree)).toBe('종교를 골라 주세요');
-    expect(textOf(tree, 'v2-other-note')).toBe("'그 외'를 고르면 '그 외'를 고른 분끼리만 추천해요.");
+    expect(textOf(tree, 'v2-other-note')).toBe("'그 외'를 고르면 '그 외'를 고른 분끼리 이어져요.");
     await tap(tree, 'v2-next');
     await tap(tree, 'v2-A07-opt-decline');
     expect(has(tree, 'v2-decline-hint')).toBe(false); // 혼인 · 자녀는 등급에 쓰지 않아 안내 없음

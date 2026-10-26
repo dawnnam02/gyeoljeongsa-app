@@ -25,7 +25,18 @@ const cells: Cell[] = section9
   .filter((l) => l.startsWith('| ') && !l.startsWith('| 위치') && !l.startsWith('|---'))
   .map((l) => l.split('|').map((x) => x.trim()))
   .map((c) => ({ keys: c[4], text: c[3] }));
+// QP-A(D-196): 카피.md 14장 'v5 문구 바꿈'(14-0 '1장 표보다 앞선다') 14-2 표의 같은 키 글이 9장 옛 줄보다 앞선다
+const from14 = copyDoc.indexOf('## 14. ');
+const v5Copy = new Map(
+  (from14 >= 0 ? copyDoc.slice(from14) : '')
+    .split('\n')
+    .filter((l) => /^\| (13장 )?`/.test(l))
+    .map((l) => l.split('|').map((x) => x.trim()))
+    .map((c): [string, string] => [(/`([^`]+)`/.exec(c[1]) ?? [])[1] ?? '', c[2]]),
+);
 const cellOf = (key: string): Cell => {
+  const v5 = v5Copy.get(key);
+  if (v5) return { keys: key, text: v5 };
   const hit = cells.find((c) => c.keys.includes('`' + key));
   if (!hit) throw new Error(`카피 9장에 ${key} 가 없어요`);
   return hit;
@@ -99,8 +110,10 @@ describe('공통 글 = 카피 9장 · 4장 · 3장 04 · 화면_요구사항', (
     for (const [key, v] of Object.entries(SECTION_COPY)) expect(`${v.name} / ${v.lead}`).toBe(cellOf(`survey.section.${key}.name`).text);
   });
 
-  test('A06 "그 외" 안내는 A06 도움말의 둘째 문장 그대로다', () => {
-    expect(QUESTION_COPY.A06.help).toContain("'그 외'를 고르면 '그 외'를 고른 분끼리만 추천해요.");
+  testOutside([COPY_DOC])('A06 "그 외" 안내는 카피 14-2 A06_OTHER_NOTE(v5) · A06 도움말은 "추천" 말 없이 종교가 같은 분끼리 이어진다고 알린다', () => {
+    expect(v5Copy.get('A06_OTHER_NOTE')).toBe("'그 외'를 고르면 '그 외'를 고른 분끼리 이어져요.");
+    expect(QUESTION_COPY.A06.help).toBe(v5Copy.get('survey.A06.help'));
+    expect(QUESTION_COPY.A06.help).not.toMatch(/추천/);
   });
 });
 

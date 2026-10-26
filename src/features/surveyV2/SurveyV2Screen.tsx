@@ -68,7 +68,7 @@ export type SurveyV2Entry = 'resume' | 'missing';
 type Props = { deps?: SurveyV2Deps; entry?: SurveyV2Entry; onDone?: () => void };
 
 const T_TEXT = ['T01', 'T02', 'T03'];
-const A06_OTHER_NOTE = "'그 외'를 고르면 '그 외'를 고른 분끼리만 추천해요."; // A06 도움말 둘째 문장(카피 9장 survey.A06.help) — '그 외'를 고르면 한 번 더 보인다
+const A06_OTHER_NOTE = "'그 외'를 고르면 '그 외'를 고른 분끼리 이어져요."; // 카피.md 14-2 A06_OTHER_NOTE(v5, QP-A) — '그 외'를 고르면 한 번 더 보인다
 const same = (x: unknown, y: unknown) => JSON.stringify(x) === JSON.stringify(y);
 const AUTO_FORMATS = ['choice', 'bucket', 'scale5'];
 

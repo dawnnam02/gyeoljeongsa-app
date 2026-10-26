@@ -102,7 +102,7 @@ describe('12 설정 규칙', () => {
       '알림',
       '공개 범위',
       '인증 서류 제출',
-      '구매 · 등급 구독',
+      '크레딧 · 구매 내역',
       '차단 목록',
       '신고 내역',
       '보안',
@@ -112,8 +112,9 @@ describe('12 설정 규칙', () => {
       '안전 안내',
       '오픈소스 라이선스',
       '이미지 출처 고지',
+      '사업자 정보',
     ]);
-    expect(SETTINGS_ROWS.filter((r) => r.group === 'info').map((r) => r.key)).toEqual(['licenses', 'image-credit']);
+    expect(SETTINGS_ROWS.filter((r) => r.group === 'info').map((r) => r.key)).toEqual(['licenses', 'image-credit', 'business-info']); // 사업자 정보는 값이 모두 있을 때만 화면에 그린다(QP-A)
   });
 
   test('신고 날짜(R-D18-2): 올해는 "10월 15일", 해가 다르면 "2025년 12월 3일", 한국 날짜 · 시각 없음', () => {
@@ -134,21 +135,21 @@ describe('12 설정 규칙', () => {
 });
 
 describe('12 하위 화면 이름 = flow.ts 의 sub:* (F-1)', () => {
-  test('목록의 하위 화면 9개는 모두 flow.ts 화살표(sub:*)에 있다', () => {
+  test('목록의 하위 화면 10개(QP-A 사업자 정보 포함)는 모두 flow.ts 화살표(sub:*)에 있다', () => {
     const subs = arrowsFrom('12').map((x) => x.to).filter((to) => to.startsWith('sub:')).map((to) => to.slice(4));
     const pages = SETTINGS_ROWS.flatMap((r) => (r.action.kind === 'page' ? [r.action.page] : []));
-    expect(pages).toHaveLength(9);
+    expect(pages).toHaveLength(10);
     for (const page of pages) expect(subs).toContain(page);
     expect(subs).toEqual(expect.arrayContaining(['terms', 'privacy'])); // 한 줄 → 03 읽기 시트의 탭 2개
   });
 });
 
 describe('12 목록 화면', () => {
-  test('상단 "설정" · 줄 13개 · 정보 묶음 · 로그아웃 · 탈퇴하기 · 인증 서류 "준비 중"', async () => {
+  test('상단 "설정" · 줄 13개(사업자 정보는 값이 비어 숨김) · 정보 묶음 · 로그아웃 · 탈퇴하기 · 인증 서류 "준비 중"', async () => {
     const { deps } = setup();
     const tree = await show(deps);
     expect(hasText(tree, SETTINGS.headerTitle)).toBe(true);
-    for (const row of SETTINGS_ROWS) expect(has(tree, `settings-row-${row.key}`)).toBe(true);
+    for (const row of SETTINGS_ROWS) expect(has(tree, `settings-row-${row.key}`)).toBe(row.key !== 'business-info');
     expect(textIn(tree, 'settings-info-label')).toBe('정보');
     expect(hasText(tree, '준비 중')).toBe(true);
     expect(hasText(tree, '로그아웃')).toBe(true);
@@ -207,16 +208,19 @@ describe('12 목록 화면', () => {
 });
 
 describe('12 하위 화면', () => {
-  test('알림: 스위치 3개(N19) + 마케팅 알림 + 아래 글 3줄(법무 4-9), 바꾸면 그 열만 저장', async () => {
+  test('알림(v5, 12-Q): 서비스 스위치 "이번 주 만날 분이 정해졌을 때" 하나 + 마케팅 알림 + 아래 글 3줄(법무 4-9), 바꾸면 그 열만 저장 · 호감 · 연결 줄 없음', async () => {
     const { deps, api } = setup();
     const tree = await show(deps);
     await press(tree, 'settings-row-notifications');
     expect(hasText(tree, NOTIFY.headerTitle)).toBe(true);
-    for (const label of [NOTIFY.recommendation, NOTIFY.like, NOTIFY.match, NOTIFY.marketing]) expect(hasText(tree, label)).toBe(true);
+    expect(NOTIFY.recommendation).toBe('이번 주 만날 분이 정해졌을 때');
+    for (const label of [NOTIFY.recommendation, NOTIFY.marketing]) expect(hasText(tree, label)).toBe(true);
+    for (const label of [NOTIFY.like, NOTIFY.match]) expect(hasText(tree, label)).toBe(false);
+    expect(has(tree, 'settings-notify-like') || has(tree, 'settings-notify-match')).toBe(false);
     NOTIFY.marketingNotes.forEach((line, i) => expect(textOf(tree, `settings-marketing-note-${i}`)).toBe(line));
-    await press(tree, 'settings-notify-like');
-    expect(api.saveNotify).toHaveBeenCalledWith('like', false);
-    expect(propOf(tree, 'settings-notify-like', 'accessibilityState').checked).toBe(false);
+    await press(tree, 'settings-notify-recommendation');
+    expect(api.saveNotify).toHaveBeenCalledWith('recommendation', false);
+    expect(propOf(tree, 'settings-notify-recommendation', 'accessibilityState').checked).toBe(false);
   });
 
   test('알림: 저장 실패면 되돌리고 이유, 마케팅은 CK9 철회 + 토스트 N10, 푸시 거부면 R-D18-3 안내', async () => {
@@ -224,8 +228,8 @@ describe('12 하위 화면', () => {
     const tree = await show(deps);
     await press(tree, 'settings-row-notifications');
     expect(textOf(tree, 'settings-push-denied')).toBe('알림이 꺼져 있어요. 설정에서 허용해 주세요.');
-    await press(tree, 'settings-notify-match');
-    expect(propOf(tree, 'settings-notify-match', 'accessibilityState').checked).toBe(true);
+    await press(tree, 'settings-notify-recommendation');
+    expect(propOf(tree, 'settings-notify-recommendation', 'accessibilityState').checked).toBe(true);
     expect(textOf(tree, 'settings-notifications-error')).toBe(COMMON.offline);
     await press(tree, 'settings-notify-marketing');
     expect(api.setOptional).toHaveBeenCalledWith('CK9', false);
@@ -237,8 +241,7 @@ describe('12 하위 화면', () => {
     const tree = await show(deps);
     await press(tree, 'settings-row-notifications');
     expect(textOf(tree, 'settings-push-prime')).toBe(NOTIFY.pushPrime);
-    await press(tree, 'settings-notify-like'); // 끄기 → 묻지 않는다
-    expect(deps.requestPush).not.toHaveBeenCalled();
+    expect(deps.requestPush).not.toHaveBeenCalled(); // 열기만 해서는 묻지 않는다
     await press(tree, 'settings-notify-recommendation'); // 켜기 → 묻는다
     expect(deps.requestPush).toHaveBeenCalledTimes(1);
     expect(has(tree, 'settings-push-prime')).toBe(false); // 허용 뒤 안내 글은 사라진다
@@ -423,7 +426,7 @@ describe('F7 공통 규칙(조건 5)', () => {
       const back = find(tree, `settings-${row === 'consents' ? 'consents' : row === 'notifications' ? 'notifications' : row}-header-back`);
       if (back) await press(tree, back.props.testID as string);
     }
-    // 허용 목록(카피 16-J L-2): 12 목록에서 등급 말은 새 줄 '구매 · 등급 구독'(NV35) 하나뿐. 점수 · 순위는 0
-    expect([...seen].filter((t) => /등급|점수|순위/.test(t))).toEqual(['구매 · 등급 구독']);
+    // v5(QP-A, 12-Q): 옛 줄 '구매 · 등급 구독'(NV35)이 '크레딧 · 구매 내역'으로 바뀌어 grade 연결이 없는 목록 · 하위 화면에는 등급 · 점수 · 순위 · 구독 말이 0
+    expect([...seen].filter((t) => /등급|점수|순위|구독/.test(t))).toEqual([]);
   });
 });

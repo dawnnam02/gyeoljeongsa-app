@@ -19,7 +19,6 @@ import { BottomCTA, CtaPair, Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { Pressable } from '@/components/Pressable';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { OfflineArt } from '@/components/StateArt';
 import { Toast } from '@/components/Toast';
@@ -34,8 +33,7 @@ import type { LikesApi } from '@/lib/likesApi';
 import type { CandidateData, RecsApi } from '@/lib/recsApi';
 import { gradeApi, likesApi, recsApi } from '@/lib/services';
 import { setToast as passToast } from '@/lib/toastBus';
-import { goBackOr, openShopPage } from '@/navigation/go';
-import { useV4Screens } from '@/navigation/v5Hide';
+import { goBackOr } from '@/navigation/go';
 import { layout } from '@/theme/layout';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 import { ReportBlockSheet } from '@/features/safety/ReportBlockSheet';
@@ -53,7 +51,6 @@ const first = (value: string | string[] | undefined) => (Array.isArray(value) ? 
 
 export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }) {
   const router = useRouter();
-  const v4 = useV4Screens(); // V5(W10): 숨긴 v4 화면 스위치(상점 · 등급 구독 줄)
   const params = useLocalSearchParams<{ id?: string }>();
   const id = first(params.id) ?? '';
   const { api, toastMs } = deps;
@@ -401,18 +398,7 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
         <AppText variant="caption" testID="candidate-safety">
           {SAFETY.line}
         </AppText>
-        {partner?.locked && v4.shop ? ( // V5(W10): 상점 · 등급 구독이 숨겨지면 들어가는 줄도 없다
-          <Pressable
-            accessibilityLabel={BADGE16.nonSubscriber}
-            onPress={() => openShopPage(router, { page: 'product', key: 'grade_sub_1m' }, '10')}
-            effect="none"
-            testID="candidate-grade-subscribe"
-            style={styles.subscribeLine}>
-            <AppText variant="caption" tone="accent">
-              {BADGE16.nonSubscriber}
-            </AppText>
-          </Pressable>
-        ) : null}
+        {/* v5(QP-A, 카피.md 14-1): 상대 등급 열람 · 구독 권유 줄(NV47) 없음 */}
       </ScrollView>
 
       <BottomCTA onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)} testID="candidate-cta">
@@ -493,7 +479,6 @@ const styles = StyleSheet.create({
   grade: { gap: space.s8 },
   gradeHead: { flexDirection: 'row', alignItems: 'center', gap: space.s8 },
   gradeText: { flex: 1 },
-  subscribeLine: { minHeight: size.touchMin, justifyContent: 'center', alignSelf: 'flex-start' },
   row: { minHeight: size.listRow, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.s12, paddingHorizontal: space.s16, paddingVertical: space.s12 },
   rowLine: { borderTopWidth: 1, borderTopColor: colors.line },
   rowValue: { flexShrink: 1, textAlign: 'right' },

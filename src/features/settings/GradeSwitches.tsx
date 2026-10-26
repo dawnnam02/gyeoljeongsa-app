@@ -1,7 +1,6 @@
-// 12 설정의 등급 스위치 둘(카피 16-G · 16-J L-2, 법무 C7, 수익/상점_화면.md 7-7): 
-//  · '내 등급 보이기' — 켜면 등급 구독 회원이 추천에서 내 등급을 볼 수 있어요(CK10 선택 동의, 처음값 꺼짐). 켜기 = 동의 기록 더하기, 끄기 = 철회(남의 화면의 고정값이 바로 사라진다). 끈 사람에게 '비공개' 낙인 · 반복 권유 없음
-//  · '등급 계산 멈추기' — 멈추면 내 등급을 지우고 더 계산하지 않아요(set_grade_processing). 등급 구독 회원의 추천 상대를 고르는 데도 쓰이지 않아요. 구독 중이면 내 등급 화면이 비어요
-// 두 스위치는 따로 움직인다. CK10 을 꺼도 계산은 멈추지 않고, 계산을 멈춰도 동의 기록은 그대로다(D-61).
+// 12 설정의 등급 스위치(카피 16-G · 16-J L-2, 법무 C7 · v5 카피.md 12-Q, QP-A):
+//  · '등급 계산 멈추기' — 멈추면 내 등급을 지우고 더 계산하지 않아요(set_grade_processing). 등급이 없으면 짝을 고를 수 없어서, 다시 켜기 전까지 탑승권을 살 수 없어요
+//  · v5: '내 등급 보이기'(CK10) 줄은 없다 — 상대 등급이 누구에게도 보이지 않는다(청사진 6-2 · 12-Q SETTINGS16.showRow '(줄 없음)'). 이미 받은 CK10 기록 처리는 법무 · 서버 몫
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 
@@ -11,59 +10,36 @@ import { COMMON } from '@/content/copy';
 import { SETTINGS16 } from '@/content/shopCopy';
 import { CONSENT_MANAGE } from '@/content/settingsCopy';
 import type { GradeApi } from '@/lib/gradeApi';
-import type { SettingsApi } from '@/lib/settingsApi';
 import { useGradeSettingsStore } from '@/store/gradeSettingsStore';
 import { space } from '@/theme/tokens';
 
 import { RowGroup, SwitchRow } from './SettingsParts';
 
-export type GradeSettingsDeps = { settings: Pick<SettingsApi, 'loadConsents' | 'setOptional'>; grade: Pick<GradeApi, 'loadMine' | 'loadProcessing' | 'setProcessing'> };
+export type GradeSettingsDeps = { grade: Pick<GradeApi, 'loadProcessing' | 'setProcessing'> };
 
-export function GradeSwitches({ settings, grade, onToast }: GradeSettingsDeps & { onToast: (text: string) => void }) {
+export function GradeSwitches({ grade, onToast }: GradeSettingsDeps & { onToast: (text: string) => void }) {
   const stopped = useGradeSettingsStore((s) => s.stopped);
-  const [show, setShow] = useState<boolean | null>(null); // CK10 켜짐(읽기 전에는 null → 줄을 그리지 않는다)
+  const [ready, setReady] = useState(false); // 서버의 멈춤 여부를 한 번 읽은 뒤에 줄을 그린다
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmStop, setConfirmStop] = useState(false); // 멈추는 쪽(켜기)에서만 묻는다(16-N, D-61)
   const busyRef = useRef(false);
   const alive = useRef(true);
 
-  // 처음 한 번: CK10 값 + 구독 여부 + 서버의 멈춤 여부(S8d). 읽기에 실패하면 줄을 그리지 않는다(없는 값을 만들지 않는다)
+  // 처음 한 번: 서버의 멈춤 여부(S8d, get_grade_processing). 읽지 못하면 이 기기에 남은 값을 그대로 둔다
   useEffect(() => {
     alive.current = true;
-    void settings.loadConsents().then((r) => {
-      if (alive.current && r.ok) setShow(r.data.CK10);
-    });
-    void grade.loadMine().then((r) => {
-      if (!alive.current || !r.ok) return;
-      if (r.data.kind === 'locked') useGradeSettingsStore.setState({ subscribed: false });
-      else useGradeSettingsStore.setState({ subscribed: true });
-    });
-    // S8d: 멈춤 여부는 구독자 · 비구독자 모두 서버 값(get_grade_processing)을 읽는다. 읽지 못하면 이 기기에 남은 값을 그대로 둔다
     void grade.loadProcessing().then((r) => {
-      if (alive.current && r.ok) useGradeSettingsStore.setState({ stopped: !r.data.processing });
+      if (!alive.current) return;
+      if (r.ok) useGradeSettingsStore.setState({ stopped: !r.data.processing });
+      setReady(true);
     });
     return () => {
       alive.current = false;
     };
-  }, [settings, grade]);
+  }, [grade]);
 
   const fail = useCallback((reason: string) => setError(reason === 'network' ? COMMON.offline : reason === 'session' ? COMMON.sessionLost : CONSENT_MANAGE.saveFailed), []);
-
-  const toggleShow = async () => {
-    if (show === null || busyRef.current) return;
-    busyRef.current = true;
-    setBusy(true);
-    setError(null);
-    const result = await settings.setOptional('CK10', !show);
-    busyRef.current = false;
-    if (!alive.current) return;
-    setBusy(false);
-    if (result.ok) {
-      setShow(!show);
-      onToast(CONSENT_MANAGE.saved);
-    } else fail(result.reason);
-  };
 
   const pressStop = () => {
     if (busyRef.current) return;
@@ -87,11 +63,10 @@ export function GradeSwitches({ settings, grade, onToast }: GradeSettingsDeps & 
     } else fail(result.reason);
   };
 
-  if (show === null) return null;
+  if (!ready) return null;
   return (
     <>
       <RowGroup testID="settings-grade-switches">
-        <SwitchRow label={SETTINGS16.showRow} note={SETTINGS16.showNote} on={show} disabled={busy} onPress={toggleShow} testID="settings-grade-show" />
         <SwitchRow label={SETTINGS16.stopRow} note={SETTINGS16.stopNote} on={stopped} disabled={busy} last onPress={pressStop} testID="settings-grade-stop" />
       </RowGroup>
       <ConfirmDialog

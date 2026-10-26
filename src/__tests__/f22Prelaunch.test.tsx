@@ -648,18 +648,18 @@ describe('09 자리 분기(PrelaunchGate) · 대기 화면', () => {
 });
 
 describe('11 호감 · 16 상점(+16-G) 탭 분기(PrelaunchTabGate)', () => {
-  test('출시 전: 호감 빈 상태 한 줄 · 상점은 {12월 25일}에 열려요 + 등급 첫 계산 한 줄 · 머리는 원래 탭 이름 · 상품 목록 · 숫자 0', async () => {
+  test('출시 전: 머리는 원래 탭 이름 · v5(QP-A, 카피 14-1) 호감 한 줄 · "상점은 … 열려요" 없음 · 상점은 등급 첫 계산 한 줄만 · 상품 목록 · 숫자 0', async () => {
     const likes = await renderTab('likes', depsWith(okLoad()));
     expect(has(likes, 'tab-original')).toBe(false);
-    expect(textOf(likes, 'prelaunch-tab-likes-line-0')).toBe('호감은 첫 매칭이 시작되는 날부터 주고받을 수 있어요.');
+    expect(has(likes, 'prelaunch-tab-likes-line-0')).toBe(false);
     expect(screenTexts(likes)).toContain(TABS.likes);
     const shop = await renderTab('shop', depsWith(okLoad()));
-    expect(textOf(shop, 'prelaunch-tab-shop-line-0')).toBe('상점은 12월 25일에 열려요.');
-    expect(textOf(shop, 'prelaunch-tab-shop-line-1')).toBe(PRELAUNCH_TABS.firstCalc);
+    expect(textOf(shop, 'prelaunch-tab-shop-line-0')).toBe(PRELAUNCH_TABS.firstCalc);
+    expect(has(shop, 'prelaunch-tab-shop-line-1')).toBe(false);
     expect(screenTexts(shop)).toContain(TABS.shop);
-    expect(screenTexts(shop)).not.toMatch(/원|구매|이용권|구독|\d+등급/);
+    expect(screenTexts(shop)).not.toMatch(/원|구매|이용권|구독|상점은|\d+등급/);
     const noDay = await renderTab('shop', depsWith(okLoad({ launch_day: null })));
-    expect(textOf(noDay, 'prelaunch-tab-shop-line-0')).toBe(PRELAUNCH_TABS.shopNoDay);
+    expect(textOf(noDay, 'prelaunch-tab-shop-line-0')).toBe(PRELAUNCH_TABS.firstCalc);
     expect(screenTexts(likes) + screenTexts(shop)).not.toMatch(BANNED);
   });
 

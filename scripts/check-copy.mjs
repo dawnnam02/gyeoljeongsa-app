@@ -18,6 +18,8 @@
 //  S. 16 상점 · 등급 화면 글(F13, shopCopy.ts · productCopy.ts)이 카피.md 16장과 한 글자씩 같은가 · 상품 46개/빨간 라벨 이유 27줄 · 금지어 · '매칭'은 1회 매칭만 · 등급/점수 허용 구역 · 작업 표시 새지 않음 · 카피 밖 글 목록
 //  V. 공개 전 도착 화면 글(D42-M · D-178, boardingCopy.ts ARRIVE)이 카피.md 12장과 같은가 · 느낌표 · 재촉 0
 //  W. 대화형 설문 글(V6-F, surveyChatCopy.ts CHAT_V6)이 카피.md 13장 표와 한 글자씩 같은가 · 느낌표 · 등급 · 점수 말 0 · CK16 카드 글 = 동의문구 4-16(L17A)
+//  QP-A(D-196): 카피.md 14장 'v5 문구 바꿈'(14-0 '1장 표보다 앞선다')의 14-1 · 14-2 표는 같은 키의 옛 줄(08 표 · 13장 표)보다 앞선다(V5_COPY).
+//        12-Q · 14장 글도 P · S 대조 원본에 넣는다. '매칭'은 '1회 매칭'(숨김 v4)과 '주간 매칭'(14-1 v5 글) 자리에만.
 //  J. 06 AI 정리 중 · 07 내 성향의 글이 카피.md 06 · 07 · 화면_요구사항(N13 · N14)에 그대로 있는가 · 근거 문항 이름 · 직접 입력 태그 후보(F3)
 // 사용: node scripts/check-copy.mjs   (npm run check:copy)
 // 종료 코드: 0 통과 · 1 실패
@@ -168,6 +170,17 @@ try {
 
   // ── F. 02 가입 안내 ─────────────────────────────────────────────────
   const copyText = readDoc(SOURCES.copy);
+  // QP-A: 카피.md 14장(v5 문구 바꿈) 표의 첫 칸 키(맨 앞 `…`) → v5 글. '(줄 없음)'은 화면에 그 줄이 없다는 뜻이라 대조 값으로 쓰지 않는다
+  const sec14 = copyText.slice(copyText.search(/^## 14\. /m));
+  const V5_COPY = new Map(
+    sec14
+      .split(/\r?\n/)
+      .filter((l) => /^\| (13장 )?`[A-Za-z]/.test(l))
+      .map(cells)
+      .map((r) => [(/`([^`]+)`/.exec(r[0]) ?? [])[1], r[1]])
+      .filter(([k, v]) => k && v && v !== '(줄 없음)'),
+  );
+  const sec12Q = copyText.slice(copyText.search(/^#### 12-Q /m), copyText.search(/^### 16 /m));
   const copy02 = copyText.slice(copyText.search(/^### 02 /m), copyText.search(/^### 03 /m));
   const copy02Rows = copy02.split('\n').filter((l) => l.startsWith('|')).map(cells);
   const copy02Cell = (kind, startsWith) => {
@@ -317,9 +330,9 @@ try {
     ['인증 대기 설명', cell(copy08, '안내', '[인증 대기 배지를 눌렀을 때]'), copy.PROFILE.badgeVerifyPendingNote],
     ['사진 확인 중 배지', cell(copy08, '안내', '[배지] 사진 검수 중'), copy.PROFILE.badgePhotoChecking],
     ['사진 확인 중 설명', cell(copy08, '안내', '[사진 확인 중 배지를 눌렀을 때]'), copy.PROFILE.badgePhotoCheckingNote],
-    ['공개 범위 부제', cell(copy08, '부제', '매칭 계산에는'), copy.PROFILE.visibilitySubtitle],
+    ['공개 범위 부제', V5_COPY.get('PROFILE.visibilitySubtitle') ?? cell(copy08, '부제', '매칭 계산에는'), copy.PROFILE.visibilitySubtitle], // 14-2 가 앞선다(QP-A)
     ['처음 한 번 제목', cell(copy08, '제목', '[처음 한 번 확인] 제목'), copy.PROFILE.firstTitle],
-    ['처음 한 번 본문', cell(copy08, '안내', '[처음 한 번 확인] 본문'), copy.PROFILE.firstBody],
+    ['처음 한 번 본문', V5_COPY.get('PROFILE.firstBody') ?? cell(copy08, '안내', '[처음 한 번 확인] 본문'), copy.PROFILE.firstBody], // 14-2 가 앞선다(QP-A)
     ['처음 한 번 버튼', cell(copy08, '버튼', '[처음 한 번 확인]'), copy.PROFILE.firstConfirm],
     ['저장 실패', cell(copy08, '오류', '[저장 실패]'), copy.PROFILE.saveFailed],
   ];
@@ -497,7 +510,7 @@ try {
   const copy04 = stripCode(copySection(/^### 04 /m, /^### 05 /m));
   const copy05 = stripCode(copySection(/^### 05 /m, /^### 06 /m));
   const screensPlain = stripCode(screensText);
-  const surveyPool = `${copy04}\n${copyCommon}\n${screensPlain}`;
+  const surveyPool = `${copy04}\n${copyCommon}\n${screensPlain}\n${stripCode(sec14)}`; // QP-A: 14-2 SURVEY_LITE.hiddenUsedLine v5
   const skipKeys = new Set(['quickSido', 'quickOther', 'chips', 'sidoPlaceholder', 'sigunguPlaceholder']); // 칩 · 빠른 시·도 줄은 아래 묶음으로 따로 본다
   const p2 = collectStrings(Object.fromEntries(Object.entries(sl.SURVEY_LITE).filter(([k, v]) => typeof v !== 'function' && !skipKeys.has(k))), 'SURVEY_LITE').filter(([, t]) => !surveyPool.includes(t)).map(([w, t]) => `${w}: "${t}"`);
   for (const [k, t] of [['minChars', sl.SURVEY_LITE.minChars('{n}')], ['maxChars', sl.SURVEY_LITE.maxChars('{n}')], ['chips', sl.SURVEY_LITE.chips.join(' · ')]]) if (!surveyPool.includes(t)) p2.push(`SURVEY_LITE.${k}: "${t}"`);
@@ -548,7 +561,7 @@ try {
   {
   const sc = await load(path.join(contentDir, 'shopCopy.ts'));
   const pc = await load(path.join(contentDir, 'productCopy.ts'));
-  const copy16all = stripCode(copySection(/^### 16 /m, /^## 4\. /m));
+  const copy16all = `${stripCode(copySection(/^### 16 /m, /^## 4\. /m))}\n${stripCode(sec12Q)}\n${stripCode(sec14)}`; // QP-A: 12-Q(SETTINGS16 v5) · 14-1(GRADE16 v5)도 원본
   const copy16B = copySection(/^#### 16-B /m, /^#### 16-C /m);
   const copy16C = copySection(/^#### 16-C /m, /^#### 16-D /m);
   const strip2 = (t) => t.replace(/\*\*/g, '').replace(/`/g, '');
@@ -597,7 +610,7 @@ try {
     ['PURCHASES16', { ...sc.PURCHASES16, line: sc.PURCHASES16.line('{날짜}', '{금액}') }],
     ['NV18', [['지난 추천 열람권', '{n}장이'], ['호감 편지', '{n}통이'], ['깊은 성향 리포트', '{n}회가'], ['오늘 한 분 더', '{n}회가'], ['1회 매칭', '{n}명분이']].map(([a, b]) => sc.SHOP16.gotItem(a, b))],
     ['REFUND_GUIDE', sc.REFUND_GUIDE],
-    ['WITHDRAW_SUB_NOTE', sc.WITHDRAW_SUB_NOTE],
+    // WITHDRAW_SUB_NOTE(NV36)는 v5에 없다(12-Q '(줄 없음)', QP-A)
     ['BEFORE_BUY', { refundLink: sc.BEFORE_BUY.refundLink, docsLink: sc.BEFORE_BUY.docsLink }],
     ['BEFORE_BUY.lines', [...sc.BEFORE_BUY.grade, ...sc.BEFORE_BUY.match, ...sc.BEFORE_BUY.single].map((l) => `${l.label}: ${l.text}`)],
     ['GRADE16.lists', [
@@ -631,7 +644,7 @@ try {
   // Q6 금지어 · Q7 '매칭' · 작업 표시 — 앱 화면 글(shopCopy.ts · productCopy.ts)에서
   const shopStrings = [
     ...collectStrings({ ...sc.SHOP16, gotItem: undefined, subActive: '', subRenewOff: '', gotGrade: '', priceUp: '', cancelNote: '', matchPartial: sc.SHOP16.matchPartial(3, 3), matchBalance: sc.SHOP16.matchBalance(3), matchConfirm: sc.SHOP16.matchConfirm(3), matchDone: sc.SHOP16.matchDone(3), renewOff: sc.SHOP16.renewOff('11월 1일') }, 'SHOP16'),
-    ...collectStrings({ BEFORE_BUY: sc.BEFORE_BUY, REFUND_GUIDE: sc.REFUND_GUIDE, WITHDRAW: sc.WITHDRAW_SUB_NOTE, SETTINGS16: sc.SETTINGS16 }, 'S'),
+    ...collectStrings({ BEFORE_BUY: sc.BEFORE_BUY, REFUND_GUIDE: sc.REFUND_GUIDE, SETTINGS16: sc.SETTINGS16 }, 'S'),
     ...collectStrings({ ...G, big: G.big(3), shown: '', notYet: '', barLine: '', accessDone: '', accessMerged: '', historyLine: '', historyFirst: '' }, 'GRADE16'),
     ...collectStrings({ ...sc.BADGE16, chip: '', a11y: '', bubbleTitle: '', detail: '' }, 'BADGE16'),
     ...collectStrings(sc.REPORT16, 'REPORT16'),
@@ -640,8 +653,8 @@ try {
   const bannedS = /순위|퍼센트|%|인기|상위|하위|최고|등수|결혼정보회사|결혼중개|중매|주선|맞선|배우자|성혼|커플매니저|매니저|정회원|가입비|회비|결혼 전제|보장/;
   const badWords = shopStrings.filter(([, t]) => bannedS.test(t.replace('남은 금액의 10%를 빼고', ''))).map(([where, t]) => `${where}: "${t.slice(0, 40)}"`); // 예외 1개: C1 중도 해지 환급 '남은 금액의 10%'(법정 표시)
   check('S', '16 상점 · 등급 앱 글에 금지어(순위 · 퍼센트 · % · 인기 · 상위 · 하위 · 최고 · 등수 · 중개/주선 말 · 성혼 · 매니저 · 정회원 · 가입비 · 회비 · 보장)가 없다(예외: C1 "남은 금액의 10%" 하나)', badWords.length === 0, badWords.join('\n'));
-  const badMatch = shopStrings.filter(([, t]) => t.includes('매칭') && !t.includes('1회 매칭')).map(([where, t]) => `${where}: "${t.slice(0, 40)}"`);
-  check('S', "'매칭'은 상품 이름 '1회 매칭' 자리에만 나온다", badMatch.length === 0, badMatch.join('\n'));
+  const badMatch = shopStrings.filter(([, t]) => t.replace(/1회 매칭|주간 매칭/g, '').includes('매칭')).map(([where, t]) => `${where}: "${t.slice(0, 40)}"`);
+  check('S', "'매칭'은 상품 이름 '1회 매칭'(숨김 v4)과 v5 '주간 매칭'(카피 14-1) 자리에만 나온다", badMatch.length === 0, badMatch.join('\n'));
   const marksS = shopStrings.filter(([, t]) => /▲W|\bW\d{1,2}\b|\bNV\d|\bB1[01]\b|D-\d\d/.test(t)).map(([where, t]) => `${where}: "${t.slice(0, 40)}"`);
   check('S', '작업 표시(▲W# · NV 번호 · B10 · D-번호)가 앱 글로 새지 않는다', marksS.length === 0, marksS.join('\n'));
   // 등급 · 점수 말은 허용 구역 글 파일에만(카피 16-J): 이 글 파일(shopCopy · productCopy)과 법무 게시본(consentContent · legalPrivacy · legalTerms) 밖의 content 파일에는 없다
@@ -651,7 +664,7 @@ try {
   // R1 C①(D-123 ④): 설문 v2 글(features/surveyV2 의 copy.ts · questionCopy.ts)도 같은 점검에 넣는다. 등급 말은 카피 16-J L-7 세 자리만(declineHint · A06 도움말 · 세부사항 머리), 점수 말 0
   const sv2Dir = path.join(APP_DIR, 'src', 'features', 'surveyV2');
   const sv2Files = ['copy.ts', 'questionCopy.ts'].filter((f) => fs.existsSync(path.join(sv2Dir, f)));
-  const sv2Allowed = ['답하면 등급이 오를 수 있어요.', '종교는 추천에만 쓰고 등급에는 쓰지 않아요.', '쓴 내용은 AI가 읽고 등급 계산에 참고해요.'];
+  const sv2Allowed = ['답하면 등급이 오를 수 있어요.', '종교는 짝을 고르는 데만 쓰고 등급에는 쓰지 않아요.', '쓴 내용은 AI가 읽고 등급 계산에 참고해요.']; // 둘째: 카피 14-2 survey.A06.help v5(QP-A)
   const sv2Lines = sv2Files.flatMap((f) => fs.readFileSync(path.join(sv2Dir, f), 'utf8').split(/\r?\n/).filter((l) => !l.trim().startsWith('//')).map((l) => [f, l]));
   const sv2Seen = sv2Allowed.map((t) => sv2Lines.filter(([, l]) => l.includes(t)).length);
   const sv2Leaked = sv2Lines.filter(([, l]) => /등급|점수/.test(sv2Allowed.reduce((s, t) => s.split(t).join(''), l))).map(([f, l]) => `${f}: ${l.trim().slice(0, 50)}`);
@@ -687,6 +700,7 @@ try {
     const cc = await load(path.join(APP_DIR, 'src', 'content', 'surveyChatCopy.ts'));
     const sec13 = copyText.slice(copyText.search(/^## 13\. V6 대화형 설문/m));
     const rows = new Map(sec13.split(/\r?\n/).filter((l) => /^\| `CHAT\./.test(l)).map(cells).map((r) => [r[0].replace(/`/g, ''), r[1]]));
+    for (const [k, v] of V5_COPY) if (k.startsWith('CHAT.') && rows.has(k)) rows.set(k, v); // QP-A: 14-2 '13장 CHAT.…' 줄이 13장 옛 줄보다 앞선다
     const app = Object.entries(cc.CHAT_V6 ?? {});
     const diffs = app.filter(([k, t]) => rows.get(k) !== t).map(([k, t]) => `${k}: 앱 "${t}" / 카피 "${rows.get(k)}"`);
     const only = [...rows.keys()].filter((k) => !(k in (cc.CHAT_V6 ?? {})));

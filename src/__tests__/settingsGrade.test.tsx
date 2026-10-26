@@ -1,9 +1,10 @@
-// F13 조건 5: 12 설정 — '구매 · 등급 구독'(NV35) 줄 · '내 등급 보이기'(CK10) · '등급 계산 멈추기'(set_grade_processing, 카피 C7) · 멈춤 상태 화면(reason 'stopped')
-//  구독 이용 중 탈퇴 확인창의 안내(NV36 + [구독 관리]) · 구독 끝남(NV65). 실제 settingsApi · gradeApi 를 모의 서버 위에서 돌린다.
+// F13 조건 5 → v5(QP-A, 카피.md 12-Q): 12 설정 — '크레딧 · 구매 내역' 줄(→ T5) · '등급 계산 멈추기'(set_grade_processing, 카피 C7) · 멈춤 상태 화면(reason 'stopped')
+//  '내 등급 보이기'(CK10) 줄 · 탈퇴 확인창 구독 안내(NV36)는 v5에 없다. 실제 settingsApi · gradeApi 를 모의 서버 위에서 돌린다.
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 
 import { WITHDRAW } from '@/content/settingsCopy';
-import { GRADE16, SETTINGS16, SHOP16, WITHDRAW_SUB_NOTE } from '@/content/shopCopy';
+import * as shopCopy from '@/content/shopCopy';
+import { GRADE16, SETTINGS16, SHOP16 } from '@/content/shopCopy';
 import { SettingsScreen, type SettingsDeps } from '@/features/settings/SettingsScreen';
 import { createSettingsApi } from '@/lib/settingsApi';
 import { resetGradeSettings, useGradeSettingsStore } from '@/store/gradeSettingsStore';
@@ -58,79 +59,56 @@ async function open(scene: string, withGrade = true) {
 }
 const consentsOf = (backend: Awaited<ReturnType<typeof makeShopRig>>['backend'], email: string) => backend.peek.consents(email).filter((c) => c.item_code === 'CK10');
 
-describe('12 목록 · 줄', () => {
-  test('"구매 · 등급 구독"(NV35) 줄이 인증 서류 제출 아래에 있고, 누르면 16 상점의 이용권 · 구매 내역 쪽으로 간다(V2-8)', async () => {
+describe('12 목록 · 줄 (v5, QP-A)', () => {
+  test('"크레딧 · 구매 내역" 줄이 인증 서류 제출 아래에 있고, 누르면 T5 크레딧 · 내역(/credits)으로 간다 · 옛 "구매 · 등급 구독" 줄은 없다', async () => {
     const { tree } = await open('plain');
-    expect(must(tree, 'settings-row-purchase').props.label).toBe('구매 · 등급 구독');
-    expect(SHOP16.settingsRow).toBe('구매 · 등급 구독');
-    await tap(tree, 'settings-row-purchase');
-    expect(mockRouter.navigate).toHaveBeenCalledWith({ pathname: '/shop', params: { page: 'inventory', from: '12' } }); // from = 연 화면(F18: ‹ 가 12 로)
+    expect(must(tree, 'settings-row-credits').props.label).toBe('크레딧 · 구매 내역');
+    expect(has(tree, 'settings-row-purchase')).toBe(false);
+    expect('settingsRow' in SHOP16).toBe(false);
+    await tap(tree, 'settings-row-credits');
+    expect(mockRouter.push).toHaveBeenCalledWith('/credits');
   });
 
-  test('등급 스위치 둘: "내 등급 보이기"(처음값 꺼짐) + 설명 · "등급 계산 멈추기"(처음값 꺼짐) + 설명(C7) — 글자 그대로', async () => {
+  test('등급 스위치는 "등급 계산 멈추기"(처음값 꺼짐) + v5 설명 하나 — "내 등급 보이기" 줄과 아래 글은 없다(12-Q)', async () => {
     const { tree } = await open('plain');
     expect(has(tree, 'settings-grade-switches')).toBe(true);
-    expect(hasText(tree, '내 등급 보이기')).toBe(true);
-    expect(hasText(tree, '켜면 등급 구독 회원이 추천에서 내 등급을 볼 수 있어요.')).toBe(true);
+    expect(has(tree, 'settings-grade-show')).toBe(false);
+    expect(hasText(tree, '내 등급 보이기')).toBe(false);
     expect(hasText(tree, '등급 계산 멈추기')).toBe(true);
-    expect(hasText(tree, '멈추면 내 등급을 지우고 더 계산하지 않아요. 등급 구독 회원의 추천 상대를 고르는 데도 쓰이지 않아요. 등급 구독 중이면 내 등급 화면이 비어요.')).toBe(true);
-    expect(must(tree, 'settings-grade-show').props.on).toBe(false);
+    expect(hasText(tree, '멈추면 내 등급을 지우고 더 계산하지 않아요. 등급이 없으면 짝을 고를 수 없어서, 다시 켜기 전까지 탑승권을 살 수 없어요.')).toBe(true);
     expect(must(tree, 'settings-grade-stop').props.on).toBe(false);
-    expect(SETTINGS16.stopNote).toContain('내 등급 화면이 비어요');
+    expect('showRow' in SETTINGS16 || 'showNote' in SETTINGS16).toBe(false);
   });
 
-  test('이 화면의 등급 말은 허용 줄(NV35 · 내 등급 보이기 · 등급 계산 멈추기와 설명)뿐이고 점수 · 순위 말은 없다', async () => {
+  test('이 화면의 등급 말은 "등급 계산 멈추기"와 설명뿐이고 구독 · 점수 · 순위 말은 없다', async () => {
     const { tree } = await open('plain');
     const withWord = allTexts(tree).filter((t) => /등급|점수|순위/.test(t));
-    expect(withWord).toEqual(['구매 · 등급 구독', '내 등급 보이기', SETTINGS16.showNote, '등급 계산 멈추기', SETTINGS16.stopNote]);
-    expect(allTexts(tree).some((t) => /점수|순위/.test(t))).toBe(false);
+    expect(withWord).toEqual(['등급 계산 멈추기', SETTINGS16.stopNote]);
+    expect(allTexts(tree).some((t) => /점수|순위|구독/.test(t))).toBe(false);
+  });
+
+  test('등급 계산을 멈췄다 다시 켜도 CK10 동의 기록은 생기거나 바뀌지 않는다(v5에 쓰는 곳 없음 — 기록 처리는 법무 · 서버 몫)', async () => {
+    const { tree, backend, email } = await open('plain');
+    await tap(tree, 'settings-grade-stop');
+    await tap(tree, 'settings-grade-stop-confirm-confirm');
+    await tap(tree, 'settings-grade-stop');
+    expect(consentsOf(backend, email)).toHaveLength(0);
   });
 
   test('grade 연결이 없으면(옛 시험 · 읽기 전용 화면) 스위치 묶음을 그리지 않는다', async () => {
     const { tree } = await open('plain', false);
     expect(has(tree, 'settings-grade-switches')).toBe(false);
   });
-});
 
-describe('내 등급 보이기 (CK10 선택 동의)', () => {
-  test('켜면 동의 기록 한 줄이 생기고(판 consent-2026.10.15-v1), 끄면 철회된다 · 토스트 "저장했어요."', async () => {
-    const { tree, backend, email } = await open('plain');
-    expect(consentsOf(backend, email)).toHaveLength(0);
-    await tap(tree, 'settings-grade-show');
-    const rows = consentsOf(backend, email);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ agreed: true, text_version: 'consent-2026.10.15-v1', revoked_at: null });
-    expect(must(tree, 'settings-grade-show').props.on).toBe(true);
-    expect(hasText(tree, '저장했어요.')).toBe(true);
-    await tap(tree, 'settings-grade-show');
-    expect(consentsOf(backend, email)[0].revoked_at).not.toBeNull();
-    expect(must(tree, 'settings-grade-show').props.on).toBe(false);
-  });
-
-  test('CK10 을 꺼도 등급 계산은 멈추지 않는다(두 스위치는 따로 움직인다)', async () => {
-    const { tree, backend, email } = await open('shopsub');
-    await tap(tree, 'settings-grade-show');
-    await tap(tree, 'settings-grade-show');
-    expect(backend.peek.shop(email)?.processing).toBe(true);
-  });
-
-  test('이미 켜 둔 사람은 켜진 채로 열린다', async () => {
+  test('멈춤 여부를 읽지 못해도(인터넷 끊김) 스위치 줄은 이 기기 값으로 그린다', async () => {
     const rig = await makeShopRig('plain');
     const settings = createSettingsApi(rig.client, 'test');
-    await settings.setOptional('CK10', true);
-    const deps: SettingsDeps = { api: settings, grade: rig.gradeApi, now: () => rig.deps.now(), resetLocal: jest.fn(), pushStatus: async () => 'granted', requestPush: async () => 'granted', copyText: async () => true, openMail: async () => undefined };
+    const grade = { ...rig.gradeApi, loadProcessing: async () => ({ ok: false as const, reason: 'network' as const }) };
+    const deps: SettingsDeps = { api: settings, grade, now: () => rig.deps.now(), resetLocal: jest.fn(), pushStatus: async () => 'granted', requestPush: async () => 'granted', copyText: async () => true, openMail: async () => undefined };
     const tree = await mount(<SettingsScreen deps={deps} />);
     trees.push(tree);
     await flush();
-    expect(must(tree, 'settings-grade-show').props.on).toBe(true);
-  });
-
-  test('저장 실패는 오류 글만 보이고 스위치는 그대로(인터넷 끊김 → 공통 오류)', async () => {
-    const { tree, settingsDeps } = await open('plain');
-    settingsDeps.api.setOptional = jest.fn(async () => ({ ok: false as const, reason: 'network' as const }));
-    await tap(tree, 'settings-grade-show');
-    expect(textOf(tree, 'settings-grade-error')).toBe('인터넷에 연결되어 있지 않아요. 연결을 확인하고 다시 시도해 주세요.');
-    expect(must(tree, 'settings-grade-show').props.on).toBe(false);
+    expect(must(tree, 'settings-grade-stop').props.on).toBe(false);
   });
 });
 
@@ -164,6 +142,7 @@ describe('등급 계산 멈추기 (set_grade_processing)', () => {
     await tap(tree, 'settings-grade-stop');
     expect(textOf(tree, 'settings-grade-stop-confirm-title')).toBe('등급 계산을 멈출까요?');
     expect(textOf(tree, 'settings-grade-stop-confirm-body')).toBe(SETTINGS16.stopConfirm.body);
+    expect(SETTINGS16.stopConfirm.body).toBe('멈추면 내 등급이 지워지고, 다시 켜기 전까지 탑승권을 살 수 없어요. 크레딧은 그대로 남아요. 설정에서 다시 켜면 다시 계산해요.');
     await tap(tree, 'settings-grade-stop-confirm-cancel');
     expect(backend.peek.shop(email)?.processing).not.toBe(false);
     await tap(tree, 'settings-grade-stop');
@@ -202,21 +181,20 @@ describe('등급 계산 멈추기 (set_grade_processing)', () => {
   });
 });
 
-describe('탈퇴 확인창 · 구독 이용 중(NV36, 법무 C5)', () => {
-  test('구독자: 확인창에 "탈퇴해도 스토어의 등급 구독 결제는 멈추지 않아요…" + [구독 관리] → 16 상점의 구독 관리', async () => {
+describe('탈퇴 확인창 아래 줄 (v5, QP-A · 12-Q WITHDRAW.credit)', () => {
+  test('구독자였던 사람도 구독 안내(NV36) · [구독 관리] 없이 크레딧 줄 하나만 있다', async () => {
     const { tree } = await open('shopsub');
     await tap(tree, 'settings-withdraw');
-    expect(textOf(tree, 'withdraw-confirm-note-text')).toBe(WITHDRAW_SUB_NOTE);
-    expect(WITHDRAW_SUB_NOTE).toBe('탈퇴해도 스토어의 등급 구독 결제는 멈추지 않아요. 먼저 [구독 관리]에서 해지해 주세요. 탈퇴 뒤 결제된 금액은 고객센터로 알려 주시면 돌려드려요.');
-    await tap(tree, 'withdraw-confirm-note-action');
-    expect(mockRouter.navigate).toHaveBeenCalledWith({ pathname: '/shop', params: { page: 'manage', from: '12' } });
+    expect(textOf(tree, 'withdraw-confirm-note-text')).toBe('탈퇴하면 남은 크레딧은 더 쓸 수 없어요. 공개 전인 탑승권은 이용약관 제14조의2에 따라 처리해요.');
+    expect(find(tree, 'withdraw-confirm-note-action')).toBeNull();
+    expect('WITHDRAW_SUB_NOTE' in shopCopy).toBe(false);
   });
 
-  test('구독이 없으면 구독 안내 대신 크레딧 줄(약관 제22조 ⑧, L17A)만 있다', async () => {
+  test('구독이 없으면 크레딧 줄(약관 제22조 ⑧, L17A)만 있다', async () => {
     const { tree } = await open('plain');
     await tap(tree, 'settings-withdraw');
     expect(textOf(tree, 'withdraw-confirm-note-text')).toBe(WITHDRAW.credit);
     expect(find(tree, 'withdraw-confirm-note-action')).toBeNull();
-    expect(allTexts(tree).some((t) => t.includes('구독 결제는 멈추지 않아요'))).toBe(false);
+    expect(allTexts(tree).some((t) => t.includes('구독'))).toBe(false);
   });
 });

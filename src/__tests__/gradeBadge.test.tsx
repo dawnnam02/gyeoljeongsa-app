@@ -11,7 +11,7 @@ import { createRecsApi } from '@/lib/recsApi';
 import { newRequestId } from '@/lib/requestId';
 import { createShopApi } from '@/lib/shopApi';
 
-import { allTexts, has, hasText, mount, must, press, textOf } from './renderHelpers';
+import { allTexts, has, hasText, mount, textOf } from './renderHelpers';
 import { makeShopRig } from './shopRig';
 
 jest.setTimeout(90_000);
@@ -43,10 +43,6 @@ beforeEach(() => {
   for (const key of Object.keys(mockParams)) delete mockParams[key];
 });
 const flush = () => act(async () => void (await new Promise((resolve) => setTimeout(resolve, 0))));
-const tap = async (tree: ReactTestRenderer, id: string) => {
-  await press(tree, id);
-  await flush();
-};
 // 칩처럼 testID 가 부품 → 안쪽 누름 요소로 겹칠 때, 실제 누를 수 있는 요소
 const tapInner = async (tree: ReactTestRenderer, id: string) => {
   const node = tree.root.findAll((n) => n.props.testID === id && typeof n.props.onPress === 'function')[0];
@@ -163,14 +159,13 @@ describe('조건 3 · 10 상대 프로필 등급', () => {
     expect(allTexts(tree).filter((t) => /등급/.test(t))).toEqual([]);
   });
 
-  test('비구독자: 등급 자리 없음 + 맨 아래 한 줄 NV47 → 누르면 등급 구독 상세', async () => {
+  test('비구독자: 등급 자리 없음 · v5(QP-A, 카피 14-1)는 구독 권유 한 줄 NV47 도 없다', async () => {
     const { tree } = await openCandidate('plain', 'demo-cand-1');
     expect(has(tree, 'candidate-grade')).toBe(false);
-    expect(must(tree, 'candidate-grade-subscribe').props.accessibilityLabel).toBe(BADGE16.nonSubscriber);
-    expect(hasText(tree, '등급 구독을 하면 등급을 공개한 분의 등급을 볼 수 있어요.')).toBe(true);
-    expect(allTexts(tree).filter((t) => /\d등급/.test(t))).toEqual([]);
-    await tap(tree, 'candidate-grade-subscribe');
-    expect(mockRouter.navigate).toHaveBeenCalledWith({ pathname: '/shop', params: { page: 'product', key: 'grade_sub_1m', from: '10' } }); // from = 연 화면(F18: ‹ 가 10 으로)
+    expect(has(tree, 'candidate-grade-subscribe')).toBe(false);
+    expect(hasText(tree, '등급 구독을 하면 등급을 공개한 분의 등급을 볼 수 있어요.')).toBe(false);
+    expect(allTexts(tree).filter((t) => /\d등급|구독/.test(t))).toEqual([]);
+    expect('nonSubscriber' in BADGE16).toBe(false);
   });
 
   test('상대 등급을 못 읽어도(네트워크) 화면은 그대로 뜨고 NV47 은 만들지 않는다', async () => {

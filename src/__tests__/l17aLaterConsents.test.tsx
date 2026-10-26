@@ -6,7 +6,7 @@ import { CK10_TEXT_VERSION } from '@/config/gradeConsent';
 import { CONSENT_TEXT_VERSION_SHAPE, LATER_CONSENT_VERSIONS } from '@/config/laterConsent';
 import { CONSENT_LATER_ITEMS, CONSENT_LATER_NAMES } from '@/content/consentContent';
 import { LEGAL_TERMS } from '@/content/legalTerms';
-import { CONSENT_LATER, CONSENT_MANAGE, WITHDRAW } from '@/content/settingsCopy';
+import { CONSENT_MANAGE, WITHDRAW } from '@/content/settingsCopy';
 import { CHAT_V6 } from '@/content/surveyChatCopy';
 import { LATER_CONSENT_CODES } from '@/content/types';
 import { termsArticle } from '@/features/consent/TermsArticleSheet';
@@ -66,8 +66,8 @@ describe('글 — 동의문구 1-1 · 4-11 ~ 4-16 (gen:legal)', () => {
     expect(a?.blocks.some((b) => 'text' in b && b.text.includes('결혼중개 계약'))).toBe(true);
     expect(LEGAL_TERMS.length).toBeGreaterThan(a!.blocks.length);
   });
-  test('탈퇴 크레딧 줄은 해요체 한 줄 · 약관 제22조 ⑧ 뜻(남은 크레딧 못 씀)', () => {
-    expect(WITHDRAW.credit).toMatch(/크레딧은 쓸 수 없게 돼요/);
+  test('탈퇴 크레딧 줄은 해요체 한 줄 · 약관 제22조 ⑧ 뜻(남은 크레딧 못 씀) — 카피.md 12-Q 확정 글(QPM 2장 #7)', () => {
+    expect(WITHDRAW.credit).toBe('탈퇴하면 남은 크레딧은 더 쓸 수 없어요. 공개 전인 탑승권은 이용약관 제14조의2에 따라 처리해요.');
     expect(WITHDRAW.credit).not.toMatch(/[!]|합니다/);
   });
 });
@@ -89,7 +89,7 @@ describe('12 동의 관리 — CK11 ~ CK16 줄', () => {
       expect(label).toBe(code === 'CK16' ? '[선택] 글 쓰는 속도 분석' : `[선택] ${name}`);
       expect(propOf(tree, `settings-consent-${code}`, 'accessibilityState').disabled).toBe(code !== 'CK16');
     }
-    expect(hasText(tree, CONSENT_LATER.askLater)).toBe(true);
+    expect(hasText(tree, CONSENT_MANAGE.askLater)).toBe(true);
   });
 
   test('CK16 켜기 → 확인창 없이 기록, 끄기 → 확인창 → 철회', async () => {
@@ -99,7 +99,7 @@ describe('12 동의 관리 — CK11 ~ CK16 줄', () => {
     expect(a.setOptional).toHaveBeenLastCalledWith('CK16', true);
     await press(tree, 'settings-consent-CK16');
     expect(isOpen(tree, 'settings-later-off')).toBe(true);
-    expect(textOf(tree, 'settings-later-off-title')).toBe(CONSENT_LATER.offTitle);
+    expect(textOf(tree, 'settings-later-off-title')).toBe(CONSENT_MANAGE.offTitle);
     await press(tree, 'settings-later-off-confirm');
     expect(a.setOptional).toHaveBeenLastCalledWith('CK16', false);
   });
@@ -109,7 +109,7 @@ describe('12 동의 관리 — CK11 ~ CK16 줄', () => {
     const tree = await show(a);
     expect(propOf(tree, 'settings-consent-CK15', 'accessibilityState').disabled).toBe(false);
     await press(tree, 'settings-consent-CK15');
-    expect(hasText(tree, CONSENT_LATER.ck15OffBody)).toBe(true);
+    expect(hasText(tree, CONSENT_MANAGE.ck15OffBody)).toBe(true);
     await press(tree, 'settings-later-off-cancel');
     expect(a.setOptional).not.toHaveBeenCalled();
     await press(tree, 'settings-consent-CK15');

@@ -16,7 +16,6 @@ import { TextButton } from '@/components/TextButton';
 import { TextField } from '@/components/TextField';
 import { SIGN_IN } from '@/content/copy';
 import { WITHDRAW } from '@/content/settingsCopy';
-import { SHOP16, WITHDRAW_SUB_NOTE } from '@/content/shopCopy';
 import { formatMmSs, OTP_LENGTH, secondsLeft } from '@/lib/otpClock';
 import type { SettingsApi } from '@/lib/settingsApi';
 import { colors, size, space } from '@/theme/tokens';
@@ -30,11 +29,9 @@ type Props = {
   now: () => number;
   onCancel: () => void; // 탈퇴하지 않고 12 로
   onDone: () => Promise<void> | void; // 탈퇴 확정됨 — 부모가 로그인 정보를 지우고 01 로
-  subscribed?: boolean; // 등급 구독 이용 중이면 확인창에 NV36 안내 + [구독 관리](F13, 법무 C5)
-  onManageSubscription?: () => void;
 };
 
-export function WithdrawFlow({ visible, api, now, onCancel, onDone, subscribed = false, onManageSubscription }: Props) {
+export function WithdrawFlow({ visible, api, now, onCancel, onDone }: Props) {
   const [step, setStep] = useState<Step>('confirm');
   const [sentAt, setSentAt] = useState<number | null>(null);
   const [code, setCode] = useState('');
@@ -136,7 +133,7 @@ export function WithdrawFlow({ visible, api, now, onCancel, onDone, subscribed =
         title={WITHDRAW.title}
         body={WITHDRAW.body}
         sub={WITHDRAW.sub}
-        note={subscribed ? { text: WITHDRAW_SUB_NOTE, action: onManageSubscription ? { label: SHOP16.manageStore, onPress: onManageSubscription } : undefined } : { text: WITHDRAW.credit }} // 크레딧 줄: 약관 제22조 ⑧(L17A)
+        note={{ text: WITHDRAW.credit }} // 크레딧 줄 하나(카피.md 12-Q WITHDRAW.credit · v5엔 구독 안내 NV36 없음, QP-A)
         confirmLabel={WITHDRAW.confirm}
         cancelLabel={WITHDRAW.cancel}
         busy={busy}

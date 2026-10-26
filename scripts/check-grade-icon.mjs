@@ -22,7 +22,7 @@ const BASELINE = {
   'content/legalPrivacy.ts': 5, // 처리방침 등급 설명(법무 · 생성 파일)
   'content/legalTerms.ts': 11, // 약관 등급 설명(법무 · 생성 파일)
   'content/productCopy.ts': 2, // 등급 구독 상품 설명
-  'content/shopCopy.ts': 32, // 카피 16장 원본(GRADE16 · BADGE16 · SETTINGS16 · 상점) — 등급 표시 부품은 더 부르지 않는다
+  'content/shopCopy.ts': 25, // QP-A 32 → 25(구독 · 위 등급 줄 지움) · 카피 16장 원본(GRADE16 · BADGE16 · SETTINGS16 · 상점) — 등급 표시 부품은 더 부르지 않는다
   'features/recs/CandidateScreen.tsx': 3, // 10 상대 상세 배지 글(V5: 배지 삭제)
   'features/recs/RecommendationsScreen.tsx': 1, // 09 카드 스크린리더 이름(V5: 09 숨김)
 };

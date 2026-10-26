@@ -65,6 +65,7 @@ export function resolveDest(dest: Dest, ctx: NavContext = {}): NavTarget {
     case 'sub:licenses':
     case 'sub:image-credit':
     case 'sub:safety':
+    case 'sub:business-info':
       return { kind: 'none', reason: 'sub' }; // 12 안의 쪽(features/settings/SettingsScreen 의 page). 라우트가 아니다
     default:
       return { kind: 'href', href: screenById(dest).href };

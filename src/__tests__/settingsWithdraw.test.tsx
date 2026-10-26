@@ -171,7 +171,7 @@ describe('12 탈퇴', () => {
     const seen = allTexts(tree);
     await press(tree, 'withdraw-confirm-confirm');
     const all = [...seen, ...allTexts(tree)];
-    // 구독 없는 장면: 목록의 새 줄 '구매 · 등급 구독'(NV35) 말고는 등급 말이 없다. NV36 은 구독 이용 중 장면에서만(settingsGrade.test)
-    expect(all.filter((t) => /모든 데이터 삭제|등급|점수/.test(t) && t !== '구매 · 등급 구독')).toEqual([]);
+    // v5(QP-A, 12-Q): 목록 줄은 '크레딧 · 구매 내역'이라 등급 말이 없다. 탈퇴 확인창 아래 줄은 크레딧 줄 하나(구독 안내 NV36 없음)
+    expect(all.filter((t) => /모든 데이터 삭제|등급|점수|구독/.test(t))).toEqual([]);
   });
 });

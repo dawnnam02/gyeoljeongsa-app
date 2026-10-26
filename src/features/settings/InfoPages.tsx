@@ -1,6 +1,7 @@
 // 12 › 보안(Figma 12d 197:166) · 고객센터(12c 197:81) · 안전 안내(12f 201:177) · 이미지 출처 고지(12q 231:154).
 //  보안: 스위치 1개 "상대 화면 캡처 차단", 처음값 꺼짐(D-23 BD-4). 확인창 없이 바로 바뀐다. 켜면 09 · 10 · 11 이 열려 있는 동안만 캡처 · 녹화가 막힌다(lib/captureBlock.ts)
 //        끄면 아무 안내도 없다. 값은 이 기기 메모리에만 있다(계정 · 기기 저장은 U24 미정)
+//  사업자 정보(QP-A, 카피.md 12-Q): 줄 6개(상호 · 대표자 · 신고번호 · 사업자등록번호 · 사무소 주소 · 전화번호). 값이 모두 있을 때만 이 쪽으로 들어오는 줄이 보인다
 //  고객센터: 문의 이메일 · 운영 시간(N27, 값은 D-28 — 정해지기 전에는 원본 글의 {…} 자리 그대로, [복사] · [메일 앱 열기] 꺼짐) + 아동 안전 문의(N35)
 import { StyleSheet, View } from 'react-native';
 
@@ -8,7 +9,8 @@ import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { CHILD_SAFETY, SAFETY_GUIDE, SUPPORT } from '@/content/copy';
-import { IMAGE_CREDIT, SECURITY, SUPPORT_ACTIONS } from '@/content/settingsCopy';
+import type { BusinessRow } from '@/content/businessInfo';
+import { BUSINESS, IMAGE_CREDIT, SECURITY, SUPPORT_ACTIONS } from '@/content/settingsCopy';
 import { SUPPORT_CONTACT, type SupportContact } from '@/content/supportContact';
 import { useSecurityStore } from '@/store/securityStore';
 import { colors, space } from '@/theme/tokens';
@@ -102,6 +104,23 @@ export function ImageCreditPage({ onBack }: { onBack: () => void }) {
           {IMAGE_CREDIT.body}
         </AppText>
       </Card>
+    </SubPage>
+  );
+}
+
+export function BusinessInfoPage({ rows, onBack }: { rows: readonly BusinessRow[]; onBack: () => void }) {
+  return (
+    <SubPage title={BUSINESS.headerTitle} onBack={onBack} testID="settings-business">
+      <RowGroup testID="settings-business-rows">
+        {rows.map((row, i) => (
+          <View key={row.key} style={[styles.guideLine, i < rows.length - 1 && styles.divider]} testID={`settings-business-${row.key}`}>
+            <AppText variant="caption" tone="sub">
+              {row.label}
+            </AppText>
+            <AppText variant="body">{row.value}</AppText>
+          </View>
+        ))}
+      </RowGroup>
     </SubPage>
   );
 }

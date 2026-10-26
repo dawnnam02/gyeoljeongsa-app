@@ -11,6 +11,7 @@ export const SETTINGS = {
     visibility: '공개 범위', // [확정]
     preferences: '희망 조건 수정', // [확정] 카피.md 12(B5) · N20
     verification: '인증 서류 제출', // [확정]
+    credits: '크레딧 · 구매 내역', // [확정] 카피.md 12-Q SETTINGS.rows.credits(QP-A, 옛 SHOP16.settingsRow(NV35) 자리) → T5 크레딧 · 내역. 상점이 꺼져도 보인다
     blocked: '차단 목록', // [확정]
     reports: '신고 내역', // [확정]
     security: '보안', // [확정] N32
@@ -21,6 +22,7 @@ export const SETTINGS = {
     infoGroup: '정보', // [확정] 카피.md 12 목록 '정보' 묶음
     licenses: '오픈소스 라이선스', // [법무] 5-6 · N29
     imageCredit: '이미지 출처 고지', // [확정] 카피.md 12(B5) · N30 (줄 이름 · 상단바)
+    businessInfo: '사업자 정보', // [확정] 카피.md 12-Q 정보 묶음 새 줄 — 값 6개가 모두 있을 때만 보인다(content/businessInfo.ts)
   },
   verificationSoon: '준비 중', // [확정] 카피.md 12 "열리기 전에는 '준비 중'으로 표시" · Figma 12 오른쪽 글
   verificationToast: '준비 중이에요', // [확정] 카피.md 12(B5) · N19 인증 서류 제출 안내
@@ -39,7 +41,7 @@ export const WITHDRAW = {
   sub: '법령에 따라 남기는 접속기록과, 안전한 이용을 지키고 삭제한 정보가 되살아나지 않게 하는 데 쓰는 최소한의 정보(이메일이나 계정 번호를 변환한 값, 로그인 기록 등)는 따로 보관돼요. 같은 이메일로는 30일이 지난 뒤에 다시 가입할 수 있어요. 자세한 내용은 개인정보 처리방침에서 볼 수 있어요.', // [법무]
   confirm: '탈퇴하기', // [법무]
   cancel: '취소', // [법무]
-  credit: '탈퇴하면 남은 크레딧은 쓸 수 없게 돼요. 아직 결과가 공개되지 않은 탑승권은 이용약관 제14조의2에 따라 처리해요.', // [제안 L17A · D-190 ⑥] 약관 제22조 ⑧(BR02)을 해요체로 — 카피.md 12 반영 대기
+  credit: '탈퇴하면 남은 크레딧은 더 쓸 수 없어요. 공개 전인 탑승권은 이용약관 제14조의2에 따라 처리해요.', // [확정] 카피.md 12-Q WITHDRAW.credit(QPM 2장 #7 고쳐 확정). 탈퇴 확인창 아래 줄은 이 줄 하나(WITHDRAW_SUB_NOTE 없음)
   otpHeader: '탈퇴', // [확정] 카피.md 12(B5) · Figma 12e 197:240 상단바 글
   otpTitle: '이메일로 받은 인증번호를 입력해 주세요', // [확정] N31
   otpBody: '가입한 이메일로 인증번호 6자리를 보냈어요. 인증번호를 입력하면 탈퇴가 확정돼요.', // [확정] N31
@@ -53,9 +55,10 @@ export const WITHDRAW = {
 // 12 알림 하위 화면(N19 · N26 · R-D18-3)
 export const NOTIFY = {
   headerTitle: '알림', // [확정] 줄 이름과 같은 글(Figma 12h 230:2)
-  recommendation: '추천이 도착했을 때', // [확정] 카피.md 12(B5) · N19
-  like: '호감을 받았을 때', // [확정] 카피.md 12(B5) · N19
-  match: '연결됐을 때', // [확정] 카피.md 12(B5) · N19
+  recommendation: '이번 주 만날 분이 정해졌을 때', // [확정] 카피.md 12-Q NOTIFY.recommendation v5(수요일 18:00 공개 알림)
+  // v5 숨김(카피.md 12-Q '(줄 없음)'): 호감 · 수락이 없어 알림 화면에 그리지 않는다. 키 · 서버 값은 v4 화면(스위치 꺼짐)이 쓰는 동안 남긴다
+  like: '호감을 받았을 때', // [확정] 카피.md 12(B5) · N19 — v5 화면에 없음
+  match: '연결됐을 때', // [확정] 카피.md 12(B5) · N19 — v5 화면에 없음
   marketing: '마케팅 알림', // [확정] 카피.md 12 알림 설정 안
   marketingNotes: [
     '받지 않아도 서비스는 똑같이 쓸 수 있어요.', // [법무] 4-9
@@ -83,21 +86,33 @@ export const CONSENT_MANAGE = {
   requiredNote: '필수 항목은 끌 수 없어요. 동의를 거두려면 탈퇴해 주세요.', // [확정] 카피.md 12(B5) · N25
   view: '보기 ›', // [확정] 03 '보기 ›'와 같은 글(copy.ts CONSENT.more)
   ck4OffTitle: '종교 정보 동의를 끌까요?', // [확정] 카피.md 12(B5) · N25
-  ck4OffBody: "입력한 종교 정보가 삭제되고 '답하지 않음'으로 바뀌어요. 상대가 종교를 꼭 지켜야 할 조건으로 정했다면 내가 추천에서 빠질 수 있어요.", // [확정] 카피.md 12(B5) · N25
+  ck4OffBody: "입력한 종교 정보가 지워지고 '답하지 않음'으로 바뀌어요. 종교는 꼭 맞아야 하는 조건이라, 다시 답하기 전까지 탑승권을 살 수 없어요.", // [확정] 카피.md 12-Q CONSENT_MANAGE.ck4OffBody v5
   ck4OffConfirm: '끄기', // [확정] 카피.md 12(B5) · N25
   cancel: '취소', // [확정] 카피.md 12(B5) · N25
   saved: '저장했어요.', // [확정] 카피.md 12(B5) · N10
   saveFailed: '저장하지 못했어요. 다시 시도해 주세요.', // [확정] 08 저장 실패와 같은 글
+  // 03 밖 선택 동의 CK11 ~ CK16 줄(동의문구 5-6 ② · 1-1, L17A). 줄 이름은 1-1 표 이름(consentContent.ts CONSENT_LATER_NAMES), '보기 ›' 글은 4-11 ~ 4-16(CONSENT_LATER_ITEMS)을 그대로 쓴다.
+  // 옛 CONSENT_LATER [제안 L17A] 5줄 — 카피.md 12-Q 에서 확정(QPM 2장 #1 ~ #5)돼 여기로 옮겼다(check:copy O 가 본다)
+  askLater: '처음 쓸 때 따로 물어요.', // [확정] 12-Q CONSENT_LATER.askLater — 그 기능 · 문항에서 받는 칸(CK11 ~ CK15)이 꺼져 있을 때(스위치 잠김)
+  offTitle: '동의를 거둘까요?', // [확정] 12-Q CONSENT_LATER.offTitle
+  offBody: '거두면 그때부터 모으지 않고, 이미 모은 정보도 바로 지워요.', // [확정] 12-Q CONSENT_LATER.offBody — CK11 ~ CK14 · CK16
+  ck15OffBody: '거두면 정치 성향 답을 바로 지워요. 다시 동의하고 답하기 전까지는 탑승권을 살 수 없어요.', // [확정] 12-Q CONSENT_LATER.ck15OffBody
+  offConfirm: '거두기', // [확정] 12-Q CONSENT_LATER.offConfirm(취소는 cancel)
 } as const;
 
-// 12 동의 관리의 03 밖 선택 동의 CK11 ~ CK16 줄(동의문구 5-6 ② · 1-1, L17A). 줄 이름은 1-1 표 이름(consentContent.ts CONSENT_LATER_NAMES), '보기 ›' 글은 4-11 ~ 4-16(CONSENT_LATER_ITEMS)을 그대로 쓴다.
-// 아래 글은 모두 [제안 L17A] — 카피.md 12 에 아직 없다(마케팅 확정 대기, 팀장 경유). 확정되면 CONSENT_MANAGE 로 옮긴다(check:copy O 가 보게)
-export const CONSENT_LATER = {
-  askLater: '처음 쓸 때 따로 물어요.', // [제안 L17A] 그 기능 · 문항에서 받는 칸(CK11 ~ CK15)이 꺼져 있을 때 — 여기서는 켜지 않는다(스위치 잠김)
-  offTitle: '동의를 거둘까요?', // [제안 L17A] 동의문구 4-16 '거두기'
-  offBody: '거두면 그때부터 모으지 않고, 이미 모은 정보도 바로 지워요.', // [제안 L17A] CK11 ~ CK14 · CK16(동의문구 1-1 '철회하면' · 4-16 거두기)
-  ck15OffBody: '거두면 정치 성향 답을 바로 지워요. 다시 동의하고 답하기 전까지는 탑승권을 살 수 없어요.', // [제안 L17A] 동의문구 1-1 CK15 '철회하면'
-  offConfirm: '거두기', // [제안 L17A]
+// 12 정보 묶음 · 사업자 정보 화면 · 신고번호 한 줄(카피.md 12-Q, 법 제8조 ② · 제12조 ③ — 법무 L16). 값은 content/businessInfo.ts 한 곳에서 읽는다.
+//  값이 비면 줄 자체를 그리지 않는다(빈칸 · '준비 중' 글도 없음)
+export const BUSINESS = {
+  headerTitle: '사업자 정보', // [확정] 12-Q 줄 이름과 같은 글
+  labels: {
+    name: '상호',
+    ceo: '대표자',
+    reportNo: '국내결혼중개업 신고번호',
+    bizRegNo: '사업자등록번호',
+    address: '사무소 주소',
+    phone: '전화번호',
+  }, // [확정] 12-Q 사업자 정보 화면 줄 6개(차례 그대로)
+  reportLine: (no: string) => `국내결혼중개업 신고번호 ${no}`, // [확정] 12-Q 설정 목록 맨 아래 · 약관 화면 맨 아래 한 줄
 } as const;
 
 // 12 차단 목록 · 신고 내역(K2 12 · R-D18-1 · R-D18-2)

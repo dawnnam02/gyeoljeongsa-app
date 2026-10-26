@@ -5,6 +5,8 @@
 //  공개 범위 → 08 내 프로필 · 희망 조건 수정 → 04-25 '희망 조건 수정' 상태(12 로 돌아옴) · 이용약관 · 처리방침 → 03 과 같은 읽기 시트
 //  로그아웃: 확인창 없이 이 기기의 로그인 정보와 임시 저장을 지우고 01. 탈퇴: WithdrawFlow(확인창 → 인증번호 재확인 → 확정 → 01)
 //  표시하지 않는 것: 진행 단계 · 내부 평가값 · 매칭 숫자
+//  v5(QP-A, 카피.md 12-Q): '크레딧 · 구매 내역' 줄(→ T5) · 등급 스위치는 '등급 계산 멈추기' 하나 · 정보 묶음 '사업자 정보'(값 6개가 모두 있을 때만)
+//        · 목록 맨 아래 '국내결혼중개업 신고번호 …' 한 줄(값이 있을 때만). 값은 content/businessInfo.ts 한 곳(지금은 비어 있어 둘 다 안 보인다)
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
@@ -15,20 +17,20 @@ import { Screen } from '@/components/Screen';
 import { TabHeader } from '@/components/TabHeader';
 import { TextButton } from '@/components/TextButton';
 import { Toast } from '@/components/Toast';
+import { AppText } from '@/components/AppText';
+import { BUSINESS_INFO, businessRows, reportNoLine, type BusinessInfo } from '@/content/businessInfo';
 import { SETTINGS } from '@/content/settingsCopy';
 import { LegalReader } from '@/features/consent/LegalReader';
 import type { GradeApi } from '@/lib/gradeApi';
 import type { SettingsApi } from '@/lib/settingsApi';
 import { gradeApi, settingsApi } from '@/lib/services';
-import { resetGradeSettings, useGradeSettingsStore } from '@/store/gradeSettingsStore';
-import { openShopPage } from '@/navigation/go';
-import { useV4Screens } from '@/navigation/v5Hide';
+import { resetGradeSettings } from '@/store/gradeSettingsStore';
 import { resolveDest } from '@/navigation/resolve';
 import { useSignupStore } from '@/store';
 import { forgetMyFace } from '@/store/myFaceStore';
 import { size, space } from '@/theme/tokens';
 
-import { ImageCreditPage, SafetyGuidePage, SecurityPage, SupportPage, type SupportDeps } from './InfoPages';
+import { BusinessInfoPage, ImageCreditPage, SafetyGuidePage, SecurityPage, SupportPage, type SupportDeps } from './InfoPages';
 import { LicensesPage } from './LicensesPage';
 import { BlockedListPage, ReportHistoryPage } from './ListPages';
 import { copyToClipboard, readPushStatus, requestPushPermission, type PushStatus } from './deviceDeps';
@@ -41,7 +43,8 @@ import { WithdrawFlow } from './WithdrawFlow';
 
 export type SettingsDeps = SupportDeps & {
   api: SettingsApi;
-  grade?: Pick<GradeApi, 'loadMine' | 'loadProcessing' | 'setProcessing'>; // 있으면 등급 스위치 둘(내 등급 보이기 · 등급 계산 멈추기)과 탈퇴 확인창의 구독 안내를 그린다(F13)
+  grade?: Pick<GradeApi, 'loadMine' | 'loadProcessing' | 'setProcessing'>; // 있으면 등급 스위치(등급 계산 멈추기)를 그린다(F13 · v5 12-Q)
+  business?: BusinessInfo; // 사업자 정보 · 신고번호 값(없으면 content/businessInfo.ts 의 BUSINESS_INFO — 한 곳). 시험에서 값을 넣어 본다
   now: () => number;
   resetLocal: () => void; // 기기에 남은 가입 진행 · 설문 임시 저장 지우기(점검표 A-14)
   pushStatus: () => Promise<PushStatus>; // 지금 푸시 권한(묻지 않음)
@@ -78,8 +81,6 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
   const [push, setPush] = useState<PushStatus>('undetermined');
   const [loggingOut, setLoggingOut] = useState(false);
   const collapse = useCollapsingTitle(); // 큰 제목 줄어듦(F21)
-  const v4 = useV4Screens(); // V5(W10): 숨긴 v4 화면 스위치
-  const subscribed = useGradeSettingsStore((s) => s.subscribed);
   const busyRef = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -133,8 +134,8 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
       case 'legal':
         setLegalOpen(true);
         return;
-      case 'shop':
-        openShopPage(router, { page: 'inventory' }, '12');
+      case 'credits':
+        router.push('/credits' as unknown as Href); // T5(탭 위에 열리는 화면)
         return;
     }
   };
@@ -162,6 +163,10 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
       setLoggingOut(false);
     }
   };
+
+  const business = deps.business ?? BUSINESS_INFO;
+  const bizRows = businessRows(business); // 값이 하나라도 비면 null → 줄 · 쪽 모두 없음
+  const reportLine = reportNoLine(business); // 신고번호가 비면 null → 줄 없음
 
   const body = (() => {
     switch (page) {
@@ -195,13 +200,15 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
         return <LicensesPage onBack={toList} />;
       case 'image-credit':
         return <ImageCreditPage onBack={toList} />;
+      case 'business-info':
+        return bizRows ? <BusinessInfoPage rows={bizRows} onBack={toList} /> : null;
       default:
         return null;
     }
   })();
 
-  const main = SETTINGS_ROWS.filter((r) => r.group === 'main' && (r.action.kind !== 'shop' || v4.shop)); // V5(W10): 상점이 숨겨지면 '구매 · 등급 구독' 줄도 없다
-  const info = SETTINGS_ROWS.filter((r) => r.group === 'info');
+  const main = SETTINGS_ROWS.filter((r) => r.group === 'main');
+  const info = SETTINGS_ROWS.filter((r) => r.group === 'info' && (r.key !== 'business-info' || bizRows !== null));
 
   return (
     <Screen edges={['top']} enter="tab" testID="settings-screen">
@@ -220,26 +227,26 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
                 <NavRow key={row.key} label={row.label} last={i === info.length - 1} onPress={() => onRow(row)} testID={`settings-row-${row.key}`} />
               ))}
             </RowGroup>
-            {deps.grade ? <GradeSwitches settings={deps.api} grade={deps.grade} onToast={showToast} /> : null}
+            {deps.grade ? <GradeSwitches grade={deps.grade} onToast={showToast} /> : null}
             <OutlineButton label={SETTINGS.logout} busy={loggingOut} onPress={() => void logout()} testID="settings-logout" />
             <TextButton label={SETTINGS.withdraw} onPress={() => setWithdrawOpen(true)} testID="settings-withdraw" />
+            {reportLine ? (
+              <AppText variant="caption" tone="sub" style={styles.reportLine} testID="settings-report-no">
+                {reportLine}
+              </AppText>
+            ) : null}
           </Animated.ScrollView>
         </>
       ) : (
         body
       )}
-      <LegalReader visible={legalOpen} initial="terms" onClose={() => setLegalOpen(false)} />
+      <LegalReader visible={legalOpen} initial="terms" business={business} onClose={() => setLegalOpen(false)} />
       <WithdrawFlow
         visible={withdrawOpen}
         api={deps.api}
         now={deps.now}
         onCancel={() => setWithdrawOpen(false)}
         onDone={leaveToStart}
-        subscribed={subscribed}
-        onManageSubscription={() => {
-          setWithdrawOpen(false);
-          openShopPage(router, { page: 'manage' }, '12');
-        }}
       />
       <Toast text={toast} testID="settings-toast" />
     </Screen>
@@ -248,5 +255,6 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
 
 const styles = StyleSheet.create({
   list: { paddingHorizontal: size.screenPadding, paddingTop: space.s8, paddingBottom: space.s32, gap: space.s16 },
+  reportLine: { textAlign: 'center' },
   infoHead: { paddingHorizontal: space.s12, paddingTop: space.s12, paddingBottom: space.s4 },
 });

@@ -33,7 +33,7 @@ export const QUESTION_COPY: Readonly<Record<string, QuestionCopy>> = {
   },
   A06: {
     q: '종교를 골라 주세요',
-    help: '종교는 추천에만 쓰고 등급에는 쓰지 않아요. \'그 외\'를 고르면 \'그 외\'를 고른 분끼리만 추천해요.',
+    help: '종교는 짝을 고르는 데만 쓰고 등급에는 쓰지 않아요. 종교가 같은 분끼리 이어져요.', // 카피.md 14-2 survey.A06.help(v5, QP-A)
     opt: { none: '무교', protestant: '개신교', catholic: '천주교', buddhist: '불교', won: '원불교', islam: '이슬람', other: '그 외' },
   },
   A07: {
@@ -276,7 +276,7 @@ export const QUESTION_COPY: Readonly<Record<string, QuestionCopy>> = {
   },
   F07: {
     q: '괜찮은 상대의 종교를 모두 골라 주세요',
-    help: '\'그 외\'는 종교를 \'그 외\'로 고른 분끼리만 추천해서 여기서는 고를 수 없어요.',
+    help: "'그 외'는 종교를 '그 외'로 고른 분끼리 이어져서 여기서는 고를 수 없어요.", // 카피.md 14-2 survey.F07.help(v5, QP-A)
     opt: { none: '무교', protestant: '개신교', catholic: '천주교', buddhist: '불교', won: '원불교', islam: '이슬람', other: '그 외', any: '상관없어요' },
   },
   F08: {
@@ -310,7 +310,7 @@ export const QUESTION_COPY: Readonly<Record<string, QuestionCopy>> = {
   },
   F12: {
     q: '이것만은 꼭 맞아야 하는 조건을 3개까지 골라 주세요',
-    help: '고른 조건에 맞지 않는 분은 추천하지 않아요. 고르지 않아도 괜찮아요.',
+    help: '고른 조건은 짝을 고를 때 더 무겁게 봐요. 고르지 않아도 괜찮아요.', // 카피.md 14-2 survey.F12.help(v5, QP-A)
     opt: { F01: '나이 차', F02: '키', F03: '학력', F04: '직업', F05: '한 해 소득', F06: '사는 곳', F07: '종교', F08: '흡연', F09: '혼인 이력', F10: '자녀', F14: '부모님 학력', F15: '부모님 자산', F16: '모은 자산' },
   },
   F13: {

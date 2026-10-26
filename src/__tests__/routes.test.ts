@@ -141,12 +141,13 @@ describe('화살표 (K2 2-1 · 2-2 · 2-3 · 4장)', () => {
   });
 
   // K4(2026-10-14)가 K2 12 설정에 더한 것: 보안 · 정보 2줄 · 탈퇴 인증번호 재확인(분기 ①에 12 포함)
-  test('12 설정: 하위 화면 11개가 모두 화살표로 있고 라우트가 아닌 12 안의 쪽으로 풀린다(F7)', () => {
+  test('12 설정: 하위 화면 12개(QP-A 사업자 정보 포함)가 모두 화살표로 있고 라우트가 아닌 12 안의 쪽으로 풀린다(F7)', () => {
     const subs = arrowsFrom('12')
       .map((x) => x.to)
       .filter((to) => to.startsWith('sub:'));
     expect([...subs].sort()).toEqual([
       'sub:blocked-list',
+      'sub:business-info',
       'sub:consent-management',
       'sub:image-credit',
       'sub:licenses',

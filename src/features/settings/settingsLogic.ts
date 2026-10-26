@@ -2,12 +2,11 @@
 import { PREFERENCES_EDIT_ENABLED } from '@/config/flags';
 import { COMMON, SIGN_IN } from '@/content/copy';
 import { REPORTS, SETTINGS, WITHDRAW } from '@/content/settingsCopy';
-import { SHOP16 } from '@/content/shopCopy';
 import { SUPPORT_CONTACT, type SupportContact } from '@/content/supportContact';
 import type { WithdrawConfirmFailure, WithdrawStartFailure } from '@/lib/settingsApi';
 
 // 하위 화면(navigation/flow.ts 의 sub:* 와 같은 이름. 'safety' 는 flow.ts 에 아직 없다 — 2단계에서 더한다)
-export type SettingsPage = 'list' | 'notifications' | 'security' | 'consent-management' | 'blocked-list' | 'report-history' | 'support' | 'safety' | 'licenses' | 'image-credit';
+export type SettingsPage = 'list' | 'notifications' | 'security' | 'consent-management' | 'blocked-list' | 'report-history' | 'support' | 'safety' | 'licenses' | 'image-credit' | 'business-info';
 
 export type RowAction =
   | { kind: 'page'; page: Exclude<SettingsPage, 'list'> }
@@ -15,7 +14,7 @@ export type RowAction =
   | { kind: 'preferences' } // 04-25 '희망 조건 수정' 상태(12 로 돌아옴)
   | { kind: 'soon' } // 인증 서류 제출: 이동 없음, "준비 중이에요"
   | { kind: 'legal' } // 이용약관 · 개인정보 처리방침 읽기(03 과 같은 시트)
-  | { kind: 'shop' }; // 구매 · 등급 구독(NV35) → 16 상점의 이용권 · 구매 내역(V2-8)
+  | { kind: 'credits' }; // 크레딧 · 구매 내역(카피.md 12-Q, 옛 NV35 '구매 · 등급 구독' 자리) → T5 크레딧 · 내역. 상점이 꺼져도 보인다
 
 export type RowDef = { key: string; label: string; action: RowAction; group: 'main' | 'info'; right?: string };
 
@@ -25,7 +24,7 @@ const ALL_ROWS: readonly RowDef[] = [
   { key: 'visibility', label: SETTINGS.rows.visibility, action: { kind: 'visibility' }, group: 'main' },
   { key: 'preferences', label: SETTINGS.rows.preferences, action: { kind: 'preferences' }, group: 'main' },
   { key: 'verification', label: SETTINGS.rows.verification, action: { kind: 'soon' }, group: 'main', right: SETTINGS.verificationSoon },
-  { key: 'purchase', label: SHOP16.settingsRow, action: { kind: 'shop' }, group: 'main' },
+  { key: 'credits', label: SETTINGS.rows.credits, action: { kind: 'credits' }, group: 'main' },
   { key: 'blocked', label: SETTINGS.rows.blocked, action: { kind: 'page', page: 'blocked-list' }, group: 'main' },
   { key: 'reports', label: SETTINGS.rows.reports, action: { kind: 'page', page: 'report-history' }, group: 'main' },
   { key: 'security', label: SETTINGS.rows.security, action: { kind: 'page', page: 'security' }, group: 'main' },
@@ -35,6 +34,7 @@ const ALL_ROWS: readonly RowDef[] = [
   { key: 'safety', label: SETTINGS.rows.safety, action: { kind: 'page', page: 'safety' }, group: 'main' },
   { key: 'licenses', label: SETTINGS.rows.licenses, action: { kind: 'page', page: 'licenses' }, group: 'info' },
   { key: 'image-credit', label: SETTINGS.rows.imageCredit, action: { kind: 'page', page: 'image-credit' }, group: 'info' },
+  { key: 'business-info', label: SETTINGS.rows.businessInfo, action: { kind: 'page', page: 'business-info' }, group: 'info' }, // 값 6개가 모두 있을 때만(SettingsScreen 이 거른다)
 ];
 export const SETTINGS_ROWS: readonly RowDef[] = ALL_ROWS.filter((r) => PREFERENCES_EDIT_ENABLED || r.key !== 'preferences');
 

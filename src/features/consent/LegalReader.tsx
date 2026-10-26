@@ -2,12 +2,15 @@
 // 화면 15개에 들지 않는 시트다(라우트를 늘리지 않는다). 글은 법무/약관.md · 법무/개인정보처리방침.md 의 전체(src/content/legal*.ts, 자동 생성).
 // 탭 칩은 공통 Chip 의 selected(bg 면 + accent 1px 선 + accent 글자) · inactive(bg 면 + line 1px + sub 글자)다(D8 M1).
 // 12 설정의 '이용약관' · '개인정보 처리방침' 하위 화면(F7)도 같은 글을 쓸 수 있다.
+// QP-A(카피.md 12-Q): 약관 맨 아래에 '국내결혼중개업 신고번호 …' 한 줄 — 값(content/businessInfo.ts)이 있을 때만, 비면 줄 없음
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { AppText } from '@/components/AppText';
 import { Chip } from '@/components/Chip';
 import { FullSheet } from '@/components/FullSheet';
 import { LegalBlockList } from '@/components/LegalBlocks';
+import { BUSINESS_INFO, reportNoLine, type BusinessInfo } from '@/content/businessInfo';
 import { CONSENT } from '@/content/copy';
 import { LEGAL_PRIVACY } from '@/content/legalPrivacy';
 import { LEGAL_TERMS } from '@/content/legalTerms';
@@ -20,9 +23,10 @@ type Props = {
   visible: boolean;
   initial: LegalDocKey; // 처음 보이는 문서
   onClose: () => void;
+  business?: BusinessInfo; // 신고번호 값(없으면 BUSINESS_INFO — 한 곳). 시험에서 값을 넣어 본다
 };
 
-export function LegalReader({ visible, initial, onClose }: Props) {
+export function LegalReader({ visible, initial, onClose, business = BUSINESS_INFO }: Props) {
   // 사용자가 탭으로 고른 문서. 시트를 닫으면 지우므로 다음에 열 때는 처음 보일 문서(initial)로 시작한다
   const [chosen, setChosen] = useState<LegalDocKey | null>(null);
   const doc = chosen ?? initial;
@@ -39,13 +43,21 @@ export function LegalReader({ visible, initial, onClose }: Props) {
     </View>
   );
 
+  const reportLine = doc === 'terms' ? reportNoLine(business) : null;
+  const footer = reportLine ? (
+    <AppText variant="caption" tone="sub" style={styles.reportLine} testID="legal-report-no">
+      {reportLine}
+    </AppText>
+  ) : null;
+
   return (
     <FullSheet visible={visible} title={CONSENT.documents[doc]} onClose={close} testID="legal-reader">
-      <LegalBlockList blocks={doc === 'terms' ? LEGAL_TERMS : LEGAL_PRIVACY} header={tabs} testID="legal-reader-list" />
+      <LegalBlockList blocks={doc === 'terms' ? LEGAL_TERMS : LEGAL_PRIVACY} header={tabs} footer={footer} testID="legal-reader-list" />
     </FullSheet>
   );
 }
 
 const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', gap: space.s8 },
+  reportLine: { marginTop: space.s24 },
 });

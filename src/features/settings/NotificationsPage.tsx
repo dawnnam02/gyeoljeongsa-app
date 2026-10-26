@@ -19,11 +19,8 @@ import { useLoad } from './useLoad';
 type Data = { prefs: NotifyPrefs; marketing: boolean };
 type Api = Pick<SettingsApi, 'loadNotify' | 'saveNotify' | 'loadConsents' | 'setOptional'>;
 
-const SERVICE: readonly { key: NotifyKey; label: string }[] = [
-  { key: 'recommendation', label: NOTIFY.recommendation },
-  { key: 'like', label: NOTIFY.like },
-  { key: 'match', label: NOTIFY.match },
-];
+// v5(QP-A, 카피.md 12-Q): 서비스 알림은 '이번 주 만날 분이 정해졌을 때' 하나. '호감을 받았을 때' · '연결됐을 때' 줄은 없다(호감 · 수락 없음)
+const SERVICE: readonly { key: NotifyKey; label: string }[] = [{ key: 'recommendation', label: NOTIFY.recommendation }];
 
 export function NotificationsPage({ api, pushStatus, onRequestPush, onBack, onToast }: { api: Api; pushStatus: PushStatus; onRequestPush: () => Promise<PushStatus>; onBack: () => void; onToast: (text: string) => void }) {
   const read = useCallback(async () => {

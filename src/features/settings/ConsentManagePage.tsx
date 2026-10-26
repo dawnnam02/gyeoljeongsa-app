@@ -3,7 +3,7 @@
 //    · CK4 끄기: 확인창(N25) → 철회(서버가 종교 3문항을 '답하지 않음'으로) → 토스트 N10
 //    · CK4 켜기 · CK9 켜기/끄기: 확인창 없이 바로 기록 → 토스트 N10. CK9 는 알림 화면의 마케팅 알림과 같은 값
 //  이어서 03 밖 선택 동의 CK11 ~ CK16 6줄(동의문구 5-6 ② · 1-1, L17A). 줄 이름 = 1-1 표 이름(CK16 은 4-16 제목 '글 쓰는 속도 분석')
-//    · 켜져 있으면 끌 수 있다: 확인창(CONSENT_LATER) → revoke_consent(서버가 그 칸의 데이터를 지움 — CK15 정치 답 · CK16 행동 숫자)
+//    · 켜져 있으면 끌 수 있다: 확인창(CONSENT_MANAGE.offTitle · offBody · ck15OffBody · offConfirm — 카피.md 12-Q 확정) → revoke_consent(서버가 그 칸의 데이터를 지움 — CK15 정치 답 · CK16 행동 숫자)
 //    · 켜기는 CK16 만(판 config/laterConsent.ts). CK11 ~ CK14 는 기능을 처음 쓸 때 · CK15 는 설문 정치 막대 앞에서 받으므로, 꺼져 있으면 '처음 쓸 때 따로 물어요.'(스위치 잠김)
 //  아래 "동의한 내용" 7줄: 필수 칸. 스위치 없이 '보기 ›'로 03 과 같은 요약 · 전문 시트. 철회는 탈퇴로 안내(N25 필수 칸 안내)
 //    + CK11 ~ CK16 6줄(4-11 ~ 4-16 요약 · 전문 보기, L17A · D-190)
@@ -15,7 +15,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Pressable } from '@/components/Pressable';
 import { COMMON } from '@/content/copy';
 import { CONSENT_ITEMS, CONSENT_LATER_ITEMS, CONSENT_LATER_NAMES } from '@/content/consentContent';
-import { CONSENT_LATER, CONSENT_MANAGE } from '@/content/settingsCopy';
+import { CONSENT_MANAGE } from '@/content/settingsCopy';
 import type { ConsentItemContent, ConsentSheetContent, LaterConsentCode } from '@/content/types';
 import { ConsentSummarySheet } from '@/features/consent/ConsentSummarySheet';
 import type { OptionalCode, OptionalConsents, SettingsApi } from '@/lib/settingsApi';
@@ -97,7 +97,7 @@ export function ConsentManagePage({ api, onBack, onToast }: { api: Pick<Settings
             })}
             {LATER.map(({ code, label }, i) => {
               const locked = !data[code] && !ON_HERE.has(code);
-              return <SwitchRow key={code} label={label} note={locked ? CONSENT_LATER.askLater : undefined} on={data[code]} disabled={busy || locked} last={i === LATER.length - 1} onPress={() => onSwitch(code)} testID={`settings-consent-${code}`} />;
+              return <SwitchRow key={code} label={label} note={locked ? CONSENT_MANAGE.askLater : undefined} on={data[code]} disabled={busy || locked} last={i === LATER.length - 1} onPress={() => onSwitch(code)} testID={`settings-consent-${code}`} />;
             })}
           </RowGroup>
           {error ? (
@@ -145,9 +145,9 @@ export function ConsentManagePage({ api, onBack, onToast }: { api: Pick<Settings
       />
       <ConfirmDialog
         visible={askOff !== null}
-        title={CONSENT_LATER.offTitle}
-        body={askOff === 'CK15' ? CONSENT_LATER.ck15OffBody : CONSENT_LATER.offBody}
-        confirmLabel={CONSENT_LATER.offConfirm}
+        title={CONSENT_MANAGE.offTitle}
+        body={askOff === 'CK15' ? CONSENT_MANAGE.ck15OffBody : CONSENT_MANAGE.offBody}
+        confirmLabel={CONSENT_MANAGE.offConfirm}
         cancelLabel={CONSENT_MANAGE.cancel}
         busy={busy}
         error={askOff ? error : null}

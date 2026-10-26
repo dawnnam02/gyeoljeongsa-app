@@ -58,12 +58,9 @@ export function GradeBody({ shop, deps, nav, onAccess }: { shop: ShopState; deps
         ) : null}
         <View style={styles.lockedHead}>
           <Icon name="grade_locked" size={layout.tierBadgeBig} color={colors.accent} testID="grade-locked-art" />
-          <AppText variant="body" tone="text" style={styles.flex} testID="grade-locked-text">
-            {GI.locked}
-          </AppText>
         </View>
+        {/* v5(QP-A, 카피.md 14-1): 구독 잠금 안내 글(GI5) · '구독 알아보기' 줄 없음 */}
         <Button label={GRADE16.lockedAccess} onPress={onAccess} testID="grade-locked-access" />
-        <Button label={GRADE16.lockedSub} variant="secondary" onPress={() => nav.push({ name: 'product', key: 'grade_sub_1m' })} testID="grade-locked-sub" />
         <Card style={styles.linksCard}>
           <LinkRow label={GRADE16.lockedHow} onPress={() => nav.push({ name: 'grade-how' })} last testID="grade-locked-how" />
         </Card>

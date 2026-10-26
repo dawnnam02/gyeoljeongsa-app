@@ -89,9 +89,7 @@ export const PRELAUNCH = {
 
 // 출시 전 다른 탭 · 01(K20 4-1 · 4-5 · NP-01 · NP-15 · NP-16)
 export const PRELAUNCH_TABS = {
-  likes: '호감은 첫 매칭이 시작되는 날부터 주고받을 수 있어요.', // NP-15(V5 숨김 탭 — 켜면 보임)
-  shop: (monthDay: string) => `상점은 ${monthDay}에 열려요.`, // NP-16 — 상품 목록 · 구매 권유 0
-  shopNoDay: '상점은 출시일에 열려요.',
+  // NP-15 likes · NP-16 shop · shopNoDay 는 v5에 없다(카피.md 14-1 '(줄 없음)' — 상점 · 호감 탭이 없다, QP-A)
   firstCalc: '등급은 출시일 새벽에 처음 계산해요.', // NP-16(16-G 내 등급 쪽) — 키 이름에 영어 등급 낱말을 쓰지 않는다(staticRules 등급 낱말 허용 목록 밖 파일)
   onboarding: (monthDay: string) => `지금은 출시 전이에요. 첫 매칭은 ${monthDay}에 시작해요.`, // NP-01(V5)
 } as const;

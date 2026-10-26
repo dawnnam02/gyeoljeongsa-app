@@ -19,7 +19,8 @@ export type SubDest =
   | 'sub:privacy' // 개인정보 처리방침
   | 'sub:licenses' // 정보 › 오픈소스 라이선스(N29)
   | 'sub:image-credit' // 정보 › 이미지 출처 고지(N30, 넣을지는 본인 확인 대기)
-  | 'sub:safety'; // 안전 안내(N34, K5 U11)
+  | 'sub:safety' // 안전 안내(N34, K5 U11)
+  | 'sub:business-info'; // 정보 › 사업자 정보(QP-A, 카피.md 12-Q — 값 6개가 모두 있을 때만 줄이 보인다)
 
 export type Dest =
   | ScreenId
@@ -131,6 +132,8 @@ const FLOW_MAIN: readonly Arrow[] = [
   a('12', 'sub:licenses', '정보 › 오픈소스 라이선스', '4장 12 설정 줄과 이동'),
   a('12', 'sub:image-credit', '정보 › 이미지 출처 고지', '4장 12 설정 줄과 이동'),
   a('12', 'sub:safety', '안전 안내', '4장 12 설정 줄과 이동 · K5 U11'),
+  a('12', 'sub:business-info', '정보 › 사업자 정보(값이 모두 있을 때만)', '카피.md 12-Q · QP-A'),
+  a('12', 'T5', '크레딧 · 구매 내역 → T5 크레딧 · 내역', '카피.md 12-Q SETTINGS.rows.credits · QP-A'),
   a('12', 'stay', '인증 서류 제출(준비 중) → 이동 없음, "준비 중이에요" 안내', '4장 12 설정 줄과 이동'),
   a('12', 'stay', '알림 · 동의 관리에서 CK4 · CK9 켜기·끄기 → 12에 머문다', '2-2 ⑧', 8),
   a('12', '01', '로그아웃', '4장 12 성공 시 이동'),

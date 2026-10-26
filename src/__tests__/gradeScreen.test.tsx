@@ -184,7 +184,7 @@ describe('조건 2 · 16-G1 내 등급 (구독자)', () => {
     shown.push(tree);
     await flush();
     expect(textOf(tree, 'grade-stopped-big')).toBe('등급 계산을 멈췄어요');
-    expect(textOf(tree, 'grade-stopped')).toBe('내 등급은 지워졌고, 등급 구독 회원의 추천 상대를 고르는 데도 쓰이지 않아요.');
+    expect(textOf(tree, 'grade-stopped')).toBe('내 등급은 지워졌고, 다시 켜기 전까지 탑승권을 살 수 없어요.'); // NV88 v5(카피 14-1, QP-A)
     expect(textOf(tree, 'grade-stopped-how')).toBe("설정에서 '등급 계산 멈추기'를 끄면 다시 계산해요.");
     expect(has(tree, 'grade-stopped-first')).toBe(true); // 데모 서버는 first_ready_at 을 준다(NV46 한 줄)
     await tap(tree, 'grade-stopped-go');
@@ -195,16 +195,17 @@ describe('조건 2 · 16-G1 내 등급 (구독자)', () => {
 });
 
 describe('조건 2 · 16-G1 비구독자 잠금 · 16-G5 무료 열람 요청', () => {
-  test('잠금 안내(NV49) · 잠김 그림 · [내 등급 알려 주세요] 첫째 · [구독 알아보기] · 링크 — 등급 값 · 막대 · 흐린 배지 없음', async () => {
+  test('잠김 그림 · [내 등급 알려 주세요] 첫째 · 링크 — v5(QP-A, 카피 14-1): 구독 잠금 안내(GI5) · [구독 알아보기] 없음 · 등급 값 · 막대 · 흐린 배지 없음', async () => {
     const { tree } = await open('plain');
     expect(has(tree, 'grade-locked')).toBe(true);
-    expect(textOf(tree, 'grade-locked-text')).toBe(GI.locked);
-    expect(GI.locked).not.toMatch(/위 등급/);
+    expect(has(tree, 'grade-locked-text')).toBe(false);
+    expect('locked' in GI).toBe(false);
+    expect(allTexts(tree).join(' ')).not.toMatch(/구독/);
     const art = tree.root.findAll((n) => n.props.testID === 'grade-locked-art').at(-1)!;
     expect(tree.root.findAllByType(Icon).find((n) => n.props.testID === 'grade-locked-art')?.props).toMatchObject({ name: 'grade_locked', size: 64 });
     expect(art).toBeTruthy();
     expect(must(tree, 'grade-locked-access').props.label).toBe('내 등급 알려 주세요');
-    expect(must(tree, 'grade-locked-sub').props.label).toBe('구독 알아보기');
+    expect(has(tree, 'grade-locked-sub')).toBe(false);
     expect(must(tree, 'grade-locked-how').props.label).toBe('등급은 어떻게 정해지나요?');
     expect(has(tree, 'grade-flock')).toBe(false);
     expect(has(tree, 'grade-bars')).toBe(false);
@@ -244,11 +245,10 @@ describe('조건 2 · 16-G1 비구독자 잠금 · 16-G5 무료 열람 요청', 
     expect(isOpen(tree, 'access-sheet')).toBe(false);
   });
 
-  test('[구독 알아보기] → 등급 구독 상세', async () => {
+  test('v5(QP-A): 잠금 화면에서 등급 구독 상세로 가는 줄([구독 알아보기])이 없다', async () => {
     const { tree } = await open('plain');
-    await tap(tree, 'grade-locked-sub');
-    expect(has(tree, 'shop-page-product')).toBe(true);
-    expect(textOf(tree, 'detail-name')).toBe('등급 구독');
+    expect(has(tree, 'grade-locked-sub')).toBe(false);
+    expect(has(tree, 'shop-page-product')).toBe(false);
   });
 
   test('상점 목록의 "내 등급 알려 주세요"(무료 구역)도 같은 시트를 연다 — 구독 여부로 막지 않는다', async () => {

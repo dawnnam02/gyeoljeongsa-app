@@ -234,11 +234,11 @@ describe('쪽 · 진행바 · 이어서 작성', () => {
     expect(liteEntryOf('05', 'missing')).toBe('missing');
   });
 
-  test('공개 범위 한 줄: 공개 · 구간(토글 있음) · 부모님 학력(법무 문구) · 비공개(추천에 쓰임)', () => {
+  test('공개 범위 한 줄: 공개 · 구간(토글 있음) · 부모님 학력(법무 문구) · 비공개(짝을 고를 때 쓰임, 카피 14-2 v5)', () => {
     expect(visibilityLine(questionOf('A03'))).toBe('이 항목은 상대에게 보여요.');
     expect(visibilityLine(questionOf('C05'))).toBe('이 항목은 구간으로만 보여요. 프로필에서 바꿀 수 있어요.');
     expect(visibilityLine(questionOf('D03'))).toBe(SURVEY_LITE.parentRangeLine);
-    expect(visibilityLine(questionOf('E08'))).toBe('이 항목은 상대에게 보이지 않아요. 추천을 고를 때만 쓰여요.');
+    expect(visibilityLine(questionOf('E08'))).toBe('이 항목은 상대에게 보이지 않아요. 짝을 고를 때만 쓰여요.');
     expect(visibilityLine(questionOf('G03'))).toBe('이 항목은 상대에게 보여요.');
   });
 });
@@ -292,8 +292,10 @@ describe('조건 5 · 7: 글은 원본 그대로 · 임시 표시', () => {
 
   testOutside(['기획/화면_요구사항.md'])('카피에 없는 글은 화면_요구사항 6장 N문구 그대로(N03 · N04 · N05 · N08 · N12)', () => {
     const n = plan.slice(plan.indexOf('# 6. 새 문구 요청'), plan.indexOf('# 7.'));
-    const fixed = [SURVEY_LITE.resume, SURVEY_LITE.rangeLine, SURVEY_LITE.hiddenUsedLine, SURVEY_LITE.hiddenLine, SURVEY_LITE.toggleSuffix, SURVEY_LITE.rankConfirm, SURVEY_LITE.minChars('{n}' as unknown as number), SURVEY_LITE.maxChars('{n}' as unknown as number), SURVEY_LITE.missing];
+    const fixed = [SURVEY_LITE.resume, SURVEY_LITE.rangeLine, SURVEY_LITE.hiddenLine, SURVEY_LITE.toggleSuffix, SURVEY_LITE.rankConfirm, SURVEY_LITE.minChars('{n}' as unknown as number), SURVEY_LITE.maxChars('{n}' as unknown as number), SURVEY_LITE.missing];
     expect(fixed.filter((text) => !n.includes(text))).toEqual([]);
+    // QP-A: N05 의 비공개 한 줄은 카피.md 14-2 SURVEY_LITE.hiddenUsedLine(v5 '짝')이 화면_요구사항 옛 글('추천')보다 앞선다
+    expect(copyMd.slice(copyMd.indexOf('## 14. '))).toContain(`\`SURVEY_LITE.hiddenUsedLine\` (임시 설문) | ${SURVEY_LITE.hiddenUsedLine} |`);
     expect(n).toContain(`버튼 "${PHOTOS_LITE.reupload}"`); // N11 다시 올리기 상태
     expect(plan).toContain('`{지금}/{최대}`');
   });
