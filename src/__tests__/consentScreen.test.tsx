@@ -122,7 +122,8 @@ describe('화면 구성 (동의문구 3-1: 위에서 아래 순서)', () => {
 
   test('선택 칸(CK4 · CK9)과 확인 칸(CK5)에는 덧붙이는 안내가 항상 보인다', async () => {
     const tree = await render(makeDeps().deps);
-    for (const note of ['동의하지 않아도 가입할 수 있어요.', '부모님 정보를 입력하는 것은 선택이에요.', '받지 않아도 서비스는 똑같이 쓸 수 있어요.']) expect(hasText(tree, note)).toBe(true);
+    // 3부-사: CK4 덧붙이는 안내는 동의문구 4-4(consent-2026.10.27-v2 · L22) 판 — 생성 파일 글 그대로
+    for (const note of ['동의하지 않아도 가입할 수 있어요. 다만 탑승권은 살 수 없어요.', '부모님 정보를 입력하는 것은 선택이에요.', '받지 않아도 서비스는 똑같이 쓸 수 있어요.']) expect(hasText(tree, note)).toBe(true);
   });
 
   test('안내 상자: 제목 "알아 두세요" + 본문이 CK4 를 체크하든 안 하든 보인다', async () => {
@@ -575,7 +576,7 @@ describe('접근성', () => {
   test('체크 칸마다 checkbox 역할과 체크 상태가 있고, 덧붙이는 안내는 힌트로 읽힌다', async () => {
     const tree = await render(makeDeps().deps);
     for (const code of CODES) expect(must(tree, `consent-check-${code}`).props.accessibilityRole).toBe('checkbox');
-    expect(must(tree, 'consent-check-CK4').props.accessibilityHint).toBe('동의하지 않아도 가입할 수 있어요.');
+    expect(must(tree, 'consent-check-CK4').props.accessibilityHint).toBe('동의하지 않아도 가입할 수 있어요. 다만 탑승권은 살 수 없어요.');
     expect(must(tree, 'consent-all').props.accessibilityRole).toBe('checkbox');
   });
 

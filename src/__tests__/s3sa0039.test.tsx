@@ -73,7 +73,7 @@ describe('reason_detail → T1 살 수 없음 사유(모르는 상세는 일반 
       ['grade_paused', 'paused'],
       ['profile_missing', 'not_confirmed'],
       ['grade_pending', 'not_confirmed'],
-      ['religion_missing', 'not_confirmed'], // 종교 글은 ① 카피 뒤(이 묶음에서는 일반 안내)
+      ['religion_missing', 'religion_missing'], // ① 카피 17-2 '종교 문항에 답하면…'
       ['weird_new_code', 'not_confirmed'],
       [null, 'not_confirmed'],
       [undefined, 'not_confirmed'],

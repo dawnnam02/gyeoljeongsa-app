@@ -214,7 +214,7 @@ describe('1부 대화 줄(설문 v2 문항 · 보임 그대로)', () => {
     expect(part1List({}, false).some((q) => q.id === 'T01')).toBe(true);
     expect(currentQuestion({}, true, [])?.id).toBe('A12');
     const v = buildPart1({}, { userKey: 'u', interview: true, skipped: [], pol: 'off', schoolName: () => null });
-    expect(v.ask && v.ask !== 'POL' ? v.ask.id : v.ask).toBe('A12');
+    expect(v.ask && typeof v.ask !== 'string' ? v.ask.id : v.ask).toBe('A12');
     expect(v.lines[0]).toMatchObject({ kind: 'ai', badge: true });
     expect(v.lines.map((l) => l.key)).toEqual(['first', 'sec-start-basic', 'q-A12']);
   });
@@ -222,7 +222,7 @@ describe('1부 대화 줄(설문 v2 문항 · 보임 그대로)', () => {
   test('답한 문항은 내 답 말풍선 · 섹션이 바뀌면 끝 줄 → 구분 줄 → 시작 줄 · 선택 문항은 건너뛴 것으로', () => {
     const a = { A12: '김하나', A02: 'female', A03: { sido: 'seoul', sigungu: '강남구' }, A05: 165, A06: 'none', A07: 'never', A08: 'none', A11: 'na', B01: 'univ' } as const;
     const v = buildPart1(a, { userKey: 'u', interview: true, skipped: [], pol: 'off', schoolName: () => null });
-    expect(v.ask && v.ask !== 'POL' ? v.ask.id : null).toBe('B02');
+    expect(v.ask && typeof v.ask !== 'string' ? v.ask.id : null).toBe('B02');
     const keys = v.lines.map((l) => l.key);
     expect(keys).toEqual(expect.arrayContaining(['me-A12', 'sec-end-basic', 'topic-edu', 'sec-start-edu', 'me-B01', 'q-B02']));
     expect(keys.indexOf('sec-end-basic')).toBeLessThan(keys.indexOf('topic-edu'));

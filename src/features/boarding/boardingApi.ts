@@ -22,7 +22,7 @@ import { safeLog } from '@/lib/log';
 import { readDbFailure } from '@/lib/serverError';
 
 export type BoardingPhase = 'before_sale' | 'on_sale' | 'closed' | 'revealed';
-export type Ineligible = 'not_confirmed' | 'politics_missing' | 'paused';
+export type Ineligible = 'not_confirmed' | 'politics_missing' | 'paused' | 'religion_missing';
 // T5 내역 글 키(카피 14-5-2 · 14-7 CREDITS.reasons). 서버 장부 사유 → 이 키는 아래 LOT_REASON
 export type CreditReason = 'balance' | 'no_fit' | 'gap' | 'used' | 'cancelled' | 'refund_taken' | 'refund_restored' | 'paid_no_seat' | 'round_cancelled' | 'admin' | 'age_rejoin_restore';
 export type Round = { no: number; matchAt: number; saleOpenAt: number | null; saleCloseAt: number | null };
@@ -92,8 +92,9 @@ export const LOT_REASON_COPY_PENDING = ['age_terminate'] as const;
 const PHASE: Readonly<Record<string, BoardingPhase>> = { before: 'before_sale', open: 'on_sale', closed: 'closed', ended: 'revealed' };
 const INELIGIBLE: Readonly<Record<string, Ineligible>> = { state: 'not_confirmed', review_pending: 'not_confirmed' };
 // profile_incomplete(정치 · 등급 · 종교 · 성별 · 지역 중 빈 것)는 0039 reason_detail 로 가른다(3부-사). 글이 있는 상세만 그 글,
-//  모르는 상세 · 상세 없음(0039 전 서버) · 글이 아직 없는 상세(profile_missing · grade_pending · religion_missing — 카피 대기)는 일반 안내('확정을 마치면 탈 수 있어요') — 빈 화면 0
-const INELIGIBLE_DETAIL: Readonly<Record<string, Ineligible>> = { politics_missing: 'politics_missing', grade_paused: 'paused' };
+//  모르는 상세 · 상세 없음(0039 전 서버) · 글이 아직 없는 상세(profile_missing · grade_pending — 카피 대기)는 일반 안내('확정을 마치면 탈 수 있어요') — 빈 화면 0
+//  religion_missing(종교 답 없음 · 종교 동의 카드 거절 · 설정에서 CK4 끔)은 카피 17-2 글(3부-사 ①). 서버는 정치를 먼저 보아 둘 다 비면 politics_missing 하나만 온다(17-2 survey_missing 은 쓰지 않음)
+const INELIGIBLE_DETAIL: Readonly<Record<string, Ineligible>> = { politics_missing: 'politics_missing', grade_paused: 'paused', religion_missing: 'religion_missing' };
 export function ineligibleOf(reason: unknown, detail: unknown): Ineligible | null {
   if (reason === 'profile_incomplete') return fromMap(INELIGIBLE_DETAIL, detail) ?? 'not_confirmed';
   return fromMap(INELIGIBLE, reason);

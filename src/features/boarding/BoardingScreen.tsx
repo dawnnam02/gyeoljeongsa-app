@@ -374,7 +374,7 @@ function StatusCard({ state, view, moment = false, onBuy, onOpen, onCancel, canc
     case 'ineligible': {
       const k = state.ineligible ?? 'not_confirmed';
       const c = BOARDING.ineligible[k];
-      const href: Href | null = k === 'politics_missing' ? SURVEY_HREF : k === 'paused' ? hrefOf('/settings') : null;
+      const href: Href | null = k === 'politics_missing' || k === 'religion_missing' ? SURVEY_HREF : k === 'paused' ? hrefOf('/settings') : null;
       return card(c.title, c.body, c.action && href ? <Button label={c.action} variant="secondary" onPress={() => onOpen(href)} testID="boarding-ineligible-action" /> : undefined);
     }
   }

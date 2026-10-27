@@ -61,6 +61,7 @@ type DemoAccount = {
   visibility: Record<string, boolean>; // 공개 범위 토글 9열(F4)
   reviewAcked: boolean; // 07 직후 '처음 한 번 확인'을 마쳤는가(F4)
   surveySkipped?: boolean; // 데모 줄 '설문 완료 · 정상 응답'(DemoSkipBar)으로 설문을 건너뜀 — 탑승 관문에서는 설문을 다 마친 사람으로 본다(B0)
+  religionCleared?: boolean; // 3부-사: 건너뛴 계정이 설정에서 CK4 를 거둠 → 실서버처럼 종교 '답하지 않음'(설문에서 다시 답하기 전까지 religion_missing)
 };
 
 // 공개 범위 토글 9열의 처음값(backend/스키마.md visibility_settings: 켜짐 7 · 꺼짐 2)
@@ -163,10 +164,12 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
   //  0039 reason_detail 과 같은 차례(정치 → 등급 멈춤 → 등급 아직 → 종교). 데모 줄로 설문을 건너뛴 계정 · 설문 기록이 없는 장면 · 시험 계정은 설문 몫을 준비됨으로 본다
   const boarding = createDemoBoarding({
     profileDetail: (u) => {
-      const skipped = [...accounts.values()].some((a) => a.id === u.id && a.surveySkipped);
+      const acct = [...accounts.values()].find((a) => a.id === u.id);
+      const skipped = !!acct?.surveySkipped;
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { demoSurveyDetail } = require('@/demo/surveyV2Backend') as typeof import('@/demo/surveyV2Backend');
-      const survey = skipped ? null : (demoSurveyDetail(u.id) ?? null);
+      const { demoSurveyDetail, demoSurveyReligionOk } = require('@/demo/surveyV2Backend') as typeof import('@/demo/surveyV2Backend');
+      let survey = skipped ? null : (demoSurveyDetail(u.id) ?? null);
+      if (skipped && acct?.religionCleared && !demoSurveyReligionOk(u.id)) survey = 'religion_missing';
       if (survey === 'politics_missing') return survey;
       if (!shop.peek(u).processing) return 'grade_paused';
       if (u.email.split('@')[0].toLowerCase().includes('gradenew')) return 'grade_pending';
@@ -685,7 +688,20 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
       }
       if (settings.handles(name)) {
         const account = me();
-        return account ? settings.rpc(settingsUser(account), name, args) : Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
+        if (!account) return Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
+        // 3부-사(법무 L22 C6): 설정에서 CK4 · CK15 를 거두면 실서버 revoke_consent(0037)처럼 설문 기록도 바로 — 종교 '답하지 않음' · 정치 답 지움(탑승 관문이 같은 판정)
+        if (name === 'revoke_consent' && (args?.p_item === 'CK4' || args?.p_item === 'CK15')) {
+          return settings.rpc(settingsUser(account), name, args).then((r) => {
+            if (!r.error) {
+              // eslint-disable-next-line @typescript-eslint/no-require-imports
+              const { demoSurveyRevoked } = require('@/demo/surveyV2Backend') as typeof import('@/demo/surveyV2Backend');
+              demoSurveyRevoked(account.id, String(args?.p_item));
+              if (args?.p_item === 'CK4' && account.surveySkipped) account.religionCleared = true;
+            }
+            return r;
+          });
+        }
+        return settings.rpc(settingsUser(account), name, args);
       }
       // 기능 켜기 스위치(F22 · D-134): 87키 데모 처음값(config/featureKeys demoDefault — review_required · prelaunch 만 꺼짐). 이메일 장면(v4off · featoff …)은 lib/v4Demo 규칙
       // V5 W6 탑승권(서버 확정 이름 get_ticket_state · get_weekly_match · hold_ticket_seat · release_ticket_hold · demo_buy_ticket · board_with_credit · list_ticket_history · cancel_ticket_seat · ack_ticket_contract + 데모 줄 demo_boarding_scene)

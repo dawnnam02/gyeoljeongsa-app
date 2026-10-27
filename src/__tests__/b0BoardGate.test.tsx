@@ -7,6 +7,8 @@ import { act } from 'react-test-renderer';
 
 import { createSurveyV2DemoClient } from '@/demo/surveyV2Backend';
 import { createBoardingApi } from '@/features/boarding/boardingApi';
+import { createPoliticsApi } from '@/features/surveyV2/politics';
+import { createReligionApi } from '@/features/surveyV2/religion';
 import { BOARDING } from '@/features/boarding/boardingCopy';
 import { BoardingScreen } from '@/features/boarding/BoardingScreen';
 import { createDemoBackend, DEMO_OTP_CODE } from '@/lib/demoBackend';
@@ -38,13 +40,18 @@ async function signIn(email: string) {
 }
 type Steps = { ck15?: boolean; politics?: boolean; religion?: boolean };
 async function answer(survey: SupabaseClient, s: Steps) {
-  if (s.ck15) expect((await survey.from('consents').insert([{ item_code: 'CK15', agreed: true }])).error).toBeNull();
+  // 3부-사: 동의 기록은 데모 로그인 모의 서버(demoBackend)가 원본 — 설문 카드와 같은 길(정치 · 종교 동의 API)로 넣는다
+  if (s.ck15) expect(await createPoliticsApi(survey, 'test').agree()).toEqual({ ok: true, data: true });
   if (s.politics) {
     const r = await survey.rpc('set_politics', { p_position: 50 });
     if (s.ck15) expect(r.error).toBeNull();
     else expect(r.error?.message).toBe('consent_required: CK15'); // CK15 없이는 정치 답을 저장할 수도 없다
   }
-  if (s.religion) expect((await survey.rpc('save_answers', { p_answers: { A06: 'none' } })).error).toBeNull();
+  if (s.religion) {
+    expect((await survey.rpc('save_answers', { p_answers: { A06: 'none' } })).error?.message).toBe('consent_required: CK4 (A06)'); // CK4 없이는 종교 값을 저장할 수 없다(0023)
+    expect(await createReligionApi(survey, 'test').record(true)).toEqual({ ok: true });
+    expect((await survey.rpc('save_answers', { p_answers: { A06: 'none' } })).error).toBeNull();
+  }
   else expect((await survey.rpc('get_progress')).error).toBeNull(); // 설문을 연 계정(기록 있음)
 }
 const flush = () => act(async () => void (await new Promise((r) => setTimeout(r, 0))));

@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { CHAT_V6 } from '@/content/surveyChatCopy';
 import { createDemoChatMemory, createSurveyChatDemoClient, MAX_USER_TURNS, type DemoChatMemory } from '@/demo/surveyChatBackend';
+import { demoV2Seed } from '@/demo/surveyV2Backend';
 import type { ScriptTurn } from '@/demo/surveyChatScripts';
 import { DEMO_ANALYSIS, DEMO_SCRIPTS } from '@/demo/surveyChatScripts';
 import { createSurveyChatApi } from '@/features/surveyChat/api';
@@ -44,6 +45,7 @@ function rig(opts: { id?: string; email?: string; memory?: DemoChatMemory; store
   const memory = opts.memory ?? createDemoChatMemory();
   const store = opts.store ?? createMemoryStore();
   const id = opts.id ?? 'u1';
+  demoV2Seed(memory.v2, id, { ck4: true }); // 3부-사: 03 에서 CK4 를 하고 온 회원(카드 없이 A06 — 카드 시험은 s3saReligion)
   const client = createSurveyChatDemoClient(base(id, opts.email ?? 'v6f@email.com'), { memory, scriptScale: 0, script: opts.script, failTurns: opts.failTurns, dropReplies: opts.dropReplies });
   const api = createSurveyV2Api(client, { demo: true, proofUpload: false, schoolSearch: 'server' });
   const clock = { t: 0 };

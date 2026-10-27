@@ -65,6 +65,7 @@ export const BOARDING = {
     not_confirmed: { title: '확정을 마치면 탈 수 있어요', body: '사진과 설문 확인이 끝나면 탑승권을 살 수 있어요.', action: null },
     politics_missing: { title: '설문 한 문항이 남았어요', body: '정치 성향 문항에 답하면 탑승권을 살 수 있어요.', action: '설문으로' },
     paused: { title: '등급 계산이 멈춰 있어요', body: '등급 계산을 멈춰 두면 짝을 고를 수 없어 탑승권을 살 수 없어요. 설정에서 다시 켤 수 있어요.', action: '설정으로' }, // 카피.md 14-5-2(QPM 3-2) — 설정 줄 '등급 계산 멈추기'와 같은 말
+    religion_missing: { title: '설문 한 문항이 남았어요', body: '종교 문항에 답하면 탑승권을 살 수 있어요.', action: '설문으로' }, // 카피.md 17-2(M-CK4 · 3부-사) — 누르면 설문(종교 동의가 없으면 카드부터)
   } satisfies Record<Ineligible, { title: string; body: string; action: string | null }>,
   creditsLink: (n: number) => `크레딧 ${n}장`,
   saleCloseNote: '판매는 수요일 오후 5시 30분에 마감해요.', // 카피 14-7(D-200 ④) — T1 판매 중 · T2 탑 카드 아래. 남은 시간 · 카운트다운 0

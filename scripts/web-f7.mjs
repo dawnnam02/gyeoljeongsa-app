@@ -142,8 +142,15 @@ try {
   await b.waitFor(`window.__q('settings-consent-CK9').getAttribute('aria-checked') === 'true'`);
   const c1 = await peekConsents(EMAIL);
   check('D', 'CK9 켜기 → 확인창 없이 동의 기록(agreed) + 토스트 "저장했어요."', c1.some((c) => c.item_code === 'CK9' && c.agreed && c.revoked_at === null) && (await has(S.CONSENT_MANAGE.saved)), '');
+  // 3부-사(법무 L22 C5): CK4 켜기는 토글 한 번이 아니라 설문과 같은 종교 동의 카드(고지 전부 · 체크 · 같은 무게 버튼) → 체크 + [동의하고 답할게요]
   await b.click(sel('settings-consent-CK4'));
+  const relCard = await b.waitFor(`!!window.__q('chat-card-REL') && !!window.__q('chat-rel-what') && !!window.__q('chat-rel-decline')`);
+  check('D', 'CK4 켜기 → 종교 동의 카드(네 줄 상자 · 체크 · 같은 무게 버튼 둘) · 토글 한 번으로 켜짐 0', relCard && (await b.evaluate(`window.__q('settings-consent-CK4').getAttribute('aria-checked') === 'false'`)), '');
+  await note('F7_12j_종교동의카드_360x740.png');
+  await b.click(sel('chat-rel-check'));
+  await b.click(sel('chat-rel-agree'));
   await b.waitFor(`window.__q('settings-consent-CK4').getAttribute('aria-checked') === 'true'`);
+  check('D', "CK4 켜짐이면 덧붙이는 안내 대신 '끄면 종교 답을 바로 지워요…'(카피 12-Q M9)", await has(S.CONSENT_MANAGE.ck4OnNote), '');
   await b.click(sel('settings-consent-CK4'));
   check('D', 'CK4 끄기 → 확인창 "종교 정보 동의를 끌까요?"(N25) [끄기] [취소]', (await b.waitFor(`!!window.__q('settings-ck4-off-confirm')`)) && (await inner('settings-ck4-off-title')) === S.CONSENT_MANAGE.ck4OffTitle, '');
   await measure('12 동의 관리 끄기 확인창');

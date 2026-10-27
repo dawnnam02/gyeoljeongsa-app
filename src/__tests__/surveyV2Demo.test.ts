@@ -57,7 +57,8 @@ describe('저장 → 읽기(이어서 하기)', () => {
     const { api, memory } = setup();
     expect(await api.save({ answers: { A02: 'female', A06: 'decline' } })).toEqual({ ok: false, reason: 'server' });
     expect(memory.users.get('u1')?.answers).toEqual({});
-    expect(demoV2ValueOk('A06', null)).toBe(false); // 종교는 '말하고 싶지 않아요' 없음
+    expect(demoV2ValueOk('A06', null)).toBe(true); // 3부-사: 종교 '답하지 않음'(카드 거절 · 민감 문항 null — 서버 0023)
+    expect(demoV2ValueOk('A06', 'decline')).toBe(false); // 보기 코드 'decline' 은 없다
     expect(demoV2ValueOk('F07', ['other'])).toBe(false); // D-199: F07 문항 없음 — 저장 받지 않음(서버 0036 트리거와 같음)
     expect(demoV2ValueOk('B02', { school_key: '없는키' })).toBe(false);
   });

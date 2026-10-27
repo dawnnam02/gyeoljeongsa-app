@@ -133,7 +133,7 @@ export function WithdrawFlow({ visible, api, now, onCancel, onDone }: Props) {
         title={WITHDRAW.title}
         body={WITHDRAW.body}
         sub={WITHDRAW.sub}
-        note={{ text: WITHDRAW.credit }} // 크레딧 줄 하나(카피.md 12-Q WITHDRAW.credit · v5엔 구독 안내 NV36 없음, QP-A)
+        note={{ text: [WITHDRAW.credit, WITHDRAW.rejoinNote].join('\n') }} // 크레딧 줄 + 바로 아래 '다시 가입' 한 줄(카피.md 12-Q WITHDRAW.credit · rejoinNote(M8, 3부-사) · v5엔 구독 안내 NV36 없음, QP-A)
         confirmLabel={WITHDRAW.confirm}
         cancelLabel={WITHDRAW.cancel}
         busy={busy}

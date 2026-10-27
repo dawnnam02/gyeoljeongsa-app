@@ -4,6 +4,9 @@
 //   from('survey_answers' · 'free_texts').select().in() · from('visibility_settings').select().maybeSingle() / .update()
 //   rpc save_answers · clear_answers · save_free_texts · get_my_prompts · save_my_prompt · delete_my_prompt · get_progress · search_schools(S16 모양: 배열 · way · 과정 이름)
 //   W8 정치성향(0029 작업중 이름): rpc set_politics · get_politics · revoke_consent('CK15') · from('consents').insert(CK15 행) — CK15 없으면 consent_required: CK15 로 거부
+//   3부-사 종교(CK4 · 0023 validate_survey_answer): A06 에 값(종교 하나)을 저장하려면 유효한 CK4 — 없으면 consent_required: CK4 (A06) 로 거부. '답하지 않음'(null)은 동의 없이 받는다
+//   동의 기록(consents)은 데모 로그인 모의 서버(lib/demoBackend)가 원본: 로그인한 회원이면 넣기 · 읽기를 그쪽으로 넘겨(동의 관리 · 03 과 같은 줄) 설문 카드에서 받은 CK4 · CK15 가
+//   설정 '동의 관리'에 켜짐으로 보인다(L22 C1). 설정에서 거두면 demoBackend 가 demoSurveyRevoked 로 이 기록을 지운다(실서버 revoke_consent 와 같은 판정 — L22 C6)
 //   functions.invoke('appeal-analyze', {}) (S16 Edge, 모의: 분석 없이 done · empty) · ('appeal-proof', {action: 'upload' | 'status'})
 //  검사: 서버 검사식처럼 보기 코드 · 글자 수 · 값 모양을 본다(하나라도 틀리면 아무것도 저장하지 않는다). 첫 빈 문항은 앱과 같은 규칙(model.firstMissing)
 //  사용자: 데모 로그인(lib/demoClient)의 사용자. 로그인 없이 /survey/v2 를 열면 손님 한 명(demo-v2-guest)으로 둔다(웹 점검용)
@@ -29,10 +32,18 @@ type DemoV2User = {
   failedProofs: string[];
   calls: Record<string, number>;
   ck15: boolean; // W8 정치성향 별도 동의(유효)
+  ck4: boolean; // 3부-사 종교 별도 동의(유효) — 로그인 회원은 demoBackend 동의 기록을 먼저 본다
   politics: number | null; // W8 막대 값 0~100(나만 · 설문 답과 따로)
 };
 export type DemoV2Memory = { users: Map<string, DemoV2User> };
 export const createDemoV2Memory = (): DemoV2Memory => ({ users: new Map() });
+const newUser = (): DemoV2User => ({ answers: {}, texts: {}, prompts: new Map(), visibility: {}, proofs: {}, failedProofs: [], calls: {}, ck15: false, ck4: false, politics: null });
+// 시험 · 점검용: 메모리 회원 한 명에 동의 칸 등을 미리 넣는다(로그인 없는 손님 · 시험 base — 03 에서 CK4 를 고르고 온 회원 흉내)
+export function demoV2Seed(memory: DemoV2Memory, userId: string, patch: Partial<Pick<DemoV2User, 'ck4' | 'ck15'>>): void {
+  const u = memory.users.get(userId) ?? newUser();
+  Object.assign(u, patch);
+  memory.users.set(userId, u);
+}
 
 export const DEMO_V2_GUEST = 'demo-v2-guest';
 const STORY_IDS = STORY.map((q) => q.id);
@@ -54,6 +65,7 @@ export function demoV2ValueOk(id: string, v: unknown): boolean {
   }
   const auto: Readonly<Record<string, readonly unknown[]>> = { A11: ['na'], C03: ['na'], C04: ['na'], D06: ['only'] };
   if (auto[id]?.includes(v)) return true;
+  if (id === 'A06' && v === null) return true; // 3부-사: 종교 '답하지 않음'(민감 문항 null — 서버 0023)
   switch (q.format) {
     case 'choice':
     case 'bucket':
@@ -99,6 +111,25 @@ export function demoSurveyReady(userId: string, memory: DemoV2Memory = shared): 
   const d = demoSurveyDetail(userId, memory);
   return d === undefined ? null : d === null;
 }
+// 설정 '동의 관리'에서 거둔 뒤(demoBackend → 실서버 revoke_consent 0037 과 같은 일): CK4 = 종교 '답하지 않음'(null) · CK15 = 정치 답 지움
+export function demoSurveyRevoked(userId: string, code: string, memory: DemoV2Memory = shared): void {
+  const u = memory.users.get(userId);
+  if (!u) return;
+  if (code === 'CK4') {
+    u.ck4 = false;
+    if ('A06' in u.answers) u.answers.A06 = null;
+  }
+  if (code === 'CK15') {
+    u.ck15 = false;
+    u.politics = null;
+  }
+}
+
+// 종교 답(7코드)이 있나 — 설문을 건너뛴 데모 계정이 CK4 를 거둔 뒤 다시 답했는지 볼 때(demoBackend)
+export function demoSurveyReligionOk(userId: string, memory: DemoV2Memory = shared): boolean {
+  return RELIGION_CODES.includes(memory.users.get(userId)?.answers.A06);
+}
+
 // 0039 profile_ready_detail 의 설문 몫(같은 이름 · 같은 차례): 정치(CK15 + 답) → 종교 A06. 다 있으면 null, 이 모의 서버에 그 회원 기록이 없으면 undefined
 export function demoSurveyDetail(userId: string, memory: DemoV2Memory = shared): 'politics_missing' | 'religion_missing' | null | undefined {
   const u = memory.users.get(userId);
@@ -120,11 +151,26 @@ export function createSurveyV2DemoClient(base: Pick<SupabaseClient, 'auth'>, opt
     const email = String(data.session?.user?.email ?? '');
     let user = memory.users.get(id);
     if (!user) {
-      user = { answers: {}, texts: {}, prompts: new Map(), visibility: {}, proofs: {}, failedProofs: [], calls: {}, ck15: false, politics: null };
+      user = newUser();
       memory.users.set(id, user);
     }
     return { id, email, user };
   }
+  // 동의 기록 원본: 로그인한 회원이고 base 가 표를 가지면(lib/demoClient) 그쪽(03 · 동의 관리와 같은 줄). 손님 · 시험용 base 는 이 메모리
+  type ConsentTable = { insert: (rows: Row[]) => PromiseLike<Result<null>>; select: (cols: string) => { eq: (c: string, v: unknown) => { is: (c: string, v: null) => PromiseLike<Result<Row[]>> } } };
+  // (표 질의는 then 이 있는 값이라 async 함수가 바로 돌려주면 await 가 실행해 버린다 — 함수로 감싸 돌려준다)
+  const baseConsents = async (): Promise<(() => ConsentTable) | null> => {
+    const from = (base as { from?: (name: string) => unknown }).from;
+    if (typeof from !== 'function') return null;
+    const { data } = await base.auth.getSession();
+    return data.session?.user?.id ? () => from.call(base, 'consents') as ConsentTable : null;
+  };
+  const consentValid = async (u: DemoV2User, code: 'CK4' | 'CK15'): Promise<boolean> => {
+    const t = await baseConsents();
+    if (!t) return code === 'CK4' ? u.ck4 : u.ck15;
+    const { data } = await t().select('item_code').eq('agreed', true).is('revoked_at', null);
+    return (data ?? []).some((r) => r.item_code === code);
+  };
   const scene = (email: string, name: string) => email.split('@')[0].startsWith(name);
   const wait = async (email: string) => {
     const ms = scene(email, 'v2slow') ? 1200 : latency;
@@ -153,12 +199,14 @@ export function createSurveyV2DemoClient(base: Pick<SupabaseClient, 'auth'>, opt
       }));
   }
 
-  const rpcs: Record<string, (u: DemoV2User, email: string, args: Row) => Result<unknown>> = {
-    save_answers(u, email, args) {
+  const rpcs: Record<string, (u: DemoV2User, email: string, args: Row) => Result<unknown> | Promise<Result<unknown>>> = {
+    async save_answers(u, email, args) {
       if (scene(email, 'v2savefail')) return offline();
       const p = args.p_answers;
       if (!isRecord(p) || Object.keys(p).length > 70) return bad('invalid_answers');
       for (const [id, v] of Object.entries(p)) if (!demoV2ValueOk(id, v)) return bad(`invalid_value: ${id}`);
+      // 3부-사: 종교 값(답하지 않음 밖)은 유효한 CK4 가 있어야(0023 — 하나라도 막히면 아무것도 저장하지 않음)
+      if (p.A06 !== undefined && p.A06 !== null && !(await consentValid(u, 'CK4'))) return { data: null, error: { code: '23514', message: 'consent_required: CK4 (A06)' } };
       Object.assign(u.answers, p);
       return ok(Object.keys(p).length);
     },
@@ -206,15 +254,16 @@ export function createSurveyV2DemoClient(base: Pick<SupabaseClient, 'auth'>, opt
       return ok({ stage: 'consented', facts: { survey_first_missing: firstMissing(all), photo_slots: 0, consent_needed: [] } });
     },
     // W8 정치성향(0029): 동의 없으면 거부 · 0~100 정수만
-    set_politics(u, email, args) {
+    async set_politics(u, email, args) {
       if (scene(email, 'v2savefail')) return offline();
-      if (!u.ck15) return { data: null, error: { code: '23514', message: 'consent_required: CK15' } };
+      if (!(await consentValid(u, 'CK15'))) return { data: null, error: { code: '23514', message: 'consent_required: CK15' } };
       if (!isInt(args.p_position, 0, 100)) return { data: null, error: { code: '22023', message: 'invalid_value' } };
       u.politics = args.p_position as number;
       return ok({ saved: true, position: u.politics });
     },
-    get_politics(u) {
-      return ok({ consent: u.ck15, answered: u.politics !== null, position: u.politics });
+    async get_politics(u) {
+      const consent = await consentValid(u, 'CK15');
+      return ok({ consent, answered: consent && u.politics !== null, position: consent ? u.politics : null });
     },
     revoke_consent(u, _email, args) {
       if (args.p_item !== 'CK15') return bad('required_consent');
@@ -232,7 +281,17 @@ export function createSurveyV2DemoClient(base: Pick<SupabaseClient, 'auth'>, opt
   };
 
   function table(name: string) {
-    const select = () => ({
+    const select = (cols = '*') => ({
+      // 3부-사: 동의 읽기(lib/consentApi loadActiveConsents 모양 — select · eq('agreed', true) · is('revoked_at', null))
+      eq: (_c: string, _v: unknown) => ({
+        is: async (_c2: string, _v2: null): Promise<Result<Row[]>> => {
+          const { user } = await me();
+          if (name !== 'consents') return ok([]);
+          const t = await baseConsents();
+          if (t) return (await t().select(cols).eq('agreed', true).is('revoked_at', null)) as Result<Row[]>;
+          return ok([...(user.ck15 ? [{ item_code: 'CK15', text_version: 'memory' }] : []), ...(user.ck4 ? [{ item_code: 'CK4', text_version: 'memory' }] : [])]);
+        },
+      }),
       in: async (_col: string, ids: string[]): Promise<Result<Row[]>> => {
         const { user, email } = await me();
         await wait(email);
@@ -247,12 +306,20 @@ export function createSurveyV2DemoClient(base: Pick<SupabaseClient, 'auth'>, opt
     });
     return {
       select,
-      // W8: 동의 기록(consentApi.recordConsents 모양). 이 모의 서버는 CK15 행만 받는다
+      // W8 · 3부-사: 동의 기록(consentApi.recordConsents 모양). 로그인 회원은 demoBackend 기록에 넣고(같은 검사 · 60줄 상한), 이 메모리에도 CK15 · CK4 를 적는다
       insert: async (rows: Row[]): Promise<Result<null>> => {
         const { user, email } = await me();
         await wait(email);
         if (name !== 'consents' || !Array.isArray(rows)) return bad('not_allowed');
-        for (const r of rows) if (r.item_code === 'CK15' && r.agreed === true) user.ck15 = true;
+        const t = await baseConsents();
+        if (t) {
+          const r = await t().insert(rows);
+          if (r.error) return r;
+        }
+        for (const r of rows) {
+          if (r.item_code === 'CK15' && r.agreed === true) user.ck15 = true;
+          if (r.item_code === 'CK4') user.ck4 = r.agreed === true;
+        }
         return ok(null);
       },
       update: async (changes: Row): Promise<Result<null>> => {

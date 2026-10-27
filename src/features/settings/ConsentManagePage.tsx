@@ -5,12 +5,15 @@
 //  이어서 03 밖 선택 동의 CK11 ~ CK16 6줄(동의문구 5-6 ② · 1-1, L17A). 줄 이름 = 1-1 표 이름(CK16 은 4-16 제목 '글 쓰는 속도 분석')
 //    · 켜져 있으면 끌 수 있다: 확인창(CONSENT_MANAGE.offTitle · offBody · ck15OffBody · offConfirm — 카피.md 12-Q 확정) → revoke_consent(서버가 그 칸의 데이터를 지움 — CK15 정치 답 · CK16 행동 숫자)
 //    · 켜기는 CK16 만(판 config/laterConsent.ts). CK11 ~ CK14 는 기능을 처음 쓸 때 · CK15 는 설문 정치 막대 앞에서 받으므로, 꺼져 있으면 '처음 쓸 때 따로 물어요.'(스위치 잠김)
+//  3부-사(법무 L22 2-2 · 카피 17-3): 켜짐 · 꺼짐은 서버 동의 기록 그대로(03 · 설문 카드 · 설정 어디서 받았든 — C1). CK4 켜짐이면 덧붙이는 안내 대신 ck4OnNote(M9) ·
+//    CK15 켜짐이면 아래 글 ck15OffBody(거두면 일어나는 일) · CK4 를 켤 때는 토글 한 번이 아니라 설문과 같은 종교 동의 카드를 거친다(C5 — 고지 전부 · 체크 · 같은 무게 버튼)
 //  아래 "동의한 내용" 7줄: 필수 칸. 스위치 없이 '보기 ›'로 03 과 같은 요약 · 전문 시트. 철회는 탈퇴로 안내(N25 필수 칸 안내)
 //    + CK11 ~ CK16 6줄(4-11 ~ 4-16 요약 · 전문 보기, L17A · D-190)
 import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
+import { BottomSheet } from '@/components/BottomSheet';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Pressable } from '@/components/Pressable';
 import { COMMON } from '@/content/copy';
@@ -18,6 +21,8 @@ import { CONSENT_ITEMS, CONSENT_LATER_ITEMS, CONSENT_LATER_NAMES } from '@/conte
 import { CONSENT_MANAGE } from '@/content/settingsCopy';
 import type { ConsentItemContent, ConsentSheetContent, LaterConsentCode } from '@/content/types';
 import { ConsentSummarySheet } from '@/features/consent/ConsentSummarySheet';
+import { RelCard } from '@/features/surveyChat/ChatInput';
+import { REL, REL_SHEET } from '@/features/surveyChat/relCopy';
 import type { OptionalCode, OptionalConsents, SettingsApi } from '@/lib/settingsApi';
 import { alpha, colors, size, space } from '@/theme/tokens';
 
@@ -44,6 +49,9 @@ export function ConsentManagePage({ api, onBack, onToast }: { api: Pick<Settings
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [reading, setReading] = useState<ConsentSheetContent | null>(null);
+  const [relAsk, setRelAsk] = useState(false); // CK4 켜기 = 종교 동의 카드(C5)
+  const [relCheck, setRelCheck] = useState(false);
+  const [relReason, setRelReason] = useState<string | null>(null);
 
   const apply = async (code: OptionalCode, next: boolean) => {
     if (busyRef.current) return;
@@ -56,6 +64,7 @@ export function ConsentManagePage({ api, onBack, onToast }: { api: Pick<Settings
     setBusy(false);
     setAskCk4Off(false);
     setAskOff(null);
+    if (result.ok) setRelAsk(false);
     if (result.ok) {
       setData((d) => (d ? { ...d, [code]: next } : d));
       onToast(CONSENT_MANAGE.saved);
@@ -70,6 +79,13 @@ export function ConsentManagePage({ api, onBack, onToast }: { api: Pick<Settings
     if (code === 'CK4' && !next) {
       setError(null);
       setAskCk4Off(true);
+      return;
+    }
+    if (code === 'CK4' && next) {
+      setError(null);
+      setRelCheck(false);
+      setRelReason(null);
+      setRelAsk(true);
       return;
     }
     if (code !== 'CK4' && code !== 'CK9') {
@@ -93,11 +109,13 @@ export function ConsentManagePage({ api, onBack, onToast }: { api: Pick<Settings
           <RowGroup testID="settings-consents-optional">
             {OPTIONAL.map((code) => {
               const item = itemOf(code);
-              return <SwitchRow key={code} label={item.label} note={item.note ?? undefined} on={data[code]} disabled={busy} last={false} onPress={() => onSwitch(code)} testID={`settings-consent-${code}`} />;
+              const note = code === 'CK4' && data[code] ? CONSENT_MANAGE.ck4OnNote : (item.note ?? undefined); // M9: 켜짐이면 덧붙이는 안내 대신 끄면 일어나는 일
+              return <SwitchRow key={code} label={item.label} note={note} on={data[code]} disabled={busy} last={false} onPress={() => onSwitch(code)} testID={`settings-consent-${code}`} />;
             })}
             {LATER.map(({ code, label }, i) => {
               const locked = !data[code] && !ON_HERE.has(code);
-              return <SwitchRow key={code} label={label} note={locked ? CONSENT_MANAGE.askLater : undefined} on={data[code]} disabled={busy || locked} last={i === LATER.length - 1} onPress={() => onSwitch(code)} testID={`settings-consent-${code}`} />;
+              const note = locked ? CONSENT_MANAGE.askLater : code === 'CK15' && data[code] ? CONSENT_MANAGE.ck15OffBody : undefined; // 17-3: CK15 켜짐 아래 = 거두면 일어나는 일
+              return <SwitchRow key={code} label={label} note={note} on={data[code]} disabled={busy || locked} last={i === LATER.length - 1} onPress={() => onSwitch(code)} testID={`settings-consent-${code}`} />;
             })}
           </RowGroup>
           {error ? (
@@ -155,6 +173,24 @@ export function ConsentManagePage({ api, onBack, onToast }: { api: Pick<Settings
         onCancel={() => !busyRef.current && setAskOff(null)}
         testID="settings-later-off"
       />
+      <BottomSheet visible={relAsk} onClose={() => (busyRef.current ? undefined : setRelAsk(false))} testID="settings-ck4-card">
+        <RelCard
+          checked={relCheck}
+          reason={relReason ?? (relAsk ? error : null)}
+          busy={busy}
+          play={false}
+          onCheck={() => {
+            setRelCheck((c) => !c);
+            setRelReason(null);
+          }}
+          onAgree={() => {
+            if (!relCheck) setRelReason(REL.needCheck);
+            else void apply('CK4', true);
+          }}
+          onDecline={() => setRelAsk(false)}
+          onMore={() => setReading(REL_SHEET)}
+        />
+      </BottomSheet>
       <ConsentSummarySheet item={reading} onClose={() => setReading(null)} />
     </SubPage>
   );

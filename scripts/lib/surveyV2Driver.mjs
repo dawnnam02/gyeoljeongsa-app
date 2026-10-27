@@ -38,6 +38,12 @@ export async function fillSurveyV2(b, { log = () => undefined, politics = 'answe
     }
     const moved = () => b.waitFor(`!${q(`v2-block-${id}`)}`, 1500);
     let done = false;
+    if (id === 'A06' && (await b.evaluate(`!!${q('chat-card-REL')}`))) {
+      // 3부-사: CK4 가 없으면 A06 자리에 종교 동의 카드(체크 + [동의하고 답할게요]) → 보기
+      await tap('chat-rel-check');
+      await tap('chat-rel-agree');
+      await b.waitFor(`!!${q('v2-A06-opt-none')}`, 4000);
+    }
     if (CHOICE[id]) {
       await tap(`v2-${id}-opt-${CHOICE[id]}`);
       done = await moved();

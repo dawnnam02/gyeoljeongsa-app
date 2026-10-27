@@ -409,7 +409,7 @@
 | ③ meetSeen | 끝(커밋 ③) — meetSeen 이 appStateStorage(SecureStore 조각 · 웹 메모리) · check_sec2 P7-f 통과 |
 | ④ 검수 결함 · 웹 | 끝(커밋 ④) — 아래 '④ 표' |
 | ⑤ FB-014 ~ 016 | 끝(커밋 ⑤) — 아래 '⑤ 표' |
-| ① 종교 동의 카드 | 진행(카피 17장 도착 · 법무 반영 끝 알림 10-27 밤) |
+| ① 종교 동의 카드 | 끝(커밋 ①) — 아래 '① 표' · gen:legal --fingerprints(법무 22:03 ~ 22:07 판, CK4 consent-2026.10.27-v2) 같은 커밋 |
 
 ### ② 0039 응답 5종 (R_변경기록 8-4 표 → 앱)
 | 응답 | 앱이 읽는 곳 | 화면 |
@@ -447,3 +447,17 @@
 | 016 짧은 길에서 장면 0 | 채팅 데모 기본 장면 = 막 열린 방(글 0 · fresh). 대화가 이어진 방은 이메일 chatopen · 데모 줄 차례 막 열린 방 → 상대가 먼저 → 열린 방 → 마지막 날 → 연장 → 나감 → 닫힘 → 방 없음. 방 id 는 탑승권 데모 공개 room_id 와 같음 · 실서버 규칙(내 글 있으면 장면 0) 그대로 | s3saFb · d46 · w5Chat(대화 이어진 방 시험은 chatopen 으로) · web-w5 는 시작에 데모 줄 두 번 |
 | 015 입구 하나뿐 | T2 할 일 '아는 분 미리 피하기'(사전 오픈 할 일과 같은 글) · 사전 오픈 단계표 할 일 줄을 누를 수 있게 → 설정 탭 12-5 쪽(features/settings/settingsIntent: 열 쪽을 메모리 한 칸에 남기고 설정이 초점 받을 때 꺼냄 — 라우트 늘리지 않음) | s3saFb |
 | 014 장소가 늘 한강 벤치 | 데모 장면마다 방이 열린 주(WEEK_OF): 막 열린 방 0 · 상대가 먼저 1 · 나감 2 · 닫힘 3(날짜 글이 있는 열린 방 · 마지막 날 · 연장은 0) → 한강 벤치 · 한옥 골목 · 카페 테라스 · 제주 바닷가 | s3saFb · d46 기억 줄 · w5 닫힌 방 지우는 날 2월 19일(web-w5 같이) |
+
+### ① 종교 동의 카드(본인 결정: 정치 CK15 와 같은 방식 · 카피 17장 · 법무 L22 A안 · D2)
+| 항목 | 한 일 |
+|---|---|
+| 카드 자리 · 조건 | 대화형 설문 A06 차례에 유효한 CK4 가 없으면 질문 대신 카드(입력칸 0 — L22 1-2 #4). 03 에서 CK4 를 고른 회원은 카드 없이 A06. 설문 v2(답 확인 화면에서 A06 을 열 때)도 같은 카드 · [다음] 0 |
+| 카드 글 | `features/surveyChat/relCopy.ts` REL = 카피 17-1 · 17-4 그대로(제목 · 본문 · 네 줄 상자 · 공개 · 거두기 · 보기 › 읽기 이름 · 체크 · 버튼 · 받아 주는 말). 체크 줄 = 생성 파일 CK4 체크 문구 · '보기 ›' = 03 과 같은 CK4 요약 · 전문 시트. CHAT_V6 밖(카피 머리 말 '앱 판단') |
+| 동의 · 거절 | 체크 없이 [동의하고 답할게요] = '동의 칸을 눌러야…' 한 줄(기록 0) · 동의 = `recordConsents` CK4(판 CONSENT_TEXT_VERSIONS.CK4 = consent-2026.10.27-v2) → A06 질문 · 거절 = CK4 '동의 안 함' 줄(L22 1-5) + A06 '답하지 않음'(null) → 다음 문항 · 같은 설문에서 다시 묻지 않음 · 거절 말풍선을 누르면(고치기) 카드 다시 |
+| 설문 모델 | A06 은 보기에 '말하고 싶지 않아요'가 없지만 카드 거절만 null(서버 0023 민감 문항 null 허용) — `surveyV2/model` RELIGION_ID · 데모 검사식도 같음 |
+| T1 | reason_detail religion_missing → 카피 17-2 '설문 한 문항이 남았어요 / 종교 문항에 답하면…' + [설문으로]. survey_missing(선택)은 쓰지 않음 — 서버가 정치를 먼저 보아 둘 다 비면 politics_missing 하나 |
+| 동의 관리 | 서버 기록 그대로 켜짐(C1). CK4 켜짐 = ck4OnNote(M9 — 덧붙이는 안내 숨김) · CK15 켜짐 = ck15OffBody · CK4 켜기 = 같은 카드(C5) · 탈퇴 확인창 rejoinNote(M8, 팀장 '넣음') |
+| 데모 = 실서버 판정 | 설문 모의 서버의 동의 기록을 데모 로그인 모의 서버(demoBackend)로 넘김(설문 카드에서 받은 CK15 · CK4 가 동의 관리에 켜짐 — CK15 '꺼짐' 결함 원인) · A06 값 저장에 CK4 필요(consent_required: CK4) · 설정에서 CK4 거두면 A06 '답하지 않음' · CK15 거두면 정치 답 지움 → 탑승 관문 religion_missing · politics_missing(데모 줄로 건너뛴 계정도 CK4 거두면 religion_missing) |
+| check:copy | W 에 17장 REL 16줄 대조 + 느낌표 · 등급 · 점수 0(예외 CHAT.REL.use '등급 계산에는 쓰지 않아요.') · X' 에 17-2 religion_missing 3줄 · 12-Q ck4OnNote · rejoinNote |
+| 웹 점검 | f7(CK4 켜기 = 카드) · v6f · f20 · ime · surveyV2Driver(손님은 CK4 가 없어 카드 → 동의) 고침. v6f 기대 키 F07 · f20 '그 외' 글 · F07 자동 값(옛 기대값)도 같이 |
+| 시험 | 새 `s3saReligion.test.tsx` 9(카드 모양 · 동의 · 거절 → T1 · CK4 있으면 카드 0 · 고치기로 다시 · 설정 끔 → 탑승 0 · 건너뛴 계정 · 동의 관리 표시 · 설문 v2 카드). 고친 기대값: b0BoardGate(동의는 정치 · 종교 API 로 · CK4 없이 종교 값 저장 거부) · 설문 시험 3묶음(rig 에 CK4 미리) · surveyV2Model · surveyV2Demo · consentScreen(법무 CK4 덧붙이는 안내 v2) · settingsScreen(CK4 켜짐 줄 · 켜기 카드) · settingsGrade(탈퇴 rejoinNote) · s3sa0039 |

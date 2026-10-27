@@ -7,6 +7,8 @@
 //  · 진행 표시는 머리 아래 '지금 이야기 · {섹션 · 칸 이름}'뿐(숫자 · 퍼센트 0, 확정 1)
 //  · 입력 행동 숫자 6개는 CK16 동의자만 기기에서 메시지마다 계산(behavior.ts) — 키 하나하나 기록 0. 동의가 없으면 계산기 자체가 없다
 //  · AI 가 늦으면 점 3개 → '답을 천천히 읽고 있어요.'(확정 3), 실패하면 '다른 이야기로 이어 가 볼게요.' + 다음 빈 칸 예비 질문(멈춤 0)
+//  · 3부-사 종교 동의 카드(카피 17-1 · 법무 L22 D2): A06 차례에 유효한 CK4 가 없으면 질문 대신 카드 → 동의 = CK4 기록(지금 판) 뒤 A06 질문 ·
+//    거절 = '동의 안 함' 기록 + A06 '답하지 않음'(null) 저장 → 다음 문항(같은 설문에서 다시 묻지 않음). 거절 말풍선을 누르면(고치기) 카드가 다시 — 알림 · 반복 띄우기 0
 // 등급 · 점수 숫자는 화면 · 코드에 없다. 글은 content/surveyChatCopy.ts · 설문 v2 글만.
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -23,10 +25,11 @@ import { TextButton } from '@/components/TextButton';
 import { TextField } from '@/components/TextField';
 import { Toast } from '@/components/Toast';
 import { schoolIndex } from '@/data/schools/schoolSearch';
+import { ConsentSummarySheet } from '@/features/consent/ConsentSummarySheet';
 import { LaterConsentLink } from '@/features/consent/LaterConsentLink';
 import type { LoadOutcome, SaveBatch } from '@/features/surveyV2/api';
 import { SV2 } from '@/features/surveyV2/copy';
-import { answersOf, blockMessage, check, draftFromValue, emptyDraft, FLOW, isPassable, normalizeAnswers, optText, PUBLIC_TOGGLE_IDS, qOf, type Draft } from '@/features/surveyV2/model';
+import { answersOf, blockMessage, check, draftFromValue, emptyDraft, FLOW, isPassable, normalizeAnswers, optText, PUBLIC_TOGGLE_IDS, qOf, RELIGION_ID, type Draft } from '@/features/surveyV2/model';
 import { emptyPol, polBlock, type PolDraft } from '@/features/surveyV2/PoliticsStage';
 import { schoolLabel } from '@/features/surveyV2/SchoolInput';
 import type { V2Value } from '@/features/surveyV2/types';
@@ -37,11 +40,12 @@ import { colors, radius, size, space } from '@/theme/tokens';
 
 import type { Session, Summary } from './api';
 import { createMeter, behaviorPayload, type Meter } from './behavior';
-import { ChatInput, PolCard } from './ChatInput';
+import { ChatInput, PolCard, RelCard } from './ChatInput';
 import { fill, pick, sectionName, SLOT_ORDER, slotFallback, slotName, t } from './copy';
 import { surveyChatDeps, type SurveyChatDeps } from './deps';
 import type { ChatStage, LocalChat } from './localChat';
-import { buildPart1, part1List, TEXT_QS, varsFor, type Line, type PolState } from './model';
+import { buildPart1, part1List, TEXT_QS, varsFor, type Line, type PolState, type RelState } from './model';
+import { REL, REL_SHEET } from './relCopy';
 import { AiBubble, Appear, ChatComposer, MeBubble, Note, TopicLine, TypingDots } from './parts';
 
 export const MAX_TURNS = 25; // 2부 내 답 상한(0033 MAX_USER_TURNS) — 앱도 한 번 더 막는다
@@ -57,7 +61,7 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
   const router = useRouter();
   const [deps] = useState<SurveyChatDeps>(() => given ?? surveyChatDeps());
   const { v2, chat, store } = deps;
-  const { api, politics } = v2;
+  const { api, politics, religion } = v2;
   const reduce = useReduceMotion();
 
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -70,6 +74,11 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
   const [skipped, setSkipped] = useState<readonly string[]>([]);
   const [polLater, setPolLater] = useState(false);
   const [pol, setPol] = useState<PolDraft>(emptyPol);
+  // 종교 동의(CK4): null = 모름(읽기 전 · 실패 · 기능 없음 → 카드 없이) · relAgreed = 이 설문에서 카드로 동의 · relCheck = 카드 체크 칸 · relSheet = '보기 ›' 시트
+  const [relOn, setRelOn] = useState<boolean | null>(null);
+  const [relAgreed, setRelAgreed] = useState(false);
+  const [relCheck, setRelCheck] = useState(false);
+  const [relSheet, setRelSheet] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ after: string; texts: string[] } | null>(null);
   const [reason, setReason] = useState<string | null>(null);
@@ -112,7 +121,8 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
   const answers = useMemo(() => answersOf(committed), [committed]);
   const schoolName = useCallback((key: string) => schoolLabel(key) ?? schoolIndex().byKey(key)?.name ?? null, []);
   const polState: PolState = !politics ? 'off' : pol.serverConsent && pol.savedValue !== null ? 'answered' : polLater ? 'later' : 'ask';
-  const view = useMemo(() => buildPart1(answers, { userKey, interview: true, skipped, pol: polState, schoolName }), [answers, userKey, skipped, polState, schoolName]);
+  const relState: RelState = relAgreed ? 'agreed' : religion && relOn === false ? 'ask' : 'off';
+  const view = useMemo(() => buildPart1(answers, { userKey, interview: true, skipped, pol: polState, rel: relState, schoolName }), [answers, userKey, skipped, polState, relState, schoolName]);
 
   const stateRef = useRef({ committed, publicOn, stage, skipped, polLater, ck16Asked, session, userKey, asked, userTurns, ck16 });
   useEffect(() => {
@@ -343,6 +353,11 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
       if (!alive.current) return;
       if (p.ok) setPol({ loaded: true, serverConsent: p.data.consent, checked: false, value: p.data.position, savedValue: p.data.answered ? p.data.position : null });
     }
+    if (religion) {
+      const r = await religion.load();
+      if (!alive.current) return;
+      if (r.ok) setRelOn(r.on);
+    }
     const started = Object.keys(snap.answers).length > 0;
     const later = mine && ['part2', 'wrap', 'traits', 'texts', 'done', 'paused'].includes(mine.stage) ? mine.stage : null;
     setPhase('ready');
@@ -391,7 +406,7 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
     }
     setStage('part1');
     setResumeAt(mine?.updatedAt ?? 0);
-  }, [store, politics, chat, deps.monotonic, loadSummary, analyzeNow, startTexts]);
+  }, [store, politics, religion, chat, deps.monotonic, loadSummary, analyzeNow, startTexts]);
 
   useEffect(() => {
     alive.current = true;
@@ -442,7 +457,7 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
       setReason(blockMessage(q, c));
       return null;
     }
-    const before = view.ask && view.ask !== 'POL' ? view.ask.id : null;
+    const before = view.ask && typeof view.ask !== 'string' ? view.ask.id : null;
     const ok = await run(() => persist(next, publicOn));
     if (!alive.current) return null;
     if (!ok) {
@@ -459,8 +474,8 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
     });
     if (editing === id) {
       setEditing(null);
-      const after = buildPart1(answersOf(next), { userKey, interview: true, skipped, pol: polState, schoolName });
-      const nowAsk = after.ask && after.ask !== 'POL' ? after.ask.id : null;
+      const after = buildPart1(answersOf(next), { userKey, interview: true, skipped, pol: polState, rel: relState, schoolName });
+      const nowAsk = after.ask && typeof after.ask !== 'string' ? after.ask.id : null;
       const chain = nowAsk !== null && nowAsk !== before && FLOW.findIndex((x) => x.id === nowAsk) < FLOW.findIndex((x) => x.id === (before ?? 'zz'));
       setFlash({ after: id, texts: [t('CHAT.EDIT.done'), ...(chain ? [t('CHAT.EDIT.chain')] : [])] });
     } else setFlash(null);
@@ -519,6 +534,64 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
       setReason(null);
     }
   };
+
+  // 종교 동의 카드(3부-사): [동의하고 답할게요] = 체크가 있어야 CK4 동의 기록 → A06 질문(고치는 중이면 그 자리 입력) · [동의하지 않을게요] = '동의 안 함' 기록 + A06 '답하지 않음'
+  const agreeReligion = async () => {
+    if (!religion || busyRef.current) return;
+    if (!relCheck) {
+      setReason(REL.needCheck);
+      return;
+    }
+    const ok = await run(async () => (await religion.record(true)).ok);
+    if (!alive.current) return;
+    if (!ok) {
+      setSaveError(t('CHAT.SAVE.failed'));
+      return;
+    }
+    setSaveError(null);
+    setReason(null);
+    setRelCheck(false);
+    setRelOn(true);
+    setRelAgreed(true);
+    if (editing === RELIGION_ID) setWork((w) => ({ ...w, [RELIGION_ID]: emptyDraft(qOf(RELIGION_ID), userKey) }));
+  };
+  const declineReligion = async () => {
+    if (!religion || busyRef.current) return;
+    const next = { ...committed, [RELIGION_ID]: { kind: 'choice', code: 'decline' } as Draft };
+    const ok = await run(async () => (await religion.record(false)).ok && (await persist(next, publicOn)));
+    if (!alive.current) return;
+    if (!ok) {
+      setSaveError(t('CHAT.SAVE.failed'));
+      return;
+    }
+    setSaveError(null);
+    setReason(null);
+    setRelCheck(false);
+    setCommitted(next);
+    setWork((w) => {
+      const out = { ...w };
+      delete out[RELIGION_ID];
+      return out;
+    });
+    if (editing === RELIGION_ID) setEditing(null);
+  };
+  const relCardNode = (key: string) => (
+    <RelCard
+      key={key}
+      checked={relCheck}
+      reason={reason}
+      busy={busy}
+      play
+      onCheck={() => {
+        setRelCheck((c) => !c);
+        setReason(null);
+        setSaveError(null);
+      }}
+      onAgree={() => void agreeReligion()}
+      onDecline={() => void declineReligion()}
+      onMore={() => setRelSheet(true)}
+    />
+  );
 
   const tempSave = async () => {
     const ok = await run(() => persist(committed, publicOn));
@@ -785,6 +858,11 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
       if (l.kind === 'me' && l.qid === editing && editing) {
         const q = qOf(editing);
         out.push(<Appear key={`edit-${editing}`} play><AiBubble text={t('CHAT.EDIT.start')} testID="chat-edit-start" /></Appear>);
+        if (editing === RELIGION_ID && religion && relOn === false) {
+          out.push(relCardNode('card-edit-REL')); // 유효한 CK4 가 없으면 고칠 때도 카드부터(L22 D2 ④ — 회원이 누를 때만 다시 연다)
+          dim = true;
+          continue;
+        }
         out.push(
           <ChatInput
             key={`card-edit-${editing}`}
@@ -902,7 +980,8 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
       {showPart1 && resumeAt === null ? (
         <>
           {part1Nodes()}
-          {stage === 'part1' && !editing && ask && ask !== 'POL' ? (
+          {stage === 'part1' && !editing && ask === 'REL' ? relCardNode('card-REL') : null}
+          {stage === 'part1' && !editing && ask && typeof ask !== 'string' ? (
             <ChatInput
               key={`card-${ask.id}`}
               q={ask}
@@ -1155,6 +1234,7 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
             />
           ) : null}
         </BottomCTA>
+        <ConsentSummarySheet item={relSheet ? REL_SHEET : null} onClose={() => setRelSheet(false)} />
         <Toast text={toast} testID="chat-toast" />
       </KeyboardAvoid>
     </Screen>

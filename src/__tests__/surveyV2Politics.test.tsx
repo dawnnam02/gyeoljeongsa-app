@@ -4,7 +4,7 @@ import { act } from 'react-test-renderer';
 import { BackHandler } from 'react-native';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { createDemoV2Memory, createSurveyV2DemoClient, type DemoV2Memory } from '@/demo/surveyV2Backend';
+import { createDemoV2Memory, createSurveyV2DemoClient, demoV2Seed, type DemoV2Memory } from '@/demo/surveyV2Backend';
 import { createSurveyV2Api } from '@/features/surveyV2/api';
 import type { SurveyV2Deps } from '@/features/surveyV2/deps';
 import { createLocalDraftStore } from '@/features/surveyV2/localDraft';
@@ -43,6 +43,7 @@ const tap = async (tree: Tree, id: string) => {
 const NO_NUMBER = /\d/; // 막대 · 동의 · 검토 글에 숫자가 없다(날짜 · 판 번호도 이 단계에는 없다)
 
 function rig(memory: DemoV2Memory = createDemoV2Memory(), email = 'w8@email.com') {
+  demoV2Seed(memory, 'u1', { ck4: true }); // 3부-사: 03 에서 CK4 를 하고 온 회원(종교 값 저장 · 0023)
   const client = createSurveyV2DemoClient(base('u1', email), { memory });
   const api = createSurveyV2Api(client, { demo: true, proofUpload: true, schoolSearch: 'server' });
   const politics = createPoliticsApi(client);
@@ -261,7 +262,7 @@ describe('설문 v2 흐름 안 정치성향 단계', () => {
   test('저장 실패(인터넷): 단계에 머물고 저장 실패 문구', async () => {
     const memory = createDemoV2Memory();
     const r = rig(memory, 'v2savefail@email.com');
-    memory.users.set('u1', { answers: { ...FULL }, texts: { ...TEXTS }, prompts: new Map(), visibility: {}, proofs: {}, failedProofs: [], calls: {}, ck15: false, politics: null });
+    memory.users.set('u1', { answers: { ...FULL }, texts: { ...TEXTS }, prompts: new Map(), visibility: {}, proofs: {}, failedProofs: [], calls: {}, ck15: false, ck4: false, politics: null });
     const tree = await mount(<SurveyV2Screen deps={r.deps} />);
     await wait(40);
     await tap(tree, 'v2-review-politics-edit');

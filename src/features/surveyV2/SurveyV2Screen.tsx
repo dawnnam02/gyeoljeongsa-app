@@ -22,6 +22,9 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextButton } from '@/components/TextButton';
 import { Toast } from '@/components/Toast';
 import { schoolIndex } from '@/data/schools/schoolSearch';
+import { ConsentSummarySheet } from '@/features/consent/ConsentSummarySheet';
+import { RelCard } from '@/features/surveyChat/ChatInput';
+import { REL, REL_SHEET } from '@/features/surveyChat/relCopy';
 import { dist, ProgressBar, Rise, scene, TOAST_MS } from '@/motion';
 import { layout } from '@/theme/layout';
 import { colors, radius, size, space } from '@/theme/tokens';
@@ -51,6 +54,7 @@ import {
   progressOf,
   PUBLIC_TOGGLE_IDS,
   qOf,
+  RELIGION_ID,
   SENSITIVE_IDS,
   STORY,
   visibleFlow,
@@ -87,7 +91,12 @@ function initialDrafts(snap: V2Snapshot, local: LocalDraft | null): Record<strin
 export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props) {
   const router = useRouter();
   const [deps] = useState<SurveyV2Deps>(() => given ?? surveyV2Deps());
-  const { api, local, politics } = deps;
+  const { api, local, politics, religion } = deps;
+  // 3부-사 종교 동의 카드(설문 v2 · 답 확인 화면에서 A06 을 열 때도 — 카피 17-1 '답 확인 화면에서 종교를 누르면 이 카드가 다시'): null = 모름(카드 없이)
+  const [relOn, setRelOn] = useState<boolean | null>(null);
+  const [relCheck, setRelCheck] = useState(false);
+  const [relReason, setRelReason] = useState<string | null>(null);
+  const [relSheet, setRelSheet] = useState(false);
 
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadReason, setLoadReason] = useState<'network' | 'server'>('server');
@@ -176,7 +185,12 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
         setPol({ loaded: true, serverConsent: r.data.consent, checked: false, value: r.data.position, savedValue: r.data.answered ? r.data.position : null });
       });
     }
-  }, [local, entry, politics]);
+    if (religion) {
+      void religion.load().then((r) => {
+        if (alive.current && r.ok) setRelOn(r.on);
+      });
+    }
+  }, [local, entry, politics, religion]);
 
   useEffect(() => {
     alive.current = true;
@@ -594,6 +608,40 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
     actsRef.current[act]();
   };
 
+  // 종교 동의 카드: 동의 = CK4 기록 → 그 자리에서 A06 보기 / 거절 = '동의 안 함' 기록 + A06 '답하지 않음'(null) → 다음 문항(저장은 [다음]과 같은 길)
+  const relCard = stage === 'flow' && at === RELIGION_ID && !!religion && relOn === false;
+  const agreeReligion = async () => {
+    if (!religion || busyRef.current) return;
+    if (!relCheck) {
+      setRelReason(REL.needCheck);
+      return;
+    }
+    const ok = await run(async () => (await religion.record(true)).ok);
+    if (!alive.current) return;
+    if (!ok) {
+      setSaveError(SV2.saveFailed);
+      return;
+    }
+    setSaveError(null);
+    setRelReason(null);
+    setRelCheck(false);
+    setRelOn(true);
+  };
+  const declineReligion = async () => {
+    if (!religion || busyRef.current) return;
+    const ok = await run(async () => (await religion.record(false)).ok);
+    if (!alive.current) return;
+    if (!ok) {
+      setSaveError(SV2.saveFailed);
+      return;
+    }
+    setSaveError(null);
+    setRelReason(null);
+    setRelCheck(false);
+    setDrafts((d) => ({ ...d, [RELIGION_ID]: { kind: 'choice', code: 'decline' } }));
+    setAutoTick((n) => n + 1); // 고른 뒤 넘김과 같은 길(새 값으로 저장 → 다음 문항)
+  };
+
   // ── 검토 자료 ──
   const reviewSections = useMemo((): ReviewSection[] => {
     const name = (key: string) => schoolLabel(key);
@@ -730,7 +778,21 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
                     </AppText>
                   </Card>
                 ) : null}
-                {current.format === 'school' && draft.kind === 'school' ? (
+                {relCard ? (
+                  <RelCard
+                    checked={relCheck}
+                    reason={relReason}
+                    busy={busy}
+                    play={false}
+                    onCheck={() => {
+                      setRelCheck((c) => !c);
+                      setRelReason(null);
+                    }}
+                    onAgree={() => void agreeReligion()}
+                    onDecline={() => void declineReligion()}
+                    onMore={() => setRelSheet(true)}
+                  />
+                ) : current.format === 'school' && draft.kind === 'school' ? (
                   <SchoolInput q={current} draft={draft} onChange={(d) => onDraft(at, d)} search={(query, courses) => api.searchSchools(query, { courses: courses ?? coursesFor(at), limit: 8 })} />
                 ) : (
                   <QuestionInput q={current} draft={draft} answers={answers} onChange={(d) => onDraft(at, d)} invalid={reason !== null} />
@@ -826,7 +888,8 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
         {/* 하단 고정(공통 BottomCTA: 위 선 대신 흐림 · 이전 : 다음 = 1 : 2, D-141) */}
         <BottomCTA testID="v2-cta">
           {stage === 'intro' ? <Button label={SV2.intro.start} onPress={() => goTo('flow', firstMissing(answers) ?? visible[0]?.id ?? FLOW[0].id)} testID="v2-start" /> : null}
-          {stage === 'flow' ? (
+          {stage === 'flow' && relCard ? (canBack ? <Button label={SV2.common.prev} variant="secondary" onPress={prev} disabled={busy} testID="v2-prev" /> : null) : null}
+          {stage === 'flow' && !relCard ? (
             canBack ? (
               <CtaPair
                 secondary={<Button label={SV2.common.prev} variant="secondary" onPress={prev} disabled={busy} testID="v2-prev" />}
@@ -850,6 +913,7 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
           ) : null}
           {stage === 'review' ? <Button label={SV2.review.submit} onPress={() => after('submit')} dimmed={firstMissing(answers) !== null} loading={busy} testID="v2-submit" /> : null}
         </BottomCTA>
+        <ConsentSummarySheet item={relSheet ? REL_SHEET : null} onClose={() => setRelSheet(false)} />
         <Toast text={toast} testID="v2-toast" />
       </KeyboardAvoid>
     </Screen>

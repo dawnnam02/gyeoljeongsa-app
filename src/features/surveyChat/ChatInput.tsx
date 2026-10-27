@@ -31,6 +31,7 @@ import { colors, radius, size, space } from '@/theme/tokens';
 import { fill, t } from './copy';
 import { sendsAtOnce } from './model';
 import { Appear } from './parts';
+import { REL } from './relCopy';
 
 type Props = {
   q: QuestionDef;
@@ -196,7 +197,52 @@ export function PolCard({ pol, reason, busy, play, onCheck, onChange, onSend, on
   );
 }
 
+// 종교 동의 카드(3부-사 · 카피 17-1 · 법무 L22 1-2 · 1-3): A06 입력칸보다 먼저, 종교 동의 하나만. 차례 = 제목 · 본문 · 네 줄 상자(받는 것 · 쓰는 곳 · 보관 · 동의하지 않으면)
+//  · 공개 줄 · 거두기 줄 · 보기 ›(03 과 같은 요약 · 전문) · 체크 줄(미리 체크 0) · 버튼 둘(같은 크기 · 같은 무게, 위아래 — CK16 카드와 같은 모양)
+//  동의는 체크 + [동의하고 답할게요]로만(대화 글 · 종교를 고른 행동을 동의로 보지 않음 — L22 1-2 #3)
+type RelProps = { checked: boolean; reason: string | null; busy: boolean; play: boolean; onCheck: () => void; onAgree: () => void; onDecline: () => void; onMore: () => void };
+
+export function RelCard({ checked, reason, busy, play, onCheck, onAgree, onDecline, onMore }: RelProps) {
+  return (
+    <Appear play={play} delay={play ? 120 : 0} testID="chat-card-REL">
+      <View style={styles.wrap}>
+        <InfoBox title={REL.consentTitle} body={REL.consentBody} testID="chat-rel-consent" />
+        <View style={styles.card} testID="chat-rel-box">
+          {(['what', 'use', 'keep', 'consentNote'] as const).map((k) => (
+            <AppText key={k} variant="caption" tone="text" testID={`chat-rel-${k}`}>
+              {REL[k]}
+            </AppText>
+          ))}
+        </View>
+        <AppText variant="caption" tone="text" testID="chat-rel-vis">
+          {REL.vis}
+        </AppText>
+        <AppText variant="caption" tone="text" testID="chat-rel-withdraw">
+          {REL.withdraw}
+        </AppText>
+        <TextButton label={CONSENT.more} accessibilityLabel={REL.moreA11y} align="start" onPress={onMore} testID="chat-rel-more" />
+        <Pressable accessibilityRole="checkbox" aria-checked={checked} accessibilityLabel={REL.consentCheck} onPress={onCheck} effect="none" testID="chat-rel-check" style={styles.check}>
+          <CheckBox checked={checked} emphasized={reason === REL.needCheck} />
+          <AppText variant="body" style={styles.flex}>
+            {REL.consentCheck}
+          </AppText>
+        </Pressable>
+        {reason ? (
+          <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" accessibilityLiveRegion="polite" testID="chat-rel-error">
+            {reason}
+          </AppText>
+        ) : null}
+        <View style={styles.stack}>
+          <Button label={REL.agree} variant="secondary" onPress={onAgree} disabled={busy} testID="chat-rel-agree" />
+          <Button label={REL.decline} variant="secondary" onPress={onDecline} disabled={busy} testID="chat-rel-decline" />
+        </View>
+      </View>
+    </Appear>
+  );
+}
+
 const styles = StyleSheet.create({
+  stack: { gap: space.s8 },
   check: { flexDirection: 'row', alignItems: 'center', gap: space.s12, minHeight: size.touchMin },
   flex: { flex: 1, flexShrink: 1 },
   wrap: { gap: space.s8, alignSelf: 'stretch' },

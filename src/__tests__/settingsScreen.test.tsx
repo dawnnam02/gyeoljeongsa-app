@@ -280,8 +280,11 @@ describe('12 하위 화면', () => {
     for (const code of ['CK4', 'CK9']) {
       const item = CONSENT_ITEMS.find((i) => i.code === code);
       expect(propOf(tree, `settings-consent-${code}`, 'accessibilityLabel')).toBe(item?.label);
-      expect(hasText(tree, item?.note ?? '')).toBe(true);
     }
+    // 3부-사(카피 12-Q M9): CK4 켜짐이면 덧붙이는 안내 대신 '끄면…' 한 줄 · CK9 는 덧붙이는 안내 그대로
+    expect(hasText(tree, CONSENT_MANAGE.ck4OnNote)).toBe(true);
+    expect(hasText(tree, CONSENT_ITEMS.find((i) => i.code === 'CK4')?.note ?? '-')).toBe(false);
+    expect(hasText(tree, CONSENT_ITEMS.find((i) => i.code === 'CK9')?.note ?? '-')).toBe(true);
     expect(CONSENT_ITEMS.filter((i) => i.required).every((i) => has(tree, `settings-consent-view-${i.code}`))).toBe(true);
     expect(textOf(tree, 'settings-consents-required-note')).toBe(CONSENT_MANAGE.requiredNote);
     await press(tree, 'settings-consent-CK4');
@@ -292,8 +295,16 @@ describe('12 하위 화면', () => {
     expect(api.setOptional).toHaveBeenCalledWith('CK4', false);
     expect(propOf(tree, 'settings-consent-CK4', 'accessibilityState').checked).toBe(false);
     expect(hasText(tree, CONSENT_MANAGE.saved)).toBe(true);
-    // CK4 다시 켜기 · CK9 는 확인창 없이
+    expect(hasText(tree, CONSENT_ITEMS.find((i) => i.code === 'CK4')?.note ?? '-')).toBe(true); // 꺼지면 덧붙이는 안내로
+    // 3부-사(법무 L22 C5): CK4 다시 켜기는 토글 한 번이 아니라 종교 동의 카드(고지 전부 · 체크 · 같은 무게 버튼)를 거친다. CK9 는 확인창 없이
+    const calls = (api.setOptional as jest.Mock).mock.calls.length;
     await press(tree, 'settings-consent-CK4');
+    expect(isOpen(tree, 'settings-ck4-card')).toBe(true);
+    expect(api.setOptional).toHaveBeenCalledTimes(calls);
+    await press(tree, 'chat-rel-agree'); // 체크 없이 → 이유 한 줄 · 기록 0
+    expect(api.setOptional).toHaveBeenCalledTimes(calls);
+    await press(tree, 'chat-rel-check');
+    await press(tree, 'chat-rel-agree');
     expect(api.setOptional).toHaveBeenLastCalledWith('CK4', true);
     await press(tree, 'settings-consent-CK9');
     expect(api.setOptional).toHaveBeenLastCalledWith('CK9', false);

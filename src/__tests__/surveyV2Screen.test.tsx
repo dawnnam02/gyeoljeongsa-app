@@ -5,7 +5,7 @@ import { act } from 'react-test-renderer';
 import { AppState, BackHandler } from 'react-native';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { createDemoV2Memory, createSurveyV2DemoClient, type DemoV2Memory } from '@/demo/surveyV2Backend';
+import { createDemoV2Memory, createSurveyV2DemoClient, demoV2Seed, type DemoV2Memory } from '@/demo/surveyV2Backend';
 import { createSurveyV2Api } from '@/features/surveyV2/api';
 import { SV2 } from '@/features/surveyV2/copy';
 import { createLocalDraftStore } from '@/features/surveyV2/localDraft';
@@ -34,6 +34,7 @@ const base = (id: string, email: string) => ({ auth: { getSession: async () => (
 
 function rig(opts: { id?: string; email?: string; memory?: DemoV2Memory; store?: ReturnType<typeof createMemoryStore> } = {}) {
   const memory = opts.memory ?? createDemoV2Memory();
+  demoV2Seed(memory, opts.id ?? 'u1', { ck4: true }); // 3부-사: 03 에서 종교 동의(CK4)를 하고 온 회원 — 종교 값 저장에 CK4 가 있어야 한다(0023)
   const store = opts.store ?? createMemoryStore();
   const api = createSurveyV2Api(createSurveyV2DemoClient(base(opts.id ?? 'u1', opts.email ?? 'f20@email.com'), { memory }), { demo: true, proofUpload: true, schoolSearch: 'server' });
   const deps: SurveyV2Deps = { api, local: createLocalDraftStore(chunkedStorage(store.store)), now: () => 1 };

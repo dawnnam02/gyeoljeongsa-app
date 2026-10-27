@@ -734,6 +734,44 @@ try {
     const polRows = new Map(sec13.split(/\r?\n/).filter((l) => /^\| `POL\./.test(l)).map(cells).map((r) => [r[0].replace(/`/g, '').split(' ')[0], r[1]]));
     const polDiffs = Object.entries(polField).filter(([k, f]) => !ck15?.[f] || !new RegExp(`${k.slice(4)}: CK15\\.${f}\\b`).test(polSrc) || polRows.get(k) !== ck15[f]).map(([k, f]) => `${k}: 앱이 CK15.${f} 를 가리키나 / 카피 13-1 "${polRows.get(k)}" / 동의문구 4-15 "${ck15?.[f]}"`);
     check('W', '정치 성향 동의 글 4개(POL9 ~ POL12)가 동의문구 4-15 화면 문구 · 카피.md 13-1 과 같다', polDiffs.length === 0, polDiffs.join('\n'));
+
+    // 3부-사(D-219): 종교 동의 카드 글(features/surveyChat/relCopy.ts REL — CHAT_V6 밖, POL 과 같은 자리)이 카피.md 17장 17-1 · 17-4 표('04 `CHAT.REL.키`')와 한 글자씩 같다.
+    //  체크 줄(consentCheck)은 옮겨 적지 않고 생성 파일 CONSENT_ITEMS CK4 체크 문구를 가리킨다(별칭 @/ 때문에 Node 로 읽지 않고 글에서 확인 — POL 과 같은 방식) · 느낌표 · 등급 · 점수 0(예외: CHAT.REL.use '등급 계산에는 쓰지 않아요.')
+    {
+      const relSrc = fs.readFileSync(path.join(APP_DIR, 'src', 'features', 'surveyChat', 'relCopy.ts'), 'utf8');
+      const relApp = new Map();
+      for (const m of relSrc.matchAll(/^\s{2}(\w+): (['"])(.*?)\2,/gm)) relApp.set(`CHAT.REL.${m[1]}`, m[3]);
+      const ackDecline = /ack: \{ decline: (['"])(.*?)\1 \}/.exec(relSrc);
+      if (ackDecline) relApp.set('CHAT.REL.ack.decline', ackDecline[2]);
+      const ck4Label = (await load(path.join(contentDir, 'consentContent.ts'))).CONSENT_ITEMS?.find((i) => i.code === 'CK4')?.label;
+      if (/consentCheck: CK4\?\.label\b/.test(relSrc) && ck4Label) relApp.set('CHAT.REL.consentCheck', ck4Label);
+      const from17 = copyText.search(/^## 17\. /m);
+      const sec17 = from17 >= 0 ? copyText.slice(from17) : '';
+      const end17 = sec17.slice(3).search(/^## /m);
+      const rows17 = (end17 >= 0 ? sec17.slice(0, end17 + 3) : sec17).split(/\r?\n/).filter((l) => /^\| 04 `CHAT\.REL\./.test(l)).map(cells).map((r) => [(/`([^`]+)`/.exec(r[0]) ?? [])[1], r[1]]);
+      const relDiffs = rows17.filter(([k, want]) => relApp.get(k) !== want).map(([k, want]) => `${k}: 앱 "${relApp.get(k)}" / 카피 17장 "${want}"`);
+      const relOnly = [...relApp.keys()].filter((k) => !rows17.some(([key]) => key === k)).map((k) => `앱에만 있음: ${k}`);
+      check('W', `종교 동의 카드 글 ${relApp.size}개(REL)가 카피.md 17장 17-1 · 17-4 표(${rows17.length}줄)와 한 글자씩 같다 · 체크 줄은 동의문구 4-4 체크 문구(생성 파일)`, rows17.length >= 16 && relDiffs.length === 0 && relOnly.length === 0 && relApp.get('CHAT.REL.consentCheck') === ck4Label, [...relDiffs, ...relOnly].join('\n') || `표 ${rows17.length}줄`);
+      const NEG_RANK = '등급 계산에는 쓰지 않아요.';
+      const relBad = [...relApp].filter(([k, t]) => /[!！]|등급|점수/.test(k === 'CHAT.REL.use' ? t.split(NEG_RANK).join('') : t)).map(([k]) => k);
+      check('W', "종교 동의 카드 글에 느낌표 · 등급 · 점수 말 0(예외: CHAT.REL.use '등급 계산에는 쓰지 않아요.')", relBad.length === 0, relBad.join(' '));
+    }
+  }
+
+  // ── X'. 3부-사: T1 종교 사유 · 동의 관리 · 탈퇴 새 줄(카피.md 17-2 · 12-Q, M-CK4 · RC-M M8 · M9) ──
+  //  17-2 표의 'T1 BOARDING.ineligible.religion_missing.*' 줄은 키에 백틱이 없어(앱 대기 때 X 실패를 막으려고 — 17-2 머리 말) 여기서 읽는다. survey_missing(선택)은 앱이 쓰지 않는다
+  //  (서버 profile_ready_detail 은 정치를 먼저 보아 둘 다 비면 politics_missing 하나만 준다)
+  {
+    const bc = await load(path.join(APP_DIR, 'src', 'features', 'boarding', 'boardingCopy.ts'));
+    const st12 = await load(path.join(contentDir, 'settingsCopy.ts'));
+    const rows172 = copyText.split(/\r?\n/).filter((l) => /^\| T1 `?BOARDING\.ineligible\.religion_missing\./.test(l)).map(cells).map((r) => [r[0].replace(/^T1 /, '').replace(/`/g, ''), r[1]]);
+    const got = (k) => k.split('.').slice(1).reduce((o, x) => (o == null ? undefined : o[x]), bc.BOARDING);
+    const d172 = rows172.filter(([k, want]) => got(k) !== want).map(([k, want]) => `${k}: 앱 "${got(k)}" / 카피 17-2 "${want}"`);
+    check('X', `T1 종교 사유(religion_missing 제목 · 본문 · 버튼 ${rows172.length}줄)가 카피.md 17-2 와 같다`, rows172.length === 3 && d172.length === 0, d172.join('\n'));
+    const cell12 = (text) => copyText.split(/\r?\n/).some((l) => /^\| /.test(l) && cells(l).includes(text));
+    const newer12 = { 'CONSENT_MANAGE.ck4OnNote': st12.CONSENT_MANAGE?.ck4OnNote, 'WITHDRAW.rejoinNote': st12.WITHDRAW?.rejoinNote };
+    const miss12 = Object.entries(newer12).filter(([, t]) => !t || !cell12(t)).map(([k, t]) => `${k}: "${t}" 가 카피.md 12-Q 표 칸에 없음`);
+    check('X', '동의 관리 CK4 켜짐 줄(ck4OnNote · M9) · 탈퇴 확인창 다시 가입 줄(rejoinNote · M8)이 카피.md 12-Q 표 글과 같다', miss12.length === 0, miss12.join('\n'));
   }
 
   // ── X. v5 새 화면 글(카피.md 14-5, 검수 QP-07 · 마케팅 QPM 3차) ──

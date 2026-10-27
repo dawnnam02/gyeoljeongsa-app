@@ -111,9 +111,10 @@ describe('검증(2-7 · CSV 검증 규칙)', () => {
     expect(check(q, { kind: 'number', text: '129' }, {})).toEqual({ state: 'invalid', message: PROPOSED.rangeError(130, 220) });
     expect(check(q, { kind: 'number', text: '175' }, {})).toEqual({ state: 'ok', value: 175 });
   });
-  test("'말하고 싶지 않아요'는 값 null(답한 것), 종교에는 없다", () => {
+  test("'말하고 싶지 않아요'는 값 null(답한 것) · 종교는 보기에 없고 동의 카드 거절만 '답하지 않음'(null — 3부-사)", () => {
     expect(check(qOf('C05'), { kind: 'choice', code: 'decline' }, {})).toEqual({ state: 'ok', value: null });
-    expect(check(qOf('A06'), { kind: 'choice', code: 'decline' }, {}).state).toBe('empty');
+    expect(qOf('A06').decline).toBe(false); // 화면 보기에는 '말하고 싶지 않아요' 없음
+    expect(check(qOf('A06'), { kind: 'choice', code: 'decline' }, {})).toEqual({ state: 'ok', value: null }); // 카드 거절 = '답하지 않음'
     expect(check(qOf('D08'), { kind: 'school', pick: { code: 'decline' } }, {})).toEqual({ state: 'ok', value: null });
     expect(check(qOf('D08'), { kind: 'school', pick: { code: 'unknown' } }, {})).toEqual({ state: 'ok', value: 'unknown' });
     expect(check(qOf('B02'), { kind: 'school', pick: { key: 'K0109' } }, {})).toEqual({ state: 'ok', value: { school_key: 'K0109' } });

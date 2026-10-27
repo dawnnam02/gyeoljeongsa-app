@@ -141,9 +141,16 @@ try {
   await type('v2-A05-input', '172');
   await tap('v2-next');
   await wait(`!!${q('v2-block-A06')}`);
+  // 3부-사: 로그인 없이 연 손님은 종교 동의(CK4)가 없어 A06 자리에 종교 동의 카드가 먼저(카피 17-1 · 법무 L22) → 체크 + [동의하고 답할게요] 뒤 보기
+  if (await wait(`!!${q('chat-card-REL')}`, 1500)) {
+    check('4', '종교 동의 카드(A06 앞 · CK4 없음): 네 줄 상자 · 체크 · 같은 무게 버튼 둘 · 보기는 동의 뒤', (await visible('chat-rel-what')) && (await visible('chat-rel-agree')) && (await visible('chat-rel-decline')) && !(await visible('v2-A06-opt-none')), '');
+    await tap('chat-rel-check');
+    await tap('chat-rel-agree');
+    await wait(`!!${q('v2-A06-opt-none')}`, 4000);
+  }
   await tap('v2-A06-opt-other');
   await sleep(900);
-  check('4', "종교 '그 외' → '그 외'끼리만 추천 안내 · 자동으로 넘어가지 않음 · 자물쇠 줄", (await currentId()) === 'A06' && (await text('v2-other-note')).includes("'그 외'를 고른 분끼리만 추천해요") && (await visible('v2-sensitive')), await text('v2-other-note'));
+  check('4', "종교 '그 외' → '그 외'끼리 이어진다는 안내(카피 14-2 v5) · 자동으로 넘어가지 않음 · 자물쇠 줄", (await currentId()) === 'A06' && (await text('v2-other-note')).includes("'그 외'를 고른 분끼리 이어져요") && (await visible('v2-sensitive')), await text('v2-other-note'));
   await shot('04_종교_그외');
   await tap('v2-A06-opt-none'); // 무교
   await wait(`!!${q('v2-block-A07')}`, 3000);
@@ -253,7 +260,7 @@ try {
 
   const p = (await peek())[0] ?? {};
   check('1', '필수 흐름을 끝내면 결혼 이야기 단계 · 서버에 첫 빈 문항 없음', (await stageNow()) === 'v2-story' && p.firstMissing === null, `단계 ${await stageNow()} · 첫 빈 ${p.firstMissing} · 저장 ${p.answered?.length}`);
-  check('1', "자동 값: 형제 1명 → 몇째 저장 · 남성 → 병역 답 · '그 외' 아님 → F07 저장", p.answers?.D06 === 'first' && p.answers?.A11 === 'done' && Array.isArray(p.answers?.F07));
+  check('1', '자동 값: 형제 1명 → 몇째 저장 · 남성 → 병역 답 · F07(희망 종교)은 D-199 로 없앰 — 저장 0', p.answers?.D06 === 'first' && p.answers?.A11 === 'done' && p.answers?.F07 === undefined);
 
   // 결혼 이야기
   await tap('v2-Q17-head');

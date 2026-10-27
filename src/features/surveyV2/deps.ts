@@ -9,9 +9,11 @@ import { supabase } from '@/lib/services';
 import { createSurveyV2Api, type SurveyV2Api } from './api';
 import { createLocalDraftStore, type LocalDraftStore } from './localDraft';
 import { createPoliticsApi, type PoliticsApi } from './politics';
+import { createReligionApi, type ReligionApi } from './religion';
 
 // politics(W8): 있으면 설문 흐름 끝에 정치성향 단계(CK15 별도 동의 + 끌기 막대)를 넣는다. 없으면 그 단계가 없다(옛 시험 그대로)
-export type SurveyV2Deps = { api: SurveyV2Api; local: LocalDraftStore; now: () => number; politics?: PoliticsApi };
+// religion(3부-사): 있으면 A06 앞에 종교 동의 카드(유효한 CK4 가 없을 때만). 없으면 카드 없이 A06(옛 시험 그대로)
+export type SurveyV2Deps = { api: SurveyV2Api; local: LocalDraftStore; now: () => number; politics?: PoliticsApi; religion?: ReligionApi };
 
 let instance: SurveyV2Deps | null = null;
 
@@ -21,7 +23,8 @@ export function surveyV2Deps(): SurveyV2Deps {
     const api = env.demoMode
       ? createSurveyV2Api(client, { demo: true, proofUpload: true, schoolSearch: 'server' })
       : createSurveyV2Api(client, { demo: false, proofUpload: false, schoolSearch: 'local' });
-    instance = { api, local: createLocalDraftStore(appStateStorage), now: Date.now, politics: createPoliticsApi(client, 'app', env.demoMode ? { guestUserId: DEMO_V2_GUEST } : {}) };
+    const guest = env.demoMode ? { guestUserId: DEMO_V2_GUEST } : {};
+    instance = { api, local: createLocalDraftStore(appStateStorage), now: Date.now, politics: createPoliticsApi(client, 'app', guest), religion: createReligionApi(client, 'app', guest) };
   }
   return instance;
 }

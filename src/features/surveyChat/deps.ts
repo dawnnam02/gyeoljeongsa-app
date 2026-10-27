@@ -8,6 +8,7 @@ import { DEMO_V2_GUEST } from '@/demo/surveyV2Backend';
 import { createSurveyV2Api } from '@/features/surveyV2/api';
 import { createLocalDraftStore } from '@/features/surveyV2/localDraft';
 import { createPoliticsApi } from '@/features/surveyV2/politics';
+import { createReligionApi } from '@/features/surveyV2/religion';
 import type { SurveyV2Deps } from '@/features/surveyV2/deps';
 import { appStateStorage } from '@/lib/secureStorage';
 import { supabase } from '@/lib/services';
@@ -36,7 +37,7 @@ export function surveyChatDeps(): SurveyChatDeps {
       : createSurveyV2Api(client, { demo: false, proofUpload: false, schoolSearch: 'local' });
     const guest = env.demoMode ? { guestUserId: DEMO_V2_GUEST } : {};
     instance = {
-      v2: { api, local: createLocalDraftStore(appStateStorage), now: Date.now, politics: createPoliticsApi(client, 'app', guest) },
+      v2: { api, local: createLocalDraftStore(appStateStorage), now: Date.now, politics: createPoliticsApi(client, 'app', guest), religion: createReligionApi(client, 'app', guest) },
       chat: createSurveyChatApi(client, 'app', guest),
       store: createLocalChatStore(appStateStorage),
       device: Platform.OS === 'web' ? 'pc' : 'phone',

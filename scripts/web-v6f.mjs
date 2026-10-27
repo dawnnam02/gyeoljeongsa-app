@@ -225,6 +225,14 @@ try {
       continue;
     }
     if (id === 'POL') break;
+    if (id === 'REL') {
+      // 3부-사: 로그인 없이 연 손님은 CK4 가 없어 A06 앞에 종교 동의 카드(카피 17-1 · 법무 L22) → 체크 + [동의하고 답할게요] → A06
+      check('C', '종교 동의 카드(A06 앞 · CK4 없음): 네 줄 상자 · 체크 · 같은 무게 버튼 둘', (await visible('chat-rel-what')) && (await visible('chat-rel-agree')) && (await visible('chat-rel-decline')), '');
+      await tap('chat-rel-check');
+      await tap('chat-rel-agree');
+      if (!(await wait(`!!${q('chat-card-A06')}`, 4000))) throw new Error('종교 동의 카드에서 넘어가지 않았어요');
+      continue;
+    }
     order.push(id);
     if (id === 'A06') await startSampler();
     await answer(id);
@@ -248,7 +256,8 @@ try {
   if (reduced) check('R', '동작 줄이기: 새 말풍선 · 카드가 위치를 옮기며 나오지 않는다(투명도만)', Array.isArray(movedNormal) && movedNormal.length === 0, (movedNormal ?? []).join(' '));
   else check('R', '보통 모드: 새 말풍선은 아래에서 떠오른다(D42 2안 말풍선 6 · 240ms)', Array.isArray(movedNormal) && movedNormal.length > 0, `${(movedNormal ?? []).length}곳`);
   const p1 = await peekV2();
-  const wantKeys = ['A12', 'A02', 'A03', 'A05', 'A06', 'A07', 'A08', 'A11', 'B01', 'B02', 'B06', 'B07', 'B04', 'C01', 'C02', 'C03', 'C04', 'C05', 'C06', 'D08', 'D09', 'D04', 'D05', 'D06', 'E14', 'E15', 'A09', 'A10', 'E12', 'E11', 'E10', 'E13', 'E16', 'E08', 'E09', 'E01', 'E02', 'E03', 'E04', 'E05', 'E06', 'E07', 'F01', 'F02', 'F03', 'F04', 'F05', 'F06', 'F07', 'F08', 'F09', 'F10', 'F14', 'F15', 'F16', 'F11', 'F13'];
+  const wantKeys = ['A12', 'A02', 'A03', 'A05', 'A06', 'A07', 'A08', 'A11', 'B01', 'B02', 'B06', 'B07', 'B04', 'C01', 'C02', 'C03', 'C04', 'C05', 'C06', 'D08', 'D09', 'D04', 'D05', 'D06', 'E14', 'E15', 'A09', 'A10', 'E12', 'E11', 'E10', 'E13', 'E16', 'E08', 'E09', 'E01', 'E02', 'E03', 'E04', 'E05', 'E06', 'E07', 'F01', 'F02', 'F03', 'F04', 'F05', 'F06', 'F08', 'F09', 'F10', 'F14', 'F15', 'F16', 'F11', 'F13'];
+  // D-199: F07(희망 종교) 문항을 지웠다 — 기대 키에서 뺌(검수 Q9 'v6f 실패 1 = 기대값에 F07 남음', 3부-사)
   const missing = wantKeys.filter((k) => !(p1.answered ?? []).includes(k));
   check('C', `1부 ${order.length + 1}문항 대화로 · 저장 키(설문 v2 save_answers) ${wantKeys.length}개 · T01~T03 은 1부에 없음`, missing.length === 0 && !order.some((x) => /^T0[1-3]$/.test(x)) && p1.firstMissing === 'T01', `빠진 ${missing.join(',')} · 첫 빈 ${p1.firstMissing}`);
   check('C', '저장 값 모양(설문 v2 와 같은 코드): 학교 {school_key} · 지역 {sido, sigungu} · 상관없어요 any', typeof p1.answers?.B02?.school_key === 'string' && p1.answers?.A03?.sido === 'seoul' && p1.answers?.F01 === 'any' && JSON.stringify(p1.answers?.F04) === '["any"]', JSON.stringify({ B02: p1.answers?.B02, A03: p1.answers?.A03 }));

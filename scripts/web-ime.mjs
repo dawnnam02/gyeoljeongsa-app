@@ -129,6 +129,12 @@ try {
   await tap('v2-next');
   for (const [id, code] of [['A06', 'none'], ['A07', 'never'], ['A08', 'none'], ['A11', 'done'], ['B01', 'univ']]) {
     await b.waitFor(`!!${q(`v2-block-${id}`)}`, 4000);
+    if (id === 'A06' && (await b.waitFor(`!!${q('chat-card-REL')}`, 800))) {
+      // 3부-사: CK4 가 없는 손님 — 종교 동의 카드 먼저(체크 + 동의) 뒤 보기
+      await tap('chat-rel-check');
+      await tap('chat-rel-agree');
+      await b.waitFor(`!!${q('v2-A06-opt-none')}`, 4000);
+    }
     await tap(`v2-${id}-opt-${code}`);
     await b.waitFor(`!${q(`v2-block-${id}`)}`, 4000);
   }
