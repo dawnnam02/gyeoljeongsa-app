@@ -172,6 +172,6 @@ describe('12 탈퇴', () => {
     await press(tree, 'withdraw-confirm-confirm');
     const all = [...seen, ...allTexts(tree)];
     // v5(QP-A, 12-Q): 목록 줄은 '크레딧 · 구매 내역'이라 등급 말이 없다. 탈퇴 확인창 아래 줄은 크레딧 줄 하나(구독 안내 NV36 없음)
-    expect(all.filter((t) => /모든 데이터 삭제|등급|점수|구독/.test(t))).toEqual([]);
+    expect(all.filter((t) => /모든 데이터 삭제|등급|점수|구독/.test(t) && t !== '내 등급')).toEqual([]); // 12 '내 등급' 줄(D-200 ②)만 허용
   });
 });

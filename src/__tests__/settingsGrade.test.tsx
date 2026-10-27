@@ -83,7 +83,7 @@ describe('12 목록 · 줄 (v5, QP-A)', () => {
   test('이 화면의 등급 말은 "등급 계산 멈추기"와 설명뿐이고 구독 · 점수 · 순위 말은 없다', async () => {
     const { tree } = await open('plain');
     const withWord = allTexts(tree).filter((t) => /등급|점수|순위/.test(t));
-    expect(withWord).toEqual(['등급 계산 멈추기', SETTINGS16.stopNote]);
+    expect(withWord).toEqual(['내 등급', '등급 계산 멈추기', SETTINGS16.stopNote]); // '내 등급' 줄(D-200 ②) · 멈추기 줄
     expect(allTexts(tree).some((t) => /점수|순위|구독/.test(t))).toBe(false);
   });
 

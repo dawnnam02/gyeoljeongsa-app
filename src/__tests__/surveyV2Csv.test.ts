@@ -56,11 +56,12 @@ function formatOf(r: Record<string, string>): string {
   return ({ '한 줄': 'line', '여러 줄': 'para', '질문 카드': 'story', '어필 카드': 'appeal' } as Record<string, string>)[v];
 }
 
-describeOutside([CSV])('설문 v2 문항 = CSV 화면 04 의 78행', () => {
-  test('78행 · 필수 흐름 64(9섹션) · 결혼 이야기 8 · 세부사항 6', () => {
-    expect(rows).toHaveLength(78);
-    expect(QUESTIONS).toHaveLength(78);
-    expect(FLOW).toHaveLength(64);
+describeOutside([CSV])('설문 v2 문항 = CSV 화면 04 의 77행(D-199 F07 삭제)', () => {
+  test('77행 · 필수 흐름 63(9섹션) · 결혼 이야기 8 · 세부사항 6 · F07 없음', () => {
+    expect(rows).toHaveLength(77);
+    expect(QUESTIONS).toHaveLength(77);
+    expect(FLOW).toHaveLength(63);
+    expect(QUESTIONS.some((q) => q.id === 'F07')).toBe(false);
     expect(STORY).toHaveLength(8);
     expect(APPEAL).toHaveLength(6);
   });

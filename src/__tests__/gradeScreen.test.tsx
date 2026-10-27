@@ -140,7 +140,7 @@ describe('조건 2 · 16-G1 내 등급 (구독자)', () => {
     await tap(tree, 'grade-up-verify-go');
     expect(mockRouter.navigate).toHaveBeenCalledWith('/settings');
     await tap(tree, 'grade-up-act-go');
-    expect(mockRouter.navigate).toHaveBeenCalledWith('/recommendations');
+    expect(mockRouter.navigate).toHaveBeenCalledWith('/boarding'); // v5 홈(탑승권 탭) — 옛 09 는 숨김
     // 학력 · 직업 · 연봉 · 자산을 할 일로 넣지 않는다
     expect(allTexts(tree).filter((t) => /학력|연봉|고용|직업군/.test(t) && /하기|하면|채우기/.test(t))).toEqual([]);
   });

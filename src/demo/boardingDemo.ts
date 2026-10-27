@@ -3,15 +3,17 @@
 //  장면(이메일 앞부분 또는 데모 줄):
 //   (기본) onsale 판매 중 · 탑승권 없음 · 크레딧 0     boardbefore 판매 전     boardcredit 판매 중 · 크레딧 1장(지난 회차 짝이 맞지 않아 돌려받음)
 //   boardfull 내 성별 좌석이 모두 참     boardon 탑승 완료(기다림)     boardmatch 수요일 18:00 공개 — 만난 분 있음     boardnone 공개 — 완벽한 사람을 찾지 못함 + 크레딧
-//   boardclosed 판매가 끝났고 탑승권 없음     boardpolitics 정치 성향 문항이 비어 살 수 없음
+//   boardclosed 판매가 끝났고 탑승권 없음     boardpolitics 정치 성향 문항이 비어 살 수 없음     boardlate 탑승 완료 · 판매 마감 뒤(취소 없음)
+//   boardoncredit 크레딧으로 탑승 완료(취소하면 크레딧 1장 돌려받음)
+//  cancel_ticket_seat({ p_round_no }) — 백엔드 0037 B 설계 이름(인자는 앱 제안, D-200 ④ · D-201): 마감 전만, 결제 = store · 크레딧 = credit(+1 '취소해 돌려받음')
 //  · 회차 1 = 2026-12-23(수) 18:00 KST 첫 매칭(T-24). 크레딧 장면은 회차 2(12-30). 데모의 '지금'은 장면마다 정해 둔 시각(시계와 상관없이 같은 화면)
 //  · 만난 분 = 데모 인물 24명 가운데 '나'와 끼리끼리 순서 첫 분(demo/people kinOrder) — 남은 좌석 수 · 정원 · 점수 키는 보내지 않는다
 import { kinOrder, myReligionOf, poolFor } from './people';
 
 type Row = Record<string, unknown>;
 type DbResult = { data: unknown; error: { code: string; message: string } | null };
-export type BoardingScene = 'onsale' | 'before' | 'credit' | 'full' | 'boarded' | 'matched' | 'none' | 'closed' | 'politics';
-export const BOARDING_SCENES: readonly BoardingScene[] = ['before', 'onsale', 'credit', 'full', 'boarded', 'matched', 'none', 'closed', 'politics'];
+export type BoardingScene = 'onsale' | 'before' | 'credit' | 'full' | 'boarded' | 'matched' | 'none' | 'closed' | 'politics' | 'late' | 'boardedCredit';
+export const BOARDING_SCENES: readonly BoardingScene[] = ['before', 'onsale', 'credit', 'full', 'boarded', 'matched', 'none', 'closed', 'politics', 'late', 'boardedCredit'];
 export type DemoBoardingUser = { id: string; email: string };
 
 const DAY = 24 * 3_600_000;
@@ -30,7 +32,9 @@ const sceneOfEmail = (email: string): BoardingScene => {
     ['boardbefore', 'before'],
     ['boardcredit', 'credit'],
     ['boardfull', 'full'],
+    ['boardoncredit', 'boardedCredit'],
     ['boardon', 'boarded'],
+    ['boardlate', 'late'],
     ['boardmatch', 'matched'],
     ['boardnone', 'none'],
     ['boardclosed', 'closed'],
@@ -43,7 +47,11 @@ export function createDemoBoarding() {
   const states = new Map<string, State>();
   const seed = (scene: BoardingScene): State => {
     const s: State = { scene, ticket: null, ledger: [], requests: new Map() };
-    if (scene === 'boarded' || scene === 'matched') s.ticket = { roundNo: 1, boughtAt: at('2026-12-18T21:10:00+09:00'), paidWith: 'store' };
+    if (scene === 'boarded' || scene === 'matched' || scene === 'late') s.ticket = { roundNo: 1, boughtAt: at('2026-12-18T21:10:00+09:00'), paidWith: 'store' };
+    if (scene === 'boardedCredit') {
+      s.ledger.push({ at: at('2026-12-16T18:00:00+09:00'), delta: 1, reason: 'balance', roundNo: 0 }, { at: at('2026-12-18T21:10:00+09:00'), delta: -1, reason: 'used', roundNo: 1 });
+      s.ticket = { roundNo: 1, boughtAt: at('2026-12-18T21:10:00+09:00'), paidWith: 'credit' };
+    }
     if (scene === 'none') {
       s.ticket = { roundNo: 1, boughtAt: at('2026-12-18T21:10:00+09:00'), paidWith: 'store' };
       s.ledger.push({ at: at('2026-12-23T18:00:00+09:00'), delta: 1, reason: 'no_fit', roundNo: 1 });
@@ -67,6 +75,7 @@ export function createDemoBoarding() {
     if (s.scene === 'before') return r.open - 2 * DAY;
     if (s.scene === 'matched' || s.scene === 'none') return r.match + 60_000;
     if (s.scene === 'closed') return r.match - 10 * 60_000;
+    if (s.scene === 'late') return r.close + 10 * 60_000; // 마감(17:30) 10분 뒤 · 공개 전
     return r.match - 3 * DAY;
   };
   const partnerOf = (u: DemoBoardingUser) => kinOrder(poolFor(u.email), 4, myReligionOf(u.email))[0] ?? null;
@@ -74,7 +83,7 @@ export function createDemoBoarding() {
   function state(u: DemoBoardingUser): DbResult {
     const s = stateOf(u);
     const r = roundOf(s);
-    const phase = s.scene === 'before' ? 'before_sale' : s.scene === 'matched' || s.scene === 'none' ? 'revealed' : s.scene === 'closed' ? 'closed' : 'on_sale';
+    const phase = s.scene === 'before' ? 'before_sale' : s.scene === 'matched' || s.scene === 'none' ? 'revealed' : s.scene === 'closed' || s.scene === 'late' ? 'closed' : 'on_sale';
     const p = s.scene === 'matched' ? partnerOf(u) : null;
     const result =
       s.scene === 'matched' && p
@@ -123,6 +132,18 @@ export function createDemoBoarding() {
     return { data: out, error: null };
   }
 
+  function cancel(u: DemoBoardingUser, args: Row): DbResult {
+    const s = stateOf(u);
+    const r = roundOf(s);
+    if (args.p_round_no !== r.no || !s.ticket || s.ticket.roundNo !== r.no) return fail('not_boarded');
+    const t = nowOf(s);
+    if (t >= r.close) return fail('sale_closed');
+    const refund = s.ticket.paidWith === 'credit' ? 'credit' : 'store';
+    if (refund === 'credit') s.ledger.push({ at: t, delta: 1, reason: 'cancelled', roundNo: r.no });
+    s.ticket = null;
+    s.scene = 'onsale';
+    return { data: { ok: true, refund }, error: null };
+  }
   function ledger(u: DemoBoardingUser): DbResult {
     const s = stateOf(u);
     return { data: { balance: credits(s), items: s.ledger.map((x) => ({ at: iso(x.at), delta: x.delta, reason: x.reason, round_no: x.roundNo })) }, error: null };
@@ -140,6 +161,7 @@ export function createDemoBoarding() {
     get_boarding_state: (u) => state(u),
     buy_ticket: buy,
     list_credit_ledger: (u) => ledger(u),
+    cancel_ticket_seat: cancel,
     demo_boarding_scene: setScene,
   };
   return {

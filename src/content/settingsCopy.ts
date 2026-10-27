@@ -9,6 +9,8 @@ export const SETTINGS = {
   rows: {
     notifications: '알림', // [확정]
     visibility: '공개 범위', // [확정]
+    grade: '내 등급', // [확정] 카피.md 12-Q SETTINGS.rows.grade(D-200 ②) → 16-G 내 등급(아이콘 화면)
+    avoid: '아는 분 피하기', // [확정] 카피.md 12-Q SETTINGS.rows.avoid(D-200 ①) → 12-5
     preferences: '희망 조건 수정', // [확정] 카피.md 12(B5) · N20
     verification: '인증 서류 제출', // [확정]
     credits: '크레딧 · 구매 내역', // [확정] 카피.md 12-Q SETTINGS.rows.credits(QP-A, 옛 SHOP16.settingsRow(NV35) 자리) → T5 크레딧 · 내역. 상점이 꺼져도 보인다
@@ -63,10 +65,12 @@ export const NOTIFY = {
   marketingNotes: [
     '받지 않아도 서비스는 똑같이 쓸 수 있어요.', // [법무] 4-9
     '오후 9시부터 다음 날 오전 8시까지는 보내지 않아요.', // [법무] 4-9
-    '이번 주 만날 분 알림은 이 동의와 따로예요. 설정에서 따로 끌 수 있어요.', // [법무] 4-9(D-197 v5)
+    '이번 주 만날 분 · 대화방 새 글 알림은 이 동의와 따로예요. 설정에서 따로 끌 수 있어요.', // [법무] 4-9(R-L D-199)
   ],
   pushDenied: '알림이 꺼져 있어요. 설정에서 허용해 주세요.', // [확정] R-D18-3 (카피.md 12 B5 · N19)
-  pushPrime: '수요일 오후 6시에 이번 주 만날 분이 정해지면 알려 드려요. 알림을 허용하지 않아도 서비스를 쓸 수 있어요.', // [법무] 5-5 (푸시 권한을 묻기 직전, 2단계 · D-197 v5)
+  pushPrime: '이번 주 만날 분이 정해질 때와 대화방에 새 글이 올 때 알려 드려요. 알림에는 글 내용을 보여 주지 않아요. 알림을 허용하지 않아도 서비스를 쓸 수 있어요.', // [법무] 5-5 (푸시 권한을 묻기 직전 · R-L D-199)
+  chat: '대화방에 새 글이 왔을 때', // [확정] 카피.md 12-Q NOTIFY.chat(D-199) — 처음 켜짐(권한을 허락한 분에게만 실제로 간다) · profiles.notify_chat(0036)
+  chatNote: '글 내용은 알림에 보이지 않아요.', // [확정] 카피.md 12-Q NOTIFY.chatNote
   saved: '저장했어요.', // [확정] 카피.md 12(B5) · N10
   saveFailed: '저장하지 못했어요. 다시 시도해 주세요.', // [확정] 08 저장 실패와 같은 글
 } as const;
@@ -99,6 +103,24 @@ export const CONSENT_MANAGE = {
   ck15OffBody: '거두면 정치 성향 답을 바로 지워요. 다시 동의하고 답하기 전까지는 탑승권을 살 수 없어요.', // [확정] 12-Q CONSENT_LATER.ck15OffBody
   offConfirm: '거두기', // [확정] 12-Q CONSENT_LATER.offConfirm(취소는 cancel)
 } as const;
+
+// 12-5 아는 분 피하기(D-200 ① · D-201, 카피.md 14-7 · 12-Q · 화면_요구사항 12-5 · 정책 P2-05a). 상대에게 흔적 0 · '몇 명을 피했는지' 숫자 0
+export const AVOID = {
+  title: '아는 분 피하기', // [확정] 14-7 AVOID.title
+  intro: '여기 넣은 분과는 서로 이어지지 않아요. 상대에게는 알리지 않아요.', // [확정] 14-7
+  companyTitle: '피할 회사', // [확정] 14-7
+  companyPlaceholder: '회사 이름', // [확정] 14-7
+  schoolTitle: '피할 학교', // [확정] 14-7
+  schoolPlaceholder: '학교 이름으로 찾기', // [확정] 14-7
+  add: '더하기', // [확정] 14-7
+  remove: '지우기', // [확정] 14-7
+  full: '5곳까지 넣을 수 있어요. 하나를 지우면 더 넣을 수 있어요.', // [확정] 14-7
+  saveFailed: '저장하지 못했어요. 다시 시도해 주세요.', // [확정] 14-7
+  contactTitle: '지인 차단', // [확정] 14-7 — CK11 시트(동의문구 4-11) · 주소록 비교는 서버 함수(0037) · 주소록 모듈이 들어온 뒤
+  shareEmail: '내 이메일을 다른 분의 지인 비교에 쓰기', // [확정] 12-Q AVOID.shareEmail(D-201, 처음 켜짐)
+  shareEmailNote: '다른 분이 주소록으로 아는 사람을 피할 때, 내 이메일을 되돌릴 수 없게 바꾼 값이 비교에 쓰여요. 끄면 내 연락처를 가진 분과 이어질 수 있어요.', // [확정] 12-Q
+} as const;
+export const AVOID_MAX = 5; // 회사 · 학교 각각 최대 5곳(정책 P2-05a)
 
 // 12 정보 묶음 · 사업자 정보 화면 · 신고번호 한 줄(카피.md 12-Q, 법 제8조 ② · 제12조 ③ — 법무 L16). 값은 content/businessInfo.ts 한 곳에서 읽는다.
 //  값이 비면 줄 자체를 그리지 않는다(빈칸 · '준비 중' 글도 없음)

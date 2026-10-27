@@ -269,8 +269,10 @@ export const SETTINGS16 = {
   stopConfirm: {
     title: '등급 계산을 멈출까요?',
     body: '멈추면 내 등급이 지워지고, 다시 켜기 전까지 탑승권을 살 수 없어요. 크레딧은 그대로 남아요. 설정에서 다시 켜면 다시 계산해요.', // 12-Q v5
+    boarded: '탑승권이 있으면 이번 회차는 짝을 고르지 못할 수 있어요. 그때는 크레딧 1장으로 돌려드려요.', // 12-Q SETTINGS16.stopConfirm.boarded(D-199) — 늘 보인다(화면_요구사항 12-3 ④)
     confirm: '멈추기',
     cancel: '취소',
   },
+  resumeNote: '다음 날 새벽에 다시 계산해요.', // 12-Q SETTINGS16.resumeNote — 다시 켠 뒤 한 줄(정책 P3-09)
 } as const;
 

@@ -84,11 +84,13 @@ describe('settingsApi × 모의 서버', () => {
     expect(await api.saveNotify('like', false)).toEqual({ ok: false, reason: 'network' });
   });
 
-  test('알림: 처음값 켜짐 3개, 바꾼 열만 저장', async () => {
+  test('알림: 처음값 켜짐 4개(+ 대화방 새 글 notify_chat, 0036), 바꾼 열만 저장', async () => {
     const { api, demo } = demoClient('a@example.test');
-    expect(await api.loadNotify()).toEqual({ ok: true, data: { recommendation: true, like: true, match: true } });
+    expect(await api.loadNotify()).toEqual({ ok: true, data: { recommendation: true, like: true, match: true, chat: true } });
     expect(await api.saveNotify('match', false)).toEqual({ ok: true });
-    expect(demo.peek('me').notify).toEqual({ notify_recommendation: true, notify_like: true, notify_match: false });
+    expect(demo.peek('me').notify).toEqual({ notify_recommendation: true, notify_like: true, notify_match: false, notify_chat: true });
+    expect(await api.saveNotify('chat', false)).toEqual({ ok: true });
+    expect(demo.peek('me').notify).toEqual({ notify_recommendation: true, notify_like: true, notify_match: false, notify_chat: false });
   });
 
   test('선택 동의: CK4 끄기 = revoke_consent(철회 시각), CK9 켜기 = 지금 판으로 동의 행 더하기', async () => {

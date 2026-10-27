@@ -747,7 +747,7 @@ describe('데모 모의 서버의 기능 스위치(D-134): get_feature_flags 가
     expect(flags.loaded).toBe(true);
     expect(FEATURE_KEYS.length).toBeGreaterThanOrEqual(87); // V5(A W10)가 숨김 키를 더함
     expect(FEATURE_KEYS.filter((k) => !isPendingKey(k)).every((k) => flags.on[k] === demoDefault(k) && flags.mode[k] === 'demo')).toBe(true);
-    expect(FEATURE_KEYS.filter((k) => !flags.on[k] && !k.startsWith('v4_'))).toEqual(['review_required', 'prelaunch']); // V5 숨김 키(v4_*)는 A 몫 — 데모에서도 꺼짐
+    expect(FEATURE_KEYS.filter((k) => !flags.on[k] && !k.startsWith('v4_'))).toEqual(['review_required', 'prelaunch', 'chat_push']); // R-A: chat_push 데모도 꺼짐(토큰 등록 0) // V5 숨김 키(v4_*)는 A 몫 — 데모에서도 꺼짐
     expect(flags.on.survey_v2).toBe(true);
   });
 

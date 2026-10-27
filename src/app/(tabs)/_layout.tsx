@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TabBarButton } from '@/components/TabBarButton';
 import { TabIcon, TabLabel } from '@/components/TabBarParts';
+import { usePushRegistration } from '@/hooks/usePushRegistration';
 import { useV4Screens } from '@/navigation/v5Hide';
 import { useChromeStore } from '@/store/chromeStore';
 import { BOARDING } from '@/features/boarding/boardingCopy';
@@ -30,6 +31,7 @@ const hidden = { href: null } as const;
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  usePushRegistration(); // D-199: 스위치 chat_push 가 켜졌고 권한을 허락한 기기만 알림 토큰 등록(꺼짐이면 0)
   const v4 = useV4Screens(); // 읽기 전 · 못 읽으면 live 값(꺼짐)
   const tabBarHidden = useChromeStore((s) => s.tabBarHidden); // 16 상점의 하위 쪽이 열려 있는 동안 탭바를 숨긴다(F13, 08 처럼 탭 위에 열리는 쪽)
   return (

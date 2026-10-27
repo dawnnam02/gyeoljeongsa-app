@@ -1,4 +1,4 @@
-// 설문 v2 문항 정의(F20). 원본: 기획/설문_v2_문항표.csv(화면 04 의 78행). 손으로 고치지 않는다 — CSV 가 바뀌면 다시 만든다.
+// 설문 v2 문항 정의(F20). 원본: 기획/설문_v2_문항표.csv(화면 04 의 77행 — R-A D-199: F07 희망 종교 삭제, 55 결번). 손으로 고치지 않는다 — CSV 가 바뀌면 다시 만든다.
 //  칸: id · 섹션 · 형식 · 보기 코드(CSV '선택지 코드', null = decline) · 필수 · 공개 범위 · 토글 열 · '말하고 싶지 않아요' · 글자/숫자 범위
 //  시험 src/__tests__/surveyV2Csv.test.ts 가 CSV 와 한 칸씩 대조한다.
 import type { QuestionDef } from './types';
@@ -58,7 +58,6 @@ export const QUESTIONS: readonly QuestionDef[] = [
   { id: 'F04', section: 'wish', format: 'multi', codes: ['public_corp', 'civil', 'edu_research', 'large', 'foreign', 'licensed', 'sme', 'self', 'freelance', 'student', 'other', 'any'], required: true, vis: 'private', toggle: null, decline: false },
   { id: 'F05', section: 'wish', format: 'bucket', codes: ['inc03', 'inc04', 'inc05', 'inc06', 'inc07', 'inc08', 'inc09', 'inc10', 'inc11', 'inc12', 'any'], required: true, vis: 'private', toggle: null, decline: false },
   { id: 'F06', section: 'wish', format: 'multi', codes: ['seoul', 'busan', 'daegu', 'incheon', 'gwangju', 'daejeon', 'ulsan', 'sejong', 'gyeonggi', 'gangwon', 'chungbuk', 'chungnam', 'jeonbuk', 'jeonnam', 'gyeongbuk', 'gyeongnam', 'jeju', 'any'], required: true, vis: 'private', toggle: null, decline: false },
-  { id: 'F07', section: 'wish', format: 'multi', codes: ['none', 'protestant', 'catholic', 'buddhist', 'won', 'islam', 'other', 'any'], required: true, vis: 'private', toggle: null, decline: false },
   { id: 'F08', section: 'wish', format: 'multi', codes: ['no', 'quitting', 'yes', 'any'], required: true, vis: 'private', toggle: null, decline: false },
   { id: 'F09', section: 'wish', format: 'multi', codes: ['never', 'divorced', 'widowed', 'any'], required: true, vis: 'private', toggle: null, decline: false },
   { id: 'F10', section: 'wish', format: 'multi', codes: ['none', 'with', 'apart', 'any'], required: true, vis: 'private', toggle: null, decline: false },
@@ -66,8 +65,8 @@ export const QUESTIONS: readonly QuestionDef[] = [
   { id: 'F15', section: 'wish', format: 'bucket', codes: ['pas03', 'pas04', 'pas05', 'pas06', 'pas07', 'pas08', 'pas09', 'any'], required: true, vis: 'private', toggle: null, decline: false },
   { id: 'F16', section: 'wish', format: 'bucket', codes: ['ast03', 'ast04', 'ast05', 'ast06', 'ast07', 'ast08', 'ast09', 'ast11', 'any'], required: true, vis: 'private', toggle: null, decline: false },
   { id: 'F11', section: 'wish', format: 'scale5', codes: [], required: true, vis: 'private', toggle: null, decline: false },
-  { id: 'F12', section: 'wish', format: 'multi', codes: ['F01', 'F02', 'F03', 'F04', 'F05', 'F06', 'F07', 'F08', 'F09', 'F10', 'F14', 'F15', 'F16'], required: false, vis: 'private', toggle: null, decline: false },
-  { id: 'F13', section: 'wish', format: 'rankTop', codes: ['F01', 'F02', 'F03', 'F04', 'F05', 'F06', 'F07', 'F08', 'F09', 'F10', 'F14', 'F15', 'F16'], required: true, vis: 'private', toggle: null, decline: false },
+  { id: 'F12', section: 'wish', format: 'multi', codes: ['F01', 'F02', 'F03', 'F04', 'F05', 'F06', 'F08', 'F09', 'F10', 'F14', 'F15', 'F16'], required: false, vis: 'private', toggle: null, decline: false },
+  { id: 'F13', section: 'wish', format: 'rankTop', codes: ['F01', 'F02', 'F03', 'F04', 'F05', 'F06', 'F08', 'F09', 'F10', 'F14', 'F15', 'F16'], required: true, vis: 'private', toggle: null, decline: false },
   { id: 'Q17', section: 'story', format: 'story', codes: [], required: false, vis: 'public', toggle: 'prompts_visible', decline: false, min: 10, max: 100 },
   { id: 'Q18', section: 'story', format: 'story', codes: [], required: false, vis: 'public', toggle: 'prompts_visible', decline: false, min: 10, max: 100 },
   { id: 'Q19', section: 'story', format: 'story', codes: [], required: false, vis: 'public', toggle: 'prompts_visible', decline: false, min: 10, max: 100 },

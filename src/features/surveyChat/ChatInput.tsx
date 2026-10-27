@@ -58,7 +58,7 @@ export function visLine(q: QuestionDef): string {
 
 export function ChatInput({ q, draft, answers, publicOn, reason, editing, busy, play, onDraft, onSend, onSkip, onKeep, onPublic, search }: Props) {
   const c = copyOf(q.id);
-  const lines = [visLine(q), ...(SENSITIVE_IDS.includes(q.id) ? [q.id === 'F07' ? SV2.common.sensitivePrivate : SV2.common.sensitive] : []), ...(NO_AI_IDS.includes(q.id) ? [SV2.common.noAi] : [])];
+  const lines = [visLine(q), ...(SENSITIVE_IDS.includes(q.id) ? [SV2.common.sensitive] : []), ...(NO_AI_IDS.includes(q.id) ? [SV2.common.noAi] : [])];
   const pub = c?.publicToggle;
   const atOnce = sendsAtOnce(q) && !editing && draft.kind === 'choice';
   const full = draft.kind === 'multi' && maxPick(q.id) !== null && draft.picks.length >= (maxPick(q.id) ?? 0);

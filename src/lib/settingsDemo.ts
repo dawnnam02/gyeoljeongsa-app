@@ -28,9 +28,10 @@ const SEED_PEOPLE: Readonly<Record<string, Person>> = {
 type UserState = {
   blocks: { target: string; at: number; released: boolean }[];
   reports: { id: string; target: string; reason: string; status: 'received' | 'reviewing' | 'done'; at: number }[];
-  notify: { notify_recommendation: boolean; notify_like: boolean; notify_match: boolean };
+  notify: { notify_recommendation: boolean; notify_like: boolean; notify_match: boolean; notify_chat: boolean };
   otp: { sends: number[]; sentAt: number | null; wrong: number; lockedUntil: number };
   withdrawnAt: number | null;
+  avoid: { companies: string[]; schools: { key: string; name: string }[]; shareEmail: boolean }; // 12-5(D-200 ① · D-201, shareEmail 처음 켜짐)
 };
 
 export type DemoSettingsUser = { id: string; email: string; consents: Consent[] };
@@ -57,7 +58,7 @@ export function createDemoSettings(options: { now?: () => number; people?: (id: 
   const stateOf = (user: DemoSettingsUser): UserState => {
     let s = users.get(user.id);
     if (!s) {
-      s = { blocks: [], reports: [], notify: { notify_recommendation: true, notify_like: true, notify_match: true }, otp: { sends: [], sentAt: null, wrong: 0, lockedUntil: 0 }, withdrawnAt: null };
+      s = { blocks: [], reports: [], notify: { notify_recommendation: true, notify_like: true, notify_match: true, notify_chat: true }, otp: { sends: [], sentAt: null, wrong: 0, lockedUntil: 0 }, withdrawnAt: null, avoid: { companies: [], schools: [], shareEmail: true } };
       if (user.email.startsWith('settings')) {
         const t = now();
         s.blocks.push({ target: 'demo-blocked-1', at: t - 2 * DAY_MS, released: false }, { target: 'demo-blocked-2', at: t - 9 * DAY_MS, released: false });
@@ -100,6 +101,27 @@ export function createDemoSettings(options: { now?: () => number; people?: (id: 
       const s = stateOf(user);
       const rows = [...s.reports].sort((a, b) => b.at - a.at).map((r) => ({ id: r.id, reason_code: r.reason, status: r.status, created_at: new Date(r.at).toISOString() }));
       return { data: rows, error: null };
+    },
+    // 12-5 아는 분 피하기(앱 제안 이름 — 0037 전)
+    get_avoid_settings(user) {
+      if (flaky(user)) return network();
+      const a = stateOf(user).avoid;
+      return { data: { companies: [...a.companies], schools: a.schools.map((x) => ({ ...x })), share_email: a.shareEmail }, error: null };
+    },
+    set_avoid_orgs(user, args) {
+      const companies = Array.isArray(args.p_companies) ? args.p_companies.filter((c): c is string => typeof c === 'string').map((c) => c.trim()).filter(Boolean) : null;
+      const schools = Array.isArray(args.p_schools) ? args.p_schools.filter((k): k is string => typeof k === 'string') : null;
+      if (!companies || !schools) return fail('22023', 'bad_input');
+      if (companies.length > 5 || schools.length > 5) return fail('P0001', 'avoid_full');
+      const a = stateOf(user).avoid;
+      a.companies = [...new Set(companies)];
+      a.schools = [...new Set(schools)].map((key) => ({ key, name: key })); // 이름은 앱이 내장 학교 목록에서 채운다(서버는 이름도 준다)
+      return { data: null, error: null };
+    },
+    set_share_email(user, args) {
+      if (typeof args.p_on !== 'boolean') return fail('22023', 'bad_input');
+      stateOf(user).avoid.shareEmail = args.p_on; // 끄면 서버는 내 비교 키를 지운다(데모는 값만)
+      return { data: null, error: null };
     },
     revoke_consent(user, args) {
       if (!OPTIONAL_ITEMS.has(String(args.p_item))) return fail('P0001', 'required_consent'); // 0033: 선택 동의 CK4 · CK9 · CK10 · CK11 ~ CK16 만 철회
@@ -189,8 +211,8 @@ export function createDemoSettings(options: { now?: () => number; people?: (id: 
     peek(userId: string) {
       const s = users.get(userId);
       return s
-        ? { blocked: s.blocks.filter((b) => !b.released).map((b) => b.target), reports: s.reports.map((r) => ({ id: r.id, status: r.status })), notify: { ...s.notify }, withdrawn: s.withdrawnAt !== null }
-        : { blocked: [], reports: [], notify: null, withdrawn: false };
+        ? { blocked: s.blocks.filter((b) => !b.released).map((b) => b.target), reports: s.reports.map((r) => ({ id: r.id, status: r.status })), notify: { ...s.notify }, withdrawn: s.withdrawnAt !== null, avoid: { ...s.avoid } }
+        : { blocked: [], reports: [], notify: null, withdrawn: false, avoid: null };
     },
   };
 }

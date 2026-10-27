@@ -66,6 +66,10 @@ const GRADE_ALLOWED_FILES = [
   'lib/recsApi.ts', // 09 · 10 응답의 grade_no 읽기
   'lib/services.ts', // gradeApi 연결
   'lib/settingsApi.ts', // 12 등급 계산 멈추기(CK10 은 D-197 폐지)
+  'app/grade.tsx', // R-A(D-200 ②): 16-G 내 등급 라우트(12 '내 등급' 줄)
+  'content/settingsCopy.ts', // 12 '내 등급' 줄 이름(SETTINGS.rows.grade)
+  'features/settings/settingsLogic.ts', // 12 '내 등급' 줄 → /grade
+  'navigation/screens.ts', // 16G 내 등급 화면 표 줄
   'lib/settingsDemo.ts', // 모의 서버 12
   'content/shopCopy.ts', // 16 상점 · 등급 화면 글 묶음 이름
   'components/iconPaths.ts', // D42-C 1안 아이콘 원본(paths.json) 이름 grade_locked — 등급 잠김 자물쇠 그림 이름일 뿐 값 아님

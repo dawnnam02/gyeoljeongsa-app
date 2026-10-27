@@ -187,7 +187,7 @@ describe('문구 고르기 · 채우기(V6-K 0장)', () => {
     expect(ackKind('C05', null, {})).toBe('decline');
     expect(ackKind('C05', 'inc08', { C01: 'student' })).toBe('t2');
     expect(ackKind('F05', 'any', {})).toBe('any_ok');
-    expect(ackKind('F07', ['any'], {})).toBe('any_ok');
+    expect(ackKind('F08', ['any'], {})).toBe('any'); // D-199: F07(any_ok) 삭제 — F08 은 '상관없어요' 받아 주는 말이 any
     expect(ackKind('B03', undefined, {})).toBe('skip');
     expect(ackKind('D08', 'unknown', {})).toBe('unknown');
     expect(ackText('A05', 165, {}, { n: '165' }, 'u')).toBe('165cm로 적어 둘게요.');
@@ -204,7 +204,7 @@ describe('문구 고르기 · 채우기(V6-K 0장)', () => {
   test("글 434개에 느낌표 · 등급 · 점수 말 0(예외: CHAT.A06.why '등급에는 쓰지 않아요.' — 기획 QPP, 쓰지 않는다는 안내)", () => {
     const bad = Object.entries(CHAT_V6).filter(([k, t]) => /[!！]|등급|점수/.test(k === 'CHAT.A06.why' ? t.split('등급에는 쓰지 않아요.').join('') : t));
     expect(bad).toEqual([]);
-    expect(Object.keys(CHAT_V6).length).toBeGreaterThanOrEqual(434);
+    expect(Object.keys(CHAT_V6).length).toBeGreaterThanOrEqual(428); // D-199: CHAT.F07.* 6줄 뺌
   });
 });
 

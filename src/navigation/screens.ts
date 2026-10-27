@@ -5,12 +5,12 @@ import type { Href } from 'expo-router';
 
 // V5(W6 · 청사진 v5 초안 6-1): 새 화면 T1 탑승권(T2 기다림은 T1 의 상태 — 같은 주소) · T3 공개 순간 · T5 크레딧. T4 채팅 목록(탭) · T4R 대화방(W5 · D-159)
 export const SCREEN_IDS = [
-  '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', 'T1', 'T3', 'T5', 'T4', 'T4R',
+  '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', 'T1', 'T3', 'T5', 'T4', 'T4R', '16G',
 ] as const;
 export type ScreenId = (typeof SCREEN_IDS)[number];
 
 // 이 화면의 본문을 채우는 세부계획(팀장/세부계획.md 2장 Phase 3)
-export type FilledBy = 'F1' | 'F2' | 'F3' | 'F4' | 'F5' | 'F6' | 'F7' | 'F11' | 'W6' | 'W5';
+export type FilledBy = 'F1' | 'F2' | 'F3' | 'F4' | 'F5' | 'F6' | 'F7' | 'F11' | 'W6' | 'W5' | 'R-A';
 
 export type ScreenDef = {
   readonly id: ScreenId;
@@ -62,6 +62,7 @@ export const SCREENS: readonly ScreenDef[] = [
   { id: 'T5', name: '크레딧', route: '/credits', href: '/credits' as Href, tabBar: false, filledBy: 'W6', k2: '청사진 v5 초안 6-1 T5' },
   { id: 'T4', name: '채팅', route: '/chat', href: '/chat' as Href, tabBar: true, filledBy: 'W5', k2: '청사진 v5 초안 6-1 T4 목록' },
   { id: 'T4R', name: '대화방', route: '/chat/[id]', href: '/chat' as Href, tabBar: false, filledBy: 'W5', k2: '청사진 v5 초안 6-1 T4 방' },
+  { id: '16G', name: '내 등급', route: '/grade', href: '/grade' as Href, tabBar: false, filledBy: 'R-A', k2: '화면_요구사항 v5 16-G · 12-1(D-200 ②)' },
 ];
 
 export function screenById(id: ScreenId): ScreenDef {

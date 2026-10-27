@@ -46,5 +46,9 @@ export function nextSaleOpen(matchAt: number): number {
   return (kstDayNo(matchAt) + 1) * DAY - KST;
 }
 
+// T2 [탑승 취소]를 보이나(D-200 ④ · 정책 P1-08): 이번 회차에 탔고, 서버 시각이 판매 마감(수 17:30) 전일 때만
+export const canCancel = (s: Pick<BoardingState, 'ticket' | 'round' | 'now'>): boolean =>
+  !!s.ticket && !!s.round && s.ticket.roundNo === s.round.no && s.round.saleCloseAt !== null && s.now < s.round.saleCloseAt;
+
 // 크레딧으로 탈 수 있나
 export const canUseCredit = (s: Pick<BoardingState, 'credits'>): boolean => s.credits > 0;

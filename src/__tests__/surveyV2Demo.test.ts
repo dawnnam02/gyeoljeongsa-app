@@ -58,7 +58,7 @@ describe('저장 → 읽기(이어서 하기)', () => {
     expect(await api.save({ answers: { A02: 'female', A06: 'decline' } })).toEqual({ ok: false, reason: 'server' });
     expect(memory.users.get('u1')?.answers).toEqual({});
     expect(demoV2ValueOk('A06', null)).toBe(false); // 종교는 '말하고 싶지 않아요' 없음
-    expect(demoV2ValueOk('F07', ['other'])).toBe(true);
+    expect(demoV2ValueOk('F07', ['other'])).toBe(false); // D-199: F07 문항 없음 — 저장 받지 않음(서버 0036 트리거와 같음)
     expect(demoV2ValueOk('B02', { school_key: '없는키' })).toBe(false);
   });
 

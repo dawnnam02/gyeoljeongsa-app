@@ -42,7 +42,7 @@ function deps(business?: BusinessInfo): SettingsDeps {
     loadBlocked: jest.fn(async () => ({ ok: true as const, data: [] })),
     unblock: jest.fn(async () => ({ ok: true as const })),
     loadReports: jest.fn(async () => ({ ok: true as const, data: [] })),
-    loadNotify: jest.fn(async () => ({ ok: true as const, data: { recommendation: true, like: true, match: true } })),
+    loadNotify: jest.fn(async () => ({ ok: true as const, data: { recommendation: true, like: true, match: true, chat: true } })),
     saveNotify: jest.fn(async () => ({ ok: true as const })),
     loadConsents: jest.fn(async () => ({ ok: true as const, data: { CK4: true, CK9: true } })),
     setOptional: jest.fn(async () => ({ ok: true as const })),
@@ -176,7 +176,7 @@ describe('카피.md 12-Q · 14장 확정 글이 앱 글과 같다', () => {
     expect(PROFILE.firstBody.endsWith('짝을 고를 때는 끈 항목도 쓰여요.')).toBe(true);
     expect(SURVEY_LITE.hiddenUsedLine).toBe('이 항목은 상대에게 보이지 않아요. 짝을 고를 때만 쓰여요.');
     expect(QUESTION_COPY.A06.help).toBe('종교는 짝을 고르는 데만 쓰고 등급에는 쓰지 않아요. 종교가 같은 분끼리 이어져요.');
-    expect(QUESTION_COPY.F07.help).toBe("'그 외'는 종교를 '그 외'로 고른 분끼리 이어져서 여기서는 고를 수 없어요.");
+    expect(QUESTION_COPY.F07).toBeUndefined(); // D-199: F07 희망 종교 삭제
     expect(QUESTION_COPY.F12.help).toBe('고른 조건은 짝을 고를 때 더 무겁게 봐요. 고르지 않아도 괜찮아요.');
     expect(CHAT_V6['CHAT.F12.ack.t1']).toBe('고른 조건은 짝을 고를 때 더 무겁게 볼게요. 나중에 바꿀 수 있어요.');
   });

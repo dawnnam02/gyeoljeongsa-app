@@ -60,7 +60,9 @@ describe('문항 글 = 카피 9장', () => {
     if (c.example) expect(c.example).toBe(cellOf(`survey.${id}.example`).text);
     if (c.publicToggle) expect(c.publicToggle).toBe(cellOf(`survey.${id}.publicToggle`).text);
     if (c.low) expect(`${c.low} / ${c.high}`).toBe(cellOf(`survey.${id}.low`).text);
-    if (c.opt) expect(Object.values(c.opt).join(' / ')).toBe(cellOf(`survey.${id}.opt`).text);
+    // D-199: F12 · F13 보기에서 '종교'(F07) 칸을 뺐다 — 카피 9장 옛 보기 줄은 마케팅이 15장으로 옮기며 맞춘다
+    const dropF07 = (t: string) => (id === 'F12' || id === 'F13' ? t.split(' / ').filter((x) => x !== '종교').join(' / ') : t);
+    if (c.opt) expect(Object.values(c.opt).join(' / ')).toBe(dropF07(cellOf(`survey.${id}.opt`).text));
     if (c.publicText) expect(Object.values(c.publicText).join(' / ')).toBe(cellOf(`survey.${id}.publicText`).text);
   });
 

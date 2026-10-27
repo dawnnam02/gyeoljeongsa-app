@@ -33,9 +33,9 @@ function routeFiles(dir: string, base = ''): string[] {
 }
 
 describe('화면 ID 16개 = 라우트 16개 (F-1)', () => {
-  test('화면 ID는 01~16 열여섯 개 + V5 새 화면 T1 · T3 · T5 · T4 · T4R 이고 겹치지 않는다', () => {
-    expect(SCREEN_IDS).toHaveLength(21);
-    expect(new Set(SCREENS.map((s) => s.id)).size).toBe(21);
+  test('화면 ID는 01~16 열여섯 개 + V5 새 화면 T1 · T3 · T5 · T4 · T4R + 16G(내 등급, D-200 ②)이고 겹치지 않는다', () => {
+    expect(SCREEN_IDS).toHaveLength(22);
+    expect(new Set(SCREENS.map((s) => s.id)).size).toBe(22);
     expect(SCREENS.map((s) => s.id)).toEqual([...SCREEN_IDS]);
   });
 
@@ -43,14 +43,14 @@ describe('화면 ID 16개 = 라우트 16개 (F-1)', () => {
     const files = routeFiles(APP_DIR).sort();
     const registry = SCREENS.map((s) => s.route).sort();
     expect(files).toEqual(registry);
-    expect(files).toHaveLength(21);
+    expect(files).toHaveLength(22);
   });
 
   test('13 · 14 · 15 는 09 · 11 · 02 의 상태이고, 나머지 13개는 K2 화면이다(16 상점 포함)', () => {
     expect(screenById('13').stateOf).toBe('09');
     expect(screenById('14').stateOf).toBe('11');
     expect(screenById('15').stateOf).toBe('02');
-    expect(SCREENS.filter((s) => !s.stateOf)).toHaveLength(18); // K2 13 + V5 T1 · T3 · T5 · T4 · T4R
+    expect(SCREENS.filter((s) => !s.stateOf)).toHaveLength(19); // K2 13 + V5 T1 · T3 · T5 · T4 · T4R + 16G
   });
 
   test('탭바는 추천 · 호감 · 상점 · 설정 4개이고 탭 화면은 09 · 11 · 16 · 12 (그리고 상태 13 · 14). 08 내 프로필은 탭 밖 화면이다(F11)', () => {
@@ -141,11 +141,12 @@ describe('화살표 (K2 2-1 · 2-2 · 2-3 · 4장)', () => {
   });
 
   // K4(2026-10-14)가 K2 12 설정에 더한 것: 보안 · 정보 2줄 · 탈퇴 인증번호 재확인(분기 ①에 12 포함)
-  test('12 설정: 하위 화면 12개(QP-A 사업자 정보 포함)가 모두 화살표로 있고 라우트가 아닌 12 안의 쪽으로 풀린다(F7)', () => {
+  test('12 설정: 하위 화면 13개(QP-A 사업자 정보 · R-A 아는 분 피하기 포함)가 모두 화살표로 있고 라우트가 아닌 12 안의 쪽으로 풀린다(F7)', () => {
     const subs = arrowsFrom('12')
       .map((x) => x.to)
       .filter((to) => to.startsWith('sub:'));
     expect([...subs].sort()).toEqual([
+      'sub:avoid',
       'sub:blocked-list',
       'sub:business-info',
       'sub:consent-management',

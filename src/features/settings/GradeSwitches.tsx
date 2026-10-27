@@ -23,6 +23,7 @@ export function GradeSwitches({ grade, onToast }: GradeSettingsDeps & { onToast:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmStop, setConfirmStop] = useState(false); // 멈추는 쪽(켜기)에서만 묻는다(16-N, D-61)
+  const [resumed, setResumed] = useState(false); // 다시 켠 뒤 '다음 날 새벽에 다시 계산해요.'(SETTINGS16.resumeNote, 정책 P3-09)
   const busyRef = useRef(false);
   const alive = useRef(true);
 
@@ -59,6 +60,7 @@ export function GradeSwitches({ grade, onToast }: GradeSettingsDeps & { onToast:
     setBusy(false);
     if (result.ok) {
       useGradeSettingsStore.setState({ stopped: !result.processing });
+      setResumed(result.processing);
       onToast(CONSENT_MANAGE.saved);
     } else fail(result.reason);
   };
@@ -69,10 +71,16 @@ export function GradeSwitches({ grade, onToast }: GradeSettingsDeps & { onToast:
       <RowGroup testID="settings-grade-switches">
         <SwitchRow label={SETTINGS16.stopRow} note={SETTINGS16.stopNote} on={stopped} disabled={busy} last onPress={pressStop} testID="settings-grade-stop" />
       </RowGroup>
+      {resumed && !stopped ? (
+        <AppText variant="caption" style={styles.error} testID="settings-grade-resume-note">
+          {SETTINGS16.resumeNote}
+        </AppText>
+      ) : null}
       <ConfirmDialog
         visible={confirmStop}
         title={SETTINGS16.stopConfirm.title}
         body={SETTINGS16.stopConfirm.body}
+        note={{ text: SETTINGS16.stopConfirm.boarded }} // D-199: 본문 끝 한 줄 — 늘 보인다(서버를 한 번 더 부르지 않음, 화면_요구사항 12-3 ④)
         confirmLabel={SETTINGS16.stopConfirm.confirm}
         cancelLabel={SETTINGS16.stopConfirm.cancel}
         busy={busy}

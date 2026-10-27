@@ -1,4 +1,4 @@
-// T5 크레딧 · 내역(V5 W6 · 청사진 v5 초안 5장 돌려받기 · 6-1). 잔액 · 돌려받은 이유 · 회차별 내역 · 스토어 환불 안내.
+// T5 크레딧 · 내역(V5 W6 · 청사진 v5 초안 5장 돌려받기 · 6-1). 잔액 · 기한 없음 한 줄(D-200 ③) · 돌려받은 이유 · 회차별 내역 · 스토어 환불 안내.
 //  · 크레딧은 탑승권 1장 = 1장(금액 글 0). 현금 환불은 스토어 절차 안내 한 줄(T-21)
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -52,6 +52,10 @@ export function CreditScreen({ deps }: { deps: { api: Pick<BoardingApi, 'ledger'
               {CREDITS.balance(load.balance)}
             </AppText>
             <AppText variant="caption">{CREDITS.note}</AppText>
+            {/* D-200 ③: 끝나는 날 표시 없음 — '기한 없이' 한 줄(카피 14-7 CREDITS.noExpiry) */}
+            <AppText variant="caption" testID="credits-no-expiry">
+              {CREDITS.noExpiry}
+            </AppText>
           </Card>
           <AppText variant="bodyBold" accessibilityRole="header">
             {CREDITS.historyTitle}

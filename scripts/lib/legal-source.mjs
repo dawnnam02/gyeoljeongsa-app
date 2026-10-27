@@ -19,10 +19,21 @@ export const SOURCES = {
   copy: path.join(ROOT, '마케팅', '카피.md'),
   screens: path.join(ROOT, '기획', '화면_요구사항.md'),
   policy: path.join(ROOT, '기획', '정책.md'),
+  // R-A(D-199): 기획이 10-27 정책 · 화면_요구사항을 v5판(글 키 · 규칙 표)으로 새로 썼다. v4판의 N문구 · NK문구 · 표(토글 9 · 맞는 점 19 · R12 시간 꼴)는
+  //  '그대로' 화면(02 · 04 임시 · 05 ~ 08)과 숨긴 v4 화면(09 · 11)의 글 원본이라 보관본을 함께 읽는다(readPlanDoc)
+  screensV4: path.join(ROOT, '보관', '화면_요구사항_v4판.md'),
+  policyV4: path.join(ROOT, '보관', '정책_v4판.md'),
 };
 
 export function readDoc(file) {
   return fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+}
+
+// 기획 문서 원본: v5판 + v4판 보관본(있으면). v5판이 먼저라 같은 머리가 있으면 v5판을 읽는다
+export function readPlanDoc(kind) {
+  const v5 = readDoc(SOURCES[kind]);
+  const old = SOURCES[`${kind}V4`];
+  return old && fs.existsSync(old) ? `${v5}\n\n<!-- 보관 v4판 -->\n${readDoc(old)}` : v5;
 }
 
 // 마크다운 표시만 걷는다: **굵게** · `코드`

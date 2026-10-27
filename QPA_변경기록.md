@@ -164,3 +164,28 @@
 | check:copy | 통과 86 · 실패 13 — 기획 문서 개정 몫 11(H · J 2 · L 2 · M 신고 사유 · N 2 · P · Q 2) · 카피↔동의문구 D(CK4 · CK8 · CK9 요약, 마케팅 · 법무) · O 알림 두 줄(법무 4-9 · 5-5 가 '대화방 새 글'을 더함 — 알림 줄은 본인 결정 뒤라 손대지 않음). 1부 · 2부 앱 글 쪽 실패 0. X(14-5 190줄) 통과 |
 | check:tokens · check:grade | 5/0 · 통과 |
 | 웹 | w6 390 35/0 · w6 360 35/0 · f1 76/0 · f7 63/0 · v6f 360 27/0 · v6f 390 동작 줄이기 3회 모두 27/0(102 · 89 · 100초, 멈춤 0) |
+
+---
+
+# 3부 R-A (D-199 · D-200 · D-201, 10-27 ~ 마감 11-03)
+
+| 단계 | 상태 |
+|---|---|
+| 1 원본 맞춤(gen:legal · check-copy v5 원본) | 끝 — gen:legal 10:51 · check-copy 가 기획 v5판 + 보관 v4판을 함께 읽음(readPlanDoc) · 신고 사유는 v5 정책 P8-02 줄 · check:copy 99/0 |
+| 2-a 설정: 알림 2줄(만날 분 = notify_match · 대화방 = notify_chat) · 권한 안내 5-5 · 멈추기 한 줄 · 다시 켠 뒤 한 줄 · '내 등급' 줄 → /grade · '아는 분 피하기' 12-5 | 끝 |
+| 2-b F07 문항 빼기(설문 v2 · 대화형 · 조건 12) | 끝 |
+| 2-c 탑승권: 계약 요약 · 마감 안내 · 취소 · 크레딧 기한 없음 · 사유 3 · 구매 전 고지 · 푸시 토큰 등록(chat_push 꺼짐이면 0) | 끝 |
+| 2-d 이어받음 정리(10-27 오후, 다음 직원) | 끝 — 앞 직원이 CRLF 로 바꾼 3파일(model · questions · surveyV2Demo.test) LF 로 되돌림 · 취소 함수 이름을 백엔드 R 변경기록 3장 0037 B 설계 이름 `cancel_ticket_seat` 로(인자 p_round_no 는 앱 제안) · raFinish 토스트 시간 때문에 1개 실패 → 고침 |
+| 시험(1 ~ 2단계) | tsc 0 · eslint(바꾼 파일) 0 · jest 85묶음 1591/1591 · check:copy 99/0 · check:grade 통과 |
+| 커밋 | 3부-가 |
+| 3 디자인 QA(D43) · 사진칸 그림 · 아이콘 14곳 · 07 숫자 | 대기 |
+| 4 QP-14 · FB-011 · FB-012 · 10 신고 · 차단 | 대기 |
+| 5 F25 숨김 v4 글 74곳 | 대기 |
+
+## 서버 함수 이름(백엔드 0037 전 — 앱은 데모 경로로 돈다)
+| 일 | 앱이 부르는 이름 · 인자 | 근거 |
+|---|---|---|
+| 탑승 취소 | `cancel_ticket_seat({ p_round_no })` → `{ ok, refund }` · 오류 `sale_closed` · `not_boarded` | backend/R_변경기록 3장 설계 메모 `public.cancel_ticket_seat(round)` — 인자 이름 미확인 |
+| 아는 분 피하기 | `get_avoid_settings()` · `set_avoid_orgs({ p_companies, p_schools })` · `set_share_email({ p_on })` | 백엔드 메모는 표 이름만(contact_settings 등) — 함수 이름은 앱 제안, 0037 F 때 맞춤 |
+| 알림 토큰 | `register_device(p_platform, p_os_version, p_app_version, p_push_token)` | 0004:616 있음 · 표 devices(0001) |
+| 대화 알림 스위치 | profiles `notify_chat` 열 | 0036 |

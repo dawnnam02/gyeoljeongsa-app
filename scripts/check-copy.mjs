@@ -30,7 +30,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { VERSIONS_BEGIN, VERSIONS_END, buildGenerated, consentFingerprints, legalDocFingerprints, readAllEditions, versionsBlock } from './lib/legal-output.mjs';
-import { APP_DIR, SOURCES, cells, inline, parseConsentDoc, parseCopyConsent, parseLaterConsents, readDoc } from './lib/legal-source.mjs';
+import { APP_DIR, SOURCES, cells, inline, parseConsentDoc, parseCopyConsent, parseLaterConsents, readDoc, readPlanDoc } from './lib/legal-source.mjs';
 import { runCopyRules } from './check-copy-rules.mjs'; // R1 A⑦: T04(B17 5장 R1~R18) · K11 글 규칙 — 그룹 'T04' · 'K11'
 
 // .ts 를 바로 불러올 때 Node 가 내는 안내(모듈 형식 미지정)는 글 점검과 상관없어서 끈다.
@@ -52,7 +52,7 @@ async function toggleTableMatches() {
   // 앱 파일은 별칭(@/) 때문에 Node 가 바로 읽지 못해서 TOGGLE_DEFS 줄을 글에서 읽는다
   const logicText = fs.readFileSync(path.join(APP_DIR, 'src', 'features', 'profile', 'profileLogic.ts'), 'utf8');
   const defs = [...logicText.matchAll(/question: '([A-D]\d\d)', range: (?:true|false), initial: (true|false)/g)].map((m) => ({ question: m[1], initial: m[2] === 'true' }));
-  const policy = readDoc(SOURCES.policy);
+  const policy = readPlanDoc('policy');
   const from = policy.indexOf('### 2-3. 토글 9개');
   const rows = policy.slice(from, policy.indexOf('\n### 2-4.', from)).split('\n').filter((l) => /^\| [^|]+ \| [A-D]\d\d \|/.test(l)).map(cells);
   if (rows.length !== defs.length) return false;
@@ -61,7 +61,13 @@ async function toggleTableMatches() {
 
 // 정책 5-2 신고 사유 표(RP1~RP8)의 사유 이름
 function policyReportReasons() {
-  const policy = readDoc(SOURCES.policy);
+  // v5판 정책 P8-02 줄('사유 8개: RP1 가짜 프로필·사칭 · RP2 …')이 있으면 그것을, 없으면 v4판 5-2 표를 읽는다
+  const v5 = readDoc(SOURCES.policy).split('\n').find((l) => /^\| P8-02 \|/.test(l));
+  if (v5) {
+    const names = [...cells(v5)[2].matchAll(/RP\d ([^·|]+?)(?= · RP\d| \(|\.|$)/g)].map((m) => m[1].trim());
+    if (names.length === 8) return names;
+  }
+  const policy = readPlanDoc('policy');
   const from = policy.indexOf('### 5-2. 신고 사유 8개');
   const rows = policy.slice(from, policy.indexOf('\n### 5-3.', from)).split('\n').filter((l) => /^\| RP\d /.test(l)).map(cells);
   return rows.map((r) => r[1]);
@@ -71,7 +77,7 @@ function policyReportReasons() {
 async function reasonNamesMatchPolicy() {
   const logic = fs.readFileSync(path.join(APP_DIR, 'src', 'features', 'recs', 'recsLogic.ts'), 'utf8');
   const app = [...logic.matchAll(/^\s+([FE]\d\d): '([^']+)',$/gm)].map((m) => `${m[1]}=${m[2]}`);
-  const policy = readDoc(SOURCES.policy);
+  const policy = readPlanDoc('policy');
   const from = policy.indexOf('### 2-4.');
   const rows = policy.slice(from, policy.indexOf('\n### 2-5.', from)).split('\n').filter((l) => /^\| (조건|성향) \|/.test(l)).map(cells);
   const want = rows.map((r) => `${r[2]}=${r[1]}`);
@@ -222,7 +228,7 @@ try {
     copy01Rows.some((r) => r[0] === '버튼' && r[1] === copy.ONBOARDING.start) && copy01Rows.some((r) => r[0] === '버튼' && r[1] === copy.ONBOARDING.haveAccount), '');
 
   // ── H. 앱 글이 모두 원본 문서 어딘가에 있는가 ───────────────────────
-  const corpus = [SOURCES.copy, SOURCES.consent, SOURCES.screens, SOURCES.policy].map((f) => readDoc(f).replace(/`/g, '')).join('\n');
+  const corpus = [readDoc(SOURCES.copy), readDoc(SOURCES.consent), readPlanDoc('screens'), readPlanDoc('policy')].map((t) => t.replace(/`/g, '')).join('\n');
   const strings = [];
   (function collect(node, where) {
     if (typeof node === 'string') strings.push([where, node]);
@@ -262,7 +268,7 @@ try {
 
   // ── J. 06 AI 정리 중 · 07 내 성향 (F3) ─────────────────────────────
   const traitsContent = await load(path.join(contentDir, 'traitsContent.ts'));
-  const corpusJ = [SOURCES.copy, SOURCES.screens].map((f) => readDoc(f).replace(/`/g, '')).join('\n');
+  const corpusJ = [readDoc(SOURCES.copy), readPlanDoc('screens')].map((t) => t.replace(/`/g, '')).join('\n');
   const flatStrings = [];
   (function collectJ(node, where) {
     if (typeof node === 'string') flatStrings.push([where, node]);
@@ -275,7 +281,7 @@ try {
   const lostJ = flatStrings.filter(([, text]) => !corpusJ.includes(text)).map(([where, text]) => `${where}: "${text}"`);
   check('J', `06 · 07 앱 글 ${flatStrings.length}개가 카피.md 06 · 07 · 화면_요구사항.md(06 · 07 · N13 · N14)에 그대로 있다`, lostJ.length === 0, lostJ.join('\n'));
 
-  const screensText = readDoc(SOURCES.screens);
+  const screensText = readPlanDoc('screens');
   const copySection = (from, to) => copyText.slice(copyText.search(from), copyText.search(to));
   const copy06 = copySection(/^### 06 /m, /^### 07 /m);
   const copy07 = copySection(/^### 07 /m, /^### 08 /m);
@@ -379,7 +385,7 @@ try {
 
   // ── N. 09 오늘의 추천 · 10 상대 프로필 (F5) ─────────────────────────
   const copy09 = copySection(/^### 09 /m, /^### 10 /m);
-  const policyText = readDoc(SOURCES.policy);
+  const policyText = readPlanDoc('policy');
   const lostN = [];
   const need = (section, name, texts) => {
     for (const [key, value] of texts) if (!stripCode(section).includes(value)) lostN.push(`${name}.${key}: "${value}"`);
@@ -517,7 +523,7 @@ try {
   const p2 = collectStrings(Object.fromEntries(Object.entries(sl.SURVEY_LITE).filter(([k, v]) => typeof v !== 'function' && !skipKeys.has(k))), 'SURVEY_LITE').filter(([, t]) => !surveyPool.includes(t)).map(([w, t]) => `${w}: "${t}"`);
   for (const [k, t] of [['minChars', sl.SURVEY_LITE.minChars('{n}')], ['maxChars', sl.SURVEY_LITE.maxChars('{n}')], ['chips', sl.SURVEY_LITE.chips.join(' · ')]]) if (!surveyPool.includes(t)) p2.push(`SURVEY_LITE.${k}: "${t}"`);
   check('P', '04 임시 설문 글(상단바 · 임시 저장 · 공개 범위 한 줄 · 부모님 안내 · 직접 쓰는 글 안내 · 저장 토스트 · 이전/다음 · 오류 · N03 · N05 · N08 · N12)이 카피.md 04 · 4장 · 화면_요구사항 6장에 그대로 있다', p2.length === 0, p2.join('\n'));
-  const photoPool = `${copy05}\n${copyCommon}\n${screensPlain}`;
+  const photoPool = `${copy05}\n${copyCommon}\n${screensPlain}\n${consentDocText}`; // R-A: 05 하단 안내는 법무 동의문구 5-4(D-45) 원문
   const p3 = collectStrings(Object.fromEntries(Object.entries(sl.PHOTOS_LITE).filter(([, v]) => typeof v !== 'function')), 'PHOTOS_LITE').filter(([, t]) => !photoPool.includes(t)).map(([w, t]) => `${w}: "${t}"`);
   if (!photoPool.includes(sl.PHOTOS_LITE.badPhoto('{형식}', '{용량}'))) p3.push(`PHOTOS_LITE.badPhoto: "${sl.PHOTOS_LITE.badPhoto('{형식}', '{용량}')}"`);
   check('P', '05 임시 사진 글(제목 · 부제 · 칸 3 · 안내 · 스타일 · 내부 평가 고지 · 권한 2 · 오류 3 · N11)이 카피.md 05 · 화면_요구사항 6장에 그대로 있다', p3.length === 0, p3.join('\n'));
@@ -661,7 +667,7 @@ try {
   check('S', '작업 표시(▲W# · NV 번호 · B10 · D-번호)가 앱 글로 새지 않는다', marksS.length === 0, marksS.join('\n'));
   // 등급 · 점수 말은 허용 구역 글 파일에만(카피 16-J): 이 글 파일(shopCopy · productCopy)과 법무 게시본(consentContent · legalPrivacy · legalTerms) 밖의 content 파일에는 없다
   const zoneFiles = fs.readdirSync(contentDir).filter((f) => f.endsWith('.ts') && !['shopCopy.ts', 'productCopy.ts', 'consentContent.ts', 'legalPrivacy.ts', 'legalTerms.ts', 'types.ts', 'fillIns.ts'].includes(f));
-  const leaked = zoneFiles.filter((f) => /등급|점수/.test(fs.readFileSync(path.join(contentDir, f), 'utf8').split('\n').filter((l) => !l.trim().startsWith('//') && !/^\s*whyNote:/.test(l)).map((l) => (/^\s*'CHAT\.A06\.why':/.test(l) ? l.replace(/\/\/.*$/, '').split('등급에는 쓰지 않아요.').join('') : l)).join('\n'))); // CHAT.A06.why 예외(기획 QPP)
+  const leaked = zoneFiles.filter((f) => /등급|점수/.test(fs.readFileSync(path.join(contentDir, f), 'utf8').split('\n').filter((l) => !l.trim().startsWith('//') && !/^\s*whyNote:/.test(l)).map((l) => (/^\s*'CHAT\.A06\.why':/.test(l) ? l.replace(/\/\/.*$/, '').split('등급에는 쓰지 않아요.').join('') : /^\s*grade: '내 등급',/.test(l) ? '' : l.split('외모를 평가하거나 점수를 매기지 않아요.').join(''))).join('\n'))); // 예외: CHAT.A06.why(기획 QPP) · 12 설정 줄 '내 등급'(SETTINGS.rows.grade, D-200 ② — 허용 구역 '12 설정 줄') · 05 법무 5-4 '외모를 평가하거나 점수를 매기지 않아요.'(하지 않는다는 안내)
   check('S', `등급 · 점수 말은 허용 구역 글 파일(16 상점 · 09/10 배지 · 12 설정 줄)에만 있고 그 밖 글 파일(${zoneFiles.length}개)에는 없다(카피 16-J. 예외 하나: 10 상자 whyNote "추천 점수는 보여주지 않아요.", 법무 L10 W1 확정)`, leaked.length === 0, leaked.join(', '));
   // R1 C①(D-123 ④): 설문 v2 글(features/surveyV2 의 copy.ts · questionCopy.ts)도 같은 점검에 넣는다. 등급 말은 카피 16-J L-7 세 자리만(declineHint · A06 도움말 · 세부사항 머리), 점수 말 0
   const sv2Dir = path.join(APP_DIR, 'src', 'features', 'surveyV2');
@@ -705,7 +711,9 @@ try {
     for (const [k, v] of V5_COPY) if (k.startsWith('CHAT.') && rows.has(k)) rows.set(k, v); // QP-A: 14-2 '13장 CHAT.…' 줄이 13장 옛 줄보다 앞선다
     const app = Object.entries(cc.CHAT_V6 ?? {});
     const diffs = app.filter(([k, t]) => rows.get(k) !== t).map(([k, t]) => `${k}: 앱 "${t}" / 카피 "${rows.get(k)}"`);
-    const only = [...rows.keys()].filter((k) => !(k in (cc.CHAT_V6 ?? {})));
+    // R-A(D-199): 13장 표에서 '폐지(D-199)' 표시가 붙은 줄(F07 희망 종교)은 앱에서 뺐다 — 카피에만 있어도 된다(마케팅이 15장으로 옮김)
+    const retired = new Set(sec13.split(/\r?\n/).filter((l) => /^\| `CHAT\./.test(l) && /폐지\(D-199\)/.test(l)).map((l) => cells(l)[0].replace(/`/g, '')));
+    const only = [...rows.keys()].filter((k) => !(k in (cc.CHAT_V6 ?? {})) && !retired.has(k));
     check('W', `대화형 설문 글 ${app.length}개가 카피.md 13장 표와 한 글자씩 같다(표 ${rows.size}줄)`, app.length > 400 && diffs.length === 0 && only.length === 0, [...diffs, ...only.map((k) => `카피에만 있음: ${k}`)].join('\n'));
     // 기획 QPP(10-27): CHAT.A06.why '…등급에는 쓰지 않아요.'는 쓰지 않는다는 안내라 허용(설문 v2 A06 도움말 · 카피 16-J L-7 과 같은 뜻)
     const NEG_GRADE = '등급에는 쓰지 않아요.';
@@ -731,14 +739,31 @@ try {
   {
     const bc = await load(path.join(APP_DIR, 'src', 'features', 'boarding', 'boardingCopy.ts'));
     const ch = await load(path.join(APP_DIR, 'src', 'features', 'chat', 'chatCopy.ts'));
-    const roots = { BOARDING: bc.BOARDING, REVEAL: bc.REVEAL, CREDITS: bc.CREDITS, CHAT: ch.CHAT };
+    const st12 = await load(path.join(contentDir, 'settingsCopy.ts'));
+    const roots = { BOARDING: bc.BOARDING, REVEAL: bc.REVEAL, CREDITS: bc.CREDITS, CHAT: ch.CHAT, AVOID: st12.AVOID };
     const from = copyText.search(/^#### 14-5-1\. /m);
     const to = copyText.search(/^#### 14-5-3\. /m);
-    const rowsX = (from >= 0 && to > from ? copyText.slice(from, to) : '')
+    let rowsX = (from >= 0 && to > from ? copyText.slice(from, to) : '')
       .split(/\r?\n/)
       .filter((l) => /^\| T\d `[A-Z]+\./.test(l))
       .map(cells)
       .map((r) => [(/`([^`]+)`/.exec(r[0]) ?? [])[1], r[1]]);
+    // R-A(D-199 · D-200 · D-201): 14-6 · 14-7 표(첫 칸 'T1 `키`' · 'T1 · T2 `키`' · '12-5 `AVOID.키`')가 14-5 옛 줄보다 앞선다.
+    //  한 칸에 키가 둘이면 글을 ' / ' 로 나눠 짝짓는다. 다른 곳이 원본인 줄('3장 12-Q …')과 BOARDING · REVEAL · CREDITS · AVOID 밖 키(SAFETY_MINOR · 13장 CHAT_V6)는 대조하지 않는다
+    const from146 = copyText.search(/^### 14-6\. /m);
+    const to147 = copyText.search(/^## 15\. /m);
+    const newer = new Map();
+    for (const l of (from146 >= 0 ? copyText.slice(from146, to147 > from146 ? to147 : undefined) : '').split(/\r?\n/)) {
+      if (!/^\| [^|`]*`(BOARDING|REVEAL|CREDITS|AVOID)\./.test(l)) continue;
+      const c = cells(l);
+      const keys = [...c[0].matchAll(/`([^`]+)`/g)].map((m) => m[1]).filter((k) => /^(BOARDING|REVEAL|CREDITS|AVOID)\./.test(k));
+      if (/^\d+장 /.test(c[1])) continue;
+      const parts = keys.length > 1 ? c[1].split(' / ') : [c[1]];
+      if (parts.length !== keys.length) continue;
+      keys.forEach((k, i) => newer.set(k, parts[i]));
+    }
+    for (let i = 0; i < rowsX.length; i += 1) if (newer.has(rowsX[i][0])) rowsX[i] = [rowsX[i][0], newer.get(rowsX[i][0])];
+    for (const [k, v] of newer) if (!rowsX.some(([key]) => key === k)) rowsX.push([k, v]);
     const SLOT = '§';
     const MARK = '\u0001';
     const norm = (t) => t.replace(/\{[^{}]+\}/g, SLOT);
@@ -755,7 +780,7 @@ try {
       }
       const alts = want.split(' / ').map(norm);
       let got;
-      if (typeof v === 'string') got = [v];
+      if (typeof v === 'string') got = [norm(v)]; // 앱 글에 남은 {…} 자리(값이 비면 화면에서 숨김)도 같은 자리로 본다
       else if (typeof v === 'function') {
         funcs += 1;
         const calls = NUMERIC[key] ?? [Array.from({ length: Math.max(1, v.length) }, () => MARK)];
@@ -769,14 +794,14 @@ try {
       const ok = got.length === 1 ? got[0] === whole || alts.includes(got[0]) : got.every((g) => alts.includes(g));
       if (!ok) diffsX.push(`${key}: 앱 "${got.join(' / ')}" / 카피 "${want}"`);
     }
-    check('X', `v5 새 화면 글 ${rowsX.length}줄(14-5-1 · 14-5-2, 글 함수 ${funcs}개 포함)이 boardingCopy.ts · chatCopy.ts 와 같다`, rowsX.length >= 180 && diffsX.length === 0, diffsX.join('\n') || `표 ${rowsX.length}줄`);
+    check('X', `v5 새 화면 글 ${rowsX.length}줄(14-5-1 · 14-5-2 · 14-6 · 14-7, 글 함수 ${funcs}개 포함)이 boardingCopy.ts · chatCopy.ts · settingsCopy.ts AVOID 와 같다`, rowsX.length >= 180 && diffsX.length === 0, diffsX.join('\n') || `표 ${rowsX.length}줄`);
   }
 
   // R1 A⑦ T04 · K11: 오류 · 안내 문구 규칙(카피.md 1-1)과 v4 글 대조(카피.md 7장). 규칙 본문은 check-copy-rules.mjs
   runCopyRules({ check, note, appDir: APP_DIR });
 
   // 참고: 원본 문서끼리 글이 다른 곳(앱은 마케팅 확정본 카피.md 를 따른다)
-  const screens = readDoc(SOURCES.screens);
+  const screens = readPlanDoc('screens');
   if (/인증번호를 이메일로 보내 드려요\./.test(screens)) note('02 부제: 카피.md "보내드려요" ↔ 화면_요구사항 N21 "보내 드려요" — 앱은 카피.md(확정)를 따랐어요. 마케팅직원 확인 필요');
   if (/자리표시 "이메일 주소 \(예: name@example\.com\)"/.test(screens)) note('02 이메일 칸 자리표시: 카피.md "example@email.com"(Figma 와 같음) ↔ 화면_요구사항 N22 "이메일 주소 (예: name@example.com)" — 앱은 카피.md 를 따랐어요');
 } catch (error) {

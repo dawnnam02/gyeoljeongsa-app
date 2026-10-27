@@ -11,7 +11,7 @@ import type { ConsentCode } from '@/content/types';
 export const CONSENT_TEXT_VERSIONS: Readonly<Record<ConsentCode, string>> = {
   CK1: "consent-2026.10.27-v1",
   CK2: "consent-2026.10.18-v1",
-  CK3: "consent-2026.10.27-v1",
+  CK3: "consent-2026.10.27-v2",
   CK4: "consent-2026.10.27-v1",
   CK5: "consent-2026.10.14-v1",
   CK6: "consent-2026.10.27-v1",
@@ -38,7 +38,7 @@ export function isCurrentEdition(code: ConsentCode, version: string): boolean {
 export const CONSENT_TEXT_FINGERPRINTS: Readonly<Record<ConsentCode, string>> = {
   CK1: "2a4ec408761f",
   CK2: "f8167545f89d",
-  CK3: "e6d212bc5527",
+  CK3: "a278bc7d65e2",
   CK4: "56ea6ad35f51",
   CK5: "bfb551bd3af5",
   CK6: "585658258315",
@@ -48,7 +48,7 @@ export const CONSENT_TEXT_FINGERPRINTS: Readonly<Record<ConsentCode, string>> = 
 };
 // 약관 · 처리방침: 표식 구간과 작업 표시를 걸러낸 글의 지문
 export const LEGAL_DOC_FINGERPRINTS = {
-  terms: "e02fbfdb484c",
-  privacy: "da8d4a550bc9",
+  terms: "1cc3dd182350",
+  privacy: "45b3c2ae4b77",
 } as const;
 // <fingerprints:end>

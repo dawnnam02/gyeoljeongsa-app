@@ -6,7 +6,7 @@ import { SUPPORT_CONTACT, type SupportContact } from '@/content/supportContact';
 import type { WithdrawConfirmFailure, WithdrawStartFailure } from '@/lib/settingsApi';
 
 // 하위 화면(navigation/flow.ts 의 sub:* 와 같은 이름. 'safety' 는 flow.ts 에 아직 없다 — 2단계에서 더한다)
-export type SettingsPage = 'list' | 'notifications' | 'security' | 'consent-management' | 'blocked-list' | 'report-history' | 'support' | 'safety' | 'licenses' | 'image-credit' | 'business-info';
+export type SettingsPage = 'list' | 'notifications' | 'security' | 'consent-management' | 'blocked-list' | 'report-history' | 'support' | 'safety' | 'licenses' | 'image-credit' | 'business-info' | 'avoid';
 
 export type RowAction =
   | { kind: 'page'; page: Exclude<SettingsPage, 'list'> }
@@ -14,7 +14,8 @@ export type RowAction =
   | { kind: 'preferences' } // 04-25 '희망 조건 수정' 상태(12 로 돌아옴)
   | { kind: 'soon' } // 인증 서류 제출: 이동 없음, "준비 중이에요"
   | { kind: 'legal' } // 이용약관 · 개인정보 처리방침 읽기(03 과 같은 시트)
-  | { kind: 'credits' }; // 크레딧 · 구매 내역(카피.md 12-Q, 옛 NV35 '구매 · 등급 구독' 자리) → T5 크레딧 · 내역. 상점이 꺼져도 보인다
+  | { kind: 'credits' } // 크레딧 · 구매 내역(카피.md 12-Q, 옛 NV35 '구매 · 등급 구독' 자리) → T5 크레딧 · 내역. 상점이 꺼져도 보인다
+  | { kind: 'grade' }; // 내 등급(D-200 ② · 정책 P3-10) → 16-G(/grade, 상점 밖에서 여는 화면)
 
 export type RowDef = { key: string; label: string; action: RowAction; group: 'main' | 'info'; right?: string };
 
@@ -22,6 +23,8 @@ export type RowDef = { key: string; label: string; action: RowAction; group: 'ma
 const ALL_ROWS: readonly RowDef[] = [
   { key: 'notifications', label: SETTINGS.rows.notifications, action: { kind: 'page', page: 'notifications' }, group: 'main' },
   { key: 'visibility', label: SETTINGS.rows.visibility, action: { kind: 'visibility' }, group: 'main' },
+  { key: 'grade', label: SETTINGS.rows.grade, action: { kind: 'grade' }, group: 'main' }, // D-200 ②(화면_요구사항 12-1 차례)
+  { key: 'avoid', label: SETTINGS.rows.avoid, action: { kind: 'page', page: 'avoid' }, group: 'main' }, // D-200 ① 12-5
   { key: 'preferences', label: SETTINGS.rows.preferences, action: { kind: 'preferences' }, group: 'main' },
   { key: 'verification', label: SETTINGS.rows.verification, action: { kind: 'soon' }, group: 'main', right: SETTINGS.verificationSoon },
   { key: 'credits', label: SETTINGS.rows.credits, action: { kind: 'credits' }, group: 'main' },

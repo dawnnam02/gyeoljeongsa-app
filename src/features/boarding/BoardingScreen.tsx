@@ -14,11 +14,13 @@ import { AppText } from '@/components/AppText';
 import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Illustration } from '@/components/Illustration';
 import { Screen } from '@/components/Screen';
 import { TabHeader } from '@/components/TabHeader';
 import { TextButton } from '@/components/TextButton';
 import { Toast } from '@/components/Toast';
+import { fillText } from '@/content/fillLegal';
 import { TermsArticleSheet } from '@/features/consent/TermsArticleSheet';
 import { haptic, InkTile, logoTile, MaskLine, scene2, SkeletonCard, SkeletonPulse, TOAST_MS, Wipe } from '@/motion';
 import { colors, size, space } from '@/theme/tokens';
@@ -26,12 +28,12 @@ import { colors, size, space } from '@/theme/tokens';
 import type { BoardingApi, BoardingLoad, BoardingState, BuyFailure } from './boardingApi';
 import { SCENE_OF } from './boardingArt';
 import { BOARDING } from './boardingCopy';
-import { arriveWhen, boardingView, canUseCredit, daysUntil, nextSaleOpen, whenText, type BoardingView } from './boardingLogic';
+import { arriveWhen, boardingView, canCancel, canUseCredit, daysUntil, nextSaleOpen, whenText, type BoardingView } from './boardingLogic';
 import { TicketCard } from './TicketCard';
 import { ArriveView } from './ArriveView';
 import { defaultOpenedRounds, useOpenedRounds, type OpenedRounds } from './openedRounds';
 
-export type BoardingDeps = { api: Pick<BoardingApi, 'load' | 'buy'>; newId: () => string; toastMs?: number; opened?: OpenedRounds; demoBar?: (reload: () => void) => ReactNode };
+export type BoardingDeps = { api: Pick<BoardingApi, 'load' | 'buy'> & Partial<Pick<BoardingApi, 'cancel'>>; newId: () => string; toastMs?: number; opened?: OpenedRounds; demoBar?: (reload: () => void) => ReactNode };
 
 // 새 주소(탑승권 · 공개 · 크레딧)는 이 파일이 만든 라우트라 자동 주소 타입에 아직 없을 수 있다 — 문자열 그대로 넘긴다
 export const hrefOf = (path: string): Href => path as unknown as Href;
@@ -46,6 +48,9 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   const [error, setError] = useState<BuyFailure | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [stamp, setStamp] = useState(0); // 탑승권을 받은 순간 로고 타일을 한 번 찍는다
+  const [askCancel, setAskCancel] = useState(false); // T2 [탑승 취소] 확인창(D-200 ④ · D-201)
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const toastMs = deps.toastMs ?? TOAST_MS;
   const openedStore = deps.opened ?? defaultOpenedRounds;
   const opened = useOpenedRounds(openedStore);
@@ -90,6 +95,23 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
     reload();
   };
 
+  // T2 [탑승 취소]: 확인창 → cancel_ticket_seat. 마감이 지났으면 마감 글을 보이고 다시 읽는다(버튼이 사라진다)
+  const cancelTicket = async () => {
+    if (cancelling || !state?.round || !deps.api.cancel) return;
+    setCancelling(true);
+    setCancelError(null);
+    const r = await deps.api.cancel(state.round.no);
+    setCancelling(false);
+    setAskCancel(false);
+    if (!r.ok) {
+      setCancelError(r.reason === 'closed' ? BOARDING.cancel.closed : r.reason === 'network' ? BOARDING.buyErrors.network : BOARDING.cancel.failed);
+      if (r.reason === 'closed') reload();
+      return;
+    }
+    setToast(BOARDING.cancel.done);
+    reload();
+  };
+
   return (
     <Screen edges={['top']} backdrop="recommendations" testID="screen-boarding">
       <TabHeader title={BOARDING.headerTitle} testID="boarding-header" />
@@ -124,7 +146,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
         <ScrollView contentContainerStyle={[styles.pad, styles.gap]} testID="boarding-scroll">
           {state.credits > 0 ? <TextButton label={BOARDING.creditsLink(state.credits)} align="start" onPress={() => router.push(hrefOf('/credits'))} testID="boarding-credits" /> : null}
           {scene ? <Illustration scene={scene} testID="boarding-art" /> : null}
-          <StatusCard state={state} view={view} moment={stamp > 0} onBuy={() => setSheet(true)} onOpen={(path) => router.push(path)} />
+          <StatusCard state={state} view={view} moment={stamp > 0} onBuy={() => setSheet(true)} onOpen={(path) => router.push(path)} onCancel={deps.api.cancel ? () => setAskCancel(true) : undefined} cancelError={cancelError} />
           <View>
             <TicketCard
               roundNo={state.round?.no ?? null}
@@ -158,12 +180,29 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
                 {r}
               </AppText>
             ))}
+            {/* 결혼중개 계약 설명 요약 블록(D-199 · 카피 14-6 · 동의문구 5-8). 값이 빈 자리 글({신고번호})이 든 줄은 숨김 */}
+            <Card style={styles.gapTiny} testID="boarding-contract-summary">
+              <AppText variant="bodyBold" accessibilityRole="header">
+                {BOARDING.sheet.contractSummaryTitle}
+              </AppText>
+              {BOARDING.sheet.contractSummary.map((line, i) => {
+                const f = fillText(line);
+                return f.missing ? null : (
+                  <AppText key={line} variant="caption" tone="text" testID={`boarding-contract-summary-${i}`}>
+                    {f.text}
+                  </AppText>
+                );
+              })}
+            </Card>
             <TextButton label={BOARDING.sheet.contract} onPress={() => setContract(true)} testID="boarding-contract" />
             {error ? (
               <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" testID="boarding-sheet-error">
                 {BOARDING.buyErrors[error]}
               </AppText>
             ) : null}
+            <AppText variant="captionMedium" tone="text" testID="boarding-sheet-deadline">
+              {BOARDING.sheet.deadlineNote}
+            </AppText>
             {canUseCredit(state) ? <Button label={BOARDING.sheet.payCredit} onPress={() => void buy(true)} loading={busy} testID="boarding-pay-credit" /> : null}
             <Button label={BOARDING.sheet.pay} variant={canUseCredit(state) ? 'secondary' : 'primary'} onPress={() => void buy(false)} loading={busy} testID="boarding-pay" />
             <AppText variant="caption" testID="boarding-sheet-demo">
@@ -172,6 +211,17 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
           </View>
         ) : null}
       </BottomSheet>
+      <ConfirmDialog
+        visible={askCancel}
+        title={BOARDING.cancel.title}
+        body={BOARDING.cancel.body}
+        confirmLabel={BOARDING.cancel.confirm}
+        cancelLabel={BOARDING.cancel.keep}
+        busy={cancelling}
+        onConfirm={() => void cancelTicket()}
+        onCancel={() => setAskCancel(false)}
+        testID="boarding-cancel-confirm"
+      />
       <TermsArticleSheet visible={contract} prefix="제14조의2" onClose={() => setContract(false)} testID="boarding-contract-sheet" />
       <Toast text={toast} testID="boarding-toast" />
     </Screen>
@@ -179,7 +229,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
 }
 
 // moment: 방금 탑승권을 받았다(핵심 ①) — 탑승 완료 카드의 제목 · 부제 · 남은 날이 차례로 드러난다. 그 밖에는 움직임 없음
-function StatusCard({ state, view, moment = false, onBuy, onOpen }: { state: BoardingState; view: BoardingView; moment?: boolean; onBuy: () => void; onOpen: (href: Href) => void }) {
+function StatusCard({ state, view, moment = false, onBuy, onOpen, onCancel, cancelError = null }: { state: BoardingState; view: BoardingView; moment?: boolean; onBuy: () => void; onOpen: (href: Href) => void; onCancel?: () => void; cancelError?: string | null }) {
   const next = state.round ? whenText(nextSaleOpen(state.round.matchAt)) : null;
   const play = moment && view === 'boarded';
   const T = scene2.ticket;
@@ -208,7 +258,12 @@ function StatusCard({ state, view, moment = false, onBuy, onOpen }: { state: Boa
       return card(
         BOARDING.onSale.title,
         BOARDING.onSale.body,
-        <Button label={canUseCredit(state) ? BOARDING.onSale.buyCredit : BOARDING.onSale.buy} onPress={onBuy} testID="boarding-buy" />,
+        <>
+          <Button label={canUseCredit(state) ? BOARDING.onSale.buyCredit : BOARDING.onSale.buy} onPress={onBuy} testID="boarding-buy" />
+          <AppText variant="caption" testID="boarding-sale-close">
+            {BOARDING.saleCloseNote}
+          </AppText>
+        </>,
         canUseCredit(state) ? (
           <AppText variant="captionMedium" tone="accent" testID="boarding-credit-note">
             {BOARDING.onSale.credits(state.credits)}
@@ -221,10 +276,36 @@ function StatusCard({ state, view, moment = false, onBuy, onOpen }: { state: Boa
       return card(BOARDING.closed.title, next ? BOARDING.closed.body(next) : null);
     case 'boarded': {
       const days = state.round ? daysUntil(state.round.matchAt, state.now) : null;
+      const open = canCancel(state);
+      // 마감 전: 마감 안내 + [탑승 취소] + 고객센터 한 줄. 마감 뒤: '판매가 마감되어 취소할 수 없어요.'(D-200 ④ · D-201)
+      const cancelArea = (
+        <View style={styles.gapTiny} testID="boarding-cancel-area">
+          {open ? (
+            <>
+              <AppText variant="caption" testID="boarding-sale-close">
+                {BOARDING.saleCloseNote}
+              </AppText>
+              {onCancel ? <Button label={BOARDING.cancel.button} variant="secondary" onPress={onCancel} testID="boarding-cancel" /> : null}
+              <AppText variant="caption" testID="boarding-cancel-support">
+                {BOARDING.cancel.supportNote}
+              </AppText>
+            </>
+          ) : (
+            <AppText variant="caption" testID="boarding-cancel-closed">
+              {BOARDING.cancel.closed}
+            </AppText>
+          )}
+          {cancelError ? (
+            <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" testID="boarding-cancel-error">
+              {cancelError}
+            </AppText>
+          ) : null}
+        </View>
+      );
       return card(
         BOARDING.boarded.title,
         BOARDING.boarded.body,
-        undefined,
+        cancelArea,
         days !== null ? (
           <AppText variant="title" tone="accent" testID="boarding-days">
             {days === 0 ? BOARDING.boarded.today : BOARDING.boarded.days(days)}

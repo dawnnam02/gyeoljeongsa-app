@@ -35,6 +35,7 @@ import { LicensesPage } from './LicensesPage';
 import { BlockedListPage, ReportHistoryPage } from './ListPages';
 import { copyToClipboard, readPushStatus, requestPushPermission, type PushStatus } from './deviceDeps';
 import { NotificationsPage } from './NotificationsPage';
+import { AvoidPage } from './AvoidPage';
 import { ConsentManagePage } from './ConsentManagePage';
 import { GradeSwitches } from './GradeSwitches';
 import { GroupLabel, NavRow, OutlineButton, RowGroup } from './SettingsParts';
@@ -146,6 +147,9 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
       case 'credits':
         router.push('/credits' as unknown as Href); // T5(탭 위에 열리는 화면)
         return;
+      case 'grade':
+        router.push('/grade' as unknown as Href); // 16-G 내 등급(D-200 ②, 탭 위에 열리는 화면)
+        return;
     }
   };
 
@@ -209,6 +213,8 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
         return <LicensesPage onBack={toList} />;
       case 'image-credit':
         return <ImageCreditPage onBack={toList} />;
+      case 'avoid':
+        return <AvoidPage api={deps.api} onBack={toList} onToast={showToast} />;
       case 'business-info':
         return bizRows ? (
           <BusinessInfoPage

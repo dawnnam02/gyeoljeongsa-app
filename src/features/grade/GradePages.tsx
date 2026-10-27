@@ -23,6 +23,7 @@ import { LinkRow } from '@/features/shop/parts';
 import { formatDay, subViewOf } from '@/features/shop/shopLogic';
 import type { ShopDeps, ShopNav } from '@/features/shop/shopTypes';
 import { LoadState } from '@/features/settings/SettingsParts';
+import { V5_HOME } from '@/navigation/v5Hide';
 import { useLoad } from '@/features/settings/useLoad';
 import { layout } from '@/theme/layout';
 import { colors, space } from '@/theme/tokens';
@@ -36,7 +37,8 @@ import { GI } from './iconCopy';
 type Deps = Pick<ShopDeps, 'grade' | 'now'>;
 
 // ── 16-G1 ───────────────────────────────────────────────────────────
-export function GradeBody({ shop, deps, nav, onAccess }: { shop: ShopState; deps: Deps; nav: ShopNav; onAccess: () => void }) {
+// shop: 상점 안에서 열면 상점 상태(구독 끝남 안내), 12 '내 등급' 줄(MyGradeScreen, D-200 ②)로 열면 null
+export function GradeBody({ shop, deps, nav, onAccess }: { shop: ShopState | null; deps: Deps; nav: ShopNav; onAccess: () => void }) {
   const router = useRouter();
   const read = useCallback(() => deps.grade.loadMine(), [deps]);
   const { phase, data, reload } = useLoad<MyGrade>(read);
@@ -46,7 +48,7 @@ export function GradeBody({ shop, deps, nav, onAccess }: { shop: ShopState; deps
   }
 
   if (data.kind === 'locked') {
-    const ended = subViewOf(shop) === 'ended';
+    const ended = shop ? subViewOf(shop) === 'ended' : false;
     return (
       <View style={styles.page} testID="grade-locked">
         {ended ? (
@@ -106,7 +108,7 @@ export function GradeBody({ shop, deps, nav, onAccess }: { shop: ShopState; deps
   const go = (key: 'verify' | 'ans' | 'act') => {
     if (key === 'verify') router.navigate('/settings'); // 12 인증 서류 제출(준비 중 줄)
     else if (key === 'ans') router.push('/profile'); // 08 프로필 선택 항목
-    else router.navigate('/recommendations'); // 앱에 접속하기 → 오늘의 추천
+    else router.navigate(V5_HOME); // 앱에 접속하기 → v5 홈(탑승권 탭). 옛 09 오늘의 추천은 숨김
   };
 
   return (

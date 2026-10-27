@@ -58,7 +58,7 @@ const FULL: Record<string, V2Value> = {
   E14: 3, E15: 3, A09: 'no', A10: 'rare', E12: 'morning', E11: ['travel'],
   E10: 'talk_now', E13: ['family', 'work', 'money', 'leisure', 'health'], E16: 3, E08: 3, E09: 3,
   E01: 'y1', E02: 'yes', E03: 3, E04: 3, E05: 3, E06: 'seoul', E07: 'joint',
-  F01: 'any', F02: 'any', F03: 'univ', F04: ['any'], F05: 'any', F06: ['any'], F07: ['any'], F08: ['any'], F09: ['any'], F10: ['any'], F14: 'any', F15: 'any', F16: 'any', F11: 3, F13: ['F03'],
+  F01: 'any', F02: 'any', F03: 'univ', F04: ['any'], F05: 'any', F06: ['any'], F08: ['any'], F09: ['any'], F10: ['any'], F14: 'any', F15: 'any', F16: 'any', F11: 3, F13: ['F03'],
 };
 const TEXTS = { T01: '조용한 주말을 좋아하고 산책을 자주 하는 편이에요.', T02: '평일 저녁에는 같이 밥을 먹고 주말에는 함께 걷고 싶어요.', T03: '서로 존중하는 마음이에요.' };
 

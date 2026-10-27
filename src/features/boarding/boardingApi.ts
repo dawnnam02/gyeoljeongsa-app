@@ -18,7 +18,7 @@ import { readDbFailure } from '@/lib/serverError';
 
 export type BoardingPhase = 'before_sale' | 'on_sale' | 'closed' | 'revealed';
 export type Ineligible = 'not_confirmed' | 'politics_missing' | 'paused';
-export type CreditReason = 'balance' | 'no_fit' | 'gap' | 'used';
+export type CreditReason = 'balance' | 'no_fit' | 'gap' | 'used' | 'cancelled' | 'refund_taken' | 'refund_restored'; // R-A(D-200 ④ ⑤): 탑승 취소 · 스토어 환불 회수 · 다시 줌
 export type Round = { no: number; matchAt: number; saleOpenAt: number | null; saleCloseAt: number | null };
 export type Ticket = { roundNo: number; boughtAt: number; paidWith: 'store' | 'credit' };
 export type Partner = { name: string; age: number | null; region: { sido?: string; sigungu?: string } | null; facePhotoId: string | null };
@@ -49,6 +49,8 @@ export type CreditLoad = { ok: true; balance: number; items: CreditItem[] } | { 
 export const BOARDING_RPC = 'get_boarding_state'; // 가정 이름(0030 · 0032)
 export const BUY_TICKET_RPC = 'buy_ticket'; // 가정 이름(0030)
 export const CREDIT_LEDGER_RPC = 'list_credit_ledger'; // 가정 이름(0030)
+export const CANCEL_TICKET_RPC = 'cancel_ticket_seat'; // 백엔드 R_변경기록 3장 0037 B 설계 이름 public.cancel_ticket_seat(round) — 인자 이름 p_round_no 는 앱 제안(미확인). cancel_ticket_seat(p_round_no) → { ok, refund: 'store' | 'credit' } · 오류 sale_closed · not_boarded. 백엔드 0037 에서 맞춘다
+export type CancelResult = { ok: true; refund: 'store' | 'credit' } | { ok: false; reason: 'closed' | 'network' | 'server' };
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const pick = <T extends string>(v: unknown, list: readonly T[]): T | null => (typeof v === 'string' && (list as readonly string[]).includes(v) ? (v as T) : null);
@@ -117,7 +119,7 @@ export function parseLedger(raw: unknown): { balance: number; items: CreditItem[
   const balance = int(raw.balance);
   const items = (Array.isArray(raw.items) ? raw.items : [])
     .filter(isRecord)
-    .map((x) => ({ at: time(x.at), delta: int(x.delta), reason: pick(x.reason, ['balance', 'no_fit', 'gap', 'used'] as const), roundNo: int(x.round_no) }))
+    .map((x) => ({ at: time(x.at), delta: int(x.delta), reason: pick(x.reason, ['balance', 'no_fit', 'gap', 'used', 'cancelled', 'refund_taken', 'refund_restored'] as const), roundNo: int(x.round_no) }))
     .filter((x): x is CreditItem => x.at !== null && x.delta !== null && x.delta !== 0 && x.reason !== null)
     .sort((a, b) => b.at - a.at);
   return { balance: balance !== null && balance > 0 ? balance : 0, items };
@@ -156,6 +158,18 @@ export function createBoardingApi(client: Pick<SupabaseClient, 'rpc'>, deviceNow
       }
       const roundNo = isRecord(data) ? int(data.round_no) : null;
       return isRecord(data) && data.ok === true && roundNo !== null ? { ok: true, roundNo } : { ok: false, reason: 'server' };
+    },
+    // T2 [탑승 취소](마감 전만). 마감이 지났거나 탄 적이 없으면 closed(화면은 마감 글 + 다시 읽기)
+    async cancel(roundNo: number): Promise<CancelResult> {
+      const { data, error } = await client.rpc(CANCEL_TICKET_RPC, { p_round_no: roundNo });
+      if (error) {
+        const f = readDbFailure(error);
+        safeLog({ event: 'boarding.cancel.fail', code: f.code ?? (f.network ? 'network' : 'unknown') });
+        if (f.network) return { ok: false, reason: 'network' };
+        const m = String(error.message ?? '');
+        return { ok: false, reason: m === 'sale_closed' || m === 'not_boarded' ? 'closed' : 'server' };
+      }
+      return isRecord(data) && data.ok === true ? { ok: true, refund: data.refund === 'credit' ? 'credit' : 'store' } : { ok: false, reason: 'server' };
     },
     async ledger(): Promise<CreditLoad> {
       const { data, error } = await client.rpc(CREDIT_LEDGER_RPC);

@@ -662,7 +662,7 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
   if (stage === 'flow') {
     const vis = current.vis === 'public' ? `${SV2.common.vis.public}${current.toggle && !current.toggle.startsWith('e0') ? ` ${SV2.common.vis.toggle}` : ''}` : current.vis === 'bucket' ? SV2.common.vis.bucket : SV2.common.vis.private;
     lines.push({ text: vis, testID: 'v2-visibility' });
-    if (SENSITIVE_IDS.includes(at)) lines.push({ text: current.id === 'F07' ? SV2.common.sensitivePrivate : SV2.common.sensitive, testID: 'v2-sensitive' });
+    if (SENSITIVE_IDS.includes(at)) lines.push({ text: SV2.common.sensitive, testID: 'v2-sensitive' });
     if (NO_AI_IDS.includes(at)) lines.push({ text: SV2.common.noAi, testID: 'v2-noai' });
   }
   const pubCopy = copyOf(at)?.publicToggle;

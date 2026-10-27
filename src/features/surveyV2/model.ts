@@ -14,13 +14,13 @@ export const STORY: readonly QuestionDef[] = QUESTIONS.filter((q) => q.section =
 export const APPEAL: readonly QuestionDef[] = QUESTIONS.filter((q) => q.section === 'appeal'); // T04~T09
 export const TEXT_IDS: readonly string[] = ['T01', 'T02', 'T03', ...APPEAL.map((q) => q.id)]; // free_texts 로 가는 글
 export const PUBLIC_TOGGLE_IDS: readonly string[] = FLOW.filter((q) => q.section === 'marriage' && q.toggle).map((q) => q.id); // 결혼관 공개 스위치 6(처음 꺼짐)
-export const CONDITION_IDS: readonly string[] = ['F01', 'F02', 'F03', 'F04', 'F05', 'F06', 'F07', 'F08', 'F09', 'F10', 'F14', 'F15', 'F16'];
+export const CONDITION_IDS: readonly string[] = ['F01', 'F02', 'F03', 'F04', 'F05', 'F06', 'F08', 'F09', 'F10', 'F14', 'F15', 'F16'];
 export const STORY_MAX = 3;
 export const AUTO_NEXT_MS = 400; // 하나 고르기 · 구간 · 5단계는 고르면 0.4초 뒤 다음 문항(설문_v2 2-1 · D35 5장 4)
 export const SCHOOL_MIN_CHARS = 2; // 학교 검색은 2자부터(F20 세부청사진 2)
 
 // 자물쇠(민감) · AI에 보내지 않음 · AI 안내 상자(설문_v2 2-4)
-export const SENSITIVE_IDS: readonly string[] = ['A06', 'A07', 'A08', 'C05', 'C06', 'D08', 'D09', 'D04', 'F07'];
+export const SENSITIVE_IDS: readonly string[] = ['A06', 'A07', 'A08', 'C05', 'C06', 'D08', 'D09', 'D04']; // D-199: F07 희망 종교 삭제 → 자물쇠 8
 export const NO_AI_IDS: readonly string[] = ['A12', 'B02', 'B05', 'C02', 'D08', 'D09', 'A05'];
 export const AI_BOX_IDS: readonly string[] = ['T01', 'T02', 'T03'];
 // '말하고 싶지 않아요'를 고르면 '답하면 등급이 오를 수 있어요.'를 보이는 다섯 문항(등급에 쓰는 돈 · 부모 쪽, 설문_v2 2-4). 혼인 A07 · 자녀 A08 은 등급에 쓰지 않아 안내 없음
@@ -55,7 +55,6 @@ const has = (a: V2Answers, id: string) => Object.prototype.hasOwnProperty.call(a
 
 // 조건이 '상관없어요'가 아니면 활성(F12 · F13 의 보기가 된다)
 export function isActiveCondition(id: string, a: V2Answers): boolean {
-  if (id === 'F07' && a.A06 === 'other') return true; // '그 외'는 자동 other(조건 있음)
   if (!has(a, id)) return false;
   const v = a[id];
   if (v === 'any') return false;
@@ -86,8 +85,6 @@ export function isShown(id: string, a: V2Answers): boolean {
       return typeof a.C01 === 'string' && !C04_HIDDEN.includes(a.C01);
     case 'D06':
       return a.D05 !== '0';
-    case 'F07':
-      return a.A06 !== 'other';
     case 'F12':
     case 'F13':
       return activeConditions(a).length > 0;
@@ -99,7 +96,6 @@ export function isShown(id: string, a: V2Answers): boolean {
 // 숨겨질 때 자동으로 저장하는 값(설문_v2 2-6). 없으면 undefined(값 없음 = 지운다)
 export function autoValue(id: string, a: V2Answers): V2Value | undefined {
   if (id === 'A11' && a.A02 === 'female') return 'na';
-  if (id === 'F07' && a.A06 === 'other') return ['other'];
   if ((id === 'C03' || id === 'C04') && typeof a.C01 === 'string' && !isShown(id, a)) return 'na';
   if (id === 'D06' && a.D05 === '0') return 'only';
   return undefined;
@@ -128,8 +124,7 @@ export function normalizeAnswers(a: V2Answers): { values: Record<string, V2Value
         continue;
       }
       values[q.id] = kept;
-    } else if (q.id === 'F07' && isStrArr(v)) values[q.id] = v.filter((c) => c !== 'other');
-    else values[q.id] = v;
+    } else values[q.id] = v;
   }
   return { values, clear };
 }
@@ -243,13 +238,13 @@ export const rangeSpan = (id: string): readonly [number, number] => RANGE_SPAN[i
 const MAX_PICK: Readonly<Record<string, number>> = { E11: 5, F12: 3 };
 export const maxPick = (id: string): number | null => MAX_PICK[id] ?? null;
 
-// 이 문항에서 고를 수 있는 보기(F12 · F13 은 활성 조건만, F07 '그 외'는 꺼짐)
+// 이 문항에서 고를 수 있는 보기(F12 · F13 은 활성 조건만)
 export function choicesFor(q: QuestionDef, a: V2Answers): { code: string; disabled: boolean }[] {
   if (q.id === 'F12' || q.id === 'F13') {
     const active = activeConditions(a);
     return q.codes.filter((c) => active.includes(c)).map((code) => ({ code, disabled: false }));
   }
-  return q.codes.map((code) => ({ code, disabled: q.id === 'F07' && code === 'other' }));
+  return q.codes.map((code) => ({ code, disabled: false }));
 }
 
 export const rankTopNeed = (a: V2Answers): number => Math.min(3, activeConditions(a).length);
@@ -338,7 +333,7 @@ export function blockMessage(q: QuestionDef, c: Check): string | null {
 // 저장된 답 + 입력 중 값에서 맞게 쓴 답만 모은다
 export function answersOf(drafts: Readonly<Record<string, Draft>>): Record<string, V2Value> {
   const out: Record<string, V2Value> = {};
-  // 두 번 돈다: F12 · F13 · F07 은 앞 답(활성 조건 · 종교)을 보고 검사한다
+  // 두 번 돈다: F12 · F13 은 앞 답(활성 조건)을 보고 검사한다
   for (let pass = 0; pass < 2; pass += 1) {
     for (const q of QUESTIONS) {
       const d = drafts[q.id];

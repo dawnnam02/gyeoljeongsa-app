@@ -286,7 +286,8 @@ describe('조건 5 · 7: 글은 원본 그대로 · 임시 표시', () => {
       LITE_COMMON.loading, LITE_COMMON.offline, LITE_COMMON.server, `${LITE_COMMON.retry} / ${LITE_COMMON.confirm} / ${LITE_COMMON.cancel}`,
     ];
     const section = (from: string, to: string) => copyMd.slice(copyMd.indexOf(from), copyMd.indexOf(to, copyMd.indexOf(from)));
-    const scope = section('### 04 설문', '### 06 AI') + section('## 4. 공통 문구', '## 5.');
+    // R-A(D-199 · QP-08): 05 하단 안내(internalNote)는 법무 동의문구 5-4(D-45) 원문을 따른다
+    const scope = section('### 04 설문', '### 06 AI') + section('## 4. 공통 문구', '## 5.') + read('법무', '동의문구.md');
     expect(fixed.filter((text) => !scope.includes(text))).toEqual([]);
   });
 
@@ -325,6 +326,7 @@ describe('조건 5 · 7: 글은 원본 그대로 · 임시 표시', () => {
       path.join(app, 'lib', 'surveyLiteApi.ts'),
       path.join(app, 'lib', 'surveyLiteDemo.ts'),
     ];
-    for (const file of files) expect(fs.readFileSync(file, 'utf8')).not.toMatch(/grade|rating|score|등급|점수/i);
+    // 예외 한 줄: 05 하단 안내의 법무 원문 '외모를 평가하거나 점수를 매기지 않아요.'(하지 않는다는 안내, 동의문구 5-4)
+    for (const file of files) expect(fs.readFileSync(file, 'utf8').split('외모를 평가하거나 점수를 매기지 않아요.').join('')).not.toMatch(/grade|rating|score|등급|점수/i);
   });
 });

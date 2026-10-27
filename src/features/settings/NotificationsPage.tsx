@@ -19,8 +19,12 @@ import { useLoad } from './useLoad';
 type Data = { prefs: NotifyPrefs; marketing: boolean };
 type Api = Pick<SettingsApi, 'loadNotify' | 'saveNotify' | 'loadConsents' | 'setOptional'>;
 
-// v5(QP-A, 카피.md 12-Q): 서비스 알림은 '이번 주 만날 분이 정해졌을 때' 하나. '호감을 받았을 때' · '연결됐을 때' 줄은 없다(호감 · 수락 없음)
-const SERVICE: readonly { key: NotifyKey; label: string }[] = [{ key: 'recommendation', label: NOTIFY.recommendation }];
+// v5(카피.md 12-Q · 화면_요구사항 12-2): 서비스 알림 2줄 — '이번 주 만날 분이 정해졌을 때'(서버 P8 · P8b 가 읽는 notify_match 열, 0036) ·
+//  '대화방에 새 글이 왔을 때'(notify_chat, D-199, 처음 켜짐 + 아래 작은 글). 옛 v4 줄(호감 · 연결)은 그리지 않는다
+const SERVICE: readonly { key: NotifyKey; label: string; note?: string }[] = [
+  { key: 'match', label: NOTIFY.recommendation },
+  { key: 'chat', label: NOTIFY.chat, note: NOTIFY.chatNote },
+];
 
 export function NotificationsPage({ api, pushStatus, onRequestPush, onBack, onToast }: { api: Api; pushStatus: PushStatus; onRequestPush: () => Promise<PushStatus>; onBack: () => void; onToast: (text: string) => void }) {
   const read = useCallback(async () => {
@@ -88,7 +92,7 @@ export function NotificationsPage({ api, pushStatus, onRequestPush, onBack, onTo
           ) : null}
           <RowGroup testID="settings-notify-service">
             {SERVICE.map((s, i) => (
-              <SwitchRow key={s.key} label={s.label} on={data.prefs[s.key]} last={i === SERVICE.length - 1} onPress={() => void toggleService(s.key)} testID={`settings-notify-${s.key}`} />
+              <SwitchRow key={s.key} label={s.label} note={s.note} on={data.prefs[s.key]} last={i === SERVICE.length - 1} onPress={() => void toggleService(s.key)} testID={`settings-notify-${s.key}`} />
             ))}
           </RowGroup>
           <RowGroup testID="settings-notify-marketing-group">

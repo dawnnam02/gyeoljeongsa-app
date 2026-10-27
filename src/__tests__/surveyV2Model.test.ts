@@ -4,7 +4,6 @@ import {
   answersOf,
   autoValue,
   check,
-  choicesFor,
   draftFromValue,
   emptyDraft,
   firstMissing,
@@ -23,6 +22,7 @@ import {
   answerText,
 } from '@/features/surveyV2/model';
 import { SV2, PROPOSED } from '@/features/surveyV2/copy';
+import { QUESTIONS } from '@/features/surveyV2/questions';
 import type { V2Answers } from '@/features/surveyV2/types';
 
 const noSchool = () => null;
@@ -33,13 +33,12 @@ describe('건너뛰기(2-6)', () => {
     expect(autoValue('A11', { A02: 'female' })).toBe('na');
     expect(isShown('A11', { A02: 'male' })).toBe(true);
   });
-  test("종교 '그 외'면 F07 숨김 · 자동 other(조건 있음), 아니면 F07 의 '그 외' 칩은 꺼짐", () => {
-    expect(isShown('F07', { A06: 'other' })).toBe(false);
-    expect(autoValue('F07', { A06: 'other' })).toEqual(['other']);
-    expect(activeConditions({ A06: 'other' })).toContain('F07');
-    const f07 = choicesFor(qOf('F07'), { A06: 'none' });
-    expect(f07.find((o) => o.code === 'other')?.disabled).toBe(true);
-    expect(f07.find((o) => o.code === 'none')?.disabled).toBe(false);
+  test("D-199: F07 희망 종교는 문항이 없다 — 종교 '그 외'여도 F07 자동값 · 활성 조건 없음, F12 · F13 보기에 F07 없음", () => {
+    expect(QUESTIONS.some((q) => q.id === 'F07')).toBe(false);
+    expect(autoValue('F07', { A06: 'other' })).toBeUndefined();
+    expect(activeConditions({ A06: 'other' })).not.toContain('F07');
+    expect(qOf('F12').codes).not.toContain('F07');
+    expect(qOf('F13').codes).not.toContain('F07');
   });
   test('고등학교까지면 학교 · 학적 상태 · 전공 숨김, 대학원이면 학부 학교 B05 · 편입 B07 보임', () => {
     for (const id of ['B02', 'B06', 'B03', 'B05', 'B07']) expect(isShown(id, { B01: 'hs' })).toBe(false);
@@ -80,9 +79,10 @@ describe('건너뛰기(2-6)', () => {
 });
 
 describe('보이는 문항 · 진행(2-1)', () => {
-  test('필수 흐름 64 중 남성 · 대학원 석사 · 대기업이면 B05 · B07 · A11 이 보이고 C08 은 숨는다', () => {
+  test('필수 흐름 63(D-199) 중 남성 · 대학원 석사 · 대기업이면 B05 · B07 · A11 이 보이고 C08 은 숨는다', () => {
     const v = visibleFlow({ A02: 'male', B01: 'master', C01: 'large', D05: '1', A06: 'none', F03: 'univ' }).map((q) => q.id);
-    expect(v).toEqual(expect.arrayContaining(['A11', 'B05', 'B07', 'C03', 'C04', 'D06', 'F07', 'F12', 'F13']));
+    expect(v).toEqual(expect.arrayContaining(['A11', 'B05', 'B07', 'C03', 'C04', 'D06', 'F12', 'F13']));
+    expect(v).not.toContain('F07'); // D-199
     expect(v).not.toContain('C08');
   });
   test('첫 빈 필수 문항: 선택 문항(B03 · F12)은 건너뛴다', () => {
@@ -190,6 +190,6 @@ describe('검토 화면 답 글 · 숫자(등급 · 점수 아님)', () => {
   test('answersOf 는 맞게 쓴 값만 모은다', () => {
     const d = { A12: { kind: 'text' as const, text: '김' }, A02: { kind: 'choice' as const, code: 'female' } };
     expect(answersOf(d)).toEqual({ A02: 'female' });
-    expect(FLOW.length).toBe(64);
+    expect(FLOW.length).toBe(63); // D-199 F07 삭제
   });
 });

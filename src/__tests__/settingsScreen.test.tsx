@@ -56,7 +56,7 @@ function makeApi(over: Partial<SettingsApi> = {}): Api {
         { id: 'r3', status: 'received' as const, createdAt: '2026-10-15T02:00:00Z' },
       ],
     })),
-    loadNotify: jest.fn(async () => ({ ok: true as const, data: { recommendation: true, like: true, match: true } })),
+    loadNotify: jest.fn(async () => ({ ok: true as const, data: { recommendation: true, like: true, match: true, chat: true } })),
     saveNotify: jest.fn(async () => ({ ok: true as const })),
     loadConsents: jest.fn(async () => ({ ok: true as const, data: { CK4: true, CK9: true } })),
     setOptional: jest.fn(async () => ({ ok: true as const })),
@@ -102,6 +102,8 @@ describe('12 설정 규칙', () => {
     expect(SETTINGS_ROWS.map((r) => r.label)).toEqual([
       '알림',
       '공개 범위',
+      '내 등급',
+      '아는 분 피하기',
       '인증 서류 제출',
       '크레딧 · 구매 내역',
       '차단 목록',
@@ -136,10 +138,10 @@ describe('12 설정 규칙', () => {
 });
 
 describe('12 하위 화면 이름 = flow.ts 의 sub:* (F-1)', () => {
-  test('목록의 하위 화면 10개(QP-A 사업자 정보 포함)는 모두 flow.ts 화살표(sub:*)에 있다', () => {
+  test('목록의 하위 화면 11개(QP-A 사업자 정보 · R-A 아는 분 피하기 포함)는 모두 flow.ts 화살표(sub:*)에 있다', () => {
     const subs = arrowsFrom('12').map((x) => x.to).filter((to) => to.startsWith('sub:')).map((to) => to.slice(4));
     const pages = SETTINGS_ROWS.flatMap((r) => (r.action.kind === 'page' ? [r.action.page] : []));
-    expect(pages).toHaveLength(10);
+    expect(pages).toHaveLength(11);
     for (const page of pages) expect(subs).toContain(page);
     expect(subs).toEqual(expect.arrayContaining(['terms', 'privacy'])); // 한 줄 → 03 읽기 시트의 탭 2개
   });
@@ -209,19 +211,23 @@ describe('12 목록 화면', () => {
 });
 
 describe('12 하위 화면', () => {
-  test('알림(v5, 12-Q): 서비스 스위치 "이번 주 만날 분이 정해졌을 때" 하나 + 마케팅 알림 + 아래 글 3줄(법무 4-9), 바꾸면 그 열만 저장 · 호감 · 연결 줄 없음', async () => {
+  test('알림(v5, 12-Q · 화면_요구사항 12-2): 서비스 2줄 "이번 주 만날 분이 정해졌을 때"(notify_match — 서버 P8 이 읽는 열) · "대화방에 새 글이 왔을 때"(notify_chat) + 작은 글 + 마케팅 · 호감 · 연결 줄 없음', async () => {
     const { deps, api } = setup();
     const tree = await show(deps);
     await press(tree, 'settings-row-notifications');
     expect(hasText(tree, NOTIFY.headerTitle)).toBe(true);
     expect(NOTIFY.recommendation).toBe('이번 주 만날 분이 정해졌을 때');
-    for (const label of [NOTIFY.recommendation, NOTIFY.marketing]) expect(hasText(tree, label)).toBe(true);
+    expect(NOTIFY.chat).toBe('대화방에 새 글이 왔을 때');
+    for (const label of [NOTIFY.recommendation, NOTIFY.chat, NOTIFY.chatNote, NOTIFY.marketing]) expect(hasText(tree, label)).toBe(true);
     for (const label of [NOTIFY.like, NOTIFY.match]) expect(hasText(tree, label)).toBe(false);
-    expect(has(tree, 'settings-notify-like') || has(tree, 'settings-notify-match')).toBe(false);
+    expect(has(tree, 'settings-notify-like') || has(tree, 'settings-notify-recommendation')).toBe(false);
     NOTIFY.marketingNotes.forEach((line, i) => expect(textOf(tree, `settings-marketing-note-${i}`)).toBe(line));
-    await press(tree, 'settings-notify-recommendation');
-    expect(api.saveNotify).toHaveBeenCalledWith('recommendation', false);
-    expect(propOf(tree, 'settings-notify-recommendation', 'accessibilityState').checked).toBe(false);
+    await press(tree, 'settings-notify-match');
+    expect(api.saveNotify).toHaveBeenCalledWith('match', false);
+    expect(propOf(tree, 'settings-notify-match', 'accessibilityState').checked).toBe(false);
+    expect(propOf(tree, 'settings-notify-chat', 'accessibilityState').checked).toBe(true); // 처음 켜짐
+    await press(tree, 'settings-notify-chat');
+    expect(api.saveNotify).toHaveBeenCalledWith('chat', false);
   });
 
   test('알림: 저장 실패면 되돌리고 이유, 마케팅은 CK9 철회 + 토스트 N10, 푸시 거부면 R-D18-3 안내', async () => {
@@ -229,8 +235,8 @@ describe('12 하위 화면', () => {
     const tree = await show(deps);
     await press(tree, 'settings-row-notifications');
     expect(textOf(tree, 'settings-push-denied')).toBe('알림이 꺼져 있어요. 설정에서 허용해 주세요.');
-    await press(tree, 'settings-notify-recommendation');
-    expect(propOf(tree, 'settings-notify-recommendation', 'accessibilityState').checked).toBe(true);
+    await press(tree, 'settings-notify-match');
+    expect(propOf(tree, 'settings-notify-match', 'accessibilityState').checked).toBe(true);
     expect(textOf(tree, 'settings-notifications-error')).toBe(COMMON.offline);
     await press(tree, 'settings-notify-marketing');
     expect(api.setOptional).toHaveBeenCalledWith('CK9', false);
@@ -238,12 +244,12 @@ describe('12 하위 화면', () => {
   });
 
   test('알림: 권한을 아직 안 물었으면 안내 글(동의문구 5-5)을 먼저 보이고, 서비스 알림을 켤 때만 시스템 창을 띄운다', async () => {
-    const { deps } = setup({ loadNotify: jest.fn(async () => ({ ok: true as const, data: { recommendation: false, like: true, match: true } })) }, 'undetermined');
+    const { deps } = setup({ loadNotify: jest.fn(async () => ({ ok: true as const, data: { recommendation: false, like: true, match: false, chat: true } })) }, 'undetermined');
     const tree = await show(deps);
     await press(tree, 'settings-row-notifications');
     expect(textOf(tree, 'settings-push-prime')).toBe(NOTIFY.pushPrime);
     expect(deps.requestPush).not.toHaveBeenCalled(); // 열기만 해서는 묻지 않는다
-    await press(tree, 'settings-notify-recommendation'); // 켜기 → 묻는다
+    await press(tree, 'settings-notify-match'); // 켜기 → 묻는다
     expect(deps.requestPush).toHaveBeenCalledTimes(1);
     expect(has(tree, 'settings-push-prime')).toBe(false); // 허용 뒤 안내 글은 사라진다
   });
@@ -438,6 +444,6 @@ describe('F7 공통 규칙(조건 5)', () => {
       if (back) await press(tree, back.props.testID as string);
     }
     // v5(QP-A, 12-Q): 옛 줄 '구매 · 등급 구독'(NV35)이 '크레딧 · 구매 내역'으로 바뀌어 grade 연결이 없는 목록 · 하위 화면에는 등급 · 점수 · 순위 · 구독 말이 0
-    expect([...seen].filter((t) => /등급|점수|순위|구독/.test(t))).toEqual([]);
+    expect([...seen].filter((t) => /등급|점수|순위|구독/.test(t))).toEqual(['내 등급']); // R-A(D-200 ②): 12 '내 등급' 줄 하나(허용 구역 '12 설정 줄')
   });
 });

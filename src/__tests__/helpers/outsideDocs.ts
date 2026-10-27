@@ -57,9 +57,15 @@ export function whenOutside(rels: readonly string[], fn: () => void): void {
 
 /** 문서를 글로 읽는다(기본: 줄바꿈 \n 로 맞춤, keepCrlf 면 그대로). 문서가 없을 때는 빈 글 — 그 검사는 describeOutside/testOutside 로 이미 건너뛴다.
  *  describe 본문(모으는 단계)에서 읽어도 터지지 않게 하려는 것이다(describe.skip 도 본문은 실행된다) */
+// R-A(D-199): 기획 정책 · 화면_요구사항은 10-27 v5판(글 키 · 규칙)으로 새로 썼다. v4판의 N문구 · NK문구 · 표는 '그대로' 화면 · 숨긴 v4 화면 글의
+//  원본이라 보관본(보관/정책_v4판.md · 화면_요구사항_v4판.md)을 뒤에 붙여 읽는다(scripts/lib/legal-source.mjs readPlanDoc 와 같은 규칙)
+const PLAN_V4: Readonly<Record<string, string>> = { '기획/화면_요구사항.md': '보관/화면_요구사항_v4판.md', '기획/정책.md': '보관/정책_v4판.md' };
+
 export function readOutside(rel: string, opts: { keepCrlf?: boolean } = {}): string {
   const file = outsidePath(rel);
   if (!fs.existsSync(file)) return '';
-  const text = fs.readFileSync(file, 'utf8');
+  let text = fs.readFileSync(file, 'utf8');
+  const old = PLAN_V4[rel] ? outsidePath(PLAN_V4[rel]) : null;
+  if (old && fs.existsSync(old)) text = `${text}\n\n<!-- 보관 v4판 -->\n${fs.readFileSync(old, 'utf8')}`;
   return opts.keepCrlf ? text : text.replace(/\r\n/g, '\n');
 }
