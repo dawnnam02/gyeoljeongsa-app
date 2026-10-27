@@ -9,6 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { contentStrings } from './lib/content-strings.mjs';
+import { restoreArchivedCopy } from './lib/legal-source.mjs'; // 15장 폐지 기록장 줄을 원래 자리로(F25 안 '나')
 
 const APP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const NOT_COPY = ['types.ts', 'fillIns.ts', 'contactWords.ts']; // 타입 · 채움 값 · 생성 낱말 목록(화면 글이 아님)
@@ -115,7 +116,7 @@ export function evaluateCopyRules({ contentDir = path.join(APP_DIR, 'src', 'cont
 
 // check-copy.mjs 가 부른다
 export function runCopyRules({ check, note, appDir = APP_DIR }) {
-  const { results, notes } = evaluateCopyRules({ contentDir: path.join(appDir, 'src', 'content'), copyFile: path.resolve(appDir, '..', '마케팅', '카피.md') });
+  const { results, notes } = evaluateCopyRules({ contentDir: path.join(appDir, 'src', 'content'), copyFile: process.env.CHECK_COPY_DOC ?? path.resolve(appDir, '..', '마케팅', '카피.md') });
   for (const r of results) check(r.group, r.title, r.ok, r.detail);
   for (const n of notes) note(n);
 }

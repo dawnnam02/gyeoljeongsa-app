@@ -16,7 +16,7 @@ export const SOURCES = {
   editions: path.join(ROOT, '법무', '판_관리.md'),
   terms: path.join(ROOT, '법무', '약관.md'),
   privacy: path.join(ROOT, '법무', '개인정보처리방침.md'),
-  copy: path.join(ROOT, '마케팅', '카피.md'),
+  copy: process.env.CHECK_COPY_DOC ?? path.join(ROOT, '마케팅', '카피.md'), // CHECK_COPY_DOC: 다른 판으로 대조해 볼 때만(예: 15장 이동 흉내)
   screens: path.join(ROOT, '기획', '화면_요구사항.md'),
   policy: path.join(ROOT, '기획', '정책.md'),
   // R-A(D-199): 기획이 10-27 정책 · 화면_요구사항을 v5판(글 키 · 규칙 표)으로 새로 썼다. v4판의 N문구 · NK문구 · 표(토글 9 · 맞는 점 19 · R12 시간 꼴)는
@@ -28,6 +28,38 @@ export const SOURCES = {
 export function readDoc(file) {
   return fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
 }
+
+// 카피.md 원본(F25 안 '나', 팀장 10-27): 마케팅이 v4 줄을 '## 15. 폐지 기록장'으로 옮겨도 대조가 깨지지 않게,
+//  15장 줄(첫 칸 `폐지(D-…)` · 둘째 칸 원래 자리 · 셋째 칸 옛 줄 칸들을 ¦ 로 이음)을 원래 자리(같은 이름의 소제목) 표 끝에 되돌려 놓은 글을 준다.
+//  · 원래 자리 소제목을 못 찾으면 그 줄은 버린다(15장 줄은 첫 칸 때문에 어느 대조에도 안 잡히던 것과 같음)
+//  · 15장 자체는 뺀다(되돌린 줄이 두 번 세이지 않게). 원본 파일은 고치지 않는다
+//  · 같은 규칙: src/__tests__/helpers/copyDoc.ts(시험용)
+export function restoreArchivedCopy(text) {
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  const s15 = lines.findIndex((l) => /^## 15\. /.test(l));
+  if (s15 < 0) return lines.join('\n');
+  let e15 = lines.findIndex((l, i) => i > s15 && /^## \d/.test(l));
+  if (e15 < 0) e15 = lines.length;
+  const plain = (s) => s.replace(/\*\*|`/g, '').trim();
+  const body = [...lines.slice(0, s15), ...lines.slice(e15)];
+  const isHead = (l) => /^#{2,6} /.test(l);
+  const extra = new Map(); // 넣을 줄 번호(body 안, 그 줄 뒤) → 되돌릴 줄들
+  for (const l of lines.slice(s15, e15)) {
+    if (!/^\|\s*폐지\(D-/.test(l)) continue;
+    const c = l.split('|').slice(1, -1).map((x) => x.trim());
+    if (c.length < 3) continue;
+    const h = body.findIndex((x) => isHead(x) && plain(x.replace(/^#+\s+/, '')) === plain(c[1]));
+    if (h < 0) continue;
+    let end = body.findIndex((x, j) => j > h && isHead(x));
+    if (end < 0) end = body.length;
+    let after = end - 1;
+    for (let j = h + 1; j < end; j += 1) if (body[j].startsWith('|')) after = j;
+    const row = `| ${c.slice(2).join(' | ').split(' ¦ ').join(' | ')} |`;
+    extra.set(after, [...(extra.get(after) ?? []), row]);
+  }
+  return body.flatMap((l, i) => [l, ...(extra.get(i) ?? [])]).join('\n');
+}
+export const readCopyDoc = (file = SOURCES.copy) => restoreArchivedCopy(readDoc(file));
 
 // 기획 문서 원본: v5판 + v4판 보관본(있으면). v5판이 먼저라 같은 머리가 있으면 v5판을 읽는다
 export function readPlanDoc(kind) {

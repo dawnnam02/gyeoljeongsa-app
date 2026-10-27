@@ -61,10 +61,38 @@ export function whenOutside(rels: readonly string[], fn: () => void): void {
 //  원본이라 보관본(보관/정책_v4판.md · 화면_요구사항_v4판.md)을 뒤에 붙여 읽는다(scripts/lib/legal-source.mjs readPlanDoc 와 같은 규칙)
 const PLAN_V4: Readonly<Record<string, string>> = { '기획/화면_요구사항.md': '보관/화면_요구사항_v4판.md', '기획/정책.md': '보관/정책_v4판.md' };
 
+// F25 안 '나'(팀장 10-27): 카피.md '## 15. 폐지 기록장' 줄을 원래 자리(같은 이름 소제목) 표 끝으로 되돌려 읽는다 — 마케팅이 v4 줄을 15장으로 옮겨도
+//  숨김 v4 화면 글 대조가 깨지지 않게. 같은 규칙: scripts/lib/legal-source.mjs restoreArchivedCopy
+export function restoreArchivedCopy(text: string): string {
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  const s15 = lines.findIndex((l) => /^## 15\. /.test(l));
+  if (s15 < 0) return lines.join('\n');
+  let e15 = lines.findIndex((l, i) => i > s15 && /^## \d/.test(l));
+  if (e15 < 0) e15 = lines.length;
+  const plain = (x: string) => x.replace(/\*\*|`/g, '').trim();
+  const isHead = (l: string) => /^#{2,6} /.test(l);
+  const body = [...lines.slice(0, s15), ...lines.slice(e15)];
+  const extra = new Map<number, string[]>();
+  for (const l of lines.slice(s15, e15)) {
+    if (!/^\|\s*폐지\(D-/.test(l)) continue;
+    const c = l.split('|').slice(1, -1).map((x) => x.trim());
+    if (c.length < 3) continue;
+    const h = body.findIndex((x) => isHead(x) && plain(x.replace(/^#+\s+/, '')) === plain(c[1]));
+    if (h < 0) continue;
+    let end = body.findIndex((x, j) => j > h && isHead(x));
+    if (end < 0) end = body.length;
+    let after = end - 1;
+    for (let j = h + 1; j < end; j += 1) if (body[j].startsWith('|')) after = j;
+    extra.set(after, [...(extra.get(after) ?? []), `| ${c.slice(2).join(' | ').split(' ¦ ').join(' | ')} |`]);
+  }
+  return body.flatMap((l, i) => [l, ...(extra.get(i) ?? [])]).join('\n');
+}
+
 export function readOutside(rel: string, opts: { keepCrlf?: boolean } = {}): string {
-  const file = outsidePath(rel);
+  const file = rel === '마케팅/카피.md' && process.env.CHECK_COPY_DOC ? process.env.CHECK_COPY_DOC : outsidePath(rel); // CHECK_COPY_DOC: 다른 판으로 대조해 볼 때만
   if (!fs.existsSync(file)) return '';
   let text = fs.readFileSync(file, 'utf8');
+  if (rel === '마케팅/카피.md') text = restoreArchivedCopy(text); // 줄바꿈은 LF 로 맞춰진다
   const old = PLAN_V4[rel] ? outsidePath(PLAN_V4[rel]) : null;
   if (old && fs.existsSync(old)) text = `${text}\n\n<!-- 보관 v4판 -->\n${fs.readFileSync(old, 'utf8')}`;
   return opts.keepCrlf ? text : text.replace(/\r\n/g, '\n');

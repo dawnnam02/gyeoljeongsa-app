@@ -30,7 +30,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { VERSIONS_BEGIN, VERSIONS_END, buildGenerated, consentFingerprints, legalDocFingerprints, readAllEditions, versionsBlock } from './lib/legal-output.mjs';
-import { APP_DIR, SOURCES, cells, inline, parseConsentDoc, parseCopyConsent, parseLaterConsents, readDoc, readPlanDoc } from './lib/legal-source.mjs';
+import { APP_DIR, SOURCES, cells, inline, parseConsentDoc, parseCopyConsent, parseLaterConsents, readCopyDoc, readDoc, readPlanDoc } from './lib/legal-source.mjs';
 import { runCopyRules } from './check-copy-rules.mjs'; // R1 A⑦: T04(B17 5장 R1~R18) · K11 글 규칙 — 그룹 'T04' · 'K11'
 
 // .ts 를 바로 불러올 때 Node 가 내는 안내(모듈 형식 미지정)는 글 점검과 상관없어서 끈다.
@@ -107,7 +107,7 @@ try {
   const copy = await load(path.join(contentDir, 'copy.ts'));
 
   const doc = parseConsentDoc(readDoc(SOURCES.consent));
-  const mk = parseCopyConsent(readDoc(SOURCES.copy));
+  const mk = parseCopyConsent(readCopyDoc());
   const items = consent.CONSENT_ITEMS;
 
   // ── B. 03 체크 칸 10줄 ──────────────────────────────────────────────
@@ -177,7 +177,7 @@ try {
     consent.CONSENT_LINKS.line.includes(copy.CONSENT.documents.terms) && consent.CONSENT_LINKS.line.includes(copy.CONSENT.documents.privacy), '');
 
   // ── F. 02 가입 안내 ─────────────────────────────────────────────────
-  const copyText = readDoc(SOURCES.copy);
+  const copyText = readCopyDoc();
   // QP-A: 카피.md 14장(v5 문구 바꿈) 표의 첫 칸 키(맨 앞 `…`) → v5 글. '(줄 없음)'은 화면에 그 줄이 없다는 뜻이라 대조 값으로 쓰지 않는다
   const sec14 = copyText.slice(copyText.search(/^## 14\. /m));
   const V5_COPY = new Map(
@@ -228,7 +228,7 @@ try {
     copy01Rows.some((r) => r[0] === '버튼' && r[1] === copy.ONBOARDING.start) && copy01Rows.some((r) => r[0] === '버튼' && r[1] === copy.ONBOARDING.haveAccount), '');
 
   // ── H. 앱 글이 모두 원본 문서 어딘가에 있는가 ───────────────────────
-  const corpus = [readDoc(SOURCES.copy), readDoc(SOURCES.consent), readPlanDoc('screens'), readPlanDoc('policy')].map((t) => t.replace(/`/g, '')).join('\n');
+  const corpus = [readCopyDoc(), readDoc(SOURCES.consent), readPlanDoc('screens'), readPlanDoc('policy')].map((t) => t.replace(/`/g, '')).join('\n');
   const strings = [];
   (function collect(node, where) {
     if (typeof node === 'string') strings.push([where, node]);
@@ -268,7 +268,7 @@ try {
 
   // ── J. 06 AI 정리 중 · 07 내 성향 (F3) ─────────────────────────────
   const traitsContent = await load(path.join(contentDir, 'traitsContent.ts'));
-  const corpusJ = [readDoc(SOURCES.copy), readPlanDoc('screens')].map((t) => t.replace(/`/g, '')).join('\n');
+  const corpusJ = [readCopyDoc(), readPlanDoc('screens')].map((t) => t.replace(/`/g, '')).join('\n');
   const flatStrings = [];
   (function collectJ(node, where) {
     if (typeof node === 'string') flatStrings.push([where, node]);
