@@ -5,7 +5,8 @@
 //   boardfull 내 성별 좌석이 모두 참     boardon 탑승 완료(기다림)     boardmatch 수요일 18:00 공개 — 만난 분 있음     boardnone 공개 — 완벽한 사람을 찾지 못함 + 크레딧
 //   boardclosed 판매가 끝났고 탑승권 없음     boardpolitics 정치 성향 문항이 비어 살 수 없음     boardlate 탑승 완료 · 판매 마감 뒤(취소 없음)
 //   boardoncredit 크레딧으로 탑승 완료(취소하면 크레딧 1장 돌려받음)
-//  cancel_ticket_seat({ p_round_no }) — 백엔드 0037 B 설계 이름(인자는 앱 제안, D-200 ④ · D-201): 마감 전만, 결제 = store · 크레딧 = credit(+1 '취소해 돌려받음')
+//  cancel_ticket_seat({ p_round_no }) — 0037 확정(D-202): 마감 전만, 결제로 탔든 크레딧으로 탔든 크레딧 1장(+1 '취소해 돌려받음') → { ok, round_no, paid_by, result: 'credited', lot_id } · 오류 closed · not_found
+//  ack_ticket_contract({ p_round_no, p_text_version }) — 0037 확정(R40): 회차 · 판(4 ~ 60자)이 맞으면 기록 한 줄 → { ok: true } · 오류 invalid_value
 //  · 회차 1 = 2026-12-23(수) 18:00 KST 첫 매칭(T-24). 크레딧 장면은 회차 2(12-30). 데모의 '지금'은 장면마다 정해 둔 시각(시계와 상관없이 같은 화면)
 //  · 만난 분 = 데모 인물 24명 가운데 '나'와 끼리끼리 순서 첫 분(demo/people kinOrder) — 남은 좌석 수 · 정원 · 점수 키는 보내지 않는다
 import { kinOrder, myReligionOf, poolFor } from './people';
@@ -24,7 +25,13 @@ const ROUNDS = [
 ];
 const iso = (t: number) => new Date(t).toISOString();
 
-type State = { scene: BoardingScene; ticket: { roundNo: number; boughtAt: number; paidWith: 'store' | 'credit' } | null; ledger: { at: number; delta: number; reason: string; roundNo: number }[]; requests: Map<string, unknown> };
+type State = {
+  scene: BoardingScene;
+  ticket: { roundNo: number; boughtAt: number; paidWith: 'store' | 'credit' } | null;
+  ledger: { at: number; delta: number; reason: string; roundNo: number }[];
+  requests: Map<string, unknown>;
+  acks: { roundNo: number; version: string }[]; // 계약 설명 확인 기록(R40) — 데모는 회차 · 판만
+};
 
 const sceneOfEmail = (email: string): BoardingScene => {
   const l = (email.split('@')[0] ?? '').toLowerCase();
@@ -46,7 +53,7 @@ const sceneOfEmail = (email: string): BoardingScene => {
 export function createDemoBoarding() {
   const states = new Map<string, State>();
   const seed = (scene: BoardingScene): State => {
-    const s: State = { scene, ticket: null, ledger: [], requests: new Map() };
+    const s: State = { scene, ticket: null, ledger: [], requests: new Map(), acks: [] };
     if (scene === 'boarded' || scene === 'matched' || scene === 'late') s.ticket = { roundNo: 1, boughtAt: at('2026-12-18T21:10:00+09:00'), paidWith: 'store' };
     if (scene === 'boardedCredit') {
       s.ledger.push({ at: at('2026-12-16T18:00:00+09:00'), delta: 1, reason: 'balance', roundNo: 0 }, { at: at('2026-12-18T21:10:00+09:00'), delta: -1, reason: 'used', roundNo: 1 });
@@ -135,14 +142,22 @@ export function createDemoBoarding() {
   function cancel(u: DemoBoardingUser, args: Row): DbResult {
     const s = stateOf(u);
     const r = roundOf(s);
-    if (args.p_round_no !== r.no || !s.ticket || s.ticket.roundNo !== r.no) return fail('not_boarded');
+    if (args.p_round_no !== r.no || !s.ticket || s.ticket.roundNo !== r.no) return fail('not_found');
     const t = nowOf(s);
-    if (t >= r.close) return fail('sale_closed');
-    const refund = s.ticket.paidWith === 'credit' ? 'credit' : 'store';
-    if (refund === 'credit') s.ledger.push({ at: t, delta: 1, reason: 'cancelled', roundNo: r.no });
+    if (t >= r.close) return fail('closed');
+    const paidBy = s.ticket.paidWith === 'credit' ? 'credit' : 'purchase'; // 서버 ticket_seats.paid_by 값
+    s.ledger.push({ at: t, delta: 1, reason: 'cancelled', roundNo: r.no }); // D-202: 어느 쪽이든 크레딧 1장
     s.ticket = null;
     s.scene = 'onsale';
-    return { data: { ok: true, refund }, error: null };
+    return { data: { ok: true, round_no: r.no, paid_by: paidBy, result: 'credited', lot_id: s.ledger.length }, error: null };
+  }
+
+  function ack(u: DemoBoardingUser, args: Row): DbResult {
+    const s = stateOf(u);
+    const v = args.p_text_version;
+    if (typeof v !== 'string' || v.length < 4 || v.length > 60 || !ROUNDS.some((r) => r.no === args.p_round_no)) return fail('invalid_value');
+    s.acks.push({ roundNo: args.p_round_no as number, version: v });
+    return { data: { ok: true }, error: null };
   }
   function ledger(u: DemoBoardingUser): DbResult {
     const s = stateOf(u);
@@ -162,6 +177,7 @@ export function createDemoBoarding() {
     buy_ticket: buy,
     list_credit_ledger: (u) => ledger(u),
     cancel_ticket_seat: cancel,
+    ack_ticket_contract: ack,
     demo_boarding_scene: setScene,
   };
   return {
@@ -173,6 +189,7 @@ export function createDemoBoarding() {
       return p ? `demo-cand-${p.n}` : null;
     },
     sceneOf: (u: DemoBoardingUser) => stateOf(u).scene,
+    acksOf: (u: DemoBoardingUser) => stateOf(u).acks.map((a) => ({ ...a })), // 시험 · 점검용
   };
 }
 

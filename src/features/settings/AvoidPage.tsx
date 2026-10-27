@@ -3,6 +3,7 @@
 //  ④ 스위치 '내 이메일을 다른 분의 지인 비교에 쓰기'(처음 켜짐, 끄면 서버가 내 비교 키를 지움) + 아래 작은 글
 //  · 바꾸면 바로 저장한다. 실패하면 되돌리고 '저장하지 못했어요.' · 5곳이 다 차면 입력 대신 한 줄
 //  · 상대에게 흔적 0 · '몇 명을 피했는지' 숫자 0. 학교 검색어는 기기 밖으로 보내지 않는다(내장 목록)
+//  · 0037: 한 곳씩 set_avoid_org(이름은 서버에서 해시로만, 목록 글은 이 기기). 서버 스위치 avoid_org 가 꺼져 있으면 회사 · 학교 줄은 '준비 중'(지인 차단 줄과 같은 모양)
 import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -14,13 +15,14 @@ import { COMMON } from '@/content/copy';
 import { AVOID, AVOID_MAX, CONSENT_MANAGE, SETTINGS } from '@/content/settingsCopy';
 import { schoolIndex } from '@/data/schools/schoolSearch';
 import { localSchoolSearch } from '@/features/surveyV2/api';
-import type { AvoidSettings, SettingsApi } from '@/lib/settingsApi';
+import { orgKey } from '@/lib/avoidLocal';
+import type { AvoidSettings, Outcome, SettingsApi } from '@/lib/settingsApi';
 import { colors, space } from '@/theme/tokens';
 
 import { GroupLabel, LoadState, NavRow, RowGroup, SubPage, SwitchRow } from './SettingsParts';
 import { useLoad } from './useLoad';
 
-type Api = Pick<SettingsApi, 'loadAvoid' | 'saveAvoidOrgs' | 'setShareEmail'>;
+type Api = Pick<SettingsApi, 'loadAvoid' | 'setAvoidCompany' | 'setAvoidSchool' | 'setShareEmail'>;
 
 const schoolNameOf = (key: string, fallback: string): string => schoolIndex().byKey(key)?.name ?? fallback;
 
@@ -34,13 +36,14 @@ export function AvoidPage({ api, onBack, onToast }: { api: Api; onBack: () => vo
 
   const failText = (reason: string) => (reason === 'network' ? COMMON.offline : AVOID.saveFailed);
 
-  const saveOrgs = async (next: AvoidSettings) => {
+  // 한 곳씩 서버에 보낸다(0037 set_avoid_org). 화면은 먼저 바꾸고, 실패하면 되돌린다
+  const saveOrgs = async (next: AvoidSettings, send: () => Promise<Outcome>) => {
     if (!data || busy.current) return false;
     busy.current = true;
     const before = data;
     setError(null);
     setData(next);
-    const result = await api.saveAvoidOrgs(next.companies, next.schools.map((s) => s.key));
+    const result = await send();
     busy.current = false;
     if (!alive.current) return false;
     if (!result.ok) {
@@ -54,15 +57,22 @@ export function AvoidPage({ api, onBack, onToast }: { api: Api; onBack: () => vo
 
   const addCompany = async () => {
     const name = company.trim();
-    if (!data || !name || data.companies.length >= AVOID_MAX || data.companies.includes(name)) return;
-    if (await saveOrgs({ ...data, companies: [...data.companies, name] })) setCompany('');
+    // 기호 · (주) 만 다른 이름은 서버에서 한 곳(0037 org_hash) — 이미 있는 줄로 본다. 기호뿐인 이름은 서버가 받지 않는다
+    if (!data || !orgKey(name) || data.companies.length >= AVOID_MAX || data.companies.some((c) => orgKey(c) === orgKey(name))) return;
+    if (await saveOrgs({ ...data, companies: [...data.companies, name] }, () => api.setAvoidCompany(name, true))) setCompany('');
   };
-  const removeCompany = (name: string) => data && void saveOrgs({ ...data, companies: data.companies.filter((c) => c !== name) });
+  const removeCompany = (name: string) => data && void saveOrgs({ ...data, companies: data.companies.filter((c) => c !== name) }, () => api.setAvoidCompany(name, false));
   const addSchool = async (key: string, name: string) => {
     if (!data || data.schools.length >= AVOID_MAX || data.schools.some((s) => s.key === key)) return;
-    if (await saveOrgs({ ...data, schools: [...data.schools, { key, name }] })) setQuery('');
+    const school = { key, name: schoolNameOf(key, name) };
+    if (await saveOrgs({ ...data, schools: [...data.schools, school] }, () => api.setAvoidSchool(school, true))) setQuery('');
   };
-  const removeSchool = (key: string) => data && void saveOrgs({ ...data, schools: data.schools.filter((s) => s.key !== key) });
+  const removeSchool = (key: string) => {
+    const hit = data?.schools.find((s) => s.key === key);
+    if (!data || !hit) return;
+    const school = { key, name: schoolNameOf(key, hit.name) };
+    void saveOrgs({ ...data, schools: data.schools.filter((s) => s.key !== key) }, () => api.setAvoidSchool(school, false));
+  };
 
   const toggleShare = async () => {
     if (!data || busy.current) return;
@@ -93,60 +103,70 @@ export function AvoidPage({ api, onBack, onToast }: { api: Api; onBack: () => vo
             {AVOID.intro}
           </AppText>
 
-          <GroupLabel text={AVOID.companyTitle} testID="settings-avoid-company-title" />
-          <RowGroup testID="settings-avoid-companies">
-            {data.companies.map((name, i) => (
-              <View key={name} style={[styles.item, i > 0 && styles.line]} testID={`settings-avoid-company-${i}`}>
-                <AppText variant="body" style={styles.flex}>
-                  {name}
-                </AppText>
-                <TextButton label={AVOID.remove} onPress={() => removeCompany(name)} testID={`settings-avoid-company-${i}-remove`} />
-              </View>
-            ))}
-          </RowGroup>
-          {data.companies.length >= AVOID_MAX ? (
-            <AppText variant="caption" testID="settings-avoid-company-full">
-              {AVOID.full}
-            </AppText>
-          ) : (
-            <View style={styles.addRow}>
-              <View style={styles.flex}>
-                <TextField value={company} onChangeText={setCompany} placeholder={AVOID.companyPlaceholder} label={AVOID.companyTitle} returnKeyType="done" onSubmitEditing={() => void addCompany()} testID="settings-avoid-company-input" />
-              </View>
-              <Button label={AVOID.add} variant="secondary" inline disabled={company.trim() === ''} onPress={() => void addCompany()} testID="settings-avoid-company-add" />
-            </View>
-          )}
-
-          <GroupLabel text={AVOID.schoolTitle} testID="settings-avoid-school-title" />
-          <RowGroup testID="settings-avoid-schools">
-            {data.schools.map((s, i) => (
-              <View key={s.key} style={[styles.item, i > 0 && styles.line]} testID={`settings-avoid-school-${i}`}>
-                <AppText variant="body" style={styles.flex}>
-                  {schoolNameOf(s.key, s.name)}
-                </AppText>
-                <TextButton label={AVOID.remove} onPress={() => removeSchool(s.key)} testID={`settings-avoid-school-${i}-remove`} />
-              </View>
-            ))}
-          </RowGroup>
-          {data.schools.length >= AVOID_MAX ? (
-            <AppText variant="caption" testID="settings-avoid-school-full">
-              {AVOID.full}
-            </AppText>
-          ) : (
+          {data.orgOn ? (
             <>
-              <TextField value={query} onChangeText={setQuery} placeholder={AVOID.schoolPlaceholder} label={AVOID.schoolTitle} testID="settings-avoid-school-input" />
-              {hits.length > 0 ? (
-                <RowGroup testID="settings-avoid-school-hits">
-                  {hits.map((h, i) => (
-                    <NavRow key={h.school_key} label={h.name} last={i === hits.length - 1} onPress={() => void addSchool(h.school_key, h.name)} testID={`settings-avoid-school-hit-${i}`} />
-                  ))}
-                </RowGroup>
-              ) : null}
+              <GroupLabel text={AVOID.companyTitle} testID="settings-avoid-company-title" />
+              <RowGroup testID="settings-avoid-companies">
+                {data.companies.map((name, i) => (
+                  <View key={name} style={[styles.item, i > 0 && styles.line]} testID={`settings-avoid-company-${i}`}>
+                    <AppText variant="body" style={styles.flex}>
+                      {name}
+                    </AppText>
+                    <TextButton label={AVOID.remove} onPress={() => removeCompany(name)} testID={`settings-avoid-company-${i}-remove`} />
+                  </View>
+                ))}
+              </RowGroup>
+              {data.companies.length >= AVOID_MAX ? (
+                <AppText variant="caption" testID="settings-avoid-company-full">
+                  {AVOID.full}
+                </AppText>
+              ) : (
+                <View style={styles.addRow}>
+                  <View style={styles.flex}>
+                    <TextField value={company} onChangeText={setCompany} placeholder={AVOID.companyPlaceholder} label={AVOID.companyTitle} returnKeyType="done" onSubmitEditing={() => void addCompany()} testID="settings-avoid-company-input" />
+                  </View>
+                  <Button label={AVOID.add} variant="secondary" inline disabled={company.trim() === ''} onPress={() => void addCompany()} testID="settings-avoid-company-add" />
+                </View>
+              )}
+
+              <GroupLabel text={AVOID.schoolTitle} testID="settings-avoid-school-title" />
+              <RowGroup testID="settings-avoid-schools">
+                {data.schools.map((s, i) => (
+                  <View key={s.key} style={[styles.item, i > 0 && styles.line]} testID={`settings-avoid-school-${i}`}>
+                    <AppText variant="body" style={styles.flex}>
+                      {schoolNameOf(s.key, s.name)}
+                    </AppText>
+                    <TextButton label={AVOID.remove} onPress={() => removeSchool(s.key)} testID={`settings-avoid-school-${i}-remove`} />
+                  </View>
+                ))}
+              </RowGroup>
+              {data.schools.length >= AVOID_MAX ? (
+                <AppText variant="caption" testID="settings-avoid-school-full">
+                  {AVOID.full}
+                </AppText>
+              ) : (
+                <>
+                  <TextField value={query} onChangeText={setQuery} placeholder={AVOID.schoolPlaceholder} label={AVOID.schoolTitle} testID="settings-avoid-school-input" />
+                  {hits.length > 0 ? (
+                    <RowGroup testID="settings-avoid-school-hits">
+                      {hits.map((h, i) => (
+                        <NavRow key={h.school_key} label={h.name} last={i === hits.length - 1} onPress={() => void addSchool(h.school_key, h.name)} testID={`settings-avoid-school-hit-${i}`} />
+                      ))}
+                    </RowGroup>
+                  ) : null}
+                </>
+              )}
             </>
+          ) : (
+            // 서버 스위치 avoid_org 꺼짐(사전 오픈 시작 때 켬, K20 결정 2): 넣을 수 없으니 지인 차단 줄과 같은 '준비 중' 줄
+            <RowGroup testID="settings-avoid-orgs-soon">
+              <NavRow label={AVOID.companyTitle} right={SETTINGS.verificationSoon} onPress={() => onToast(SETTINGS.verificationToast)} testID="settings-avoid-company-soon" />
+              <NavRow label={AVOID.schoolTitle} right={SETTINGS.verificationSoon} last onPress={() => onToast(SETTINGS.verificationToast)} testID="settings-avoid-school-soon" />
+            </RowGroup>
           )}
 
           <RowGroup testID="settings-avoid-contacts">
-            {/* 지인 차단: CK11 시트(동의문구 4-11) → 주소록 비교. 주소록 모듈 · 서버 함수(0037) 전이라 '준비 중'(인증 서류 줄과 같은 글) */}
+            {/* 지인 차단: CK11 시트(동의문구 4-11) → 주소록 비교. 서버 함수는 0037 이름으로 맞춤(settingsApi.syncContacts 등) · 주소록 모듈 · 기기 해시 전이라 '준비 중'(인증 서류 줄과 같은 글) */}
             <NavRow label={AVOID.contactTitle} right={SETTINGS.verificationSoon} last onPress={() => onToast(SETTINGS.verificationToast)} testID="settings-avoid-contact" />
           </RowGroup>
 

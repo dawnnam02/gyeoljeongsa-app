@@ -50,5 +50,21 @@ export function nextSaleOpen(matchAt: number): number {
 export const canCancel = (s: Pick<BoardingState, 'ticket' | 'round' | 'now'>): boolean =>
   !!s.ticket && !!s.round && s.ticket.roundNo === s.round.no && s.round.saleCloseAt !== null && s.now < s.round.saleCloseAt;
 
+// 탑승 취소가 받아들여진 바로 뒤(0037 result 'credited'): 탑승권을 내려놓고 크레딧 1장을 더한다 → T1(판매 중)으로.
+//  서버 값을 다시 읽기 전 한순간만 쓰는 값이라 다른 칸은 그대로 둔다
+export const afterCancel = (s: BoardingState, credited: boolean): BoardingState => ({ ...s, ticket: null, credits: s.credits + (credited ? 1 : 0) });
+
+// 계약 설명 확인 기록(R40)의 판: 화면에 실제로 보인 요약 블록 글(제목 + 줄)의 지문. 글이 한 자라도 바뀌면 판이 바뀐다.
+//  'contract-5-8-' + FNV-1a 32비트 16진 8자(서버 p_text_version 4 ~ 60자). 법무 판_관리에 5-8 판 이름이 정해지면 그 값으로 바꾼다
+export function contractVersion(lines: readonly string[]): string {
+  let h = 0x811c9dc5;
+  const text = lines.join('\n');
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return `contract-5-8-${h.toString(16).padStart(8, '0')}`;
+}
+
 // 크레딧으로 탈 수 있나
 export const canUseCredit = (s: Pick<BoardingState, 'credits'>): boolean => s.credits > 0;

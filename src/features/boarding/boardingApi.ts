@@ -9,6 +9,7 @@
 //      past: [{ round_no, partner_name, chat_id, open }] }
 //  buy_ticket({ p_request_id, p_use_credit })  RPC → { ok: true, round_no } · 오류 sold_out · already_boarded · sale_closed · not_eligible · no_credit
 //  list_credit_ledger()  RPC → { balance, items: [{ at, delta(+1 · −1), reason: 'balance' | 'no_fit' | 'gap' | 'used', round_no }] }
+//  cancel_ticket_seat · ack_ticket_contract 는 0037 확정 이름(아래 CANCEL_TICKET_RPC · ACK_CONTRACT_RPC). 위 셋은 아직 가정 이름(서버 0030 get_ticket_state · hold_ticket_seat · board_with_credit · list_ticket_history 와 대조 필요 — 팀장 몫)
 //  · 아는 키만 읽는다. 남은 좌석 수 · 정원 · 순번 · 점수 · 등급 같은 키는 와도 버린다(척추 4번 질문 · 재촉 0)
 //  · 로그에는 이벤트 이름과 코드만
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -49,8 +50,14 @@ export type CreditLoad = { ok: true; balance: number; items: CreditItem[] } | { 
 export const BOARDING_RPC = 'get_boarding_state'; // 가정 이름(0030 · 0032)
 export const BUY_TICKET_RPC = 'buy_ticket'; // 가정 이름(0030)
 export const CREDIT_LEDGER_RPC = 'list_credit_ledger'; // 가정 이름(0030)
-export const CANCEL_TICKET_RPC = 'cancel_ticket_seat'; // 백엔드 R_변경기록 3장 0037 B 설계 이름 public.cancel_ticket_seat(round) — 인자 이름 p_round_no 는 앱 제안(미확인). cancel_ticket_seat(p_round_no) → { ok, refund: 'store' | 'credit' } · 오류 sale_closed · not_boarded. 백엔드 0037 에서 맞춘다
-export type CancelResult = { ok: true; refund: 'store' | 'credit' } | { ok: false; reason: 'closed' | 'network' | 'server' };
+// 0037 확정(D-202): public.cancel_ticket_seat(p_round_no integer) → { ok, round_no, paid_by, result: 'credited', lot_id }
+//  · 결제로 탔든 크레딧으로 탔든 크레딧 1장(기한 없음) — 돈은 회원이 결제한 스토어에 직접 요청. 오류 closed(마감 · 공개 뒤) · not_found(이 회차에 탄 자리 없음) · forbidden · invalid_value
+export const CANCEL_TICKET_RPC = 'cancel_ticket_seat';
+export type CancelResult = { ok: true; roundNo: number; credited: boolean } | { ok: false; reason: 'closed' | 'network' | 'server' };
+// 0037 [9] H 계약 설명 확인 기록(R40 · 약관 제14조의2 ③): ack_ticket_contract(p_round_no integer, p_text_version text 4 ~ 60자) → { ok } · 오류 invalid_value · forbidden
+//  T1 결제 시트의 계약 요약 블록을 보인 뒤, 결제(구매 · 크레딧 탑승) 바로 전에 부른다. 기록이 남지 않으면 결제로 넘어가지 않는다
+export const ACK_CONTRACT_RPC = 'ack_ticket_contract';
+export type AckResult = { ok: true } | { ok: false; reason: 'network' | 'server' };
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const pick = <T extends string>(v: unknown, list: readonly T[]): T | null => (typeof v === 'string' && (list as readonly string[]).includes(v) ? (v as T) : null);
@@ -159,7 +166,8 @@ export function createBoardingApi(client: Pick<SupabaseClient, 'rpc'>, deviceNow
       const roundNo = isRecord(data) ? int(data.round_no) : null;
       return isRecord(data) && data.ok === true && roundNo !== null ? { ok: true, roundNo } : { ok: false, reason: 'server' };
     },
-    // T2 [탑승 취소](마감 전만). 마감이 지났거나 탄 적이 없으면 closed(화면은 마감 글 + 다시 읽기)
+    // T2 [탑승 취소](마감 전만). 마감이 지났거나(closed) 이 회차에 탄 자리가 없으면(not_found) closed(화면은 마감 글 + 다시 읽기)
+    //  성공 = result 'credited'(크레딧 1장). 돌려받는 길은 하나라 paid_by · lot_id 는 읽지 않는다
     async cancel(roundNo: number): Promise<CancelResult> {
       const { data, error } = await client.rpc(CANCEL_TICKET_RPC, { p_round_no: roundNo });
       if (error) {
@@ -167,9 +175,20 @@ export function createBoardingApi(client: Pick<SupabaseClient, 'rpc'>, deviceNow
         safeLog({ event: 'boarding.cancel.fail', code: f.code ?? (f.network ? 'network' : 'unknown') });
         if (f.network) return { ok: false, reason: 'network' };
         const m = String(error.message ?? '');
-        return { ok: false, reason: m === 'sale_closed' || m === 'not_boarded' ? 'closed' : 'server' };
+        return { ok: false, reason: m === 'closed' || m === 'not_found' ? 'closed' : 'server' };
       }
-      return isRecord(data) && data.ok === true ? { ok: true, refund: data.refund === 'credit' ? 'credit' : 'store' } : { ok: false, reason: 'server' };
+      if (!isRecord(data) || data.ok !== true) return { ok: false, reason: 'server' };
+      return { ok: true, roundNo: int(data.round_no) ?? roundNo, credited: data.result === 'credited' };
+    },
+    // T1 계약 설명 확인 기록(R40). 같은 회차에 여러 번 불러도 된다(서버는 줄을 더하고, 거래가 생기면 가장 최근 줄에 거래 번호를 잇는다)
+    async ackContract(roundNo: number, textVersion: string): Promise<AckResult> {
+      const { data, error } = await client.rpc(ACK_CONTRACT_RPC, { p_round_no: roundNo, p_text_version: textVersion });
+      if (error) {
+        const f = readDbFailure(error);
+        safeLog({ event: 'boarding.ack.fail', code: f.code ?? (f.network ? 'network' : 'unknown') });
+        return { ok: false, reason: f.network ? 'network' : 'server' };
+      }
+      return isRecord(data) && data.ok === true ? { ok: true } : { ok: false, reason: 'server' };
     },
     async ledger(): Promise<CreditLoad> {
       const { data, error } = await client.rpc(CREDIT_LEDGER_RPC);

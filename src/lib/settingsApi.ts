@@ -6,6 +6,7 @@
 //  · 선택 동의 CK4 · CK9 · CK11 ~ CK16(03 밖 선택 동의, L17A). CK10(내 등급 보이기)은 D-197 폐지 — 읽지도 쓰지도 않는다(옛 기록은 서버에 그대로, 탈퇴 때 함께 삭제): 켜기 = consents 에 동의 행 넣기(지금 판), 끄기 = revoke_consent(p_item). 필수 칸 철회는 서버가 required_consent 로 막는다
 //    CK11 ~ CK16 판은 config/laterConsent.ts(판_관리 2-1)
 //  · 탈퇴 delete-account { action:'start' } → 인증번호 발송, { action:'confirm', token } → 탈퇴 확정(즉시 비노출 · 30일 뒤 삭제 · 세션 정리)
+//  · 12-5 아는 분 피하기: 0037 [7] F 앱 함수 7개(AVOID_RPC) — 피할 회사 · 학교 이름은 기기에(lib/avoidLocal), 서버는 해시 · 개수만
 //  · 응답에서 아는 키만 읽는다. 로그는 이벤트 이름과 코드만(이름 · 이메일 · 인증번호 금지)
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -13,6 +14,7 @@ import { CONSENT_TEXT_VERSIONS } from '@/config/consent';
 import { LATER_CONSENT_VERSIONS } from '@/config/laterConsent';
 import { LATER_CONSENT_CODES, type ConsentCode, type LaterConsentCode } from '@/content/types';
 
+import { memoryAvoidStore, orgKey, type AvoidLocal, type AvoidSchool, type AvoidStore } from './avoidLocal';
 import { loadActiveConsents, recordConsents } from './consentApi';
 import { safeLog } from './log';
 import { readDbFailure, readFunctionFailure } from './serverError';
@@ -70,21 +72,70 @@ export function parseReports(raw: unknown): MyReport[] | null {
   return out;
 }
 
-export type AvoidSettings = { companies: string[]; schools: { key: string; name: string }[]; shareEmail: boolean };
-// 12-5 응답 읽기: 모르는 모양이면 null(서버 오류로 본다). 이름 · 키만 읽고 다른 키는 버린다
-export function parseAvoid(raw: unknown): AvoidSettings | null {
+// 12-5 아는 분 피하기 — 0037 [7] F 앱 함수 7개(확정 이름 · 인자). 이름 · 인자는 이 표 한 곳에서만 쓴다
+export const AVOID_RPC = {
+  state: 'get_contact_block_state', // () → { on, avoid_org_on, enabled, avoid_on, auto_sync, share_my_key, last_synced_at, avoid_company, avoid_school, can_sync_today }
+  sync: 'sync_contact_hashes', // (p_sync_id uuid, p_hashes text[] 500 이하 · 16진 64자, p_mode 'add' | 'replace', p_final) → { ok } · 오류 feature_off · consent_required(CK11) · rate_limited(하루 3번) · too_large · invalid_value
+  options: 'set_contact_block_options', // (p_auto_sync, p_share_my_key, p_enabled, p_avoid_on — 보내지 않은 칸은 그대로) → { ok } · p_share_my_key false 면 서버가 내 비교 키를 바로 지움
+  clearContacts: 'clear_contact_links', // () → { ok } — 주소록으로 숨긴 목록 지움(CK11 철회와 같은 효과)
+  prompted: 'mark_contact_prompted', // () → { ok } — 안내 시트를 보인 시각
+  setOrg: 'set_avoid_org', // (p_kind 'company' | 'school', p_name 60자 이하, p_on) → { ok, count } · 오류 feature_off(스위치 avoid_org 꺼짐) · too_many(5곳) · invalid_value
+  clearOrgs: 'clear_avoid_orgs', // () → { ok }
+} as const;
+
+export type ContactState = { contactOn: boolean; orgOn: boolean; enabled: boolean; avoidOn: boolean; autoSync: boolean; shareMyKey: boolean; companyCount: number; schoolCount: number; canSyncToday: boolean };
+// get_contact_block_state 읽기: 모르는 모양이면 null(서버 오류). 스위치는 켜짐(true)일 때만 켜짐 · 회원 설정은 서버 처음값(켜짐) 쪽
+export function parseContactState(raw: unknown): ContactState | null {
   if (!isRecord(raw)) return null;
-  const companies = Array.isArray(raw.companies) ? raw.companies.filter((c): c is string => typeof c === 'string' && c.trim() !== '') : null;
-  const schools = Array.isArray(raw.schools) ? raw.schools.filter((x): x is { key: string; name: string } => isRecord(x) && typeof x.key === 'string' && typeof x.name === 'string').map((x) => ({ key: x.key, name: x.name })) : null;
-  if (!companies || !schools) return null;
-  return { companies, schools, shareEmail: raw.share_email !== false };
+  const count = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) && v > 0 ? v : 0);
+  return {
+    contactOn: raw.on === true,
+    orgOn: raw.avoid_org_on === true,
+    enabled: raw.enabled !== false,
+    avoidOn: raw.avoid_on !== false,
+    autoSync: raw.auto_sync === true,
+    shareMyKey: raw.share_my_key !== false,
+    companyCount: count(raw.avoid_company),
+    schoolCount: count(raw.avoid_school),
+    canSyncToday: raw.can_sync_today !== false,
+  };
 }
 
-export function createSettingsApi(client: SupabaseClient, appVersion = 'dev') {
+// 화면 값: 이름은 이 기기(lib/avoidLocal) · 스위치 · 이메일 비교는 서버
+export type AvoidSettings = AvoidLocal & { shareEmail: boolean; orgOn: boolean };
+export type ContactOptions = { autoSync?: boolean; shareMyKey?: boolean; enabled?: boolean; avoidOn?: boolean };
+export type ContactSyncFailure = SettingsFailure | 'off' | 'consent' | 'limit' | 'invalid';
+const HASH64 = /^[0-9a-f]{64}$/;
+
+export function createSettingsApi(client: SupabaseClient, appVersion = 'dev', avoidStore: AvoidStore = memoryAvoidStore()) {
   const dbFail = (error: { code?: string | null; message?: string | null }, event: string): SettingsFailure => {
     const f = readDbFailure(error);
     safeLog({ event, code: f.code ?? (f.network ? 'network' : 'unknown') });
     return f.network ? 'network' : 'server';
+  };
+
+  // 기기 목록 열쇠(회원 id). 세션이 없으면 빈 이름(목록은 비어 보이고, 서버 쪽 함수가 forbidden 으로 막는다)
+  const myId = async (): Promise<string> => {
+    const { data } = await client.auth.getSession();
+    return data.session?.user?.id ?? '';
+  };
+  const setOrg = async (kind: 'company' | 'school', name: string, on: boolean, next: (l: AvoidLocal) => AvoidLocal): Promise<Outcome> => {
+    const { error } = await client.rpc(AVOID_RPC.setOrg, { p_kind: kind, p_name: name, p_on: on });
+    if (error) return { ok: false, reason: dbFail(error, 'settings.avoid.save.fail') };
+    const id = await myId();
+    await avoidStore.write(id, next(await avoidStore.read(id)));
+    return { ok: true };
+  };
+
+  // 회원 설정 묶음(set_contact_block_options) — 보낸 칸만 바꾼다(서버는 null = 그대로)
+  const setContactOptions = async (o: ContactOptions): Promise<Outcome> => {
+    const args: Record<string, boolean> = {};
+    if (o.autoSync !== undefined) args.p_auto_sync = o.autoSync;
+    if (o.shareMyKey !== undefined) args.p_share_my_key = o.shareMyKey;
+    if (o.enabled !== undefined) args.p_enabled = o.enabled;
+    if (o.avoidOn !== undefined) args.p_avoid_on = o.avoidOn;
+    const { error } = await client.rpc(AVOID_RPC.options, args);
+    return error ? { ok: false, reason: dbFail(error, 'settings.avoid.options.fail') } : { ok: true };
   };
 
   const invokeDelete = async (body: Record<string, unknown>, event: string) => {
@@ -180,23 +231,62 @@ export function createSettingsApi(client: SupabaseClient, appVersion = 'dev') {
       return { ok: false, reason: 'server' };
     },
 
-    // 12-5 아는 분 피하기(D-200 ① · D-201, 정책 P2-05a). 서버 함수 이름 · 인자는 앱 제안(0037 전, 백엔드 R 변경기록과 맞출 몫) — 데모는 lib/settingsDemo.ts
-    //  get_avoid_settings() → { companies: text[], schools: [{ key, name }], share_email: bool }
-    //  set_avoid_orgs(p_companies text[], p_schools text[]) → 회사 · 학교 각각 5곳까지(서버가 한 번 더 막음 avoid_full)
-    //  set_share_email(p_on bool) → 끄면 서버가 내 비교 키를 지운다
+    // 12-5 아는 분 피하기(D-200 ① · D-201, 정책 P2-05a) — 0037 [7] F 확정 함수(AVOID_RPC). 데모는 lib/settingsDemo.ts
+    //  피할 회사 · 학교: 서버에는 한 곳씩 set_avoid_org(이름은 서버에서 해시로만) · 이름 목록은 이 기기(avoidStore)
     async loadAvoid(): Promise<Loaded<AvoidSettings>> {
-      const { data, error } = await client.rpc('get_avoid_settings');
+      const { data, error } = await client.rpc(AVOID_RPC.state);
       if (error) return { ok: false, reason: dbFail(error, 'settings.avoid.load.fail') };
-      const parsed = parseAvoid(data);
-      return parsed ? { ok: true, data: parsed } : { ok: false, reason: 'server' };
+      const st = parseContactState(data);
+      if (!st) return { ok: false, reason: 'server' };
+      const local = await avoidStore.read(await myId());
+      return { ok: true, data: { ...local, shareEmail: st.shareMyKey, orgOn: st.orgOn } };
     },
-    async saveAvoidOrgs(companies: readonly string[], schools: readonly string[]): Promise<Outcome> {
-      const { error } = await client.rpc('set_avoid_orgs', { p_companies: [...companies], p_schools: [...schools] });
-      return error ? { ok: false, reason: dbFail(error, 'settings.avoid.save.fail') } : { ok: true };
+    async loadContactState(): Promise<Loaded<ContactState>> {
+      const { data, error } = await client.rpc(AVOID_RPC.state);
+      if (error) return { ok: false, reason: dbFail(error, 'settings.contact.load.fail') };
+      const st = parseContactState(data);
+      return st ? { ok: true, data: st } : { ok: false, reason: 'server' };
     },
-    async setShareEmail(on: boolean): Promise<Outcome> {
-      const { error } = await client.rpc('set_share_email', { p_on: on });
-      return error ? { ok: false, reason: dbFail(error, 'settings.avoid.share.fail') } : { ok: true };
+    // 피할 회사 한 곳 넣기(on) · 빼기. 서버가 받으면 기기 목록도 고친다
+    async setAvoidCompany(name: string, on: boolean): Promise<Outcome> {
+      const n = name.trim();
+      const same = (c: string) => orgKey(c) === orgKey(n); // 서버에서 한 곳인 이름(기호 · (주) 차이)은 기기 목록에서도 한 줄
+      return setOrg('company', n, on, (l) => ({ ...l, companies: on ? [...l.companies.filter((c) => !same(c)), n] : l.companies.filter((c) => !same(c)) }));
+    },
+    // 피할 학교 한 곳(내장 학교 목록의 키 · 이름 — 서버는 학교 표 이름과 비교하므로 이름을 보낸다)
+    async setAvoidSchool(school: AvoidSchool, on: boolean): Promise<Outcome> {
+      return setOrg('school', school.name, on, (l) => ({ ...l, schools: on ? [...l.schools.filter((s) => s.key !== school.key), { key: school.key, name: school.name }] : l.schools.filter((s) => s.key !== school.key) }));
+    },
+    async clearAvoidOrgs(): Promise<Outcome> {
+      const { error } = await client.rpc(AVOID_RPC.clearOrgs);
+      if (error) return { ok: false, reason: dbFail(error, 'settings.avoid.clear.fail') };
+      await avoidStore.write(await myId(), { companies: [], schools: [] });
+      return { ok: true };
+    },
+    // '내 이메일을 다른 분의 지인 비교에 쓰기'(처음 켜짐). 끄면 서버가 내 비교 키를 바로 지운다
+    setShareEmail: (on: boolean): Promise<Outcome> => setContactOptions({ shareMyKey: on }),
+    setContactOptions,
+    // 지인 차단(CK11 · 주소록): 기기에서 만든 키(SHA-256('kjs1|' + 소문자 이메일) 16진 64자)를 500개씩. 응답은 { ok } 뿐 — 맞은 수 · 누구는 오지 않는다
+    //  주소록 모듈 · 해시 만들기는 아직 없다(설정 줄은 '준비 중'). 함수 이름 · 인자만 0037 에 맞춰 둔다
+    async syncContacts(syncId: string, hashes: readonly string[], mode: 'add' | 'replace', final: boolean): Promise<Outcome<ContactSyncFailure>> {
+      if (hashes.length > 500 || hashes.some((h) => !HASH64.test(h))) return { ok: false, reason: 'invalid' };
+      const { error } = await client.rpc(AVOID_RPC.sync, { p_sync_id: syncId, p_hashes: [...hashes], p_mode: mode, p_final: final });
+      if (!error) return { ok: true };
+      const reason = dbFail(error, 'settings.contact.sync.fail');
+      const m = messageCode(error);
+      if (m === 'feature_off') return { ok: false, reason: 'off' };
+      if (m === 'consent_required') return { ok: false, reason: 'consent' };
+      if (m === 'rate_limited') return { ok: false, reason: 'limit' };
+      if (m === 'too_large' || m === 'invalid_value') return { ok: false, reason: 'invalid' };
+      return { ok: false, reason };
+    },
+    async clearContacts(): Promise<Outcome> {
+      const { error } = await client.rpc(AVOID_RPC.clearContacts);
+      return error ? { ok: false, reason: dbFail(error, 'settings.contact.clear.fail') } : { ok: true };
+    },
+    async markContactPrompted(): Promise<Outcome> {
+      const { error } = await client.rpc(AVOID_RPC.prompted);
+      return error ? { ok: false, reason: dbFail(error, 'settings.contact.prompted.fail') } : { ok: true };
     },
 
     // 이 기기의 로그인만 끊는다(로그아웃 · 탈퇴 확정 뒤). 서버 요청이 실패해도 기기에서는 지워진다

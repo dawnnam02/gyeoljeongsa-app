@@ -5,9 +5,11 @@
 //  · 탑승권 받기 순간(6-3 ① · 2안 '지면' 핵심 ①, 명세 4-2): 결제 시트 520 edInOut + 시트 제목 줄 가림 → 결제 확인 햅틱 Success → 시트 340 으로 닫힘 →
 //    도장 자리에 로고 타일 52 가 잉크 번짐(560) · 상태 카드 제목 줄 가림(200 뒤) · 부제(280 뒤) · 남은 날(360 뒤)이 위에서 걷힘. 동작 줄이기면 모두 투명도 150
 //  · 결제 시트 아래 '결혼중개 계약 설명 보기'(L17A · D-190 ⑤, 약관 제14조의2 ③ BR09): 약관 제14조의2 글 그대로 연다(사기 전 설명 · 다시 보기 자리)
+//  · 결제 버튼을 누르면 먼저 계약 설명 확인 기록(0037 ack_ticket_contract, 판 = 보인 요약 블록 글의 지문) → 남으면 결제. 실패하면 결제하지 않고 오류 한 줄
+//  · [탑승 취소] 성공(0037 result 'credited') → 크레딧 1장이 늘고 T1(판매 중)
 //  · 장면 그림(D42-I 4안 · D-176): 상태 카드 위에 상태마다 한 장(boardingArt.ts SCENE_OF). 불러오기 실패는 '오류' 그림. 살 수 없음(ineligible)은 그림 없음
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
@@ -28,12 +30,19 @@ import { colors, size, space } from '@/theme/tokens';
 import type { BoardingApi, BoardingLoad, BoardingState, BuyFailure } from './boardingApi';
 import { SCENE_OF } from './boardingArt';
 import { BOARDING } from './boardingCopy';
-import { arriveWhen, boardingView, canCancel, canUseCredit, daysUntil, nextSaleOpen, whenText, type BoardingView } from './boardingLogic';
+import { afterCancel, arriveWhen, boardingView, canCancel, canUseCredit, contractVersion, daysUntil, nextSaleOpen, whenText, type BoardingView } from './boardingLogic';
 import { TicketCard } from './TicketCard';
 import { ArriveView } from './ArriveView';
 import { defaultOpenedRounds, useOpenedRounds, type OpenedRounds } from './openedRounds';
 
-export type BoardingDeps = { api: Pick<BoardingApi, 'load' | 'buy'> & Partial<Pick<BoardingApi, 'cancel'>>; newId: () => string; toastMs?: number; opened?: OpenedRounds; demoBar?: (reload: () => void) => ReactNode };
+export type BoardingDeps = { api: Pick<BoardingApi, 'load' | 'buy'> & Partial<Pick<BoardingApi, 'cancel' | 'ackContract'>>; newId: () => string; toastMs?: number; opened?: OpenedRounds; demoBar?: (reload: () => void) => ReactNode };
+
+// 계약 설명 요약 블록에 실제로 그리는 줄(값이 빈 자리 글이 든 줄은 숨김). 확인 기록의 판(contractVersion)도 이 줄로 만든다
+const contractLines = (): { i: number; text: string }[] =>
+  BOARDING.sheet.contractSummary.flatMap((line, i) => {
+    const f = fillText(line);
+    return f.missing ? [] : [{ i, text: f.text }];
+  });
 
 // 새 주소(탑승권 · 공개 · 크레딧)는 이 파일이 만든 라우트라 자동 주소 타입에 아직 없을 수 있다 — 문자열 그대로 넘긴다
 export const hrefOf = (path: string): Href => path as unknown as Href;
@@ -77,10 +86,31 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   const arrivedRound = view === 'matched' && state?.result?.kind === 'matched' ? state.result.roundNo : null;
   const arriving = arrivedRound !== null && opened.ready && !opened.rounds.includes(arrivedRound);
 
+  const summary = contractLines();
+  // 결제 전 계약 설명 확인 기록(0037 ack_ticket_contract · R40). 요약 블록을 보인 시트에서 결제 버튼을 누를 때 — 남지 않으면 결제로 넘어가지 않는다.
+  //  결제가 실패해 다시 누르면 같은 기록을 쓴다(같은 회차 · 같은 판). 결제가 끝나면 비운다
+  const acked = useRef<string | null>(null);
+  const ackFirst = async (roundNo: number): Promise<BuyFailure | null> => {
+    if (!deps.api.ackContract) return null;
+    const version = contractVersion([BOARDING.sheet.contractSummaryTitle, ...summary.map((l) => l.text)]);
+    const key = `${roundNo}|${version}`;
+    if (acked.current === key) return null;
+    const a = await deps.api.ackContract(roundNo, version);
+    if (!a.ok) return a.reason;
+    acked.current = key;
+    return null;
+  };
+
   const buy = async (useCredit: boolean) => {
-    if (busy) return;
+    if (busy || !state?.round) return;
     setBusy(true);
     setError(null);
+    const ackFail = await ackFirst(state.round.no);
+    if (ackFail) {
+      setBusy(false);
+      setError(ackFail);
+      return;
+    }
     const r = await deps.api.buy(deps.newId(), useCredit);
     setBusy(false);
     if (!r.ok) {
@@ -89,6 +119,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
       return;
     }
     haptic.success(); // 구매가 확인됨(D25 4장)
+    acked.current = null; // 확인 기록은 결제 한 번에 하나(서버가 그 거래에 잇는다) — 취소 뒤 다시 살 때는 새로 남긴다
     setSheet(false);
     setStamp((n) => n + 1);
     setToast(BOARDING.bought);
@@ -108,6 +139,8 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
       if (r.reason === 'closed') reload();
       return;
     }
+    // 0037 result 'credited': 크레딧 1장이 늘고 T1(판매 중)으로 — 서버 값을 다시 읽기 전에도 같은 모습
+    setLoad((l) => (l?.ok ? { ok: true, state: afterCancel(l.state, r.credited) } : l));
     setToast(BOARDING.cancel.done);
     reload();
   };
@@ -185,14 +218,11 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
               <AppText variant="bodyBold" accessibilityRole="header">
                 {BOARDING.sheet.contractSummaryTitle}
               </AppText>
-              {BOARDING.sheet.contractSummary.map((line, i) => {
-                const f = fillText(line);
-                return f.missing ? null : (
-                  <AppText key={line} variant="caption" tone="text" testID={`boarding-contract-summary-${i}`}>
-                    {f.text}
-                  </AppText>
-                );
-              })}
+              {summary.map((l) => (
+                <AppText key={l.i} variant="caption" tone="text" testID={`boarding-contract-summary-${l.i}`}>
+                  {l.text}
+                </AppText>
+              ))}
             </Card>
             <TextButton label={BOARDING.sheet.contract} onPress={() => setContract(true)} testID="boarding-contract" />
             {error ? (

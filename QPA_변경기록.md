@@ -246,3 +246,49 @@
 - `CHECK_COPY_DOC` 환경 변수: 다른 판 카피로 대조해 볼 때만(평소엔 비움)
 - 흉내 시험: 표시된 줄(`폐지(D-199)` 끝 칸) 424줄을 15장으로 옮긴 카피 → check:copy 99/0 · 카피 읽는 시험 7묶음 249/249. 같은 흉내 카피에서 되돌림을 끄면 93/6 → 되돌림이 막아 줌
 - 지금 15장에 있는 49줄도 원래 자리 소제목 49/49 찾음(못 찾으면 그 줄은 대조에서 빠짐 — 15장 줄 둘째 칸은 소제목 이름 그대로여야 함, 마케팅 몫)
+
+## 3부-마 0037 함수 이름 맞춤 (D-199 ~ D-202 R-A 후속, 10-27, 마감 10-29)
+- 기준: backend/migrations/0037_v5_legal.sql public 함수 정의(읽기만) · backend/R_변경기록.md 3장 · 위 '서버 함수 이름' 표
+
+| 단계 | 상태 |
+|---|---|
+| 0 읽기(0037 함수 · R 3장 · 함수 이름 표) | 끝 |
+| 1 탑승 취소 cancel_ticket_seat(p_round_no) → result 'credited' | 끝(코드) — boardingApi · boardingLogic.afterCancel · BoardingScreen · demo/boardingDemo |
+| 2 아는 분 피하기 7개 · ack_ticket_contract | 끝(코드) — settingsApi AVOID_RPC · lib/avoidLocal(새) · services · AvoidPage · settingsDemo · 결제 전 ack · tsc 0 |
+| 3 CK10 · v4 회수 12개 grep 표 | 끝 — 아래 표(10 상대 프로필 직접 주소 길 하나는 팀장 판단) |
+| 4a 팀장 덧붙임 D-203(법무 17:12 ~ 17:14 약관 · 처리방침, L20 23장 #32) | 끝 — `npm run gen:legal -- --fingerprints`: 바뀐 것 legalTerms.ts · legalPrivacy.ts · consent.ts 지문 2줄(terms · privacy). 동의 판 13개 그대로 |
+| 4 시험(tsc · jest · check:copy · check:tokens) | 끝 — 아래 '3부-마 시험' |
+| 5 커밋(푸시 0) | 끝 — 3부-마 커밋 |
+
+### 3부-마 함수 이름 표(0037 확정 — 위 '서버 함수 이름' 표를 갈음)
+| 일 | 앱이 부르는 이름 · 인자 | 앱 자리 |
+|---|---|---|
+| 탑승 취소 | `cancel_ticket_seat({ p_round_no })` → `{ ok, round_no, paid_by, result: 'credited', lot_id }` · 오류 `closed` · `not_found` → 마감 글 | `boardingApi.cancel` → `{ ok, roundNo, credited }` · 화면은 `afterCancel`(탑승권 내려놓음 · 크레딧 +1 → T1) 뒤 다시 읽기 |
+| 계약 설명 확인(R40) | `ack_ticket_contract({ p_round_no, p_text_version })` → `{ ok }` | `boardingApi.ackContract` · T1 결제 버튼 → ack → 결제(실패면 결제 0 · 결제 오류 글). 판 = `contract-5-8-` + 보인 요약 블록 글 지문 8자(`boardingLogic.contractVersion`) |
+| 아는 분 피하기 상태 | `get_contact_block_state()` | `settingsApi.loadAvoid` · `loadContactState`(스위치 `avoid_org_on` · `share_my_key` · 개수) |
+| 피할 회사 · 학교 | `set_avoid_org({ p_kind, p_name, p_on })` · `clear_avoid_orgs()` | `setAvoidCompany` · `setAvoidSchool`(학교는 내장 목록 이름) · `clearAvoidOrgs` — 이름 목록은 기기(`lib/avoidLocal`, 앱 AsyncStorage · 웹 메모리, 회원별) |
+| 내 이메일 비교 · 설정 묶음 | `set_contact_block_options({ p_auto_sync?, p_share_my_key?, p_enabled?, p_avoid_on? })` | `setShareEmail` · `setContactOptions`(보낸 칸만) |
+| 지인 차단(주소록) | `sync_contact_hashes({ p_sync_id, p_hashes, p_mode, p_final })` · `clear_contact_links()` · `mark_contact_prompted()` | `syncContacts` · `clearContacts` · `markContactPrompted` — 화면 줄은 '준비 중' 그대로(주소록 모듈 · 기기 해시 없음) |
+| 스위치 | `avoid_org` 꺼짐(live 처음값)이면 12-5 회사 · 학교 자리 = '준비 중' 줄 2개(지인 차단 줄과 같은 글) · 데모는 켜짐(장면 `avoidoff` · `v4off` 로 꺼짐) | `AvoidPage` |
+
+### 3부-마 CK10 · v4 실행권 회수 12개 — 앱이 부르는 곳(grep, 시험 파일 뺌)
+| 함수(0037 [10] 회수) | 부르는 곳 | 화면 | 스위치로 막힘 |
+|---|---|---|---|
+| list_today_recommendations | `lib/recsApi.loadToday` · `lib/featuredApi.loadToday` | 09 추천 | 예 — `(tabs)/recommendations` V4Gate `v4_daily_recs` |
+| list_likes · accept_like · decline_like | `lib/likesApi.loadAll` · `accept` · `decline` | 11 호감 · 10 상대 프로필 | 11 예(V4Gate `v4_likes`) · 10 은 아래 '10' 줄 |
+| send_like | `lib/recsApi.sendLike` | 10 상대 프로필 | 아래 '10' 줄 |
+| get_partner_grade | `lib/gradeApi.partnerGrade` | 10 상대 프로필 | from=reveal(v5) 길은 부르지 않음(QP-01) · 그 밖은 아래 '10' 줄 · 실패하면 null(화면 영향 0) |
+| get_shop_state · demo_purchase · demo_restore_purchases · demo_end_subscription · get_match_once_preview · use_match_once | `lib/shopApi` 6곳(matchPreview 는 타입에만, 화면 호출 0) | 16 상점 · 구매 시트 · 하위 쪽 · 1회 매칭 시트 | 예 — `(tabs)/shop` V4Gate `v4_shop`. 16-G 내 등급(v5)은 gradeApi 만(상점 함수 0) |
+| **10 상대 프로필 `/candidate/[id]`** | from=reveal 이 아닌 길(09 · 11 에서 엶) | 10 | **라우트 자체엔 스위치 없음** — 들어가는 버튼(09 · 11)은 V4Gate 로 막힘. 주소를 직접 치면(웹) 열리고, 0037 뒤엔 서버가 권한 없음으로 막아 [호감 보내기] · [수락] 이 실패 글만 냄(자료 노출 0). 막을지는 팀장 판단 |
+| CK10 | 부르는 곳 0 — 주석 · 데모 서버 허용 목록(`settingsDemo` OPTIONAL_ITEMS · `demoBackend` 동의 검사)만. 앱 선택 동의 목록 = CK4 · CK9 · CK11 ~ CK16 | — | — |
+
+### 3부-마 시험 (10-27 저녁, gen:legal D-203 뒤)
+| 시험 | 결과 |
+|---|---|
+| tsc | 0 |
+| eslint(바꾼 파일 11개) | 0 |
+| jest | 87묶음 1615/1615(새 r0037Calls 15 · raFinish 취소 응답 기대값 1줄 고침) |
+| check:copy · grade | 99/0 · 통과 |
+| check:tokens | 5/0 |
+| 웹 빌드 | 하지 않음 — 데모 경로는 jest(데모 클라이언트)로 확인. web-w6 은 결제 전에 ack 가 하나 더 돌 뿐(데모 처리기 있음) |
+- 덧: 처음 jest 전부를 멈춘 뒤 남은 jest 프로세스(내 것)가 같은 기록 파일에 써서 '자식 프로세스 시작 실패(3221225794)' 묶음이 섞여 보였음 → 그 프로세스를 끝내고 다시 돌린 결과가 위 줄

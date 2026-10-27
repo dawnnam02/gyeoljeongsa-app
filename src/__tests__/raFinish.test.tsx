@@ -88,7 +88,7 @@ describe('T1 · T2 판매 마감 · 탑승 취소(D-200 ④ · D-201)', () => {
     const { api } = await boarding('raboardoncredit@email.com');
     const before = await api.ledger();
     expect(before.ok && before.balance).toBe(0);
-    expect(await api.cancel(1)).toEqual({ ok: true, refund: 'credit' });
+    expect(await api.cancel(1)).toEqual({ ok: true, roundNo: 1, credited: true }); // 0037 result 'credited'
     const after = await api.ledger();
     expect(after.ok && after.balance).toBe(1);
     expect(after.ok && after.items[0].reason).toBe('cancelled');
