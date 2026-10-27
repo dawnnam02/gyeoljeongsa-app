@@ -406,8 +406,8 @@
 | 단계 | 상태 |
 |---|---|
 | ② 0039 응답 5종 | 끝(커밋 ②) — 아래 '② 표' |
-| ③ meetSeen | 진행 |
-| ④ 검수 결함 · 웹 | 대기 |
+| ③ meetSeen | 끝(커밋 ③) — meetSeen 이 appStateStorage(SecureStore 조각 · 웹 메모리) · check_sec2 P7-f 통과 |
+| ④ 검수 결함 · 웹 | 진행 |
 | ⑤ FB-014 ~ 016 | 대기 |
 | ① 종교 동의 카드 | 카피 도착 대기 |
 
@@ -422,3 +422,8 @@
 - 데모 모의 서버: boardingDemo 관문 3곳 · 판 형식 `^contract-5-8-[0-9a-f]{8}$` · reason_detail(demoBackend profileDetail: 설문 정치 → 등급 멈춤(상점 모의 processing) → 이메일 gradenew = grade_pending → 설문 종교) · shopDemo get_my_grade v5 · settingsDemo 장면 avoidnokey
 - 시험: 새 `s3sa0039.test.tsx` 10 · 고친 기대값 8묶음(gradeScreen · shopApi · s8dConnect · settingsGrade · f24DemoPeople · r3bae · b0BoardGate · w6Boarding — 잠금 화면은 옛 서버 응답을 끼워 시험)
 - 확인(②만 바뀐 때): tsc 0 · jest 92묶음 1,690/1,691 → staticRules 1(boardingDemo 주석의 grade 낱말) 고친 뒤 33/33 · check:copy 99/0 · grade 통과 · tokens 5/0
+
+### ③ meetSeen 보관
+- `features/chat/meetSeen.ts`: 기록 저장소 = `lib/secureStorage` appStateStorage(설문 임시 저장과 같은 길 — 네이티브 SecureStore 조각 · 이 기기 전용, 웹 메모리). 열쇠 chat.meetScene.v1 · 최근 20방 · 로그아웃 · 탈퇴 때 지움 그대로. `meetMemoryOf(저장소)` 로 시험
+- 시험 `s3saMeetStore.test.ts` 2(코드에 AsyncStorage 0 · 조각 저장 왕복 · 지움 · 틀린 값 버림 · 20방)
+- check_sec2(10-27 밤): P7-f 통과(허용 표식 3곳 그대로). 실패 2 = F-05s(npm audit, 앱 의존 — 예상) · V36-d(DB 묶음 'B안 시험 준비 실패 — account_status_suspend_window', 보안 시험 파일 21:59 다른 세션 개정 · 앱 코드 무관, 마지막에 다시)

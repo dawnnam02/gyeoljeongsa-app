@@ -1,5 +1,6 @@
 // 만남 장면을 본 방(D46 · 정책 P4-22): 방마다 처음 한 번. 서버에 '장면 봄' 열이 없어 이 기기에 둔다 — 도착 화면 '회차마다 한 번'(openedRounds, D-178)과 같은 방식.
-//  · 네이티브는 기기 저장(AsyncStorage 키 chat.meetScene.v1, 본 방 id 최근 20개), 웹 · 시험은 메모리만(웹 저장소에 쓰지 않는다 — 보안/구성.md) → 웹은 새로 고침마다 다시
+//  · 3부-사(보안 P7-f · SF-05): 기기 저장은 민감한 값 저장소(lib/secureStorage appStateStorage — 네이티브 SecureStore 조각 저장 · 이 기기 전용, 웹은 메모리)
+//    열쇠 chat.meetScene.v1(본 방 id 최근 20개). AsyncStorage 에는 두지 않는다. 웹은 브라우저 저장소에 쓰지 않아 새로 고침마다 다시 · 시험은 메모리만
 //  · 기록은 장면이 시작될 때 남긴다(장면 도중 앱이 꺼져도 다음엔 바로 대화방) · 로그아웃 · 탈퇴 때 지운다(다른 계정이 같은 기기를 쓸 때)
 //  · 방 id 는 서버가 만든 무작위 값(0031 uuid)이라 회원 정보가 아니다. 상대에게 보이지 않고 짝 · 점수 · 등급에 쓰지 않는다(P4-27)
 import { useEffect, useSyncExternalStore } from 'react';
@@ -60,26 +61,26 @@ export function createMeetSeen(memory: MeetSeenMemory = meetMemoryOnly): MeetSee
   };
 }
 
+// 저장소(getItem · setItem · removeItem — lib/chunkedStorage 모양)에 본 방 기록을 둔다. 읽은 값이 모양이 틀리면 버린다
+export type MeetSeenStorage = { getItem: (key: string) => Promise<string | null>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void> };
+export function meetMemoryOf(storage: MeetSeenStorage): MeetSeenMemory {
+  return {
+    read: async () => {
+      const raw = await storage.getItem(MEET_SEEN_KEY);
+      const v: unknown = raw ? JSON.parse(raw) : null;
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length <= 80) : null;
+    },
+    write: async (ids) => (ids.length ? storage.setItem(MEET_SEEN_KEY, JSON.stringify(ids)) : storage.removeItem(MEET_SEEN_KEY)),
+  };
+}
+
 // 앱 기본 기록: 처음 쓸 때 만든다(시험이 기기 모듈 없이 이 파일을 읽을 수 있게 — boardingServices 와 같은 방식)
 let app: MeetSeen | null = null;
 export function meetSeenStore(): MeetSeen {
   if (!app) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const { Platform } = require('react-native') as typeof import('react-native');
-    let memory: MeetSeenMemory = meetMemoryOnly;
-    if (Platform.OS !== 'web') {
-      const AsyncStorage = (require('@react-native-async-storage/async-storage') as typeof import('@react-native-async-storage/async-storage')).default;
-      memory = {
-        read: async () => {
-          const raw = await AsyncStorage.getItem(MEET_SEEN_KEY);
-          const v: unknown = raw ? JSON.parse(raw) : null;
-          return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length <= 80) : null;
-        },
-        write: async (ids) => (ids.length ? AsyncStorage.setItem(MEET_SEEN_KEY, JSON.stringify(ids)) : AsyncStorage.removeItem(MEET_SEEN_KEY)),
-      };
-    }
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    app = createMeetSeen(memory);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { appStateStorage } = require('@/lib/secureStorage') as typeof import('@/lib/secureStorage');
+    app = createMeetSeen(meetMemoryOf(appStateStorage));
   }
   return app;
 }
