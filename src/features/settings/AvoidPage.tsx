@@ -294,6 +294,13 @@ export function AvoidPage({ api, onBack, onToast, contact }: { api: Api; onBack:
               {CK11_LABEL}
             </AppText>
           ) : null}
+          {/* 카피 14-7 12-5: 체크 글 바로 아래 두 줄 · 늘 보임(법무 L21 11-2 c) */}
+          <AppText variant="caption" testID="settings-contact-optional-note">
+            {CONTACT_BLOCK.optionalNote}
+          </AppText>
+          <AppText variant="caption" testID="settings-contact-withdraw-note">
+            {CONTACT_BLOCK.withdrawNote}
+          </AppText>
           <LaterConsentLink code="CK11" label={CONSENT.more} testID="settings-contact-ck11-more" />
           {/* 버튼 둘은 같은 무게(NF5-04) */}
           <Button label={CONTACT_BLOCK.allow} variant="secondary" onPress={() => void allowContacts()} loading={syncing} testID="settings-contact-allow" />

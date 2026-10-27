@@ -20,6 +20,7 @@ import { Toast } from '@/components/Toast';
 import { AppText } from '@/components/AppText';
 import { BUSINESS_INFO, businessLinks, businessRows, reportNoLine, type BusinessInfo } from '@/content/businessInfo';
 import { SETTINGS } from '@/content/settingsCopy';
+import { forgetMeetScenes } from '@/features/chat/meetSeen';
 import { LegalReader } from '@/features/consent/LegalReader';
 import { contactPorts, type ContactPorts } from '@/lib/contactsServices';
 import type { GradeApi } from '@/lib/gradeApi';
@@ -161,6 +162,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
     deps.resetLocal();
     resetGradeSettings(); // 다음 사람에게 이 사람의 구독 · 멈춤 표시가 남지 않게(F13)
     forgetMyFace(); // 다음에 로그인하는 사람에게 이 사람의 원형 사진이 남지 않게(F11)
+    forgetMeetScenes(); // D46: 만남 장면을 본 방 기록(기기)도 지운다 — 같은 기기를 다른 계정이 쓸 때(K27 상황 21)
     const target = resolveDest('01');
     if (target.kind === 'href') {
       if (router.canDismiss()) router.dismissAll();

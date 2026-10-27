@@ -11,6 +11,8 @@
 //   boardoncredit 크레딧으로 탑승 완료(취소하면 크레딧 1장 돌려받음)
 //  · 회차 1 = 2026-12-23(수) 18:00 KST 첫 매칭(T-24). 크레딧 장면은 회차 2(12-30). 데모의 '지금'은 장면마다 정해 둔 시각
 //  · 만난 분 = 데모 인물 24명 가운데 '나'와 끼리끼리 순서 첫 분(demo/people kinOrder) — 남은 좌석 수 · 정원 · 점수 키는 보내지 않는다
+//  · 탑승 관문(검수 B0 · D46-A 덧붙임 10-27): 실서버 ticket_board_check → ticket_profile_ready(0030 · 0036 [8]) = politics_ready(CK15 유효 + 정치 답) · 등급 행 · 종교 답(7코드)과 같은 조건.
+//    회원 설문 상태는 demoBackend 가 profileReady 로 넘긴다(설문 모의 서버 기록). 하나라도 없으면 'profile_incomplete' — T1 '살 수 없음'(BOARDING.ineligible) · 자리 잡기 · 결제 · 크레딧 탑승 모두 0
 import { kinOrder, myReligionOf, poolFor } from './people';
 
 type Row = Record<string, unknown>;
@@ -73,7 +75,11 @@ const sceneOfEmail = (email: string): BoardingScene => {
 
 const ON_BOARD: readonly SeatState[] = ['boarded', 'matched', 'returned'];
 
-export function createDemoBoarding() {
+// 회원이 탈 준비가 됐나(정치 · CK15 · 종교 · 등급). 주지 않으면 늘 준비됨(장면 · 시험용)
+export type DemoBoardingOptions = { profileReady?: (u: DemoBoardingUser) => boolean };
+
+export function createDemoBoarding(options: DemoBoardingOptions = {}) {
+  const profileReady = options.profileReady ?? (() => true);
   const states = new Map<string, State>();
   const seed = (scene: BoardingScene): State => {
     const s: State = { scene, seats: [], lots: [], txs: new Map(), acks: [] };
@@ -116,13 +122,13 @@ export function createDemoBoarding() {
   const seatOf = (s: State, no: number, kinds: readonly SeatState[]) => s.seats.find((x) => x.roundNo === no && kinds.includes(x.state)) ?? null;
   const liveHold = (s: State, no: number) => s.seats.find((x) => x.roundNo === no && x.state === 'held' && (x.holdUntil ?? 0) > nowOf(s)) ?? null;
   // 서버 ticket_board_check 와 같은 순서(이 데모에 있는 사유만)
-  const boardCheck = (s: State, no: number): string | null => {
+  const boardCheck = (s: State, no: number, u: DemoBoardingUser): string | null => {
     const r = roundNo(no);
     if (!r) return 'no_round';
     const now = nowOf(s);
     if (now < r.open) return 'before_sale';
     if (now >= r.close) return 'closed';
-    if (s.scene === 'politics') return 'profile_incomplete';
+    if (s.scene === 'politics' || !profileReady(u)) return 'profile_incomplete'; // W2-8: 정치(CK15 + 답) · 등급 · 종교 중 하나라도 없으면 팔지 않는다
     if (seatOf(s, no, ON_BOARD)) return 'already_boarded';
     if (s.scene === 'full') return 'full';
     return null;
@@ -145,7 +151,7 @@ export function createDemoBoarding() {
     const r = roundOf(s);
     const now = nowOf(s);
     const seat = seatOf(s, r.no, ON_BOARD) ?? liveHold(s, r.no);
-    const reason = boardCheck(s, r.no);
+    const reason = boardCheck(s, r.no, u);
     const d = kst(r.match);
     return ok({
       now: iso(now), // 데모만(장면 시각)
@@ -188,7 +194,7 @@ export function createDemoBoarding() {
     const no = typeof args.p_round_no === 'number' ? args.p_round_no : -1;
     const held = liveHold(s, no);
     if (held) return ok({ ok: true, reason: null, round_no: no, hold_until: iso(held.holdUntil ?? 0) });
-    const reason = boardCheck(s, no);
+    const reason = boardCheck(s, no, u);
     if (reason) return ok({ ok: false, reason, round_no: no, hold_until: null });
     const r = roundNo(no) ?? ROUNDS[0];
     for (const x of s.seats) if (x.roundNo === no && x.state === 'held') x.state = 'lapsed';
@@ -216,12 +222,12 @@ export function createDemoBoarding() {
     if (!last) return fail('no_hold');
     const no = last.roundNo;
     const txId = `demo-tx-${s.txs.size + 1}`;
-    if (liveHold(s, no) || boardCheck(s, no) === null) {
+    if (liveHold(s, no) || boardCheck(s, no, u) === null) {
       board(s, no, 'purchase');
       s.txs.set(key, { round_no: no, outcome: 'seat', tx_id: txId });
       return ok({ result: 'boarded', round_no: no, tx_id: txId });
     }
-    const reason = boardCheck(s, no);
+    const reason = boardCheck(s, no, u);
     newLot(s, 'paid_no_seat', no);
     s.txs.set(key, { round_no: no, outcome: 'credit', tx_id: txId });
     return ok({ result: 'credited', reason, round_no: no, tx_id: txId });
@@ -230,7 +236,7 @@ export function createDemoBoarding() {
   function boardCredit(u: DemoBoardingUser, args: Row): DbResult {
     const s = stateOf(u);
     const no = typeof args.p_round_no === 'number' ? args.p_round_no : -1;
-    const reason = boardCheck(s, no);
+    const reason = boardCheck(s, no, u);
     if (reason) return ok({ ok: false, reason, round_no: no, paid_by: null });
     const lot = s.lots.filter((l) => l.usedRound === null).sort((a, b) => a.id - b.id)[0];
     if (!lot) return ok({ ok: false, reason: 'no_credit', round_no: no, paid_by: null });

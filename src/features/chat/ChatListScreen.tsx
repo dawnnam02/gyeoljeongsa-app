@@ -27,6 +27,7 @@ import { hasDemoControls, type DemoChatScene } from './chatDemo';
 import { isOpen, sortRooms } from './chatLogic';
 import { RoomRow } from './ChatParts';
 import { chatApi, chatRoomHref } from './chatService';
+import { forgetMeetScenes } from './meetSeen';
 
 type Load = { kind: 'loading' } | { kind: 'failed'; reason: 'network' | 'server' } | { kind: 'ready'; rooms: Room[] };
 
@@ -110,6 +111,7 @@ export function ChatListScreen({ api: given, onOpen, toastMs = TOAST_MS }: { api
             accessibilityLabel={CHAT.demo.sceneLine(CHAT.demo.scenes[scene])}
             onPress={async () => {
               setScene(await api.demo.next());
+              forgetMeetScenes(); // D46: 데모 장면이 바뀌면 같은 방 id 라도 만남 장면을 다시 볼 수 있게(K27 10-1 '장면 다시 보기')
               await refresh();
             }}
             effect="none"

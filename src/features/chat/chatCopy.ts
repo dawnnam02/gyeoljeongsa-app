@@ -29,6 +29,8 @@ export const CHAT = {
     closedPartnerLeft: (until: string) => `상대가 대화를 마쳤어요. 지난 글은 ${until}까지 읽을 수 있어요.`,
     closedMediaNote: '사진과 음성도 그때 함께 지워져요.',
     startNote: (name: string) => `${name}님과 대화방이 열렸어요. 7일 동안 이야기할 수 있어요.`,
+    // 맨 위 기억 한 줄(D46 · 카피 16-2 · 정책 P4-26): 두 사람 같은 글 · 열린 방 · 닫힌 방 모두 · 앱이 방의 열린 날짜로 그림(서버 글 0). 예: '수요일 저녁, 한강 벤치에서 처음 만났어요.'
+    metAt: (when: string, place: string) => `${when}, ${place}에서 처음 만났어요.`,
     purgedMedia: '지워진 첨부예요.',
     loadFailed: '대화를 불러오지 못했어요. 다시 시도해 주세요.', // 14-5-2
     gone: '이 대화방은 더 이상 볼 수 없어요.',
@@ -123,6 +125,6 @@ export const CHAT = {
   },
   demo: {
     sceneLine: (name: string) => `데모 · 장면: ${name} (누르면 다음)`,
-    scenes: { open: '열린 방', lastDay: '마지막 날', extendWait: '상대가 연장을 원함', partnerLeft: '상대가 나감', closed: '닫힌 방', empty: '방 없음' },
+    scenes: { open: '열린 방', fresh: '막 열린 방', partnerFirst: '상대가 먼저 보냄', lastDay: '마지막 날', extendWait: '상대가 연장을 원함', partnerLeft: '상대가 나감', closed: '닫힌 방', empty: '방 없음' },
   },
 } as const;

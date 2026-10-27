@@ -89,6 +89,23 @@ export const scene2 = {
     letters: 620, lettersDelay: 450, letterStep: 80, tag: 400, tagDelay: 800,
     nextAt: 1_900, next: 640, nextLift: 0.1, reducedWait: 1_500,
   },
+  // D46 만남 장면(D-205 · D-206 연출 ④ '예능 결') — 디자인 D46_만남장면/원본/page.js cine 시간표 그대로(변경기록 6장 scene2.meet 값표).
+  //  청사진 6-3 · 화면 C3 의 '1초 안' 예외는 이 장면 하나(약 6초 · [건너뛰기] 늘 보임 · 방마다 한 번). 시각(ms)은 장면이 시작된 순간부터 · 거리는 장면 좌표(폭 360) 단위
+  meet: {
+    total: 6_240, rest: 5_900, // 대화방 걷힘 끝 · 쉬는 모습(여운 안 — 정지 그림 · 화면 읽기는 이 모습)
+    in: 240, // 장면 덮개가 투명도로 나타남(T3 라이트 → 장면, K27 7-1 '투명도' 제안)
+    art: 900, // 어둠에서 장소
+    cam: 5_000, camTo: 1.1, // 장면 전체가 아주 천천히 다가감 · 여운 전에 멈춤
+    card: 600, cardIn: 360, cardRise: 6, rule: 480, ruleDelay: 40, line1Delay: 100, line2Delay: 170, maskIn: 560, cardHold: 1_960, cardOut: 240, // 장소 자막 카드
+    walk: 1_200, walkFor: 1_500, walkFrom: 230, bob: 500, bobLift: 2.5, step: 1_000, // 걸어옴(몸 위아래 2.5 · 다리 ±7°)
+    sit: 2_700, standOut: 240, standDrop: 18, sitIn: 320, sitDelay: 60, sitRise: 16, // 옆자리에 앉음
+    cup: 2_950, cupFor: 700, cupFrom: -109.5, // 컵을 내려놓음(팔꿈치 기준)
+    lookB: 3_100, lookA: 3_400, look: 500, // 대사 없이 서로 봄
+    light: 3_800, lightFor: 1_200, lightFrom: 0.3, // 빛이 조금 따뜻해짐(저녁 빛 · 가장자리 어둠 한 층)
+    line: 3_800, linger: 5_000, handoff: 6_000, handoffFor: 240, // 끝 한 줄 → 여운(움직임 0) → 종이색으로 걷히며 대화방
+    reducedIn: 150, reducedHold: 4_000, reducedOut: 150, // 동작 줄이기: 정지 그림 · 카드 · 끝 줄이 한 번에 150 → 4초 → 150(합 4.3초)
+    waitCover: 1_000, // 판단 중 바탕만 보이는 때(넘으면 대화방 뼈대, K27 3-1)
+  },
 } as const;
 
 // 로고 타일 크기(D31 · 명세 4장): 스플래시 104 · 공개 72 · 탑승권 도장 52 · (v4) 서로 수락 · 구매 완료 48

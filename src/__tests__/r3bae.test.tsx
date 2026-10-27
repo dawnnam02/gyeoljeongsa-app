@@ -161,7 +161,7 @@ describe('① 탑승권 — 서버 확정 이름 · 인자 · 응답', () => {
     }
   });
 
-  test('T5 = list_ticket_history: 서버 장부 사유 → 글 키(cancel_return · cancel_credit → 취소, refund_reversed → 다시 받음) · 쓴 장(used) −1 · 스토어 환불 회수(revoked) −1 · 카피 없는 사유는 그리지 않음 · 끝나는 날 0', async () => {
+  test('T5 = list_ticket_history: 서버 장부 사유 → 글 키(cancel_return · cancel_credit → 취소, refund_reversed → 다시 받음) · 쓴 장(used) −1 · 스토어 환불 회수(revoked) −1 · 카피 14-7 확정 4사유(paid_no_seat · round_cancelled · admin · age_rejoin_restore)도 그림 · 해지(age_terminate)만 그리지 않음 · 끝나는 날 0', async () => {
     const f = fakeClient(() => ({
       data: {
         tickets: [{ round_no: 4, match_day: '2027-01-13', state: 'boarded', paid_by: 'credit', price_krw: null, boarded_at: '2027-01-08T01:00:00Z', return_reason: null }],
@@ -172,6 +172,7 @@ describe('① 탑승권 — 서버 확정 이름 · 인자 · 응답', () => {
           { id: 6, reason: 'cancel_credit', round_no: 3, created_at: '2027-01-05T00:00:00Z', expires_on: '2099-12-31', state: 'revoked', used_round_no: null },
           { id: 5, reason: 'cancel_return', round_no: 2, created_at: '2027-01-02T00:00:00Z', expires_on: null, state: 'used', used_round_no: 4 },
           { id: 4, reason: 'paid_no_seat', round_no: 1, created_at: '2027-01-01T00:00:00Z', expires_on: null, state: 'used', used_round_no: 2 },
+          { id: 3, reason: 'age_terminate', round_no: null, created_at: '2027-01-10T00:00:00Z', expires_on: null, state: 'open', used_round_no: null },
         ],
         balance: 3,
       },
@@ -180,17 +181,22 @@ describe('① 탑승권 — 서버 확정 이름 · 인자 · 응답', () => {
     const l = await createBoardingApi(f.client).ledger();
     expect(f.calls).toEqual([{ name: TICKET_HISTORY_RPC, args: undefined }]);
     expect(l.ok && l.items.map((x) => [x.reason, x.delta, x.roundNo])).toEqual([
+      ['admin', 1, null],
+      ['age_rejoin_restore', 1, null],
       ['used', -1, 4],
       ['refund_restored', 1, 3],
       ['refund_taken', -1, 3],
       ['cancelled', 1, 3],
       ['cancelled', 1, 2],
+      ['used', -1, 2],
+      ['paid_no_seat', 1, 1],
     ]);
-    expect(l.ok && l.items[0].at).toBe(Date.parse('2027-01-08T01:00:00Z')); // 쓴 날 = 그 회차에 크레딧으로 탄 시각
-    expect(l.ok && l.items[2].at).toBeNull(); // 회수한 날은 서버가 주지 않는다 — 날짜 없이 회차만
+    expect(l.ok && l.items[2].at).toBe(Date.parse('2027-01-08T01:00:00Z')); // 쓴 날 = 그 회차에 크레딧으로 탄 시각
+    expect(l.ok && l.items[4].at).toBeNull(); // 회수한 날은 서버가 주지 않는다 — 날짜 없이 회차만
+    expect(l.ok && l.items.map((x) => CREDITS.reasons[x.reason]).slice(0, 2)).toEqual(['고객센터에서 바로잡음', '다시 가입해 이어받음']); // 카피 14-7
     expect(JSON.stringify(l)).not.toMatch(/2099|expire/);
-    expect(LOT_REASON).toMatchObject({ unbalanced: 'balance', no_match: 'no_fit', grade_gap: 'gap', cancel_return: 'cancelled', cancel_credit: 'cancelled', refund_reversed: 'refund_restored' });
-    expect([...LOT_REASON_COPY_PENDING]).toEqual(['paid_no_seat', 'round_cancelled', 'admin', 'age_rejoin_restore', 'age_terminate']);
+    expect(LOT_REASON).toMatchObject({ unbalanced: 'balance', no_match: 'no_fit', grade_gap: 'gap', cancel_return: 'cancelled', cancel_credit: 'cancelled', refund_reversed: 'refund_restored', paid_no_seat: 'paid_no_seat', round_cancelled: 'round_cancelled', admin: 'admin', age_rejoin_restore: 'age_rejoin_restore' });
+    expect([...LOT_REASON_COPY_PENDING]).toEqual(['age_terminate']); // D46-A 덧붙임: 카피 14-7 확정 4사유는 그림
     for (const key of new Set(Object.values(LOT_REASON))) expect(typeof CREDITS.reasons[key]).toBe('string'); // 글 키는 카피 14-5-2 · 14-7 에 있다
     expect(parseHistory({ balance: 1 })).toBeNull();
   });
@@ -246,7 +252,7 @@ describe('① 화면 — 크레딧 좌석 취소 확인창 · 끝나는 날 칸 
     expect(textOf(t5, 'credits-no-expiry')).toBe(CREDITS.noExpiry);
   });
 
-  test('결제는 됐지만 자리를 못 받음(credited): 시트에 크레딧 안내 한 줄(noMatch.body) · 다시 읽기', async () => {
+  test('결제는 됐지만 자리를 못 받음(credited): 시트에 전용 글 한 줄(buyErrors.credited, 카피 14-7) · 다시 읽기', async () => {
     let state = TICKET;
     const f = fakeClient((name) => {
       if (name === TICKET_STATE_RPC) return { data: state, error: null };
@@ -263,7 +269,8 @@ describe('① 화면 — 크레딧 좌석 취소 확인창 · 끝나는 날 칸 
     await press(tree, 'boarding-buy');
     await press(tree, 'boarding-pay');
     await flush();
-    expect(textOf(tree, 'boarding-sheet-error')).toBe(BOARDING.noMatch.body);
+    expect(textOf(tree, 'boarding-sheet-error')).toBe(BOARDING.buyErrors.credited);
+    expect(BOARDING.buyErrors.credited).toBe('결제는 됐지만 그사이 자리가 모두 차서 크레딧 1장으로 돌려드렸어요. 다음 회차에 쓸 수 있어요.');
     expect(f.calls.filter((c) => c.name === TICKET_STATE_RPC).length).toBeGreaterThanOrEqual(2);
   });
 
@@ -498,6 +505,11 @@ describe('④ 지인 차단 — 기기 해시 → sync_contact_hashes', () => {
     expect(textOf(tree, 'settings-contact-email-only')).toBe(CONTACT_BLOCK.emailOnly);
     expect(CK11_LABEL).toMatch(/^\[선택\] 주소록/);
     expect(textOf(tree, 'settings-contact-ck11')).toBe(CK11_LABEL); // 법무 4-11 생성물 그대로
+    // D46-A 덧붙임(카피 14-7 12-5 확정): 체크 글 아래 두 줄 늘 보임 · 버튼 '동의하고 주소록 허용하기' · 시트 글 v5
+    expect(textOf(tree, 'settings-contact-optional-note')).toBe('동의하지 않아도 모든 기능을 똑같이 쓸 수 있어요.');
+    expect(textOf(tree, 'settings-contact-withdraw-note')).toBe('설정에서 언제든 동의를 거둘 수 있어요.');
+    expect(CONTACT_BLOCK.allow).toBe('동의하고 주소록 허용하기');
+    expect([CONTACT_BLOCK.sheetTitle, CONTACT_BLOCK.done, CONTACT_BLOCK.deniedForever]).toEqual(['아는 분과 이어지고 싶지 않다면', '비교를 마쳤어요. 맞은 분과는 서로 이어지지 않아요.', '주소록은 기기 설정에서 허용할 수 있어요.']);
     await press(tree, 'settings-contact-allow');
     await flush();
     expect(toast).toHaveBeenLastCalledWith(CONTACT_BLOCK.done);

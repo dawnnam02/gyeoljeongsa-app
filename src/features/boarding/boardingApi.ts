@@ -23,7 +23,7 @@ import { readDbFailure } from '@/lib/serverError';
 export type BoardingPhase = 'before_sale' | 'on_sale' | 'closed' | 'revealed';
 export type Ineligible = 'not_confirmed' | 'politics_missing' | 'paused';
 // T5 내역 글 키(카피 14-5-2 · 14-7 CREDITS.reasons). 서버 장부 사유 → 이 키는 아래 LOT_REASON
-export type CreditReason = 'balance' | 'no_fit' | 'gap' | 'used' | 'cancelled' | 'refund_taken' | 'refund_restored';
+export type CreditReason = 'balance' | 'no_fit' | 'gap' | 'used' | 'cancelled' | 'refund_taken' | 'refund_restored' | 'paid_no_seat' | 'round_cancelled' | 'admin' | 'age_rejoin_restore';
 export type Round = { no: number; matchAt: number; saleOpenAt: number | null; saleCloseAt: number | null };
 export type Ticket = { roundNo: number; boughtAt: number; paidWith: 'store' | 'credit' };
 export type Partner = { name: string; age: number | null; region: { sido?: string; sigungu?: string } | null; facePhotoId: string | null };
@@ -71,8 +71,8 @@ export type AckResult = { ok: true } | { ok: false; reason: 'network' | 'server'
 // 10 상대 프로필(사진 id 를 얻는 곳). 공개 사진은 get_weekly_match 에 없다
 export const CANDIDATE_RPC = 'get_candidate_profile';
 
-// 서버 장부 사유(0030 · 0037 [3] · 0038 [2]) → T5 글 키. 표에 없는 사유는 카피가 아직 없어 그 장(+1 · 그 장을 쓴 −1)을 그리지 않는다:
-//  paid_no_seat(결제 뒤 자리 없음) · round_cancelled(회차 취소) · admin(운영 지급) · age_rejoin_restore(만 24세 뒤 재가입 이어 줌) · age_terminate(해지 계정 — 화면 0)
+// 서버 장부 사유(0030 · 0037 [3] · 0038 [2]) → T5 글 키. D46-A 덧붙임(10-27): 카피 14-7 확정 4줄(paid_no_seat · round_cancelled · admin · age_rejoin_restore)도 그린다.
+//  표에 없는 사유는 그 장(+1 · 그 장을 쓴 −1)을 그리지 않는다: age_terminate(해지 계정 — 화면 0)
 export const LOT_REASON: Readonly<Record<string, CreditReason>> = {
   unbalanced: 'balance',
   no_match: 'no_fit',
@@ -80,8 +80,12 @@ export const LOT_REASON: Readonly<Record<string, CreditReason>> = {
   cancel_return: 'cancelled', // 크레딧으로 탄 자리 취소(0037 B)
   cancel_credit: 'cancelled', // 결제로 탄 자리 취소 → 크레딧(0037 B · D-202)
   refund_reversed: 'refund_restored', // 스토어 환불 취소로 다시 지급(0037 C)
+  paid_no_seat: 'paid_no_seat', // 결제 뒤 자리 없음(0030) — 카피 14-7 CREDITS.reason.paidNoSeat
+  round_cancelled: 'round_cancelled', // 회차가 열리지 않음 — CREDITS.reason.roundCancelled
+  admin: 'admin', // 고객센터에서 바로잡음(늘거나 줄어도 같은 글) — CREDITS.reason.admin
+  age_rejoin_restore: 'age_rejoin_restore', // 다시 가입해 이어받음 — CREDITS.reason.ageRejoinRestore
 };
-export const LOT_REASON_COPY_PENDING = ['paid_no_seat', 'round_cancelled', 'admin', 'age_rejoin_restore', 'age_terminate'] as const;
+export const LOT_REASON_COPY_PENDING = ['age_terminate'] as const;
 // 서버 회차 판매 상태 → 화면 단계 · 탈 수 없는 사유 → 화면 글. 모르는 값은 살 수 없는 쪽(closed)
 const PHASE: Readonly<Record<string, BoardingPhase>> = { before: 'before_sale', open: 'on_sale', closed: 'closed', ended: 'revealed' };
 //  profile_incomplete(정치 · 등급 · 종교 · 성별 · 지역 중 빈 것)는 서버 사유가 하나라 정치 문항 글로 보낸다 — 등급 계산 멈춤('paused' 글)은 앱이 가르지 못함(변경기록 메모)

@@ -4,6 +4,8 @@
 //  · 장면(이메일 앞부분 또는 목록 아래 데모 줄):
 //     (기본) open 열린 방 · 읽지 않은 글 1   chatlast lastDay 마지막 날   chatext extendWait 상대가 이미 연장을 원함(내가 고르면 7일 더)
 //     chatleft partnerLeft 상대가 나감(읽기만)   chatclosed closed 7일이 지나 닫힌 방(읽기만 · 30일 뒤 지움)   chat0 empty 방 없음
+//     D46 만남 장면(K27 10-1): chatnew fresh 막 열린 방 · 글 0(장면 끝 줄 '눈이 마주쳤어요')   chatfirst partnerFirst 상대가 먼저 글 1 · 내 글 0(끝 줄 '먼저 말을 걸어왔어요')
+//     (기본 open 은 내 글이 있어 장면이 없다 — 정책 P4-22 '내 글이 있으면 장면 0')
 //  · 거르기 흉내(0016 text_guard): 금전 요구 · 욕설만 text_blocked. 연락처는 자유(T-20). 링크(http · www)는 보내되 caution(받는 쪽 주의 표시)
 //    글에 '데모실패'가 있으면 처음 한 번 인터넷 실패(다시 보내기 확인용)
 //  · 내가 처음 글을 보내면 1.5초 뒤 상대가 한 번 답한다(실시간 흉내). 사진 = 데모 사진 파일 · 음성 = 길이만(소리 없음)
@@ -15,8 +17,8 @@ import { demoPhotoUri } from '@/demo/peoplePhotos';
 import type { ChatApi, Message, Outgoing, Room, SystemEvent } from './chatApi';
 import { DAY, PURGE_DAYS, ROOM_DAYS, TEXT_MAX, VOICE_MAX_BYTES } from './chatLogic';
 
-export type DemoChatScene = 'open' | 'lastDay' | 'extendWait' | 'partnerLeft' | 'closed' | 'empty';
-export const DEMO_CHAT_SCENES: readonly DemoChatScene[] = ['open', 'lastDay', 'extendWait', 'partnerLeft', 'closed', 'empty'];
+export type DemoChatScene = 'open' | 'lastDay' | 'extendWait' | 'partnerLeft' | 'closed' | 'empty' | 'fresh' | 'partnerFirst';
+export const DEMO_CHAT_SCENES: readonly DemoChatScene[] = ['open', 'lastDay', 'extendWait', 'partnerLeft', 'closed', 'empty', 'fresh', 'partnerFirst'];
 
 const at = (iso: string) => Date.parse(iso);
 const MATCH_AT = at('2026-12-23T18:00:00+09:00');
@@ -28,6 +30,8 @@ const SCENE_NOW: Record<DemoChatScene, number> = {
   partnerLeft: at('2026-12-26T12:00:00+09:00'),
   closed: at('2026-12-31T12:00:00+09:00'),
   empty: at('2026-12-25T20:00:00+09:00'),
+  fresh: at('2026-12-23T18:05:00+09:00'), // 공개 5분 뒤 · 아무도 쓰지 않음
+  partnerFirst: at('2026-12-23T20:00:00+09:00'), // 상대가 18:24 에 먼저 씀 · 나는 아직
 };
 const BLOCKED_WORDS = ['송금', '계좌로', '입금해', '코인투자', '시발', '씨발', '병신'];
 const LINK = /https?:\/\/|www\./i;
@@ -40,6 +44,8 @@ export const sceneOfEmail = (email: string): DemoChatScene => {
   if (l.includes('chatleft')) return 'partnerLeft';
   if (l.includes('chatclosed')) return 'closed';
   if (l.includes('chat0')) return 'empty';
+  if (l.includes('chatnew')) return 'fresh';
+  if (l.includes('chatfirst')) return 'partnerFirst';
   return 'open';
 };
 
@@ -77,6 +83,8 @@ function seedRoom(p: DemoPerson, email: string, scene: DemoChatScene): RoomState
   ];
   const mePhoto = mePhotoKey('free', email);
   if (mePhoto) messages.splice(3, 0, msg(true, 'photo', '', t('2026-12-23T19:03:00+09:00'), { mediaId: `demo-key:${mePhoto}` }));
+  if (scene === 'fresh') messages.splice(1); // 막 열린 방: 열림 시스템 글만
+  if (scene === 'partnerFirst') messages.splice(2); // 상대 첫 글 하나만
   const closed = scene === 'closed' || scene === 'partnerLeft';
   const closedAt = scene === 'partnerLeft' ? t('2026-12-26T11:00:00+09:00') : CLOSES_AT;
   if (scene === 'closed') messages.push(sys('closed_expired', false, CLOSES_AT));
@@ -94,7 +102,7 @@ function seedRoom(p: DemoPerson, email: string, scene: DemoChatScene): RoomState
     purgeAt: null,
     myExtend: false,
     last: null,
-    unread: scene === 'open' ? 1 : 0,
+    unread: scene === 'open' || scene === 'partnerFirst' ? 1 : 0,
   };
   return { room, messages, theirExtend: scene === 'extendWait', gone: false, replied: false, failOnce: true };
 }

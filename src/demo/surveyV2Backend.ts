@@ -93,6 +93,14 @@ export function demoV2ValueOk(id: string, v: unknown): boolean {
 
 const shared = createDemoV2Memory();
 
+// 탑승 관문 흉내(검수 B0 · 실서버 ticket_profile_ready 0030 · 0036 [8]): 유효한 CK15 + 정치 답 + 종교 A06 답(7코드). 이 모의 서버에 그 회원 기록이 없으면 null(설문을 열지 않음)
+const RELIGION_CODES: readonly unknown[] = ['none', 'protestant', 'catholic', 'buddhist', 'won', 'islam', 'other'];
+export function demoSurveyReady(userId: string, memory: DemoV2Memory = shared): boolean | null {
+  const u = memory.users.get(userId);
+  if (!u) return null;
+  return u.ck15 && u.politics !== null && RELIGION_CODES.includes(u.answers.A06);
+}
+
 export type DemoV2Options = { memory?: DemoV2Memory; latencyMs?: number };
 
 // base: 데모 로그인을 가진 클라이언트(lib/demoClient). auth.getSession 만 빌린다

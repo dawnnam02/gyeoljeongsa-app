@@ -60,6 +60,7 @@ type DemoAccount = {
   active: boolean;
   visibility: Record<string, boolean>; // 공개 범위 토글 9열(F4)
   reviewAcked: boolean; // 07 직후 '처음 한 번 확인'을 마쳤는가(F4)
+  surveySkipped?: boolean; // 데모 줄 '설문 완료 · 정상 응답'(DemoSkipBar)으로 설문을 건너뜀 — 탑승 관문에서는 설문을 다 마친 사람으로 본다(B0)
 };
 
 // 공개 범위 토글 9열의 처음값(backend/스키마.md visibility_settings: 켜짐 7 · 꺼짐 2)
@@ -157,7 +158,16 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
   };
   const likes = createDemoLikes({ now, people: (id) => recs.person(id) }); // 11 호감(F6)
   const settings = createDemoSettings({ now, people: (id) => recs.person(id) ?? likes.person(id) }); // 12 설정(F7). 11 에서 차단한 가상 사람도 이름이 나온다
-  const boarding = createDemoBoarding(); // V5 W6: 탑승권 · 크레딧(서버 0030 · 0032 · 0037 이름 · 모양)
+  // V5 W6: 탑승권 · 크레딧(서버 0030 · 0032 · 0037 이름 · 모양). 탑승 관문(검수 B0, 10-27): 실서버 ticket_profile_ready 와 같은 조건 —
+  //  설문 모의 서버(demo/surveyV2Backend 공유 기록)의 CK15 + 정치 답 + 종교 답. 데모 줄로 설문을 건너뛴 계정 · 설문 기록이 없는 장면 · 시험 계정은 준비됨으로 본다
+  const boarding = createDemoBoarding({
+    profileReady: (u) => {
+      if ([...accounts.values()].some((a) => a.id === u.id && a.surveySkipped)) return true;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { demoSurveyReady } = require('@/demo/surveyV2Backend') as typeof import('@/demo/surveyV2Backend');
+      return demoSurveyReady(u.id) ?? true;
+    },
+  });
   const v4 = createDemoV4({ now }); // F22 · D-134: 기능 스위치(get_feature_flags)만 잇는다 — 강조 · 만남 뒤 피드백 응답은 F19 2단계 몫
   const accounts = new Map<string, DemoAccount>();
   const gates = new Map<string, Gate>();
@@ -299,6 +309,7 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
       if (current && aiStatusOf(current) === 'pending') return success({ status: 'pending', code: 'in_progress', result_id: current.id });
       if (account.aiCases.filter((c) => t - c.createdAt < DAY_MS).length >= 3) return httpFailure(429, 'new_case_limit_daily', { hint: 'edit_existing' });
       const scenario: DemoAiScenario = body.demo_scenario === 'fail' || body.demo_scenario === 'slow' ? body.demo_scenario : 'ok';
+      if (body.demo_scenario !== undefined) account.surveySkipped = true; // 데모 줄 건너뛰기(DemoSkipBar · aiApi.startDemo)
       seq += 1;
       const fresh: DemoAiCase = { id: `demo-ai-${seq}`, createdAt: t, scenario, retryCount: 0, runStartedAt: t, source: 'ai', edited: null, manualDone: false, confirmedAt: null };
       account.aiCases.push(fresh);

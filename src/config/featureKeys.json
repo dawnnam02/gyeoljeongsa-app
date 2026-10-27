@@ -107,6 +107,8 @@
     { "key": "v4_shop", "group": "V5", "id": "W10-3", "live": false, "demo": false },
 
     { "key": "survey_chat", "group": "V6", "id": "V6-F", "live": false },
-    { "key": "chat_push", "group": "R", "id": "R-BE-5", "live": false, "demo": false }
+    { "key": "chat_push", "group": "R", "id": "R-BE-5", "live": false, "demo": false },
+
+    { "key": "meet_scene", "group": "D46", "id": "D46-A", "live": false }
   ]
 }

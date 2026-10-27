@@ -229,8 +229,8 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
             <TextButton label={BOARDING.sheet.contract} onPress={() => setContract(true)} testID="boarding-contract" />
             {error ? (
               <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" testID="boarding-sheet-error">
-                {/* credited(0030 paid_no_seat): 결제는 됐지만 자리를 못 받아 크레딧 1장 — 전용 글은 카피 대기라 noMatch.body(같은 사실 '크레딧으로 돌려드렸어요')를 쓴다 */}
-                {error === 'credited' ? BOARDING.noMatch.body : BOARDING.buyErrors[error]}
+                {/* credited(0030 paid_no_seat): 결제는 됐지만 자리를 못 받아 크레딧 1장 — 카피 14-7 전용 글 buyErrors.credited(D46-A 덧붙임) */}
+                {BOARDING.buyErrors[error]}
               </AppText>
             ) : null}
             <AppText variant="captionMedium" tone="text" testID="boarding-sheet-deadline">

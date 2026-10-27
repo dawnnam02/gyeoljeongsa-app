@@ -349,3 +349,50 @@
 | 보안 check_sec2(읽기만 실행) | P7-f · P7-g · P7-h · P7-i 통과(SF-05 앱 저장 4/0). 전체 실패 1 = F-05s npm audit(moderate 6 · high 4 — expo · @expo/cli · zod · node-forge 등 기존 의존, 이번 expo-contacts · expo-crypto 2개와 무관 · audit fix --force 0) |
 | gen:legal --fingerprints(법무 18:22 판) | 채울 값 19(+{전자우편주소}) · 지문 terms 6fb6a1a17214 · privacy b2686f7cefc8 · 동의 판 13개 그대로 |
 | 웹 dist-demo 다시 만듦 | web-w6 390: 36/0 · web-f7 360: 63/0(셋째 판. 첫 판 26/2 · 둘째 판 22/3 은 동의 관리 CK15 · CK16 칸에서 매번 다른 자리 시간 초과 — 같은 때 다른 직원 run_s7 · probe3 가 돌던 부하, 이번 변경 밖 화면) |
+
+# D46-A 만남 장면 앱 (D-205 · D-206, 10-27 ~ 마감 10-31) — 상태 저장(멈춰도 이어감)
+
+- 기준: `팀장/세부청사진/D46_만남장면.md` · `기획/K27_만남장면.md`(0-1 D-206 · 3-2 상황표 21줄 · 4-1 박자 · 5-2 장소 규칙) · `기획/화면_요구사항.md` T4S · C3 · C7 · `기획/정책.md` P4-21 ~ 28 · `마케팅/카피.md` 16장 · `디자인/D46_만남장면/변경기록.md` 6장 · 원본 `scene.js` · `page.js`(연출 ④ cine) · `청사진_v5.md` 6-3
+- 본인 지시: "만남이 매칭되었으면 바로 채팅으로 넘어가지 말고 … 우연히 앉아서 이야기를 시작하는 연출" · "장소는 매번 다르게, 연출은 예능, 나머지 권장대로 번역투없이 자연스럽게"
+
+## 세부청사진(앱 몫)
+| 항목 | 목표 |
+|---|---|
+| 자리 | 새 주소 0 — `/chat/[id]` 첫 상태(T4S). 판단: 기록 있음 → T4 · 첫 읽기 실패 → T4 오류(기록 0) · 사라짐 · 닫힘 · 상대 나감 → T4 · 내 글 있음 → 기록 + T4 · 열린 방 처음 → 기록 + 장면 |
+| 연출 ④ | 위아래 어두운 띠(colors.text) · 장소 자막 카드 · 카메라 1 → 1.1(5초) · 걸어와 앉음 · 컵 내려놓음 · 시선 · 끝 줄 · 여운 · 종이색 걷힘. 6.24초 · 소리 0 · Reanimated transform · opacity 만 |
+| 그림 | 디자인 scene.js 를 node 로 돌려 층별 SVG 를 `assets/illustrations/d46meet.json` 으로(색은 4안 원본 값 · 에셋 안에만, src 색 0) |
+| 규칙 | 방마다 한 번(기기 `chat.meetScene.v1` · 웹 메모리 · 최근 20 · 로그아웃 · 탈퇴 때 지움) · 건너뛰기 늘 보임 48 · 동작 줄이기 = 정지 그림 + 카드 + 끝 줄 4초 · 스크린리더 = 자동 넘김 0 · [대화방으로 가기] · 끝 줄 두 갈래 · 장소 = opened_at 한국 날짜 주 번호 % 10(기준 2026-12-23) · 기억 줄 CHAT.room.metAt · 스위치 meet_scene(live 꺼짐 · demo 켜짐) |
+| 글 | 카피 16장 키 20개 글자 그대로 · check:copy X 가 16장도 대조 |
+| 데모 | chatnew(글 0 막 열린 방 → 조용한 방) · 기본 open(상대 글 → 상대 먼저) |
+| 시험 | jest(한 번만 · 건너뛰기 · 동작 줄이기 · 스크린리더 · 장소 같은 날 같은 값 · 끝 줄 갈래 · 기억 줄) · tsc · check:copy · tokens · grade · web-w6 · web-f7 · 캡처 390 · 360 |
+
+## 진행
+| 단계 | 상태 |
+|---|---|
+| 0 팀장 덧붙임(10-27 19:2x): CREDITS.reason 4 · buyErrors.credited · CONTACT_BLOCK 4줄(카피 14-7 · 12-5) | 코드 고침 끝(boardingApi LOT_REASON 4줄 · COPY_PENDING = age_terminate 만 · BoardingScreen 전용 글 · settingsCopy 4줄 · r3bae 기대값) — 시험 전 |
+| 0-2 팀장 덧붙임 ②(19:4x): CONTACT_BLOCK allow '동의하고 주소록 허용하기' · optionalNote · withdrawNote(시트 체크 글 아래 늘 보임) | 코드 끝(settingsCopy · AvoidPage 두 줄 · r3bae 기대값) |
+| 0-3 CK11 동의 기록 확인 | 판 = consents.text_version(LATER_CONSENT_VERSIONS.CK11) · 시각 = agreed_at(서버 기본 now()) · 앱 판 app_version 남음. **받은 자리(시트 · 화면) 열은 없음** — consents 표에 자리 칸이 없어(0001 · 0016 · 0029 읽기만) 백엔드 몫 |
+| 1 그림 에셋 생성기 `scripts/gen-meet-scene.mjs` → `assets/illustrations/d46meet.json`(93KB · 장소 10 · 사람 부품 9 · 빛 1) | 끝 — 층을 끝 모습으로 겹친 그림이 원본 정지 그림과 같음(헤드리스 Edge 1 · 2 · 9번 눈 대조) |
+| 0-4 팀장 덧붙임 ③ 검수 B0(척추 Q2 후보): 데모 탑승 관문 | 코드 끝 — boardingDemo boardCheck 에 profileReady(실서버 ticket_profile_ready = CK15 + 정치 답 + 종교 7코드) · surveyV2Backend demoSurveyReady · demoBackend 연결(데모 줄 '설문 완료 · 정상 응답'으로 건너뛴 계정 · 설문 기록이 없는 장면 · 시험 계정은 준비됨). 시험 전 |
+| 2 앱 모듈 | 코드 끝 · tsc 0: theme/meetArt · theme/motion scene2.meet · chat/meetCopy(MEET_SCENE) · chatCopy CHAT.room.metAt · meetLogic(장소 = 기준 2026-12-23 주 번호 % 10 · 판단 순서) · meetSeen(chat.meetScene.v1) · meetTimeline(worklet) · MeetArt · MeetScene · useMeetScene · lib/screenReader · ChatRoomScreen(겹침 · 기억 줄 · 판단 중 바탕 1초) · /chat/[id] meet=appMeetDeps · 설정 로그아웃 · 탈퇴 때 지움 · featureKeys meet_scene(D46 · live 꺼짐 · 데모 켜짐) · chatDemo fresh(chatnew) · partnerFirst(chatfirst) · 목록 데모 줄 바꾸면 기록 지움 |
+| 3 check:copy X 에 16장 18줄 · 16-3 낱말 | 끝 — X 248줄 통과(점검 수 그대로). 지금 97/2 = A · I(법무 처리방침 19:26 · 19:28 개정, 마지막 커밋 전 gen:legal --fingerprints 팀장 지시) |
+| 4-a 새 시험 | d46MeetScene 27 · b0BoardGate 6 = 33/33(타이머 · 대화방 읽기가 시험 뒤에 돌지 않게 매 시험 뒤 unmount) · eslint(바꾼 · 새 파일) 0 · tsc 0. useMeetScene 은 효과 안 setState 0(react-hooks 규칙) — 판단은 그릴 때 굳히고 기기 기록만 효과에서 |
+| 4-b 웹 점검 새 스크립트 `scripts/web-d46.mjs`(chatnew · chatfirst · 한 번만 · 기억 줄 · 넘침 · 글자 · 터치 · 캡처) | 첫 판 8/4 — 찾은 것: react-native-web 의 isScreenReaderEnabled 가 늘 참이라 웹에서 장면이 늘 '화면 읽기' 판(저절로 넘김 0 · [대화방으로 가기])이었다 → lib/screenReader 가 웹에서는 읽지 않고 꺼짐(SurveyChatScreen 메모와 같은 이유). 넘침 18 은 카메라 1.1 배 그림이 그림 칸(overflow hidden) 안에서 잘린 것 — 점검이 화면 안 잘림 틀 안 요소는 빼게 고침. 번들 다시 만든 뒤 **390 17/0 · 360 17/0**(한 번은 가입 길 06 → 07 40초 넘김으로 0/1 — 같은 번들 다시 돌려 통과, 이번 변경 밖 화면). 캡처 `확인/스크린샷/D46_390/D46_장면_390.png` · `D46_360/D46_장면_360.png`(약 4.8초 — 끝 줄 · 빛 따뜻해진 뒤) |
+| 4-c 웹 · 점검 | dist-demo 다시 만듦(2번 — 화면 읽기 고침 뒤) · web-w6 390: 36/0 · web-f7 360: 63/0(첫 판 26/2 = 동의 관리 CK15 보기 시트 15초 시간 초과 · 이번 변경 밖 화면 — 3부-바와 같은 흔들림, 혼자 다시 돌려 통과) · 팀장 ① gen:legal --fingerprints(법무 19:26 · 19:28 처리방침 개정 — legalPrivacy 4줄 · consent.ts 처리방침 지문 b2686f7cefc8 → 312ecbd7eb0a, 판 13개 그대로) → check:copy 99/0 · grade 통과 · tokens 5/0 |
+| 4-d jest 전부 · tsc · eslint | jest 91묶음 1680/1680(1647 + 새 33) · tsc 0 · eslint(바꾼 · 새 파일) 0 |
+| 5 커밋(푸시 0) | 이 절 저장 뒤 커밋 |
+
+## D46-A 대조표
+| 항목(지시 · 세부청사진 · K27) | 실제 | 일치 |
+|---|---|---|
+| 대화방 첫 상태(새 주소 0) · 어느 길이든 첫 진입 | /chat/[id] 라우트가 meet=appMeetDeps · 대화방 위에 겹침 | ○ |
+| 연출 ④: 띠 · 자막 카드 · 카메라 1 → 1.1 · 걸어와 앉음 · 컵 · 시선 · 끝 줄 · 여운 · 종이색 걷힘 · 6.24초 | page.js cine 시간표 그대로(scene2.meet) · 걷힘은 장면 덮개가 위에서부터 걷히며 아래 대화방이 드러남 | ○ |
+| transform · opacity 위주 · 움직이는 층 3개 이하 · 소리 0 | View transform · opacity 만 · 움직이는 층 = 장면 전체(cam) + 빛 1(사람 부품은 사람 층 안 작은 칸) · 소리 · 진동 0 | ○ |
+| 그림: 장소 10 · 고정 두 인물 SVG · 색은 4안 · 1안 값만 | 원본 scene.js 를 node 로 돌린 정적 에셋(색은 에셋 안에만 · src 색 0 — tokens B 통과) | ○ |
+| 한 번만(기기 · 웹 메모리 · 로그아웃 · 탈퇴 지움) · 내 글 있으면 0 | meetSeen chat.meetScene.v1 최근 20 · 웹 메모리 · leaveToStart 에서 지움 · 시작 때 기록 | ○ |
+| [건너뛰기] 늘 보임(48) · 동작 줄이기 4초 · 화면 읽기 자동 넘김 0 · [대화방으로 가기] | 건너뛰기 48 · 정지 그림 150 → 4000 → 150 · reader 모드 버튼 하나(웹은 화면 읽기 꺼짐으로) | ○ |
+| 끝 줄 두 갈래 · 장소 = opened_at 차례 · 기억 줄 · 닫힌 방 예외 · 스위치 | 상대 글 · 사진 · 음성 → '먼저 말을 걸어왔어요' · 기준 2026-12-23 주 번호 % 10 · CHAT.room.metAt(열린 · 닫힌 방) · 닫힘 · 나감 · 사라짐 · 실패 0 · meet_scene live 꺼짐 · 데모 켜짐 | ○ |
+| 카피 16장 글자 그대로(지시 '키 20개') | 16장 표는 **18줄** — 18개 모두 글자 그대로 · check:copy X 대조(99/0 유지) | △(수 18) |
+| 데모 chatnew · 상대 먼저 | chatnew(fresh) · chatfirst(partnerFirst) · 목록 데모 줄 바꾸면 기록 지움 | ○ |
+| 시험 | jest 1680/1680 · tsc 0 · check:copy 99/0 · tokens 5/0 · grade 통과 · web-w6 36/0 · web-f7 63/0 · web-d46 390 · 360 17/0 · 캡처 2장 | ○ |
+| 덧붙임 ① ② ③ · B0 · CK11 확인 · gen:legal | 모두 반영(위 0 ~ 0-4 · 4-c) | ○ |

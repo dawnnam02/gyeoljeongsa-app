@@ -36,12 +36,14 @@ describe('스위치 키 한 목록(K19 2-5) · 앱이 87키를 읽는다', () =>
   const V5_KEYS = ['v4_daily_recs', 'v4_likes', 'v4_shop']; // V5(W10 · D-152): 숨긴 v4 화면 스위치 — K19 표 밖의 묶음 V5
   const V6_KEYS = ['survey_chat']; // V6-F(D-182): 대화형 설문 화면 스위치 — K19 표 밖의 묶음 V6(서버 0033 과 같은 이름)
   const R_KEYS = ['chat_push']; // R-A(D-199): 대화방 새 글 알림 토큰 등록 스위치 — K19 표 밖의 묶음 R(서버 0036 과 같은 이름, 처음 꺼짐)
-  const k19 = () => FEATURE_KEY_LIST.filter((k) => !['K12', 'K15', 'V5', 'V6', 'R'].includes(k.group));
+  const D46_KEYS = ['meet_scene']; // D46-A(D-206): 만남 장면 · 기억 줄 스위치 — K19 표 밖의 묶음 D46(live 꺼짐 · 데모 켜짐, 서버 스위치 행은 백엔드 몫)
+  const k19 = () => FEATURE_KEY_LIST.filter((k) => !['K12', 'K15', 'V5', 'V6', 'R', 'D46'].includes(k.group));
 
-  test('92키 = K12 9 · K15 3 · 새 키 75 · V5 3 · V6 1 · R 1, 이름은 겹치지 않고 snake_case', () => {
-    expect(FEATURE_KEYS).toHaveLength(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length);
-    expect(new Set(FEATURE_KEYS).size).toBe(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length);
+  test('93키 = K12 9 · K15 3 · 새 키 75 · V5 3 · V6 1 · R 1 · D46 1, 이름은 겹치지 않고 snake_case', () => {
+    expect(FEATURE_KEYS).toHaveLength(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length + D46_KEYS.length);
+    expect(new Set(FEATURE_KEYS).size).toBe(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length + D46_KEYS.length);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'R').map((k) => k.key)).toEqual(R_KEYS);
+    expect(FEATURE_KEY_LIST.filter((k) => k.group === 'D46').map((k) => k.key)).toEqual(D46_KEYS);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'V5').map((k) => k.key)).toEqual(V5_KEYS);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'V6').map((k) => k.key)).toEqual(V6_KEYS);
     for (const k of FEATURE_KEYS) expect(k).toMatch(/^[a-z][a-z0-9_]*$/);

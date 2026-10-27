@@ -115,6 +115,7 @@ export const BOARDING = {
     no_credit: '쓸 수 있는 크레딧이 없어요.',
     network: '인터넷 연결을 확인하고 다시 시도해 주세요.',
     server: '결제를 마치지 못했어요. 다시 시도해 주세요.',
+    credited: '결제는 됐지만 그사이 자리가 모두 차서 크레딧 1장으로 돌려드렸어요. 다음 회차에 쓸 수 있어요.', // 카피 14-7(결제 뒤 자리 없음 전용 — 0030 paid_no_seat)
   },
   loadFailed: '탑승권을 불러오지 못했어요. 다시 시도해 주세요.',
   retry: '다시 시도',
@@ -154,9 +155,21 @@ export const CREDITS = {
     cancelled: '탑승을 취소해 돌려받음', // 카피 14-7 CREDITS.reason.cancelled
     refund_taken: '스토어 환불로 회수됨', // 카피 14-7 CREDITS.reason.refundTaken
     refund_restored: '스토어 환불이 취소되어 다시 받음', // 카피 14-7 CREDITS.reason.refundRestored
+    paid_no_seat: '결제 뒤 자리가 없어 돌려받음', // 카피 14-7 CREDITS.reason.paidNoSeat
+    round_cancelled: '회차가 열리지 않아 돌려받음', // 카피 14-7 CREDITS.reason.roundCancelled
+    admin: '고객센터에서 바로잡음', // 카피 14-7 CREDITS.reason.admin
+    age_rejoin_restore: '다시 가입해 이어받음', // 카피 14-7 CREDITS.reason.ageRejoinRestore
   } satisfies Record<CreditReason, string>,
   // 카피 14-7 키 이름(CREDITS.reason.*)과 같은 글 — 대조용(check:copy X)
-  reason: { cancelled: '탑승을 취소해 돌려받음', refundTaken: '스토어 환불로 회수됨', refundRestored: '스토어 환불이 취소되어 다시 받음' },
+  reason: {
+    cancelled: '탑승을 취소해 돌려받음',
+    refundTaken: '스토어 환불로 회수됨',
+    refundRestored: '스토어 환불이 취소되어 다시 받음',
+    paidNoSeat: '결제 뒤 자리가 없어 돌려받음',
+    roundCancelled: '회차가 열리지 않아 돌려받음',
+    admin: '고객센터에서 바로잡음',
+    ageRejoinRestore: '다시 가입해 이어받음',
+  },
   delta: (d: number) => (d > 0 ? `+${d}장` : `${d}장`),
   round: (n: number) => `${n}회차`,
   empty: '아직 크레딧 내역이 없어요.',

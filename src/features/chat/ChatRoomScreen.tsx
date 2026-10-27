@@ -5,6 +5,8 @@
 //  · 보내는 동안 내 말풍선에 '보내는 중', 못 보내면 '보내지 못했어요. [다시 보내기] [지우기]'
 //  · 닫힌 방: 글쓰기 줄 대신 '대화방이 닫혔어요' 안내(지우는 날짜) — 읽기만. 신고는 닫힌 뒤에도 된다
 //  · 새 글: 실시간(api.subscribe) + 15초마다 다시 읽기. 새로 온 말풍선만 8 올라오며 나타남(동작 줄이기면 투명도만)
+//  · D46 만남 장면(T4S): meet 를 주면(라우트 /chat/[id]) 이 방에 처음 들어올 때 장면이 대화방 위에 한 번 덮인다(useMeetScene · MeetScene) ·
+//    맨 위에 기억 한 줄(CHAT.room.metAt) · 판단 중엔 바탕만 1초. meet 가 없으면(시험 · 다른 길) 장면 · 기억 줄 0
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, Modal, ScrollView, StyleSheet, View } from 'react-native';
@@ -34,6 +36,8 @@ import type { ChatMedia } from './chatMedia';
 import { Banner, ClosedNotice, DayDivider, MessageBubble, type SendState } from './ChatParts';
 import { chatApi, chatMedia, CHAT_LIST_HREF } from './chatService';
 import { Composer } from './Composer';
+import { MeetScene } from './MeetScene';
+import { useMeetScene, type MeetDeps } from './useMeetScene';
 
 export const POLL_MS = 15_000;
 const FAIL_TEXT: Partial<Record<SendFailure, string>> = {
@@ -65,7 +69,7 @@ const asMessage = (p: Pending): Message => ({
   purged: false,
 });
 
-export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs = TOAST_MS, pollMs = POLL_MS }: { id: string; api?: ChatApi; media?: ChatMedia; toastMs?: number; pollMs?: number }) {
+export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs = TOAST_MS, pollMs = POLL_MS, meet }: { id: string; api?: ChatApi; media?: ChatMedia; toastMs?: number; pollMs?: number; meet?: MeetDeps }) {
   const api = givenApi ?? chatApi();
   const media = givenMedia ?? chatMedia();
   const router = useRouter();
@@ -141,6 +145,8 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
 
   const now = api.now();
   const open = room ? isOpen(room, now) : false;
+  const meetView = useMeetScene(meet, { id, load: load.kind, room, messages, now: () => api.now() });
+  const covered = meetView.scene !== null || meetView.cover; // 장면 · 판단 중 바탕이 덮는 동안 아래 대화방은 화면 읽기에서 숨긴다
 
   const sendOut = async (out: Outgoing) => {
     setPending((cur) => [...cur.filter((p) => p.clientId !== out.clientId), { clientId: out.clientId, out, state: 'sending', failure: null, createdAt: api.now() }]);
@@ -251,189 +257,200 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
 
   const title = room?.partner.name ?? '';
   return (
-    <Screen enter="depth" testID="chat-room">
-      <View style={styles.head}>
-        <View style={styles.flex}>
-          <ScreenHeader title={title} onBack={back} testID="chat-room-header" />
-        </View>
-        {room ? <MoreButton onPress={() => setSheet('menu')} testID="chat-room-more" /> : null}
-      </View>
-      {load.kind === 'loading' ? <WaitState waiting skeleton={<SkeletonLines count={5} />} note={<AppText variant="caption">{COMMON.loading}</AppText>} testID="chat-room-wait" /> : null}
-      {load.kind === 'failed' ? (
-        <View style={styles.center} testID="chat-room-failed">
-          <AppText variant="body" style={styles.centerText}>
-            {load.reason === 'network' ? COMMON.offline : CHAT.room.loadFailed}
-          </AppText>
-          <Button label={COMMON.retry} variant="secondary" inline onPress={() => void refresh()} testID="chat-room-retry" />
-        </View>
-      ) : null}
-      {load.kind === 'gone' ? (
-        <View style={styles.center} testID="chat-room-gone">
-          <AppText variant="body" style={styles.centerText}>
-            {CHAT.room.gone}
-          </AppText>
-        </View>
-      ) : null}
-      {load.kind === 'ready' && room ? (
-        <KeyboardAvoid>
-          {open ? (
-            <Banner
-              text={room.myExtend ? CHAT.extend.wantNote : openLine(room.closesAt, now)}
-              lead={room.myExtend ? 'accept' : undefined}
-              action={{ label: CHAT.room.extendLink, onPress: () => setSheet('extend'), icon: 'extend' }}
-              testID="chat-room-banner"
+    <View style={styles.flex}>
+      <View style={styles.flex} accessibilityElementsHidden={covered} importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'}>
+        <Screen enter="depth" testID="chat-room">
+          <View style={styles.head}>
+            <View style={styles.flex}>
+              <ScreenHeader title={title} onBack={back} testID="chat-room-header" />
+            </View>
+            {room ? <MoreButton onPress={() => setSheet('menu')} testID="chat-room-more" /> : null}
+          </View>
+          {load.kind === 'loading' ? <WaitState waiting skeleton={<SkeletonLines count={5} />} note={<AppText variant="caption">{COMMON.loading}</AppText>} testID="chat-room-wait" /> : null}
+          {load.kind === 'failed' ? (
+            <View style={styles.center} testID="chat-room-failed">
+              <AppText variant="body" style={styles.centerText}>
+                {load.reason === 'network' ? COMMON.offline : CHAT.room.loadFailed}
+              </AppText>
+              <Button label={COMMON.retry} variant="secondary" inline onPress={() => void refresh()} testID="chat-room-retry" />
+            </View>
+          ) : null}
+          {load.kind === 'gone' ? (
+            <View style={styles.center} testID="chat-room-gone">
+              <AppText variant="body" style={styles.centerText}>
+                {CHAT.room.gone}
+              </AppText>
+            </View>
+          ) : null}
+          {load.kind === 'ready' && room ? (
+            <KeyboardAvoid>
+              {open ? (
+                <Banner
+                  text={room.myExtend ? CHAT.extend.wantNote : openLine(room.closesAt, now)}
+                  lead={room.myExtend ? 'accept' : undefined}
+                  action={{ label: CHAT.room.extendLink, onPress: () => setSheet('extend'), icon: 'extend' }}
+                  testID="chat-room-banner"
+                />
+              ) : null}
+              <ScrollView ref={scroll} style={styles.flex} contentContainerStyle={styles.list} onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: false })} testID="chat-room-messages">
+                {meetView.metAt ? (
+                  <AppText variant="caption" style={styles.startNote} testID="chat-room-met-at">
+                    {meetView.metAt}
+                  </AppText>
+                ) : null}
+                <AppText variant="caption" style={styles.startNote} testID="chat-room-start">
+                  {CHAT.room.startNote(room.partner.name)}
+                </AppText>
+                {shown.map(({ m, state, failure }, i) => {
+                  const prev = shown[i - 1]?.m;
+                  const divider = !prev || dayKey(prev.createdAt) !== dayKey(m.createdAt);
+                  const fresh = seen !== null && !seen.has(m.id) && state === 'sent';
+                  // 2안 핵심 ③: 이 방의 첫 보낸 말풍선(처음 불러올 때 내 글이 없던 방)만 보낸 쪽에서 걷힘 420(위쪽 바탕 그라데이션이라 덮개 대신 역이동), 나머지 새 말풍선은 일상 240 · 6px
+                  const firstMine = fresh && m.mine && shown.findIndex((x) => x.m.mine) === i;
+                  const bubble = (
+                    <MessageBubble
+                      message={m}
+                      sendState={state}
+                      mediaUri={state === 'sent' ? (m.mediaId ? (urls[m.mediaId] ?? null) : null) : pendingUri(m.id)}
+                      voice={m.kind === 'voice' ? { playing: voice?.id === m.id && voice.playing, elapsedMs: voice?.id === m.id ? voice.elapsed : 0, onToggle: () => void toggleVoice(m) } : undefined}
+                      onPhoto={() => {
+                        const u = state === 'sent' ? (m.mediaId ? urls[m.mediaId] : null) : pendingUri(m.id);
+                        if (u) setViewer(u);
+                      }}
+                      onRetry={() => {
+                        const p = pending.find((x) => x.clientId === m.id);
+                        if (p) void sendOut(p.out);
+                      }}
+                      onDiscard={() => setPending((cur) => cur.filter((x) => x.clientId !== m.id))}
+                      failText={failure ? FAIL_TEXT[failure] : undefined}
+                      testID={`chat-msg-${i}`}
+                    />
+                  );
+                  return (
+                    <View key={m.id}>
+                      {divider ? <DayDivider text={dayText(m.createdAt)} testID={`chat-day-${i}`} /> : null}
+                      {firstMine ? (
+                        <Wipe from="right" duration={scene2.chat.first}>
+                          {bubble}
+                        </Wipe>
+                      ) : fresh ? (
+                        <Rise distance={scene2.bubble.rise} duration={scene2.bubble.in}>
+                          {bubble}
+                        </Rise>
+                      ) : (
+                        bubble
+                      )}
+                    </View>
+                  );
+                })}
+              </ScrollView>
+              {open ? (
+                <Composer canPhoto={media.photo} canVoice={media.voice} onSendText={(text) => void sendOut({ clientId: newClientId(), kind: 'text', body: text })} onPhoto={() => void pickPhoto()} onStartVoice={startVoice} onStopVoice={(send) => void stopVoice(send)} testID="chat-composer" />
+              ) : (
+                <ClosedNotice title={CHAT.room.closedTitle} body={closedLine(room)} note={CHAT.room.closedMediaNote} testID="chat-room-closed" />
+              )}
+            </KeyboardAvoid>
+          ) : null}
+
+          {/* 메뉴 시트 */}
+          <BottomSheet visible={sheet === 'menu'} onClose={() => setSheet('none')} testID="chat-menu">
+            <AppText variant="bodyBold" accessibilityRole="header" style={styles.sheetTitle}>
+              {CHAT.menu.title}
+            </AppText>
+            {open ? (
+              <>
+                <MenuItem label={CHAT.menu.extend} hint={CHAT.menu.extendHint} icon="extend" onPress={() => setSheet('extend')} testID="chat-menu-extend" />
+                <MenuItem
+                  label={CHAT.menu.leave}
+                  hint={CHAT.menu.leaveHint}
+                  icon="leave"
+                  onPress={() => {
+                    haptic.warning(); // 되돌릴 수 없는 확인창(D25 4장)
+                    setDialogError(null);
+                    setSheet('leave');
+                  }}
+                  testID="chat-menu-leave"
+                />
+              </>
+            ) : null}
+            <MenuItem label={CHAT.menu.safety} hint={CHAT.menu.safetyHint} icon="report" danger onPress={() => setSheet('safety')} testID="chat-menu-safety" last />
+            <Button label={CHAT.menu.cancel} variant="secondary" onPress={() => setSheet('none')} testID="chat-menu-cancel" />
+          </BottomSheet>
+
+          {/* 연장 시트: 둘 다 원하면 7일 더(상대의 선택은 둘 다 고른 뒤에만 알 수 있다) */}
+          <BottomSheet visible={sheet === 'extend'} onClose={() => !busy && setSheet('none')} dismissable={!busy} testID="chat-extend">
+            <AppText variant="bodyBold" accessibilityRole="header">
+              {CHAT.extend.title}
+            </AppText>
+            <AppText variant="small" testID="chat-extend-body">
+              {room?.myExtend ? CHAT.extend.wantNote : CHAT.extend.body}
+            </AppText>
+            {dialogError ? (
+              <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" testID="chat-extend-error">
+                {dialogError}
+              </AppText>
+            ) : null}
+            {room?.myExtend ? (
+              <Button label={CHAT.extend.undo} variant="secondary" loading={busy} onPress={() => void setExtend(false)} testID="chat-extend-undo" />
+            ) : (
+              <Button label={CHAT.extend.want} loading={busy} onPress={() => void setExtend(true)} testID="chat-extend-want" />
+            )}
+            <Button label={CHAT.menu.cancel} variant="text" onPress={() => !busy && setSheet('none')} testID="chat-extend-cancel" />
+          </BottomSheet>
+
+          <ConfirmDialog
+            visible={sheet === 'leave'}
+            title={CHAT.leave.title}
+            body={CHAT.leave.body}
+            confirmLabel={CHAT.leave.confirm}
+            cancelLabel={CHAT.leave.cancel}
+            busy={busy}
+            error={dialogError}
+            onConfirm={() => void leave()}
+            onCancel={() => !busy && setSheet('none')}
+            testID="chat-leave"
+          />
+
+          {room ? (
+            <ReportBlockSheet
+              visible={sheet === 'safety'}
+              targetId={room.id} // 0031 report_chat_partner · block_chat_partner 는 방 id 로 받는다
+              api={{ report: api.report, block: api.block }}
+              onClose={() => setSheet('none')}
+              onReported={() => {
+                setSheet('none');
+                setToast(REPORT_SHEET.done);
+              }}
+              onBlocked={() => {
+                setSheet('none');
+                setNextToast(REPORT_SHEET.blockDone); // 목록에서 보인다(차단한 방은 목록에서 빠짐)
+                back();
+              }}
+              onUnavailable={() => {
+                setSheet('none');
+                setLoad({ kind: 'gone' });
+              }}
+              testID="chat-report"
             />
           ) : null}
-          <ScrollView ref={scroll} style={styles.flex} contentContainerStyle={styles.list} onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: false })} testID="chat-room-messages">
-            <AppText variant="caption" style={styles.startNote} testID="chat-room-start">
-              {CHAT.room.startNote(room.partner.name)}
-            </AppText>
-            {shown.map(({ m, state, failure }, i) => {
-              const prev = shown[i - 1]?.m;
-              const divider = !prev || dayKey(prev.createdAt) !== dayKey(m.createdAt);
-              const fresh = seen !== null && !seen.has(m.id) && state === 'sent';
-              // 2안 핵심 ③: 이 방의 첫 보낸 말풍선(처음 불러올 때 내 글이 없던 방)만 보낸 쪽에서 걷힘 420(위쪽 바탕 그라데이션이라 덮개 대신 역이동), 나머지 새 말풍선은 일상 240 · 6px
-              const firstMine = fresh && m.mine && shown.findIndex((x) => x.m.mine) === i;
-              const bubble = (
-                <MessageBubble
-                  message={m}
-                  sendState={state}
-                  mediaUri={state === 'sent' ? (m.mediaId ? (urls[m.mediaId] ?? null) : null) : pendingUri(m.id)}
-                  voice={m.kind === 'voice' ? { playing: voice?.id === m.id && voice.playing, elapsedMs: voice?.id === m.id ? voice.elapsed : 0, onToggle: () => void toggleVoice(m) } : undefined}
-                  onPhoto={() => {
-                    const u = state === 'sent' ? (m.mediaId ? urls[m.mediaId] : null) : pendingUri(m.id);
-                    if (u) setViewer(u);
-                  }}
-                  onRetry={() => {
-                    const p = pending.find((x) => x.clientId === m.id);
-                    if (p) void sendOut(p.out);
-                  }}
-                  onDiscard={() => setPending((cur) => cur.filter((x) => x.clientId !== m.id))}
-                  failText={failure ? FAIL_TEXT[failure] : undefined}
-                  testID={`chat-msg-${i}`}
-                />
-              );
-              return (
-                <View key={m.id}>
-                  {divider ? <DayDivider text={dayText(m.createdAt)} testID={`chat-day-${i}`} /> : null}
-                  {firstMine ? (
-                    <Wipe from="right" duration={scene2.chat.first}>
-                      {bubble}
-                    </Wipe>
-                  ) : fresh ? (
-                    <Rise distance={scene2.bubble.rise} duration={scene2.bubble.in}>
-                      {bubble}
-                    </Rise>
-                  ) : (
-                    bubble
-                  )}
-                </View>
-              );
-            })}
-          </ScrollView>
-          {open ? (
-            <Composer canPhoto={media.photo} canVoice={media.voice} onSendText={(text) => void sendOut({ clientId: newClientId(), kind: 'text', body: text })} onPhoto={() => void pickPhoto()} onStartVoice={startVoice} onStopVoice={(send) => void stopVoice(send)} testID="chat-composer" />
-          ) : (
-            <ClosedNotice title={CHAT.room.closedTitle} body={closedLine(room)} note={CHAT.room.closedMediaNote} testID="chat-room-closed" />
-          )}
-        </KeyboardAvoid>
-      ) : null}
 
-      {/* 메뉴 시트 */}
-      <BottomSheet visible={sheet === 'menu'} onClose={() => setSheet('none')} testID="chat-menu">
-        <AppText variant="bodyBold" accessibilityRole="header" style={styles.sheetTitle}>
-          {CHAT.menu.title}
-        </AppText>
-        {open ? (
-          <>
-            <MenuItem label={CHAT.menu.extend} hint={CHAT.menu.extendHint} icon="extend" onPress={() => setSheet('extend')} testID="chat-menu-extend" />
-            <MenuItem
-              label={CHAT.menu.leave}
-              hint={CHAT.menu.leaveHint}
-              icon="leave"
-              onPress={() => {
-                haptic.warning(); // 되돌릴 수 없는 확인창(D25 4장)
-                setDialogError(null);
-                setSheet('leave');
-              }}
-              testID="chat-menu-leave"
-            />
-          </>
-        ) : null}
-        <MenuItem label={CHAT.menu.safety} hint={CHAT.menu.safetyHint} icon="report" danger onPress={() => setSheet('safety')} testID="chat-menu-safety" last />
-        <Button label={CHAT.menu.cancel} variant="secondary" onPress={() => setSheet('none')} testID="chat-menu-cancel" />
-      </BottomSheet>
+          <Modal visible={viewer !== null} transparent={false} animationType="fade" onRequestClose={() => setViewer(null)} testID="chat-viewer">
+            <SafeAreaView style={styles.viewer}>
+              <Pressable accessibilityRole="button" accessibilityLabel={CHAT.photo.viewerClose} onPress={() => setViewer(null)} effect="none" style={({ pressed }) => [styles.viewerClose, pressed && styles.pressed]} testID="chat-viewer-close">
+                <AppText variant="bodyMedium" tone="inverse">
+                  {CHAT.photo.viewerClose}
+                </AppText>
+              </Pressable>
+              {viewer ? <Image source={{ uri: viewer }} style={styles.viewerImg} resizeMode="contain" accessibilityLabel={CHAT.photo.viewerA11y} /> : null}
+            </SafeAreaView>
+          </Modal>
 
-      {/* 연장 시트: 둘 다 원하면 7일 더(상대의 선택은 둘 다 고른 뒤에만 알 수 있다) */}
-      <BottomSheet visible={sheet === 'extend'} onClose={() => !busy && setSheet('none')} dismissable={!busy} testID="chat-extend">
-        <AppText variant="bodyBold" accessibilityRole="header">
-          {CHAT.extend.title}
-        </AppText>
-        <AppText variant="small" testID="chat-extend-body">
-          {room?.myExtend ? CHAT.extend.wantNote : CHAT.extend.body}
-        </AppText>
-        {dialogError ? (
-          <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" testID="chat-extend-error">
-            {dialogError}
-          </AppText>
-        ) : null}
-        {room?.myExtend ? (
-          <Button label={CHAT.extend.undo} variant="secondary" loading={busy} onPress={() => void setExtend(false)} testID="chat-extend-undo" />
-        ) : (
-          <Button label={CHAT.extend.want} loading={busy} onPress={() => void setExtend(true)} testID="chat-extend-want" />
-        )}
-        <Button label={CHAT.menu.cancel} variant="text" onPress={() => !busy && setSheet('none')} testID="chat-extend-cancel" />
-      </BottomSheet>
-
-      <ConfirmDialog
-        visible={sheet === 'leave'}
-        title={CHAT.leave.title}
-        body={CHAT.leave.body}
-        confirmLabel={CHAT.leave.confirm}
-        cancelLabel={CHAT.leave.cancel}
-        busy={busy}
-        error={dialogError}
-        onConfirm={() => void leave()}
-        onCancel={() => !busy && setSheet('none')}
-        testID="chat-leave"
-      />
-
-      {room ? (
-        <ReportBlockSheet
-          visible={sheet === 'safety'}
-          targetId={room.id} // 0031 report_chat_partner · block_chat_partner 는 방 id 로 받는다
-          api={{ report: api.report, block: api.block }}
-          onClose={() => setSheet('none')}
-          onReported={() => {
-            setSheet('none');
-            setToast(REPORT_SHEET.done);
-          }}
-          onBlocked={() => {
-            setSheet('none');
-            setNextToast(REPORT_SHEET.blockDone); // 목록에서 보인다(차단한 방은 목록에서 빠짐)
-            back();
-          }}
-          onUnavailable={() => {
-            setSheet('none');
-            setLoad({ kind: 'gone' });
-          }}
-          testID="chat-report"
-        />
-      ) : null}
-
-      <Modal visible={viewer !== null} transparent={false} animationType="fade" onRequestClose={() => setViewer(null)} testID="chat-viewer">
-        <SafeAreaView style={styles.viewer}>
-          <Pressable accessibilityRole="button" accessibilityLabel={CHAT.photo.viewerClose} onPress={() => setViewer(null)} effect="none" style={({ pressed }) => [styles.viewerClose, pressed && styles.pressed]} testID="chat-viewer-close">
-            <AppText variant="bodyMedium" tone="inverse">
-              {CHAT.photo.viewerClose}
-            </AppText>
-          </Pressable>
-          {viewer ? <Image source={{ uri: viewer }} style={styles.viewerImg} resizeMode="contain" accessibilityLabel={CHAT.photo.viewerA11y} /> : null}
-        </SafeAreaView>
-      </Modal>
-
-      <Toast text={toast} bottom={open ? size.touchMin + space.s32 : undefined} />
-    </Screen>
+          <Toast text={toast} bottom={open ? size.touchMin + space.s32 : undefined} />
+        </Screen>
+      </View>
+      {meetView.cover ? <View pointerEvents="auto" style={[StyleSheet.absoluteFill, styles.cover]} testID="chat-meet-wait" /> : null}
+      {meetView.scene ? <MeetScene plan={meetView.scene.plan} mode={meetView.scene.mode} onDone={meetView.done} testID="chat-meet" /> : null}
+    </View>
   );
 }
 
@@ -466,4 +483,5 @@ const styles = StyleSheet.create({
   viewer: { flex: 1, backgroundColor: colors.text },
   viewerClose: { alignSelf: 'flex-end', minHeight: size.touchMin, minWidth: size.touchMin, justifyContent: 'center', alignItems: 'center', paddingHorizontal: size.screenPadding },
   viewerImg: { flex: 1, width: '100%' },
+  cover: { backgroundColor: colors.bg },
 });

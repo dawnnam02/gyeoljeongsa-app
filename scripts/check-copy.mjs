@@ -22,6 +22,7 @@
 //        12-Q · 14장 글도 P · S 대조 원본에 넣는다. '매칭'은 '1회 매칭'(숨김 v4)과 '주간 매칭'(14-1 v5 글) 자리에만.
 //  X. v5 새 화면 글(탑승권 T1 · 공개 T3 · 크레딧 T5 · 채팅 T4 — boardingCopy.ts · chatCopy.ts)이 카피.md 14-5-1 · 14-5-2 표(첫 칸 'T1 `키`' 꼴)와 같은가(QP-A 2부-나, 팀장 결정)
 //        글 함수는 자리마다 표시 글자를 넣어 부르고, 카피의 {…} 자리와 같은 자리인지 본다. '(줄 없음)'은 앱에 그 키가 없어야 한다
+//        D46-A: 만남 장면 글(T4S MEET_SCENE · T4 CHAT.room.metAt — meetCopy.ts · chatCopy.ts)도 카피.md 16장 표 18줄과 같은가 · 16-3 쓰지 않을 낱말 0(같은 X 점검 안에서, 점검 수 그대로)
 //  J. 06 AI 정리 중 · 07 내 성향의 글이 카피.md 06 · 07 · 화면_요구사항(N13 · N14)에 그대로 있는가 · 근거 문항 이름 · 직접 입력 태그 후보(F3)
 // 사용: node scripts/check-copy.mjs   (npm run check:copy)
 // 종료 코드: 0 통과 · 1 실패
@@ -740,7 +741,8 @@ try {
     const bc = await load(path.join(APP_DIR, 'src', 'features', 'boarding', 'boardingCopy.ts'));
     const ch = await load(path.join(APP_DIR, 'src', 'features', 'chat', 'chatCopy.ts'));
     const st12 = await load(path.join(contentDir, 'settingsCopy.ts'));
-    const roots = { BOARDING: bc.BOARDING, REVEAL: bc.REVEAL, CREDITS: bc.CREDITS, CHAT: ch.CHAT, AVOID: st12.AVOID };
+    const mc = await load(path.join(APP_DIR, 'src', 'features', 'chat', 'meetCopy.ts'));
+    const roots = { BOARDING: bc.BOARDING, REVEAL: bc.REVEAL, CREDITS: bc.CREDITS, CHAT: ch.CHAT, AVOID: st12.AVOID, MEET_SCENE: mc.MEET_SCENE };
     const from = copyText.search(/^#### 14-5-1\. /m);
     const to = copyText.search(/^#### 14-5-3\. /m);
     let rowsX = (from >= 0 && to > from ? copyText.slice(from, to) : '')
@@ -764,6 +766,16 @@ try {
     }
     for (let i = 0; i < rowsX.length; i += 1) if (newer.has(rowsX[i][0])) rowsX[i] = [rowsX[i][0], newer.get(rowsX[i][0])];
     for (const [k, v] of newer) if (!rowsX.some(([key]) => key === k)) rowsX.push([k, v]);
+    // D46-A: 카피.md 16장(만남 장면) 표 — 첫 칸 'T4S `MEET_SCENE.키`' · 'T4 `CHAT.room.metAt`'(16장 머리 말: V · W · X 읽기와 부딪히지 않는 꼴)
+    const from16 = copyText.search(/^## 16\. /m);
+    const sec16 = from16 >= 0 ? copyText.slice(from16) : '';
+    const end16 = sec16.slice(3).search(/^## /m);
+    const rows16 = (end16 >= 0 ? sec16.slice(0, end16 + 3) : sec16)
+      .split(/\r?\n/)
+      .filter((l) => /^\| T4S? `(MEET_SCENE|CHAT)\./.test(l))
+      .map(cells)
+      .map((r) => [(/`([^`]+)`/.exec(r[0]) ?? [])[1], r[1]]);
+    for (const row of rows16) if (!rowsX.some(([key]) => key === row[0])) rowsX.push(row);
     const SLOT = '§';
     const MARK = '\u0001';
     const norm = (t) => t.replace(/\{[^{}]+\}/g, SLOT);
@@ -794,7 +806,14 @@ try {
       const ok = got.length === 1 ? got[0] === whole || alts.includes(got[0]) : got.every((g) => alts.includes(g));
       if (!ok) diffsX.push(`${key}: 앱 "${got.join(' / ')}" / 카피 "${want}"`);
     }
-    check('X', `v5 새 화면 글 ${rowsX.length}줄(14-5-1 · 14-5-2 · 14-6 · 14-7, 글 함수 ${funcs}개 포함)이 boardingCopy.ts · chatCopy.ts · settingsCopy.ts AVOID 와 같다`, rowsX.length >= 180 && diffsX.length === 0, diffsX.join('\n') || `표 ${rowsX.length}줄`);
+    // D46-A: 16-3 쓰지 않을 낱말(방송 · 유행어 · '관광지' · 재촉 · 숫자 · 느낌표 · 영문) 0 · 장소 이름이 등급 아이콘 낱말 단독이 아님 · 16장 표 18줄
+    const meet = mc.MEET_SCENE;
+    const meetTexts = [...Object.values(meet.place), meet.when('수요일'), ...Object.values(meet.line), meet.skip, meet.skipA11y, meet.go, meet.a11y('한강 벤치', '수요일 저녁', meet.line.quiet), ch.CHAT.room.metAt('수요일 저녁', '한강 벤치')];
+    const NO_MEET = /시그널|환승|최종 선택|러브라인|썸|설렘|심쿵|운명|직진|출연자|데이트 신청|문자 투표|정보 공개|커플|관광지|지금|곧|놓치지|먼저 말을 걸어 보세요|[!！]|\d|[A-Za-z]/;
+    for (const text of meetTexts) if (NO_MEET.test(text)) diffsX.push(`16-3 쓰지 않을 낱말: "${text}"`);
+    for (const name of Object.values(meet.place)) if (['바다', '산', '달', '구름', '섬', '다리', '숲', '해', '들판'].includes(name)) diffsX.push(`16-3 등급 아이콘 낱말 단독: "${name}"`);
+    if (rows16.length !== 18) diffsX.push(`카피 16장 만남 장면 표가 18줄이 아님(${rows16.length}줄)`);
+    check('X', `v5 새 화면 글 ${rowsX.length}줄(14-5-1 · 14-5-2 · 14-6 · 14-7 · 16장 만남 장면 ${rows16.length}줄, 글 함수 ${funcs}개 포함)이 boardingCopy.ts · chatCopy.ts · settingsCopy.ts AVOID · meetCopy.ts 와 같다`, rowsX.length >= 180 && diffsX.length === 0, diffsX.join('\n') || `표 ${rowsX.length}줄`);
   }
 
   // R1 A⑦ T04 · K11: 오류 · 안내 문구 규칙(카피.md 1-1)과 v4 글 대조(카피.md 7장). 규칙 본문은 check-copy-rules.mjs
