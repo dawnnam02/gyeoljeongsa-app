@@ -77,7 +77,7 @@ async function toSurvey(email) {
 }
 const peek = (email) => b.evaluate(`JSON.stringify({ rows: window.__demoPeek.aiRows(${JSON.stringify(email.replace('@', 'v4on@'))}), active: window.__demoPeek.active(${JSON.stringify(email.replace('@', 'v4on@'))}) })`).then(JSON.parse);
 const slider = async (key) => Number(await b.evaluate(`window.__q('trait-slider-${key}-value').innerText`));
-const bar = async (key) => Number(await b.evaluate(`window.__q('trait-bar-${key}-value').innerText`));
+const bar = async (key) => Number(await b.evaluate(`window.__q('trait-bar-${key}-value').innerText`)); // QP-09 뒤 숫자 글자가 없어 07 대조는 실패(기대값 갱신 미완 — 3부 보고)
 
 try {
   // ═══ A. 정상 응답 ═══
@@ -86,7 +86,7 @@ try {
 
   const skipText = await text();
   check('A', '04 데모 건너뛰기: 안내 글과 버튼 셋(정상 · 실패 · 지연)이 보인다', skipText.includes('설문 완료 · 정상 응답') && skipText.includes('설문 완료 · 실패 응답') && skipText.includes('설문 완료 · 지연 응답'), '');
-  check('A', '04 = 정식 설문 v2(스위치 survey_v2 데모 켜짐, F20 · D-123) 아래에 데모 건너뛰기 줄', await b.waitFor(`!!window.__q('v2-screen') && !!window.__q('demo-skip')`, 8000), '');
+  check('A', '04 = 설문 화면(대화형 V6-F 또는 정식 설문 v2) 아래에 데모 건너뛰기 줄', await b.waitFor(`(!!window.__q('chat-screen') || !!window.__q('v2-screen')) && !!window.__q('demo-skip')`, 8000), '');
   await note('F3_04_데모_건너뛰기_360x740.png');
   const mSkip = await measure('04 데모 건너뛰기');
   check('D', '04 데모 건너뛰기: 360 폭 가로 넘침 0 · 글자 12 이상 · 터치 44 이상', mSkip.scrollW <= mSkip.innerW && mSkip.over.length === 0 && mSkip.minFont >= 12 && mSkip.small.length === 0, `넘침 ${mSkip.over.length} · 최소 글자 ${mSkip.minFont} · 작은 터치 ${mSkip.small.join(',') || '없음'}`);
