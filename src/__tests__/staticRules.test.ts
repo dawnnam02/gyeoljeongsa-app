@@ -78,6 +78,7 @@ const GRADE_ALLOWED_FILES = [
   'features/settings/SettingsScreen.tsx', // 12: 등급 스위치 · 탈퇴 확인창 구독 안내 연결
   'features/recs/RecommendationsScreen.tsx', // 09 등급 배지(gradeNo)
   'features/recs/CandidateScreen.tsx', // 10 상대 등급
+  'features/boarding/boardingApi.ts', // 3부-바: 서버 크레딧 장부 사유 코드 grade_gap(0030) → T5 글 키 gap 한 줄(글 '짝을 찾지 못해 돌려받음') — 등급 값 · 화면 글 아님
 ];
 const GRADE_ALLOWED_DIRS = ['features/shop/', 'features/grade/'];
 const rel = (file: string) => path.relative(SRC_DIR, file).split(path.sep).join('/');

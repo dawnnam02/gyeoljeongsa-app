@@ -21,6 +21,7 @@ import { AppText } from '@/components/AppText';
 import { BUSINESS_INFO, businessLinks, businessRows, reportNoLine, type BusinessInfo } from '@/content/businessInfo';
 import { SETTINGS } from '@/content/settingsCopy';
 import { LegalReader } from '@/features/consent/LegalReader';
+import { contactPorts, type ContactPorts } from '@/lib/contactsServices';
 import type { GradeApi } from '@/lib/gradeApi';
 import type { SettingsApi } from '@/lib/settingsApi';
 import { gradeApi, settingsApi } from '@/lib/services';
@@ -51,6 +52,7 @@ export type SettingsDeps = SupportDeps & {
   resetLocal: () => void; // 기기에 남은 가입 진행 · 설문 임시 저장 지우기(점검표 A-14)
   pushStatus: () => Promise<PushStatus>; // 지금 푸시 권한(묻지 않음)
   requestPush: () => Promise<PushStatus>; // 시스템 권한 창(서비스 알림을 켤 때, 안내 글을 먼저 보인 뒤)
+  contact?: () => ContactPorts; // 12-5 지인 차단 기기 연결(주소록 · 해시, 3부-바). 없으면 지인 차단 줄은 '준비 중'
 };
 
 
@@ -62,6 +64,7 @@ export function defaultSettingsDeps(): SettingsDeps {
     resetLocal: () => useSignupStore.getState().resetAll(),
     pushStatus: readPushStatus,
     requestPush: requestPushPermission,
+    contact: contactPorts, // 누를 때 처음 만든다(기기 모듈을 미리 읽지 않음)
     copyText: copyToClipboard,
     openMail: async (email) => {
       try {
@@ -214,7 +217,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
       case 'image-credit':
         return <ImageCreditPage onBack={toList} />;
       case 'avoid':
-        return <AvoidPage api={deps.api} onBack={toList} onToast={showToast} />;
+        return <AvoidPage api={deps.api} onBack={toList} onToast={showToast} contact={deps.contact} />;
       case 'business-info':
         return bizRows ? (
           <BusinessInfoPage

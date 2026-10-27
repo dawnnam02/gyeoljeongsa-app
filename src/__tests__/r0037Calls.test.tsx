@@ -162,7 +162,7 @@ describe('③ 아는 분 피하기 — 0037 앱 함수 7개', () => {
     const state = { on: false, avoid_org_on: true, enabled: true, avoid_on: true, auto_sync: false, share_my_key: true, last_synced_at: null, avoid_company: 0, avoid_school: 0, can_sync_today: true };
     const f = fakeClient((name) => ({ data: name === AVOID_RPC.state ? state : { ok: true }, error: null }));
     const api = createSettingsApi(f.client, 'test');
-    expect(await api.loadAvoid()).toEqual({ ok: true, data: { companies: [], schools: [], shareEmail: true, orgOn: true } });
+    expect(await api.loadAvoid()).toEqual({ ok: true, data: { companies: [], schools: [], shareEmail: true, orgOn: true, otherCount: 0, contactOn: false } });
     await api.setAvoidCompany(' (주)한빛 ', true);
     await api.setAvoidSchool({ key: 'K0001', name: '가야대학교(고령)' }, false);
     await api.setShareEmail(false);
@@ -210,7 +210,7 @@ describe('③ 아는 분 피하기 — 0037 앱 함수 7개', () => {
     await store.write('a', { companies: ['한빛', '한빛', ' ', '1', '2', '3', '4', '5'], schools: [{ key: 'K1', name: '가' }] });
     expect(await store.read('a')).toEqual({ companies: ['한빛', '1', '2', '3', '4'], schools: [{ key: 'K1', name: '가' }] });
     expect(await store.read('b')).toEqual({ companies: [], schools: [] });
-    box.set('settings.avoidOrgs.v1:c', '{깨짐');
+    box.set('settings.avoidOrgs.v1_c', '{깨짐'); // 3부-바: SecureStore 열쇠 꼴('_' 로 이음)
     expect(await store.read('c')).toEqual({ companies: [], schools: [] });
     const mem = memoryAvoidStore();
     await mem.write('a', { companies: ['x'], schools: [] });

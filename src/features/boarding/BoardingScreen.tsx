@@ -1,4 +1,6 @@
-// T1 탑승권 · T2 기다림(V5 W6 · 청사진 v5 초안 4-1 4~7 · 6-1). 탭 '탑승권'의 본문 — 서버 get_boarding_state 하나로 고른다(boardingLogic.boardingView).
+// T1 탑승권 · T2 기다림(V5 W6 · 청사진 v5 초안 4-1 4~7 · 6-1). 탭 '탑승권'의 본문 — 서버 get_ticket_state + get_weekly_match(boardingApi.load)로 고른다(boardingLogic.boardingView).
+//  · [결제하기] = 계약 설명 확인 기록 → 자리 잡기(hold_ticket_seat) → 데모 결제(demo_buy_ticket). [크레딧 1장으로 타기] = board_with_credit. 결제 뒤 자리를 못 받으면(credited) 크레딧 안내 한 줄
+//  · [탑승 취소] 확인창 본문: 결제로 탄 좌석 = cancel.body(스토어 환불 문장 포함) · 크레딧으로 탄 좌석 = cancel.bodyCredit(카피 14-7, 팀장 10-27)
 //  위에서 아래: 머리(탑승권 + 프로필 원) → (크레딧이 있으면) 크레딧 줄 → 상태 카드(제목 · 한두 줄 · 버튼) → 탑승권 한 장 → 기다리는 동안 할 일 → (데모) 장면 줄
 //  · 판매 전 · 판매 중 · 좌석 모두 참 · 판매 끝 · 탑승 완료(기다림) · 공개(만난 분 있음 / 완벽한 사람을 찾지 못함) · 살 수 없음(정치 문항 · 계산 멈춤)
 //  · 재촉 0: 남은 좌석 수 · 매진 임박 · 서두르세요 0. 남은 때는 날 단위(오늘 · n일 뒤)만, 시 · 분 · 초 카운트다운 0
@@ -111,11 +113,11 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
       setError(ackFail);
       return;
     }
-    const r = await deps.api.buy(deps.newId(), useCredit);
+    const r = await deps.api.buy(deps.newId(), useCredit, state.round.no);
     setBusy(false);
     if (!r.ok) {
       setError(r.reason);
-      if (r.reason === 'sold_out' || r.reason === 'closed' || r.reason === 'already') reload();
+      if (r.reason === 'sold_out' || r.reason === 'closed' || r.reason === 'already' || r.reason === 'credited') reload();
       return;
     }
     haptic.success(); // 구매가 확인됨(D25 4장)
@@ -227,7 +229,8 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
             <TextButton label={BOARDING.sheet.contract} onPress={() => setContract(true)} testID="boarding-contract" />
             {error ? (
               <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" testID="boarding-sheet-error">
-                {BOARDING.buyErrors[error]}
+                {/* credited(0030 paid_no_seat): 결제는 됐지만 자리를 못 받아 크레딧 1장 — 전용 글은 카피 대기라 noMatch.body(같은 사실 '크레딧으로 돌려드렸어요')를 쓴다 */}
+                {error === 'credited' ? BOARDING.noMatch.body : BOARDING.buyErrors[error]}
               </AppText>
             ) : null}
             <AppText variant="captionMedium" tone="text" testID="boarding-sheet-deadline">
@@ -244,7 +247,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
       <ConfirmDialog
         visible={askCancel}
         title={BOARDING.cancel.title}
-        body={BOARDING.cancel.body}
+        body={state?.ticket?.paidWith === 'credit' ? BOARDING.cancel.bodyCredit : BOARDING.cancel.body}
         confirmLabel={BOARDING.cancel.confirm}
         cancelLabel={BOARDING.cancel.keep}
         busy={cancelling}

@@ -25,7 +25,8 @@
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.SYSTEM_ALERT_WINDOW"
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WRITE_CONTACTS"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon/adaptive-foreground.png",
@@ -56,7 +57,11 @@
         }
       ],
       "expo-secure-store",
-      "expo-image"
+      "expo-image",
+      [
+        "expo-contacts",
+        { "contactsPermission": "아는 분과 서로 보이지 않게 하려고 주소록의 번호와 이메일을 기기에서 바꿔 비교해요." }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

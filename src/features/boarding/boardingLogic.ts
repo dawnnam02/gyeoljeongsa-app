@@ -46,9 +46,10 @@ export function nextSaleOpen(matchAt: number): number {
   return (kstDayNo(matchAt) + 1) * DAY - KST;
 }
 
-// T2 [탑승 취소]를 보이나(D-200 ④ · 정책 P1-08): 이번 회차에 탔고, 서버 시각이 판매 마감(수 17:30) 전일 때만
-export const canCancel = (s: Pick<BoardingState, 'ticket' | 'round' | 'now'>): boolean =>
-  !!s.ticket && !!s.round && s.ticket.roundNo === s.round.no && s.round.saleCloseAt !== null && s.now < s.round.saleCloseAt;
+// T2 [탑승 취소]를 보이나(D-200 ④ · 정책 P1-08): 이번 회차에 탔고, 판매 마감(수 17:30) 전일 때만.
+//  서버 0030 은 시각(now)을 보내지 않아 기기 시계를 쓴다 — 서버 판매 상태(phase)가 판매 중이 아니면(마감 · 공개) 기기 시계와 상관없이 숨긴다
+export const canCancel = (s: Pick<BoardingState, 'ticket' | 'round' | 'now'> & Partial<Pick<BoardingState, 'phase'>>): boolean =>
+  !!s.ticket && !!s.round && s.ticket.roundNo === s.round.no && s.round.saleCloseAt !== null && s.now < s.round.saleCloseAt && (s.phase === undefined || s.phase === 'on_sale');
 
 // 탑승 취소가 받아들여진 바로 뒤(0037 result 'credited'): 탑승권을 내려놓고 크레딧 1장을 더한다 → T1(판매 중)으로.
 //  서버 값을 다시 읽기 전 한순간만 쓰는 값이라 다른 칸은 그대로 둔다

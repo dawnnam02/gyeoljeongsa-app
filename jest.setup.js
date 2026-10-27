@@ -14,5 +14,6 @@ jest.mock('@/navigation/v5Hide', () => {
     ...actual,
     useV4Screens: () => ({ ready: true, dailyRecs: true, likes: true, shop: true }),
     V4Gate: ({ children }) => children,
+    CandidateGate: ({ children }) => children, // 3부-바: 10 라우트 문 — 진짜 동작은 v5Hide.test
   };
 });

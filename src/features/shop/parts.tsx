@@ -7,7 +7,7 @@ import { AppText } from '@/components/AppText';
 import { Icon, type IconName } from '@/components/Icon';
 import { Pressable } from '@/components/Pressable';
 import { BEFORE_BUY, SHOP16 } from '@/content/shopCopy';
-import { FILL_INS } from '@/content/fillIns';
+import { LEGAL_FILL_VALUES } from '@/content/fillLegal';
 import { layout } from '@/theme/layout';
 import { colors, radius, size, space } from '@/theme/tokens';
 
@@ -71,7 +71,7 @@ export function sellerText(text: string): string | null {
     .map((part) => {
       let missing = false;
       const filled = part.replace(/\{([^}]+)\}/g, (_whole, name: string) => {
-        const value = FILL_INS[name];
+        const value = LEGAL_FILL_VALUES[name]; // {고객센터 이메일} = {전자우편주소} 같은 값(businessInfo CONTACT_EMAIL)
         if (value == null) missing = true;
         return value ?? '';
       });

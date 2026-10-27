@@ -46,10 +46,24 @@ export function useV4Screens(store?: FlagsStore): { ready: boolean; dailyRecs: b
   return { ready, dailyRecs: v4ScreenOn(flags, 'dailyRecs'), likes: v4ScreenOn(flags, 'likes'), shop: v4ScreenOn(flags, 'shop') };
 }
 
-// 숨긴 화면의 라우트를 감싼다: 켜져 있으면 그대로, 꺼져 있으면 그리지 않고 V5_HOME 으로
-export function V4Gate({ screen, children, store }: { screen: V4Screen; children: ReactNode; store?: FlagsStore }) {
+// 숨긴 화면의 라우트를 감싼다: 켜져 있으면 그대로, 꺼져 있으면 그리지 않고 V5_HOME 으로.
+//  screen 을 여러 개 주면 하나라도 켜져 있을 때 연다(10 상대 프로필 = 09 · 11 어느 쪽에서든 들어오는 화면)
+export function V4Gate({ screen, children, store }: { screen: V4Screen | readonly V4Screen[]; children: ReactNode; store?: FlagsStore }) {
   const s = useV4Screens(store);
   if (!s.ready) return <View style={{ flex: 1 }} testID="v4-gate-wait" />;
-  if (!s[screen]) return <Redirect href={V5_HOME} />;
+  const screens: readonly V4Screen[] = typeof screen === 'string' ? [screen] : screen;
+  if (!screens.some((k) => s[k])) return <Redirect href={V5_HOME} />;
   return <>{children}</>;
+}
+
+// 10 상대 프로필 라우트의 문(3부-바 · QP-01 후속): 공개 순간(T3)에서 온 길(from=reveal)은 v5 길이라 늘 연다.
+//  그 밖(09 카드 · 11 호감 행 · 주소를 직접 친 웹)은 v4 화면 09 · 11 중 하나가 켜져 있을 때만 — 꺼져 있으면 그리지 않고 V5_HOME 으로
+export const CANDIDATE_V4_SCREENS: readonly V4Screen[] = ['dailyRecs', 'likes'];
+export function CandidateGate({ from, children, store }: { from?: string | string[]; children: ReactNode; store?: FlagsStore }) {
+  if (from === 'reveal') return <>{children}</>;
+  return (
+    <V4Gate screen={CANDIDATE_V4_SCREENS} store={store}>
+      {children}
+    </V4Gate>
+  );
 }

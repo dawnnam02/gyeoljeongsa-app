@@ -75,7 +75,7 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('사업자 정보 · 신고번호 값(한 곳)', () => {
   test('지금 값은 모두 비어 있다(신고 수리 전) → 신고번호 줄 · 사업자 정보 줄 모두 없음', () => {
-    expect(BUSINESS_INFO).toEqual({ ...EMPTY, ecomNo: null, feeTableUrl: null, bondClaimUrl: null });
+    expect(BUSINESS_INFO).toEqual({ ...EMPTY, ecomNo: null, email: null, feeTableUrl: null, bondClaimUrl: null }); // email: 3부-바 법무 L21 10-2 전자우편주소 줄
     expect(reportNoLine()).toBeNull();
     expect(businessRows()).toBeNull();
   });

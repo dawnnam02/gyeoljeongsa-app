@@ -292,3 +292,60 @@
 | check:tokens | 5/0 |
 | 웹 빌드 | 하지 않음 — 데모 경로는 jest(데모 클라이언트)로 확인. web-w6 은 결제 전에 ack 가 하나 더 돌 뿐(데모 처리기 있음) |
 - 덧: 처음 jest 전부를 멈춘 뒤 남은 jest 프로세스(내 것)가 같은 기록 파일에 써서 '자식 프로세스 시작 실패(3221225794)' 묶음이 섞여 보였음 → 그 프로세스를 끝내고 다시 돌린 결과가 위 줄
+
+## 3부-바 탑승권 이름 맞춤 · 10 관문 · 탈퇴 때 기기 목록 · 지인 차단 (D-199 ~ D-204 R-A 후속, 10-27, 마감 10-29)
+- 기준: backend/migrations 0030 [5] 앱 함수 6 · 0037 [3] 장부 사유 · [4] 취소 · list_ticket_history(R37) · [7] 지인 · 0038 [2] 사유 3(age_*) · backend/R_변경기록 3장 · 6-2 (읽기만)
+- 팀장 덧붙임(10-27): 카피 12-Q AVOID 9줄 확정 → 3번에 바로 붙임 · 크레딧 좌석 취소 확인창은 '스토어 환불' 문장 뺌 · T1 · T5 크레딧 끝나는 날 칸 숨김
+
+| 단계 | 상태 |
+|---|---|
+| 0 읽기(0030 · 0036 · 0037 · 0038 정의 · R 변경기록) | 끝 |
+| 1 탑승권 이름 · 인자 · 응답 · 데모 · 장부 사유 · T5 글 키 | 끝(코드) — boardingApi 전면(get_ticket_state + get_weekly_match · hold → demo_buy · board_with_credit · list_ticket_history) · demo/boardingDemo 서버 모양 · w6Boarding 시험 고침 |
+| 1b 덧붙임: 크레딧 좌석 취소 확인창 · 끝나는 날 칸 숨김 | 끝(코드) — cancel.bodyCredit · next_expire_on · expires_on 읽지 않음 |
+| 2 /candidate/[id] V4Gate | 끝(코드) — v5Hide CandidateGate(from=reveal 열림 · 그 밖 09 · 11 중 하나 켜짐) · jest.setup 대역 |
+| 3 탈퇴 때 avoidLocal 지우기 · AVOID 9줄 · SecureStore(T126) | 끝(코드) — avoidLocal remove · 열쇠 '_' 꼴 · services 는 secureStorage avoidStorage(조각 · 이 기기 전용) · confirmWithdraw ok → remove · clearAvoidOrgs → remove · AvoidPage 9줄 |
+| 4 지인 차단(expo-contacts · expo-crypto) | 끝(코드) — `npx expo install expo-contacts expo-crypto`(~57.0.8 · ~57.0.4) · lib/contactSync · contactsDevice · contactsServices · app.json 플러그인 · WRITE_CONTACTS 막음 · 이메일만(전화 0) |
+| 4b 덧붙임 법무 L21 10-2: gen:legal --fingerprints · 사업자 정보 전자우편주소 줄 · CONTACT_EMAIL 하나 | 끝(코드) — 채울 값 19 · 지문 terms 6fb6a1a17214 · privacy b2686f7cefc8 |
+| 5 시험 · 웹 점검 | 끝 — 아래 '3부-바 시험' |
+| 6 커밋(푸시 0) | 끝 — 3부-바 커밋 |
+
+### 3부-바 탑승권 이름 표(서버 확정 — 3부-마 표의 '가정 이름' 3개를 갈음)
+| 일 | 앱이 부르는 이름 · 인자 → 읽는 키 | 앱 자리 |
+|---|---|---|
+| 탑승권 화면 상태 | `get_ticket_state()` → round{round_no · match_day · match_time · sale_open_at · sale_close_at · sale_state} · seat{state · paid_by · boarded_at} · region · reason · credit.balance (`next_expire_on` 읽지 않음) + `get_weekly_match()` → state matched(partner_id · room_id · partner A12 · A01 · A03) · not_found | `boardingApi.load` · `parseTicketState` · `parseWeeklyMatch`. sale_state before/open/closed/ended → 판매 전/중/끝/공개. 서버는 now 를 보내지 않아 기기 시각(데모만 장면 시각 now 를 더 보냄) |
+| 결제(데모) | `hold_ticket_seat({ p_round_no })` → `demo_buy_ticket({ p_request_id })` → result boarded · credited · already_granted(outcome) · 실패면 `release_ticket_hold()` | `boardingApi.buy(requestId, false, roundNo)` — credited(결제 뒤 자리 없음 = paid_no_seat 크레딧)는 시트에 `noMatch.body` 한 줄(전용 글 카피 대기) |
+| 크레딧으로 타기 | `board_with_credit({ p_round_no })` → { ok, reason, round_no, paid_by } | `boardingApi.buy(requestId, true, roundNo)` |
+| T5 내역 | `list_ticket_history()` → credits[{ id · reason · round_no · created_at · state open/used/revoked · used_round_no }] · tickets[{ round_no · paid_by · boarded_at }] · balance (`expires_on` 읽지 않음) | `parseHistory`: +1 = 받은 장 · used → −1 '탑승권으로 씀'(날짜 = 그 회차 크레딧 탑승 시각, 취소했으면 없음) · revoked → −1 '스토어 환불로 회수됨'(날짜 없음) |
+| 공개 사진 | `get_candidate_profile({ p_target: partner_id })` 의 face 승인 사진 | `boardingApi.facePhoto` — RevealScreen 만(탑승권 탭 읽기에는 부르지 않음) |
+| 사유 → 화면 | board_check: full → 좌석 모두 참 · state · review_pending → 확정 전 · profile_incomplete → 정치 문항 글 / hold · credit 사유: full → sold_out · already_boarded → already · closed · before_sale · sale_off · no_round · region_closed · payment_closed → closed · state · review_pending · profile_incomplete → not_eligible · no_credit | `boardingApi` PHASE · INELIGIBLE · BUY_REASON |
+
+### 3부-바 장부 사유 → T5 글 키(카피 14-5-2 · 14-7)
+| 서버 사유(0030 · 0037 · 0038) | 글 키 | 글 |
+|---|---|---|
+| unbalanced · no_match · grade_gap | balance · no_fit · gap | 짝을 찾지 못해 돌려받음 |
+| cancel_return(크레딧 좌석 취소) · cancel_credit(결제 좌석 취소) | cancelled | 탑승을 취소해 돌려받음 |
+| refund_reversed | refund_restored | 스토어 환불이 취소되어 다시 받음 |
+| (−1) use | used | 탑승권으로 씀 |
+| (−1) store_refund(장 state revoked) | refund_taken | 스토어 환불로 회수됨 |
+| paid_no_seat · round_cancelled · admin · age_rejoin_restore | **카피 대기** — 그 장(+1 · 쓴 −1)을 그리지 않음. 잔액이 있는데 줄이 없으면 '내역 없음' 글도 숨김 | — |
+| age_terminate · (−1) age_hold | 해지 계정이라 화면 0 | — |
+| (−1) expire | 0037 뒤 만료 없음 — 그리지 않음 | — |
+
+### 3부-바 메모(고치지 않음 · 팀장에게)
+- 서버 사유 `profile_incomplete` 하나가 정치 · 등급 · 종교 · 성별 · 지역 빈칸을 모두 덮어 앱이 '등급 계산 멈춤'(BOARDING.ineligible.paused 글)을 가르지 못함 → 지금은 정치 문항 글. 백엔드에 사유 나눔(예 grade_paused) 요청 거리.
+- `region_closed`(1회차 수도권만)는 화면 글이 없어 결제 오류 '판매가 끝났어요'로 보냄 — 권역 밖 회원은 사전 오픈 대기 화면이 먼저 막는지 미확인.
+- list_ticket_history: age_hold 로 소비된 장은 state 'open' 으로 나옴(해지 계정이라 화면 영향 0) — 백엔드 메모.
+- 지인 차단 전화번호: 서버 회원 키가 이메일뿐 · 정규화 미정(R 변경기록 6-2) → 앱은 이메일만 해시해 보냄(전화 0). 이메일 해시 꼴은 0037 정의와 맞음(시험 ④: HMAC(pepper, 앱 해시) = 회원 키).
+- 지인 차단 시트 글은 카피.md '12 · v4 R2 V05 NF5' 개선안 글자 그대로(v5 확정 표엔 아직 없음 — 카피 대기). iOS 권한 문구 = NF5-06 글.
+
+### 3부-바 시험 (10-27 저녁, 하나씩 백그라운드)
+| 시험 | 결과 |
+|---|---|
+| tsc | 0 |
+| eslint(바꾼 · 새 파일 29개) | 0 |
+| jest | 89묶음 1647/1647(새 r3bae 27 · candidateGate 5 — 1615 + 32 · 고친 기대값: w6Boarding 서버 모양 · r0037Calls loadAvoid 두 칸 · 열쇠 '_' · qpaSettingsV5 email 칸 · staticRules 등급 허용 목록에 boardingApi 한 줄(서버 사유 코드 grade_gap)) |
+| check:copy · grade | 99/0(BOARDING.cancel.bodyCredit 들어가 98/1 → 99/0) · 통과 |
+| check:tokens | 5/0 |
+| 보안 check_sec2(읽기만 실행) | P7-f · P7-g · P7-h · P7-i 통과(SF-05 앱 저장 4/0). 전체 실패 1 = F-05s npm audit(moderate 6 · high 4 — expo · @expo/cli · zod · node-forge 등 기존 의존, 이번 expo-contacts · expo-crypto 2개와 무관 · audit fix --force 0) |
+| gen:legal --fingerprints(법무 18:22 판) | 채울 값 19(+{전자우편주소}) · 지문 terms 6fb6a1a17214 · privacy b2686f7cefc8 · 동의 판 13개 그대로 |
+| 웹 dist-demo 다시 만듦 | web-w6 390: 36/0 · web-f7 360: 63/0(셋째 판. 첫 판 26/2 · 둘째 판 22/3 은 동의 관리 CK15 · CK16 칸에서 매번 다른 자리 시간 초과 — 같은 때 다른 직원 run_s7 · probe3 가 돌던 부하, 이번 변경 밖 화면) |

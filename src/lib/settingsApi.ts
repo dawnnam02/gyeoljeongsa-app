@@ -102,7 +102,8 @@ export function parseContactState(raw: unknown): ContactState | null {
 }
 
 // 화면 값: 이름은 이 기기(lib/avoidLocal) · 스위치 · 이메일 비교는 서버
-export type AvoidSettings = AvoidLocal & { shareEmail: boolean; orgOn: boolean };
+//  otherCount = 서버 개수 − 기기 목록(다른 기기에서 넣은 곳) · contactOn = 스위치 contact_block(꺼짐이면 지인 차단 줄 '준비 중')
+export type AvoidSettings = AvoidLocal & { shareEmail: boolean; orgOn: boolean; otherCount: number; contactOn: boolean };
 export type ContactOptions = { autoSync?: boolean; shareMyKey?: boolean; enabled?: boolean; avoidOn?: boolean };
 export type ContactSyncFailure = SettingsFailure | 'off' | 'consent' | 'limit' | 'invalid';
 const HASH64 = /^[0-9a-f]{64}$/;
@@ -220,10 +221,15 @@ export function createSettingsApi(client: SupabaseClient, appVersion = 'dev', av
       return { ok: false, reason: 'server' };
     },
 
-    // 탈퇴 2: 번호가 맞으면 서버가 탈퇴를 확정한다(이 순간이 탈퇴 확인일)
+    // 탈퇴 2: 번호가 맞으면 서버가 탈퇴를 확정한다(이 순간이 탈퇴 확인일).
+    //  확정되면 이 기기에 둔 피할 회사 · 학교 이름 목록도 지운다(3부-바 — 서버 해시는 탈퇴 cascade). 세션이 정리되기 전에 회원 id 를 먼저 읽어 둔다
     async confirmWithdraw(token: string): Promise<Outcome<WithdrawConfirmFailure>> {
+      const id = await myId();
       const r = await invokeDelete({ action: 'confirm', token }, 'withdraw.confirm.fail');
-      if (r.ok) return { ok: true };
+      if (r.ok) {
+        await avoidStore.remove(id);
+        return { ok: true };
+      }
       if (r.network) return { ok: false, reason: 'network' };
       if (r.code === 'invalid_token') return { ok: false, reason: 'wrong' };
       if (r.code && LIMIT_CODES.has(r.code)) return { ok: false, reason: 'limit' };
@@ -239,7 +245,9 @@ export function createSettingsApi(client: SupabaseClient, appVersion = 'dev', av
       const st = parseContactState(data);
       if (!st) return { ok: false, reason: 'server' };
       const local = await avoidStore.read(await myId());
-      return { ok: true, data: { ...local, shareEmail: st.shareMyKey, orgOn: st.orgOn } };
+      // 서버 개수가 기기 목록보다 많으면 = 다른 기기(또는 지운 앱)에서 넣은 곳 — 이름은 볼 수 없고 개수만(AVOID.otherDevice)
+      const otherCount = Math.max(0, st.companyCount - local.companies.length) + Math.max(0, st.schoolCount - local.schools.length);
+      return { ok: true, data: { ...local, shareEmail: st.shareMyKey, orgOn: st.orgOn, otherCount, contactOn: st.contactOn } };
     },
     async loadContactState(): Promise<Loaded<ContactState>> {
       const { data, error } = await client.rpc(AVOID_RPC.state);
@@ -260,14 +268,14 @@ export function createSettingsApi(client: SupabaseClient, appVersion = 'dev', av
     async clearAvoidOrgs(): Promise<Outcome> {
       const { error } = await client.rpc(AVOID_RPC.clearOrgs);
       if (error) return { ok: false, reason: dbFail(error, 'settings.avoid.clear.fail') };
-      await avoidStore.write(await myId(), { companies: [], schools: [] });
+      await avoidStore.remove(await myId()); // 서버 개수 0 + 이 기기 목록도 통째로 지움
       return { ok: true };
     },
     // '내 이메일을 다른 분의 지인 비교에 쓰기'(처음 켜짐). 끄면 서버가 내 비교 키를 바로 지운다
     setShareEmail: (on: boolean): Promise<Outcome> => setContactOptions({ shareMyKey: on }),
     setContactOptions,
     // 지인 차단(CK11 · 주소록): 기기에서 만든 키(SHA-256('kjs1|' + 소문자 이메일) 16진 64자)를 500개씩. 응답은 { ok } 뿐 — 맞은 수 · 누구는 오지 않는다
-    //  주소록 모듈 · 해시 만들기는 아직 없다(설정 줄은 '준비 중'). 함수 이름 · 인자만 0037 에 맞춰 둔다
+    //  주소록 읽기 · 해시는 lib/contactSync(3부-바, expo-contacts · expo-crypto). 스위치 contact_block 꺼짐이면 화면 줄은 '준비 중'
     async syncContacts(syncId: string, hashes: readonly string[], mode: 'add' | 'replace', final: boolean): Promise<Outcome<ContactSyncFailure>> {
       if (hashes.length > 500 || hashes.some((h) => !HASH64.test(h))) return { ok: false, reason: 'invalid' };
       const { error } = await client.rpc(AVOID_RPC.sync, { p_sync_id: syncId, p_hashes: [...hashes], p_mode: mode, p_final: final });

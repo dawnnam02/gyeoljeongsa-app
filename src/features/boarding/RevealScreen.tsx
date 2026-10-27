@@ -26,7 +26,8 @@ import { arriveWhen } from './boardingLogic';
 import { hrefOf } from './BoardingScreen';
 import { defaultOpenedRounds, useOpenedRounds, type OpenedRounds } from './openedRounds';
 
-export type RevealDeps = { api: Pick<BoardingApi, 'load'>; photoUrl: (photoId: string) => Promise<string | null>; opened?: OpenedRounds };
+// 사진: get_weekly_match 에는 사진 id 가 없어(0032) 만난 분의 얼굴 사진 id 를 api.facePhoto(get_candidate_profile)로 따로 얻는다
+export type RevealDeps = { api: Pick<BoardingApi, 'load'> & Partial<Pick<BoardingApi, 'facePhoto'>>; photoUrl: (photoId: string) => Promise<string | null>; opened?: OpenedRounds };
 
 const PHOTO = 240;
 const R = scene2.reveal;
@@ -40,8 +41,12 @@ export function RevealScreen({ deps }: { deps: RevealDeps }) {
     void deps.api.load().then((l) => {
       if (!alive) return;
       setLoad(l);
-      const photo = l.ok && l.state.result?.kind === 'matched' ? l.state.result.partner.facePhotoId : null;
-      if (photo) void deps.photoUrl(photo).then((u) => alive && setUri(u));
+      const matched = l.ok && l.state.result?.kind === 'matched' ? l.state.result : null;
+      if (!matched) return;
+      const photoId = matched.partner.facePhotoId ? Promise.resolve(matched.partner.facePhotoId) : (deps.api.facePhoto?.(matched.partnerId) ?? Promise.resolve(null));
+      void photoId.then((photo) => {
+        if (photo && alive) void deps.photoUrl(photo).then((u) => alive && setUri(u));
+      });
     });
     return () => {
       alive = false;

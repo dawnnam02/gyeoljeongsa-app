@@ -2,7 +2,7 @@
 import { act } from 'react-test-renderer';
 
 import { createDemoBoarding } from '@/demo/boardingDemo';
-import { createBoardingApi, parseBoarding, parseLedger, type BoardingState } from '@/features/boarding/boardingApi';
+import { createBoardingApi, parseHistory, parseTicketState, parseWeeklyMatch, type BoardingState } from '@/features/boarding/boardingApi';
 import { ARRIVE, BOARDING, CREDITS, REVEAL } from '@/features/boarding/boardingCopy';
 import { arriveWhen, boardingView, daysUntil, nextSaleOpen, whenText } from '@/features/boarding/boardingLogic';
 import { BoardingScreen } from '@/features/boarding/BoardingScreen';
@@ -36,20 +36,23 @@ async function demoClient(email: string) {
   return client;
 }
 
-describe('서버 응답 읽기(가정 이름 get_boarding_state · buy_ticket · list_credit_ledger)', () => {
-  test('아는 키만: 남은 좌석 수 · 정원 · 순번 · 점수 키는 버린다 · 모르는 phase 는 살 수 없는 쪽(closed) · 음수 크레딧은 0', () => {
-    const s = parseBoarding({ now: '2026-12-20T09:00:00Z', round: { no: 1, match_at: '2026-12-23T09:00:00Z', seats_left: 3 }, phase: 'weird', seat: 'full', seats_left: 3, capacity: 200, queue_no: 41, credits: -2, score: 88 }, 0);
-    expect(s).toMatchObject({ phase: 'closed', seat: 'full', credits: 0, ticket: null, result: null });
+describe('서버 응답 읽기(0030 get_ticket_state · 0032 get_weekly_match · 0030/0037 list_ticket_history)', () => {
+  test('아는 키만: 남은 좌석 수 · 정원 · 순번 · 점수 키는 버린다 · 모르는 sale_state 는 살 수 없는 쪽(closed) · 음수 크레딧은 0 · 사유 full = 좌석 모두 참', () => {
+    const s = parseTicketState({ round: { round_no: 1, match_day: '2026-12-23', match_time: '18:00', sale_state: 'weird', seats_left: 3 }, reason: 'full', seats_left: 3, capacity: 200, queue_no: 41, credit: { balance: -2 }, score: 88 }, 0);
+    expect(s).toMatchObject({ phase: 'closed', seat: 'full', credits: 0, ticket: null, result: null, round: { no: 1, matchAt: Date.parse('2026-12-23T18:00:00+09:00') } });
     expect(JSON.stringify(s)).not.toMatch(/seats_left|capacity|queue|score|41|88/);
-    expect(parseBoarding('x', 0)).toBeNull();
-    expect(parseBoarding({ round: { no: 0, match_at: 'x' } }, 0)?.round).toBeNull();
+    expect(parseTicketState('x', 0)).toBeNull();
+    expect(parseTicketState({ round: { round_no: 0, match_day: 'x' } }, 0)?.round).toBeNull();
   });
 
-  test('공개 결과: 만난 분(이름 · 나이 · 지역 · 얼굴 사진 id 만) · 찾지 못함(이유)', () => {
-    const m = parseBoarding({ phase: 'revealed', result: { round_no: 1, kind: 'matched', partner_id: 'u2', chat_id: 'c1', partner: { name: '문OO', age: 32, region: { sido: '서울', sigungu: '마포구' }, face_photo_id: 'p', score: 9 } } }, 0);
-    expect(m?.result).toEqual({ roundNo: 1, kind: 'matched', partnerId: 'u2', chatId: 'c1', partner: { name: '문OO', age: 32, region: { sido: '서울', sigungu: '마포구' }, facePhotoId: 'p' } });
-    expect(parseBoarding({ phase: 'revealed', result: { round_no: 1, kind: 'no_match', reason: 'no_fit' } }, 0)?.result).toEqual({ roundNo: 1, kind: 'no_match', reason: 'no_fit' });
-    expect(parseLedger({ balance: 1, items: [{ at: '2026-12-23T09:00:00Z', delta: 1, reason: 'balance', round_no: 1 }, { at: 'x', delta: 1, reason: 'used' }, { at: '2026-12-24T00:00:00Z', delta: 0, reason: 'used' }] })?.items).toHaveLength(1);
+  test('공개 결과: 만난 분(공개 범위 답 A12 · A01 · A03 만, 방 id) · 찾지 못함(이유 없음) · 공개 전 · 스위치 꺼짐은 없음', () => {
+    const m = parseWeeklyMatch({ state: 'matched', round_no: 1, match_at: '2026-12-23T09:00:00Z', partner_id: 'u2', room_id: 'c1', partner: { A12: '문OO', A01: 32, A03: { sido: '서울', sigungu: '마포구' }, C05: '5천만 원대', score: 9 } });
+    expect(m).toEqual({ roundNo: 1, kind: 'matched', partnerId: 'u2', chatId: 'c1', partner: { name: '문OO', age: 32, region: { sido: '서울', sigungu: '마포구' }, facePhotoId: null } });
+    expect(parseWeeklyMatch({ state: 'not_found', round_no: 1, credited: true })).toEqual({ roundNo: 1, kind: 'no_match', reason: null });
+    expect(parseWeeklyMatch({ state: 'waiting', round_no: 1 })).toBeNull();
+    expect(parseWeeklyMatch({ off: true })).toBeNull();
+    const h = parseHistory({ balance: 1, tickets: [], credits: [{ id: 1, reason: 'unbalanced', round_no: 1, created_at: '2026-12-23T09:00:00Z', state: 'open' }, { id: 2, reason: 'no_match', created_at: 'x', state: 'open' }, { id: 3, reason: 'weird', created_at: '2026-12-24T00:00:00Z', state: 'open' }] });
+    expect(h?.items).toEqual([{ at: Date.parse('2026-12-23T09:00:00Z'), delta: 1, reason: 'balance', roundNo: 1 }]);
   });
 
   test('화면 고르기: 공개 > 탑승 > 살 수 없음 > 판매 전 · 판매 중(좌석 모두 참) · 판매 끝', () => {
@@ -104,7 +107,10 @@ describe('데모 서버(demo/boardingDemo)', () => {
   const u = (email: string) => ({ id: `id-${email}`, email });
   test('장면: 기본 판매 중 · boardfull 좌석 모두 참 · boardon 탑승 · boardmatch 만난 분(끼리끼리 첫 분) · boardnone 찾지 못함 + 크레딧', async () => {
     const d = createDemoBoarding();
-    const read = async (email: string) => parseBoarding((await d.rpc(u(email), 'get_boarding_state')).data, 0) as BoardingState;
+    const read = async (email: string) => {
+      const l = await createBoardingApi({ rpc: ((name: string, args?: Record<string, unknown>) => d.rpc(u(email), name, args)) as never }).load();
+      return (l.ok ? l.state : null) as BoardingState;
+    };
     expect(boardingView(await read('a@email.com'))).toBe('on_sale');
     expect(boardingView(await read('boardfull@email.com'))).toBe('full');
     expect(boardingView(await read('boardon@email.com'))).toBe('boarded');
@@ -115,20 +121,21 @@ describe('데모 서버(demo/boardingDemo)', () => {
     expect(boardingView(await read('boardpolitics@email.com'))).toBe('ineligible');
   });
 
-  test('사기: 판매 중이면 탑승(같은 요청은 한 번) · 크레딧으로 타면 1장 줄고 내역 · 좌석 모두 참 sold_out · 정치 빈칸 not_eligible · 이미 탑승 already', async () => {
+  test('사기: 판매 중이면 자리 잡기 → 데모 결제로 탑승(같은 요청 ID 는 한 번) · 크레딧으로 타면 1장 줄고 내역 · 좌석 모두 참 sold_out · 정치 빈칸 not_eligible · 이미 탑승 already', async () => {
     const d = createDemoBoarding();
-    const api = createBoardingApi({ rpc: ((name: string, args?: Record<string, unknown>) => d.rpc(u('a@email.com'), name, args)) as never });
-    expect(await api.buy('r1', false)).toEqual({ ok: true, roundNo: 1 });
-    expect(await api.buy('r1', false)).toEqual({ ok: true, roundNo: 1 });
-    expect(await api.buy('r2', false)).toEqual({ ok: false, reason: 'already' });
+    const me = u('a@email.com');
+    const api = createBoardingApi({ rpc: ((name: string, args?: Record<string, unknown>) => d.rpc(me, name, args)) as never });
+    expect(await api.buy('r1', false, 1)).toEqual({ ok: true, roundNo: 1 });
+    expect((await d.rpc(me, 'demo_buy_ticket', { p_request_id: 'r1' })).data).toMatchObject({ result: 'already_granted', round_no: 1, outcome: 'seat' });
+    expect(await api.buy('r2', false, 1)).toEqual({ ok: false, reason: 'already' });
     const credit = createBoardingApi({ rpc: ((name: string, args?: Record<string, unknown>) => d.rpc(u('boardcredit@email.com'), name, args)) as never });
-    expect(await credit.buy('c1', true)).toEqual({ ok: true, roundNo: 2 });
+    expect(await credit.buy('c1', true, 2)).toEqual({ ok: true, roundNo: 2 });
     const ledger = await credit.ledger();
     expect(ledger.ok && [ledger.balance, ledger.items.map((x) => x.reason)]).toEqual([0, ['used', 'balance']]);
     const full = createBoardingApi({ rpc: ((name: string, args?: Record<string, unknown>) => d.rpc(u('boardfull@email.com'), name, args)) as never });
-    expect(await full.buy('f1', false)).toEqual({ ok: false, reason: 'sold_out' });
+    expect(await full.buy('f1', false, 1)).toEqual({ ok: false, reason: 'sold_out' });
     const pol = createBoardingApi({ rpc: ((name: string, args?: Record<string, unknown>) => d.rpc(u('boardpolitics@email.com'), name, args)) as never });
-    expect(await pol.buy('p1', false)).toEqual({ ok: false, reason: 'not_eligible' });
+    expect(await pol.buy('p1', false, 1)).toEqual({ ok: false, reason: 'not_eligible' });
   });
 
   test('데모 백엔드에 이어져 있다(로그인 계정) · 데모 줄 장면 바꾸기', async () => {

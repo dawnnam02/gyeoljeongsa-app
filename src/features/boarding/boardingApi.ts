@@ -1,16 +1,19 @@
-// 탑승권(V5 W6 · 청사진 v5 초안 4-1 · 6-1 T1 · T2 · T3 · T5)이 서버와 주고받는 일.
-//  서버는 백엔드 A(작업중 0030 티켓 · 크레딧) · C(0032 주간 배치)가 만드는 중 — 아래 이름은 **가정 이름**(app/W6_변경기록.md '서버 이름 맞출 곳'). 나오면 맞춘다.
-//  get_boarding_state()  RPC(로그인) → {
-//      now, round: { no, match_at(ISO, 수 18:00 KST), sale_open_at(목 00:00), sale_close_at(수 17:30) } | null,
-//      phase: 'before_sale' | 'on_sale' | 'closed' | 'revealed',
-//      region: { name } | null, seat: 'open' | 'full'(내 권역 · 내 성별 — 남은 수는 보내지 않는다), ticket: { round_no, bought_at, paid_with: 'store' | 'credit' } | null,
-//      credits: 정수 ≥ 0, eligible: null | 'not_confirmed' | 'politics_missing' | 'paused'(살 수 없는 이유),
-//      result: null | { round_no, kind: 'matched' | 'no_match', reason: 'balance' | 'no_fit' | 'gap' | null, partner_id, chat_id, partner: { name, age, region, face_photo_id } },
-//      past: [{ round_no, partner_name, chat_id, open }] }
-//  buy_ticket({ p_request_id, p_use_credit })  RPC → { ok: true, round_no } · 오류 sold_out · already_boarded · sale_closed · not_eligible · no_credit
-//  list_credit_ledger()  RPC → { balance, items: [{ at, delta(+1 · −1), reason: 'balance' | 'no_fit' | 'gap' | 'used', round_no }] }
-//  cancel_ticket_seat · ack_ticket_contract 는 0037 확정 이름(아래 CANCEL_TICKET_RPC · ACK_CONTRACT_RPC). 위 셋은 아직 가정 이름(서버 0030 get_ticket_state · hold_ticket_seat · board_with_credit · list_ticket_history 와 대조 필요 — 팀장 몫)
+// 탑승권(V5 W6 · 청사진 v5 4-1 · 6-1 T1 · T2 · T3 · T5)이 서버와 주고받는 일. 이름 · 인자 · 응답 = 백엔드 확정 정의(3부-바, 10-27 — 읽기만 대조):
+//  get_ticket_state()  0030 [5] → { price_krw, payment_mode, round{ round_no, match_day 'YYYY-MM-DD', match_weekday, match_time 'HH:MI', match_text, sale_open_at, sale_close_at, close_text,
+//      sale_state before | open | closed | ended } | null, seat{ state held | boarded | matched | returned, paid_by purchase | credit, hold_until, boarded_at, return_reason } | null,
+//      region(권역 글), can_board, reason(ticket_board_check 사유 | null), credit{ balance, next_expire_on } }  — 정원 · 남은 좌석 · 인원 키 없음
+//  get_weekly_match()  0032 [6] → { off: true } | { state none | waiting | matched | not_found, round_no, match_at } + matched{ partner_id, room_id, partner(공개 범위 답 A12 · A01 · A03 …) } · not_found{ credited }
+//  hold_ticket_seat({ p_round_no })  0030 → { ok, reason, round_no, hold_until } — 결제 창 열기 전 자리 잡기(10분)
+//  release_ticket_hold()  0030 → { released } — 결제가 끝나지 못했을 때 잡은 자리 놓기
+//  demo_buy_ticket({ p_request_id uuid })  0030 → { result boarded | credited | already_granted, round_no, tx_id, reason?, outcome? } · 오류 closed · demo_not_allowed · invalid_request · no_hold · forbidden
+//      (payment_mode = demo 일 때만. 스토어 결제 · 영수증 검증은 W7 — 법인 뒤)
+//  board_with_credit({ p_round_no })  0030 → { ok, reason, round_no, paid_by }
+//  list_ticket_history()  0030 · 0037 R37 → { tickets[{ round_no, match_day, state, paid_by, price_krw, boarded_at, return_reason }],
+//      credits[{ id, reason, round_no, created_at, expires_on(R37 늘 null), state open | used | expired | revoked, used_round_no }], balance }
+//  cancel_ticket_seat({ p_round_no })  0037 [4] → { ok, round_no, paid_by, result 'credited', lot_id } · 오류 closed · not_found
+//  ack_ticket_contract({ p_round_no, p_text_version })  0037 [9] → { ok }
 //  · 아는 키만 읽는다. 남은 좌석 수 · 정원 · 순번 · 점수 · 등급 같은 키는 와도 버린다(척추 4번 질문 · 재촉 0)
+//  · 크레딧 끝나는 날(credit.next_expire_on · credits[].expires_on)은 읽지 않는다 — 0037 뒤 기한 없음(D-200 ③), 화면에 날짜 칸 0
 //  · 로그에는 이벤트 이름과 코드만
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -19,7 +22,8 @@ import { readDbFailure } from '@/lib/serverError';
 
 export type BoardingPhase = 'before_sale' | 'on_sale' | 'closed' | 'revealed';
 export type Ineligible = 'not_confirmed' | 'politics_missing' | 'paused';
-export type CreditReason = 'balance' | 'no_fit' | 'gap' | 'used' | 'cancelled' | 'refund_taken' | 'refund_restored'; // R-A(D-200 ④ ⑤): 탑승 취소 · 스토어 환불 회수 · 다시 줌
+// T5 내역 글 키(카피 14-5-2 · 14-7 CREDITS.reasons). 서버 장부 사유 → 이 키는 아래 LOT_REASON
+export type CreditReason = 'balance' | 'no_fit' | 'gap' | 'used' | 'cancelled' | 'refund_taken' | 'refund_restored';
 export type Round = { no: number; matchAt: number; saleOpenAt: number | null; saleCloseAt: number | null };
 export type Ticket = { roundNo: number; boughtAt: number; paidWith: 'store' | 'credit' };
 export type Partner = { name: string; age: number | null; region: { sido?: string; sigungu?: string } | null; facePhotoId: string | null };
@@ -29,7 +33,7 @@ export type RoundResult =
 export type PastMatch = { roundNo: number; partnerName: string; chatId: string | null; open: boolean };
 export type BoardingState = {
   now: number;
-  offset: number; // 서버 시각 − 기기 시각
+  offset: number; // 서버 시각 − 기기 시각(서버 0030 은 시각을 보내지 않아 0 — 데모만 장면 시각)
   round: Round | null;
   phase: BoardingPhase;
   regionName: string | null;
@@ -42,14 +46,20 @@ export type BoardingState = {
 };
 export type BoardingFailure = 'network' | 'server' | 'missing' | 'session';
 export type BoardingLoad = { ok: true; state: BoardingState } | { ok: false; reason: BoardingFailure };
-export type BuyFailure = 'sold_out' | 'already' | 'closed' | 'not_eligible' | 'no_credit' | 'network' | 'server';
+// credited = 결제는 됐지만 자리를 못 줘 크레딧 1장(0030 paid_no_seat) — 화면은 크레딧 안내 한 줄
+export type BuyFailure = 'sold_out' | 'already' | 'closed' | 'not_eligible' | 'no_credit' | 'credited' | 'network' | 'server';
 export type BuyResult = { ok: true; roundNo: number } | { ok: false; reason: BuyFailure };
-export type CreditItem = { at: number; delta: number; reason: CreditReason; roundNo: number | null };
+// at = 화면에 적을 날짜(모르면 null — 쓴 날 · 회수한 날은 서버가 주지 않는 때가 있다)
+export type CreditItem = { at: number | null; delta: number; reason: CreditReason; roundNo: number | null };
 export type CreditLoad = { ok: true; balance: number; items: CreditItem[] } | { ok: false; reason: BoardingFailure };
 
-export const BOARDING_RPC = 'get_boarding_state'; // 가정 이름(0030 · 0032)
-export const BUY_TICKET_RPC = 'buy_ticket'; // 가정 이름(0030)
-export const CREDIT_LEDGER_RPC = 'list_credit_ledger'; // 가정 이름(0030)
+export const TICKET_STATE_RPC = 'get_ticket_state';
+export const WEEKLY_MATCH_RPC = 'get_weekly_match';
+export const HOLD_SEAT_RPC = 'hold_ticket_seat';
+export const RELEASE_HOLD_RPC = 'release_ticket_hold';
+export const DEMO_BUY_RPC = 'demo_buy_ticket';
+export const BOARD_CREDIT_RPC = 'board_with_credit';
+export const TICKET_HISTORY_RPC = 'list_ticket_history';
 // 0037 확정(D-202): public.cancel_ticket_seat(p_round_no integer) → { ok, round_no, paid_by, result: 'credited', lot_id }
 //  · 결제로 탔든 크레딧으로 탔든 크레딧 1장(기한 없음) — 돈은 회원이 결제한 스토어에 직접 요청. 오류 closed(마감 · 공개 뒤) · not_found(이 회차에 탄 자리 없음) · forbidden · invalid_value
 export const CANCEL_TICKET_RPC = 'cancel_ticket_seat';
@@ -58,9 +68,43 @@ export type CancelResult = { ok: true; roundNo: number; credited: boolean } | { 
 //  T1 결제 시트의 계약 요약 블록을 보인 뒤, 결제(구매 · 크레딧 탑승) 바로 전에 부른다. 기록이 남지 않으면 결제로 넘어가지 않는다
 export const ACK_CONTRACT_RPC = 'ack_ticket_contract';
 export type AckResult = { ok: true } | { ok: false; reason: 'network' | 'server' };
+// 10 상대 프로필(사진 id 를 얻는 곳). 공개 사진은 get_weekly_match 에 없다
+export const CANDIDATE_RPC = 'get_candidate_profile';
+
+// 서버 장부 사유(0030 · 0037 [3] · 0038 [2]) → T5 글 키. 표에 없는 사유는 카피가 아직 없어 그 장(+1 · 그 장을 쓴 −1)을 그리지 않는다:
+//  paid_no_seat(결제 뒤 자리 없음) · round_cancelled(회차 취소) · admin(운영 지급) · age_rejoin_restore(만 24세 뒤 재가입 이어 줌) · age_terminate(해지 계정 — 화면 0)
+export const LOT_REASON: Readonly<Record<string, CreditReason>> = {
+  unbalanced: 'balance',
+  no_match: 'no_fit',
+  grade_gap: 'gap',
+  cancel_return: 'cancelled', // 크레딧으로 탄 자리 취소(0037 B)
+  cancel_credit: 'cancelled', // 결제로 탄 자리 취소 → 크레딧(0037 B · D-202)
+  refund_reversed: 'refund_restored', // 스토어 환불 취소로 다시 지급(0037 C)
+};
+export const LOT_REASON_COPY_PENDING = ['paid_no_seat', 'round_cancelled', 'admin', 'age_rejoin_restore', 'age_terminate'] as const;
+// 서버 회차 판매 상태 → 화면 단계 · 탈 수 없는 사유 → 화면 글. 모르는 값은 살 수 없는 쪽(closed)
+const PHASE: Readonly<Record<string, BoardingPhase>> = { before: 'before_sale', open: 'on_sale', closed: 'closed', ended: 'revealed' };
+//  profile_incomplete(정치 · 등급 · 종교 · 성별 · 지역 중 빈 것)는 서버 사유가 하나라 정치 문항 글로 보낸다 — 등급 계산 멈춤('paused' 글)은 앱이 가르지 못함(변경기록 메모)
+const INELIGIBLE: Readonly<Record<string, Ineligible>> = { state: 'not_confirmed', review_pending: 'not_confirmed', profile_incomplete: 'politics_missing' };
+// hold · board_with_credit 의 사유(ticket_board_check · payment_closed · no_credit) → 결제 오류 글
+const BUY_REASON: Readonly<Record<string, BuyFailure>> = {
+  full: 'sold_out',
+  already_boarded: 'already',
+  closed: 'closed',
+  before_sale: 'closed',
+  sale_off: 'closed',
+  no_round: 'closed',
+  region_closed: 'closed',
+  payment_closed: 'closed',
+  state: 'not_eligible',
+  review_pending: 'not_eligible',
+  profile_incomplete: 'not_eligible',
+  no_credit: 'no_credit',
+};
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
-const pick = <T extends string>(v: unknown, list: readonly T[]): T | null => (typeof v === 'string' && (list as readonly string[]).includes(v) ? (v as T) : null);
+const fromMap = <T>(m: Readonly<Record<string, T>>, v: unknown): T | null => (typeof v === 'string' && Object.prototype.hasOwnProperty.call(m, v) ? m[v] : null);
+const pick = <T extends string>(v: unknown, options: readonly T[]): T | null => (typeof v === 'string' && (options as readonly string[]).includes(v) ? (v as T) : null);
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null);
 const time = (v: unknown): number | null => {
   if (typeof v !== 'string') return null;
@@ -68,68 +112,88 @@ const time = (v: unknown): number | null => {
   return Number.isNaN(t) ? null : t;
 };
 const int = (v: unknown): number | null => (typeof v === 'number' && Number.isInteger(v) ? v : null);
+const rows = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.filter(isRecord) : []);
 
+// 회차: 공개 시각 = match_day + match_time(한국 시각). 판매 시작 · 마감은 시각 값 그대로
 function readRound(raw: unknown): Round | null {
   if (!isRecord(raw)) return null;
-  const no = int(raw.no);
-  const matchAt = time(raw.match_at);
+  const no = int(raw.round_no);
+  const day = str(raw.match_day);
+  const hm = str(raw.match_time);
+  const matchAt = day && hm && /^\d{4}-\d{2}-\d{2}$/.test(day) && /^\d{2}:\d{2}$/.test(hm) ? time(`${day}T${hm}:00+09:00`) : null;
   if (no === null || no < 1 || matchAt === null) return null;
   return { no, matchAt, saleOpenAt: time(raw.sale_open_at), saleCloseAt: time(raw.sale_close_at) };
 }
 
-function readResult(raw: unknown): RoundResult | null {
+// get_ticket_state → 화면 상태(공개 결과 · 지난 대화는 get_weekly_match 가 채운다)
+export function parseTicketState(raw: unknown, deviceNow: number): BoardingState | null {
   if (!isRecord(raw)) return null;
-  const roundNo = int(raw.round_no);
-  if (roundNo === null) return null;
-  if (raw.kind === 'matched') {
-    const partnerId = str(raw.partner_id);
-    const p = isRecord(raw.partner) ? raw.partner : null;
-    const name = str(p?.name);
-    if (!partnerId || !p || !name) return null;
-    const region = isRecord(p.region) ? { sido: str(p.region.sido) ?? undefined, sigungu: str(p.region.sigungu) ?? undefined } : null;
-    return { roundNo, kind: 'matched', partnerId, chatId: str(raw.chat_id), partner: { name, age: int(p.age), region, facePhotoId: str(p.face_photo_id) } };
-  }
-  if (raw.kind === 'no_match') return { roundNo, kind: 'no_match', reason: pick(raw.reason, ['balance', 'no_fit', 'gap'] as const) };
-  return null;
-}
-
-export function parseBoarding(raw: unknown, deviceNow: number): BoardingState | null {
-  if (!isRecord(raw)) return null;
-  const now = time(raw.now) ?? deviceNow;
-  const ticketRaw = isRecord(raw.ticket) ? raw.ticket : null;
-  const ticketRound = int(ticketRaw?.round_no);
-  const ticket: Ticket | null = ticketRaw && ticketRound !== null ? { roundNo: ticketRound, boughtAt: time(ticketRaw.bought_at) ?? now, paidWith: ticketRaw.paid_with === 'credit' ? 'credit' : 'store' } : null;
-  const past = Array.isArray(raw.past)
-    ? raw.past
-        .filter(isRecord)
-        .map((p) => ({ roundNo: int(p.round_no) ?? 0, partnerName: str(p.partner_name) ?? '', chatId: str(p.chat_id), open: p.open === true }))
-        .filter((p) => p.roundNo > 0 && p.partnerName !== '')
-    : [];
-  const credits = int(raw.credits);
+  const now = time(raw.now) ?? deviceNow; // 서버 0030 에는 없는 키 — 데모만 장면 시각을 보낸다
+  const round = readRound(raw.round);
+  const reason = typeof raw.reason === 'string' ? raw.reason : null;
+  const seat = isRecord(raw.seat) ? raw.seat : null;
+  const boarded = pick(seat?.state, ['boarded', 'matched', 'returned'] as const); // held(잡기만 함)는 탑승권이 아니다
+  const ticket: Ticket | null = round && seat && boarded ? { roundNo: round.no, boughtAt: time(seat.boarded_at) ?? now, paidWith: seat.paid_by === 'credit' ? 'credit' : 'store' } : null;
+  const balance = isRecord(raw.credit) ? int(raw.credit.balance) : null;
   return {
     now,
     offset: now - deviceNow,
-    round: readRound(raw.round),
-    phase: pick(raw.phase, ['before_sale', 'on_sale', 'closed', 'revealed'] as const) ?? 'closed', // 모르는 값은 살 수 없는 쪽
-    regionName: isRecord(raw.region) ? str(raw.region.name) : null,
-    seat: raw.seat === 'full' ? 'full' : 'open',
+    round,
+    phase: fromMap(PHASE, isRecord(raw.round) ? raw.round.sale_state : null) ?? 'closed',
+    regionName: str(raw.region),
+    seat: reason === 'full' ? 'full' : 'open',
     ticket,
-    credits: credits !== null && credits > 0 ? credits : 0,
-    ineligible: pick(raw.eligible, ['not_confirmed', 'politics_missing', 'paused'] as const),
-    result: readResult(raw.result),
-    past,
+    credits: balance !== null && balance > 0 ? balance : 0,
+    ineligible: fromMap(INELIGIBLE, reason),
+    result: null,
+    past: [],
   };
 }
 
-export function parseLedger(raw: unknown): { balance: number; items: CreditItem[] } | null {
-  if (!isRecord(raw)) return null;
+// get_weekly_match → 공개 결과. 공개 전(waiting) · 탄 회차 없음(none) · 스위치 꺼짐(off)은 null. 이유 코드는 서버도 보내지 않는다(명세 7장 결정 5)
+export function parseWeeklyMatch(raw: unknown): RoundResult | null {
+  if (!isRecord(raw) || raw.off === true) return null;
+  const roundNo = int(raw.round_no);
+  if (roundNo === null) return null;
+  if (raw.state === 'not_found') return { roundNo, kind: 'no_match', reason: null };
+  if (raw.state !== 'matched') return null;
+  const partnerId = str(raw.partner_id);
+  const a = isRecord(raw.partner) ? raw.partner : null; // 공개 범위 답(visible_answers): A12 가린 이름 · A01 나이 · A03 지역
+  const name = str(a?.A12);
+  if (!partnerId || !a || !name) return null;
+  const sido = isRecord(a.A03) ? str(a.A03.sido) : str(a.A03);
+  const sigungu = isRecord(a.A03) ? str(a.A03.sigungu) : null;
+  const region = sido ? { sido, ...(sigungu ? { sigungu } : {}) } : null;
+  return { roundNo, kind: 'matched', partnerId, chatId: str(raw.room_id), partner: { name, age: int(a.A01), region, facePhotoId: null } };
+}
+
+// list_ticket_history → T5 내역(+1 = 받은 장 · −1 = 그 장을 씀 · 스토어 환불로 회수). 새것부터
+export function parseHistory(raw: unknown): { balance: number; items: CreditItem[] } | null {
+  if (!isRecord(raw) || !Array.isArray(raw.credits)) return null;
+  const tickets = rows(raw.tickets);
+  const boardedAt = (roundNo: number | null) => {
+    const t = tickets.find((x) => int(x.round_no) === roundNo && x.paid_by === 'credit');
+    return t ? time(t.boarded_at) : null;
+  };
+  const out: (CreditItem & { key: number; seq: number })[] = [];
+  for (const l of rows(raw.credits)) {
+    const reason = fromMap(LOT_REASON, l.reason);
+    const at = time(l.created_at);
+    if (!reason || at === null) continue;
+    const seq = (int(l.id) ?? 0) * 2;
+    const roundNo = int(l.round_no);
+    out.push({ at, delta: 1, reason, roundNo, key: at, seq });
+    if (l.state === 'used') {
+      const usedRound = int(l.used_round_no);
+      const usedAt = boardedAt(usedRound); // 그 회차에 크레딧으로 탄 시각(자리를 취소했으면 모름)
+      out.push({ at: usedAt, delta: -1, reason: 'used', roundNo: usedRound, key: Math.max(usedAt ?? at, at), seq: seq + 1 });
+    } else if (l.state === 'revoked') {
+      out.push({ at: null, delta: -1, reason: 'refund_taken', roundNo, key: at, seq: seq + 1 });
+    }
+  }
+  out.sort((a, b) => b.key - a.key || b.seq - a.seq);
   const balance = int(raw.balance);
-  const items = (Array.isArray(raw.items) ? raw.items : [])
-    .filter(isRecord)
-    .map((x) => ({ at: time(x.at), delta: int(x.delta), reason: pick(x.reason, ['balance', 'no_fit', 'gap', 'used', 'cancelled', 'refund_taken', 'refund_restored'] as const), roundNo: int(x.round_no) }))
-    .filter((x): x is CreditItem => x.at !== null && x.delta !== null && x.delta !== 0 && x.reason !== null)
-    .sort((a, b) => b.at - a.at);
-  return { balance: balance !== null && balance > 0 ? balance : 0, items };
+  return { balance: balance !== null && balance > 0 ? balance : 0, items: out.map(({ at, delta, reason, roundNo }) => ({ at, delta, reason, roundNo })) };
 }
 
 const loadFailure = (error: { code?: string | null; message?: string | null }, event: string): BoardingFailure => {
@@ -141,35 +205,59 @@ const loadFailure = (error: { code?: string | null; message?: string | null }, e
   return 'server';
 };
 
-export function createBoardingApi(client: Pick<SupabaseClient, 'rpc'>, deviceNow: () => number = Date.now) {
+const buyFailure = (error: { code?: string | null; message?: string | null }): BuyFailure => {
+  const f = readDbFailure(error);
+  safeLog({ event: 'boarding.buy.fail', code: f.code ?? (f.network ? 'network' : 'unknown') });
+  if (f.network) return 'network';
+  return String(error.message ?? '') === 'closed' ? 'closed' : 'server';
+};
+
+type Rpc = Pick<SupabaseClient, 'rpc'>;
+type RpcAnswer = { data: unknown; error: { code?: string | null; message?: string | null } | null };
+const call = async (client: Rpc, name: string, args?: Record<string, unknown>): Promise<RpcAnswer> => (await client.rpc(name, args)) as unknown as RpcAnswer;
+
+export function createBoardingApi(client: Rpc, deviceNow: () => number = Date.now) {
   return {
+    // 탑승권 화면 상태 = get_ticket_state + get_weekly_match. 공개 결과를 못 읽어도 탑승권 화면은 그린다(결과 없음)
     async load(): Promise<BoardingLoad> {
-      const { data, error } = await client.rpc(BOARDING_RPC);
-      if (error) return { ok: false, reason: loadFailure(error, 'boarding.load.fail') };
-      const state = parseBoarding(data, deviceNow());
-      return state ? { ok: true, state } : { ok: false, reason: data === null ? 'session' : 'server' };
+      const weekly = call(client, WEEKLY_MATCH_RPC).catch((): RpcAnswer => ({ data: null, error: { message: 'weekly' } }));
+      const [t, w] = await Promise.all([call(client, TICKET_STATE_RPC), weekly]);
+      if (t.error) return { ok: false, reason: loadFailure(t.error, 'boarding.load.fail') };
+      const state = parseTicketState(t.data, deviceNow());
+      if (!state) return { ok: false, reason: t.data === null ? 'session' : 'server' };
+      if (w.error) safeLog({ event: 'boarding.weekly.fail', code: readDbFailure(w.error).code ?? 'unknown' });
+      const result = w.error ? null : parseWeeklyMatch(w.data);
+      const past = result?.kind === 'matched' ? [{ roundNo: result.roundNo, partnerName: result.partner.name, chatId: result.chatId, open: true }] : [];
+      return { ok: true, state: { ...state, result, past } };
     },
-    async buy(requestId: string, useCredit: boolean): Promise<BuyResult> {
-      const { data, error } = await client.rpc(BUY_TICKET_RPC, { p_request_id: requestId, p_use_credit: useCredit });
-      if (error) {
-        const f = readDbFailure(error);
-        safeLog({ event: 'boarding.buy.fail', code: f.code ?? (f.network ? 'network' : 'unknown') });
-        if (f.network) return { ok: false, reason: 'network' };
-        const m = String(error.message ?? '');
-        if (m === 'sold_out') return { ok: false, reason: 'sold_out' };
-        if (m === 'already_boarded') return { ok: false, reason: 'already' };
-        if (m === 'sale_closed') return { ok: false, reason: 'closed' };
-        if (m === 'not_eligible') return { ok: false, reason: 'not_eligible' };
-        if (m === 'no_credit') return { ok: false, reason: 'no_credit' };
-        return { ok: false, reason: 'server' };
+    // [결제하기]: 자리 잡기 → 데모 결제(같은 요청 ID 는 한 번). [크레딧 1장으로 타기]: board_with_credit 하나
+    async buy(requestId: string, useCredit: boolean, roundNo: number): Promise<BuyResult> {
+      if (useCredit) {
+        const { data, error } = await call(client, BOARD_CREDIT_RPC, { p_round_no: roundNo });
+        if (error) return { ok: false, reason: buyFailure(error) };
+        if (!isRecord(data)) return { ok: false, reason: 'server' };
+        if (data.ok === true) return { ok: true, roundNo: int(data.round_no) ?? roundNo };
+        return { ok: false, reason: fromMap(BUY_REASON, data.reason) ?? 'server' };
       }
-      const roundNo = isRecord(data) ? int(data.round_no) : null;
-      return isRecord(data) && data.ok === true && roundNo !== null ? { ok: true, roundNo } : { ok: false, reason: 'server' };
+      const hold = await call(client, HOLD_SEAT_RPC, { p_round_no: roundNo });
+      if (hold.error) return { ok: false, reason: buyFailure(hold.error) };
+      if (!isRecord(hold.data)) return { ok: false, reason: 'server' };
+      if (hold.data.ok !== true) return { ok: false, reason: fromMap(BUY_REASON, hold.data.reason) ?? 'server' };
+      const paid = await call(client, DEMO_BUY_RPC, { p_request_id: requestId });
+      if (paid.error) {
+        void call(client, RELEASE_HOLD_RPC).catch(() => undefined); // 잡은 자리를 놓는다(10분 뒤 저절로도 풀림)
+        return { ok: false, reason: buyFailure(paid.error) };
+      }
+      const d = isRecord(paid.data) ? paid.data : null;
+      const r = int(d?.round_no) ?? roundNo;
+      if (d?.result === 'boarded' || (d?.result === 'already_granted' && d.outcome === 'seat')) return { ok: true, roundNo: r };
+      if (d?.result === 'credited' || (d?.result === 'already_granted' && d.outcome === 'credit')) return { ok: false, reason: 'credited' };
+      return { ok: false, reason: 'server' };
     },
     // T2 [탑승 취소](마감 전만). 마감이 지났거나(closed) 이 회차에 탄 자리가 없으면(not_found) closed(화면은 마감 글 + 다시 읽기)
-    //  성공 = result 'credited'(크레딧 1장). 돌려받는 길은 하나라 paid_by · lot_id 는 읽지 않는다
+    //  성공 = result 'credited'(크레딧 1장). 돌려받는 길은 하나라 paid_by · lot_id 는 읽지 않는다(확인창 글은 화면 상태의 탄 방법으로 고른다)
     async cancel(roundNo: number): Promise<CancelResult> {
-      const { data, error } = await client.rpc(CANCEL_TICKET_RPC, { p_round_no: roundNo });
+      const { data, error } = await call(client, CANCEL_TICKET_RPC, { p_round_no: roundNo });
       if (error) {
         const f = readDbFailure(error);
         safeLog({ event: 'boarding.cancel.fail', code: f.code ?? (f.network ? 'network' : 'unknown') });
@@ -182,7 +270,7 @@ export function createBoardingApi(client: Pick<SupabaseClient, 'rpc'>, deviceNow
     },
     // T1 계약 설명 확인 기록(R40). 같은 회차에 여러 번 불러도 된다(서버는 줄을 더하고, 거래가 생기면 가장 최근 줄에 거래 번호를 잇는다)
     async ackContract(roundNo: number, textVersion: string): Promise<AckResult> {
-      const { data, error } = await client.rpc(ACK_CONTRACT_RPC, { p_round_no: roundNo, p_text_version: textVersion });
+      const { data, error } = await call(client, ACK_CONTRACT_RPC, { p_round_no: roundNo, p_text_version: textVersion });
       if (error) {
         const f = readDbFailure(error);
         safeLog({ event: 'boarding.ack.fail', code: f.code ?? (f.network ? 'network' : 'unknown') });
@@ -191,10 +279,21 @@ export function createBoardingApi(client: Pick<SupabaseClient, 'rpc'>, deviceNow
       return isRecord(data) && data.ok === true ? { ok: true } : { ok: false, reason: 'server' };
     },
     async ledger(): Promise<CreditLoad> {
-      const { data, error } = await client.rpc(CREDIT_LEDGER_RPC);
+      const { data, error } = await call(client, TICKET_HISTORY_RPC);
       if (error) return { ok: false, reason: loadFailure(error, 'boarding.ledger.fail') };
-      const parsed = parseLedger(data);
+      const parsed = parseHistory(data);
       return parsed ? { ok: true, ...parsed } : { ok: false, reason: 'server' };
+    },
+    // T3 공개 순간 사진: 만난 분의 승인된 얼굴 사진 id(10 상대 프로필과 같은 함수). 못 읽으면 null(사진 자리만)
+    async facePhoto(partnerId: string): Promise<string | null> {
+      try {
+        const { data, error } = await call(client, CANDIDATE_RPC, { p_target: partnerId });
+        if (error || !isRecord(data)) return null;
+        const face = rows(data.photos).find((p) => p.slot === 'face' && p.state === 'approved');
+        return str(face?.photo_id);
+      } catch {
+        return null;
+      }
     },
   };
 }

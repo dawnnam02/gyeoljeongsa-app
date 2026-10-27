@@ -28,3 +28,4 @@ export const secureStore: Store = Platform.OS === 'web' ? memoryStore : nativeSt
 export const authStorage = chunkedStorage(secureStore); // Supabase 세션(lib/supabase.ts)
 export const appStateStorage = chunkedStorage(secureStore); // 설문 임시 저장(store/)
 export const securityStorage = chunkedStorage(secureStore); // 보안 설정: 상대 화면 캡처 차단(store/securityStore.ts, 팀장 결정 10-15 ⑥)
+export const avoidStorage = chunkedStorage(secureStore); // 12-5 피할 회사 · 학교 이름 원문(lib/avoidLocal, 보안 T126 · 3부-바)

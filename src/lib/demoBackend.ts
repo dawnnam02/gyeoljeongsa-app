@@ -157,7 +157,7 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
   };
   const likes = createDemoLikes({ now, people: (id) => recs.person(id) }); // 11 호감(F6)
   const settings = createDemoSettings({ now, people: (id) => recs.person(id) ?? likes.person(id) }); // 12 설정(F7). 11 에서 차단한 가상 사람도 이름이 나온다
-  const boarding = createDemoBoarding(); // V5 W6: 탑승권 · 크레딧(가정 이름)
+  const boarding = createDemoBoarding(); // V5 W6: 탑승권 · 크레딧(서버 0030 · 0032 · 0037 이름 · 모양)
   const v4 = createDemoV4({ now }); // F22 · D-134: 기능 스위치(get_feature_flags)만 잇는다 — 강조 · 만남 뒤 피드백 응답은 F19 2단계 몫
   const accounts = new Map<string, DemoAccount>();
   const gates = new Map<string, Gate>();
@@ -672,7 +672,7 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
         return account ? settings.rpc(settingsUser(account), name, args) : Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
       }
       // 기능 켜기 스위치(F22 · D-134): 87키 데모 처음값(config/featureKeys demoDefault — review_required · prelaunch 만 꺼짐). 이메일 장면(v4off · featoff …)은 lib/v4Demo 규칙
-      // V5 W6 탑승권(가정 이름 get_boarding_state · buy_ticket · list_credit_ledger + 데모 줄 demo_boarding_scene)
+      // V5 W6 탑승권(서버 확정 이름 get_ticket_state · get_weekly_match · hold_ticket_seat · release_ticket_hold · demo_buy_ticket · board_with_credit · list_ticket_history · cancel_ticket_seat · ack_ticket_contract + 데모 줄 demo_boarding_scene)
       if (boarding.handles(name)) {
         const account = me();
         return account ? boarding.rpc({ id: account.id, email: account.email }, name, args) : Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
