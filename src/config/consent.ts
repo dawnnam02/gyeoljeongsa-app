@@ -9,15 +9,15 @@ import type { ConsentCode } from '@/content/types';
 // <versions:begin>
 // 법무/판_관리.md 2장 표에서 npm run gen:legal 이 쓴다(손으로 고치지 않는다. 손으로 고치면 npm run check:copy 가 "판_관리.md와 다름"으로 실패한다)
 export const CONSENT_TEXT_VERSIONS: Readonly<Record<ConsentCode, string>> = {
-  CK1: "consent-2026.10.14-v1",
+  CK1: "consent-2026.10.27-v1",
   CK2: "consent-2026.10.18-v1",
-  CK3: "consent-2026.10.14-v1",
+  CK3: "consent-2026.10.27-v1",
   CK4: "consent-2026.10.14-v1",
   CK5: "consent-2026.10.14-v1",
-  CK6: "consent-2026.10.14-v1",
+  CK6: "consent-2026.10.27-v1",
   CK7: "consent-2026.10.14-v1",
   CK8: "consent-2026.10.26-v1",
-  CK9: "consent-2026.10.14-v1",
+  CK9: "consent-2026.10.14-v2",
 };
 // 약관 · 처리방침 판과 시행일(시행 전에는 {공개일}). 출시 빌드는 {공개일}이 남으면 막힌다
 export const LEGAL_DOC_VERSIONS = {
@@ -36,19 +36,19 @@ export function isCurrentEdition(code: ConsentCode, version: string): boolean {
 // <fingerprints:begin>
 // 법무 문서의 글 지문(npm run gen:legal -- --fingerprints 가 고친다. 문구 판을 올린 뒤에만 고친다)
 export const CONSENT_TEXT_FINGERPRINTS: Readonly<Record<ConsentCode, string>> = {
-  CK1: "1d83306f832a",
+  CK1: "2a4ec408761f",
   CK2: "f8167545f89d",
-  CK3: "b23c591fbcf4",
+  CK3: "e6d212bc5527",
   CK4: "4ad5c9f33b8f",
   CK5: "bfb551bd3af5",
-  CK6: "05b461928f68",
+  CK6: "585658258315",
   CK7: "07b25c716338",
   CK8: "e8464f9135f5",
-  CK9: "13e59daaceb3",
+  CK9: "908f46030368",
 };
 // 약관 · 처리방침: 표식 구간과 작업 표시를 걸러낸 글의 지문
 export const LEGAL_DOC_FINGERPRINTS = {
-  terms: "8ae148554546",
-  privacy: "3f1219ae5d10",
+  terms: "5c5cb0e43ceb",
+  privacy: "6dfa6fedea3f",
 } as const;
 // <fingerprints:end>

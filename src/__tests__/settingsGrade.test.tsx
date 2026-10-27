@@ -177,7 +177,7 @@ describe('등급 계산 멈추기 (set_grade_processing)', () => {
   test('멈춘 구독자의 16-G1 은 비어 있고 C7 설명을 보인다 · 구독 끝남 NV65 에는 "설정에서 등급 계산을 멈출 수 있어요."가 있다', () => {
     expect(SHOP16.endedSub).toContain('설정에서 등급 계산을 멈출 수 있어요.');
     expect(SHOP16.endedSub).toContain('내 등급은 계속 계산되고 등급 구독 회원의 추천 상대를 고르는 데 쓰여요.');
-    expect(GRADE16.howReview).toContain('멈추면 내 등급이 지워지고 추천 상대를 고르는 데도 더는 쓰이지 않아요.');
+    expect(GRADE16.howReview).toContain('멈추면 내 등급이 지워지고 짝을 고르는 데도 더는 쓰이지 않아서, 다시 켜기 전까지 탑승권을 살 수 없어요.');
   });
 });
 

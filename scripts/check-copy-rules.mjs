@@ -81,7 +81,8 @@ export function evaluateCopyRules({ contentDir = path.join(APP_DIR, 'src', 'cont
   rule('T04', 'R9', 'v4 글에 재촉 말 0', where(v4, /놓치지|서두르|지금 바로|마감|곧 사라|남은 시간|오늘까지|마지막 기회/));
   rule('T04', 'R10', '강조 라벨 · 강조 카드 이름에 숫자 0', v4.filter((s) => /^(FEATURED\.(label|cardA11y)|V4W01\.featured\.(label|a11y))$/.test(s.key) && /\d/.test(s.text)));
   rule('T04', 'R11', 'v4 안내 글에 쓰지 않을 말 0(금지 · 위반 · 제재 · 불가 · 의심 · 처벌 · 경고 · 차단)', where(v4, /금지|위반|제재|불가|의심|처벌|경고|차단/));
-  rule('T04', 'R12', '보증 말 0(검증됨 · 보증 · 안전한 사람, 전체)', where(all, /검증됨|보증|안전한 (사람|분|회원)/));
+  // D-197(법무 QPL 3-2): '보증보험'은 결혼중개업법 제8조 ② 연결 줄 · 약관 운영자 표의 법 낱말이라 뺀다(사람 · 만남을 보증한다는 말이 아님)
+  rule('T04', 'R12', "보증 말 0(검증됨 · 보증 · 안전한 사람, 전체 · 법 낱말 '보증보험' 제외)", where(all, /검증됨|보증(?!보험)|안전한 (사람|분|회원)/));
   rule('T04', 'R13', '해요체(합니다체 끝맺음 0, 법무 생성 파일 제외)', where(plain, /(습니다|십시오|합니다|입니다)\.?$/));
   rule('T04', 'R14', 'v4 글에 기술 말 · 작업 표시 0', where(v4, /서버|오류 코드|error|null|undefined|NF\d|D-\d\d|B17/));
   const LIMITS = [

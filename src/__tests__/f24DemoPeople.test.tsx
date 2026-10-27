@@ -194,7 +194,7 @@ describe('데모 서버에 연결(09 · 10 · 11 · 16 · 내 등급)', () => {
     expect(eight.items.some((i) => 'grade_no' in i)).toBe(false); // 비구독자: 키 자체가 없다
     const sub = await listOf((await login('shopsub-kk4@email.com')).client);
     expect(ids(sub.items)).toEqual([7, 4, 8]); // 구독자: 나보다 위(3 이하) → 같은 등급 → 그 밖(서버 tier)
-    expect(sub.items.map((i) => i.grade_no ?? null)).toEqual([3, 4, null]); // 장OO 은 CK10 미동의
+    expect(sub.items.some((i) => 'grade_no' in i)).toBe(false); // D-197(CK10 폐지): 구독자에게도 상대 등급 번호 없음
   });
 
   test('데모 줄(demo_kin_me): "나"의 등급을 바꾸면 09 목록 · 내 등급 · 변화 기록이 같은 값을 쓴다', async () => {

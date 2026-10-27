@@ -13,7 +13,7 @@ export const LATER_CONSENT_VERSIONS: Readonly<Record<LaterConsentCode, string>> 
   CK13: 'consent-2026.10.26-v1',
   CK14: 'consent-2026.10.26-v1',
   CK15: 'consent-2026.10.26-v1',
-  CK16: 'consent-2026.10.26-v1',
+  CK16: 'consent-2026.10.26-v2', // D-197: 4-16 글 v5('이어 드릴 때' · '짝을 고를 때') — 판_관리 2-1
 };
 
 export const CK15_TEXT_VERSION = LATER_CONSENT_VERSIONS.CK15;

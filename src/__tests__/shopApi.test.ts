@@ -417,10 +417,10 @@ describe('조건 3: 09 구독자 순서 · 상대 등급 배지(CK10 동의 상�
     await login(r, 'shopsub11@email.co'); // 내 등급 4 → 위 = 3 이하
     const list = await today(r);
     expect(list.items.map((i) => i.candidate_id)).toEqual(['demo-cand-1', 'demo-cand-3', 'demo-cand-2']);
-    expect(list.items.map((i) => i.grade_no)).toEqual([2, undefined, 6]); // cand-3 은 동의 안 함: 키 자체가 없다
-    expect('grade_no' in list.items[1]).toBe(false);
+    // D-197(CK10 폐지 · 청사진 6-2): 상대 등급 번호는 누구에게도 주지 않는다 — 키 자체가 없다(순서는 서버 그대로)
+    expect(list.items.some((i) => 'grade_no' in i)).toBe(false);
     const parsed = parseToday(list, START);
-    expect(parsed?.cards.map((c) => c.gradeNo)).toEqual([2, null, 6]);
+    expect(parsed?.cards.map((c) => c.gradeNo)).toEqual([null, null, null]);
   });
 
   test('계산을 멈춘 구독자는 비구독자와 같은 순서(상향 정렬 없음)', async () => {
@@ -434,20 +434,20 @@ describe('조건 3: 09 구독자 순서 · 상대 등급 배지(CK10 동의 상�
   test('10 상세: 구독자 + 동의한 상대만 grade_no · 동의 안 한 상대는 user_id 만 · 오늘 추천 밖은 not_available', async () => {
     const r = rig();
     await login(r, 'shopsub13@email.co');
-    expect(must({ ok: true as const, data: await r.grade.partnerGrade('demo-cand-1') })).toEqual({ locked: false, gradeNo: 2 });
+    expect(must({ ok: true as const, data: await r.grade.partnerGrade('demo-cand-1') })).toEqual({ locked: false, gradeNo: null }); // D-197: 번호 없음
     expect(await r.grade.partnerGrade('demo-cand-3')).toEqual({ locked: false, gradeNo: null });
     expect(await r.grade.partnerGrade('demo-cand-9')).toBeNull(); // 아직 받지 않은 1회 매칭 분: 범위 밖
     const detail = await r.client.rpc('get_candidate_profile', { p_target: 'demo-cand-1' });
-    expect((detail.data as { grade_no: number }).grade_no).toBe(2);
+    expect('grade_no' in (detail.data as object)).toBe(false); // D-197: 상세에도 없음
     const noGrade = await r.client.rpc('get_candidate_profile', { p_target: 'demo-cand-3' });
     expect('grade_no' in (noGrade.data as object)).toBe(false);
   });
 
-  test('구매하면 그 자리에서 구독자가 되어 09 에 배지가 생긴다', async () => {
+  test('D-197: 구매해 구독자가 되어도 09 에 상대 등급 배지가 생기지 않는다', async () => {
     const r = rig();
     await login(r, 'plain9@email.co');
     expect((await today(r)).items.some((i) => 'grade_no' in i)).toBe(false);
     must(await r.shop.demoPurchase('grade_sub_1m', newRequestId()));
-    expect((await today(r)).items.filter((i) => 'grade_no' in i)).toHaveLength(2);
+    expect((await today(r)).items.filter((i) => 'grade_no' in i)).toHaveLength(0);
   });
 });

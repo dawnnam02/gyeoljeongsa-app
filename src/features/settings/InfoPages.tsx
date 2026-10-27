@@ -9,14 +9,14 @@ import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { CHILD_SAFETY, SAFETY_GUIDE, SUPPORT } from '@/content/copy';
-import type { BusinessRow } from '@/content/businessInfo';
+import type { BusinessLink, BusinessRow } from '@/content/businessInfo';
 import { BUSINESS, IMAGE_CREDIT, SECURITY, SUPPORT_ACTIONS } from '@/content/settingsCopy';
 import { SUPPORT_CONTACT, type SupportContact } from '@/content/supportContact';
 import { useSecurityStore } from '@/store/securityStore';
 import { colors, space } from '@/theme/tokens';
 
 import { fillContact } from './settingsLogic';
-import { RowGroup, SubPage, SwitchRow } from './SettingsParts';
+import { NavRow, RowGroup, SubPage, SwitchRow } from './SettingsParts';
 
 export function SecurityPage({ onBack }: { onBack: () => void }) {
   const on = useSecurityStore((s) => s.captureBlock);
@@ -108,7 +108,7 @@ export function ImageCreditPage({ onBack }: { onBack: () => void }) {
   );
 }
 
-export function BusinessInfoPage({ rows, onBack }: { rows: readonly BusinessRow[]; onBack: () => void }) {
+export function BusinessInfoPage({ rows, links, onOpenLink, onBack }: { rows: readonly BusinessRow[]; links: readonly BusinessLink[]; onOpenLink: (link: BusinessLink) => void; onBack: () => void }) {
   return (
     <SubPage title={BUSINESS.headerTitle} onBack={onBack} testID="settings-business">
       <RowGroup testID="settings-business-rows">
@@ -119,6 +119,11 @@ export function BusinessInfoPage({ rows, onBack }: { rows: readonly BusinessRow[
             </AppText>
             <AppText variant="body">{row.value}</AppText>
           </View>
+        ))}
+      </RowGroup>
+      <RowGroup testID="settings-business-links">
+        {links.map((link, i) => (
+          <NavRow key={link.key} label={link.label} last={i === links.length - 1} onPress={() => onOpenLink(link)} testID={`settings-business-link-${link.key}`} />
         ))}
       </RowGroup>
     </SubPage>

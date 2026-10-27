@@ -72,7 +72,7 @@ export function ConsentManagePage({ api, onBack, onToast }: { api: Pick<Settings
       setAskCk4Off(true);
       return;
     }
-    if (code !== 'CK4' && code !== 'CK9' && code !== 'CK10') {
+    if (code !== 'CK4' && code !== 'CK9') {
       if (next && !ON_HERE.has(code)) return; // 판 · 글이 없는 칸은 여기서 켜지 않는다(스위치도 잠겨 있다)
       if (!next) {
         setError(null);

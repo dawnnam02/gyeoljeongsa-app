@@ -65,10 +65,9 @@ const GRADE_ALLOWED_FILES = [
   'demo/people.ts', // F24 데모 인물 24명: 서버가 가진 등급 값(1~9) 흉내 · 끼리끼리 순서. 화면에는 지금 규칙대로(구독자 + CK10)만
   'lib/recsApi.ts', // 09 · 10 응답의 grade_no 읽기
   'lib/services.ts', // gradeApi 연결
-  'lib/settingsApi.ts', // 12 등급 계산 멈추기 · 내 등급 보이기(CK10)
+  'lib/settingsApi.ts', // 12 등급 계산 멈추기(CK10 은 D-197 폐지)
   'lib/settingsDemo.ts', // 모의 서버 12
   'content/shopCopy.ts', // 16 상점 · 등급 화면 글 묶음 이름
-  'config/gradeConsent.ts', // CK10 내 등급 보이기 문구 판
   'components/iconPaths.ts', // D42-C 1안 아이콘 원본(paths.json) 이름 grade_locked — 등급 잠김 자물쇠 그림 이름일 뿐 값 아님
   'store/gradeSettingsStore.ts', // 12 등급 계산 멈추기 스위치 값
   'features/settings/GradeSwitches.tsx', // 12 내 등급 보이기 · 등급 계산 멈추기

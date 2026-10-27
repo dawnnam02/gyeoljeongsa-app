@@ -18,4 +18,6 @@ export const FILL_INS: Readonly<Record<string, string | null>> = {
   "통신판매업 신고번호": null,
   "전화번호": null,
   "결혼중개업 신고번호": null,
+  "수수료표 웹 주소": null,
+  "보증보험 청구 절차 웹 주소": null,
 };

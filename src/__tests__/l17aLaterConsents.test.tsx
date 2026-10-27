@@ -2,7 +2,6 @@
 import type { ReactTestRenderer } from 'react-test-renderer';
 
 import { CONSENT_TEXT_VERSIONS } from '@/config/consent';
-import { CK10_TEXT_VERSION } from '@/config/gradeConsent';
 import { CONSENT_TEXT_VERSION_SHAPE, LATER_CONSENT_VERSIONS } from '@/config/laterConsent';
 import { CONSENT_LATER_ITEMS, CONSENT_LATER_NAMES } from '@/content/consentContent';
 import { LEGAL_TERMS } from '@/content/legalTerms';
@@ -29,8 +28,8 @@ describe('판 형식 — DB 검사(0001 consents.text_version)', () => {
     expect(CONSENT_TEXT_VERSION_SHAPE.test('consent-2026.10.22-가정')).toBe(false);
   });
   test('앱이 기록하는 모든 동의 판(CK1 ~ CK16)이 DB 검사 모양이다', () => {
-    const all = [...Object.values(CONSENT_TEXT_VERSIONS), CK10_TEXT_VERSION, ...Object.values(LATER_CONSENT_VERSIONS), POL_SERVER.consentVersion, CHAT_SERVER.consentVersion];
-    expect(all.length).toBe(9 + 1 + 6 + 2);
+    const all = [...Object.values(CONSENT_TEXT_VERSIONS), ...Object.values(LATER_CONSENT_VERSIONS), POL_SERVER.consentVersion, CHAT_SERVER.consentVersion];
+    expect(all.length).toBe(9 + 6 + 2); // CK10 은 D-197 폐지
     for (const v of all) expect(v).toMatch(/^consent-[0-9]{4}[.][0-9]{2}[.][0-9]{2}-v[0-9]+$/);
     expect(Object.keys(LATER_CONSENT_VERSIONS)).toEqual([...LATER_CONSENT_CODES]);
   });
@@ -75,7 +74,7 @@ describe('글 — 동의문구 1-1 · 4-11 ~ 4-16 (gen:legal)', () => {
 describe('12 동의 관리 — CK11 ~ CK16 줄', () => {
   function api(on: Partial<Record<OptionalCode, boolean>>) {
     const a = {
-      loadConsents: jest.fn(async () => ({ ok: true as const, data: { CK4: false, CK9: false, CK10: false, CK11: false, CK12: false, CK13: false, CK14: false, CK15: false, CK16: false, ...on } })),
+      loadConsents: jest.fn(async () => ({ ok: true as const, data: { CK4: false, CK9: false, CK11: false, CK12: false, CK13: false, CK14: false, CK15: false, CK16: false, ...on } })),
       setOptional: jest.fn(async () => ({ ok: true as const })),
     };
     return a as unknown as jest.Mocked<Pick<SettingsApi, 'loadConsents' | 'setOptional'>>;

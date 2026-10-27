@@ -301,7 +301,7 @@ describe('동의 문구가 바뀐 뒤 (동의문구 3-5: 해당 칸만 다시 �
   });
 
   test('뒷자리(-vN)만 다른 판은 같은 문구로 본다: 다시 받지 않는다', () => {
-    const rows = all(CURRENT).map((r) => (r.item_code === 'CK1' ? row('CK1', 'consent-2026.10.14-v7') : r));
+    const rows = all(CURRENT).map((r) => (r.item_code === 'CK1' ? row('CK1', CONSENT_TEXT_VERSIONS.CK1.replace(/-v\d+$/, '-v7')) : r));
     expect(consentStage(rows)).toBe('consented');
     expect(changedConsents(rows)).toEqual([]);
   });

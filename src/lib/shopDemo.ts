@@ -404,7 +404,7 @@ export function createDemoShop(now: () => number, hooks: DemoShopHooks) {
     const id = String(args.p_partner);
     const info = hooks.recs.gradeInfo(user.id, id);
     if (!info) return fail('P0001', 'not_available');
-    return ok(info.ck10 ? { user_id: id, grade_no: info.gradeNo, grade_basis: 'age_band' } : { user_id: id });
+    return ok({ user_id: id }); // D-197(CK10 폐지 · 청사진 6-2): 상대 등급 번호를 주지 않는다
   }
 
   function setProcessing(user: DemoShopUser, args: Record<string, unknown>): Result {

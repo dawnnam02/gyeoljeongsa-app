@@ -120,7 +120,6 @@ export function createDemoRecs(now: () => number, access: RecsAccess = NO_ACCESS
       if (l.startsWith('recfirst')) return { data: { day, now: now0, ready: true, first_list_pending: true, region_hint: false, next_at: new Date(nextAt).toISOString(), items: [] }, error: null };
       // 구독자(이고 내 등급이 있을 때)는 나보다 위 등급 분이 앞에 온다(서버 tier 0 → 1 → 2). 앱은 이 순서를 바꾸지 않는다
       const ordered = sortFor(userId, people);
-      const subscriber = access.subscriber(userId);
       const item = (p: Person, source: 'free' | 'match_once') => ({
         candidate_id: p.id,
         passed: s.passed.has(p.id),
@@ -130,8 +129,7 @@ export function createDemoRecs(now: () => number, access: RecsAccess = NO_ACCESS
         profile: cardProfile(p),
         photos: photosFor(email, p),
         reasons: p.reasons,
-        // 구독자에게만, 상대가 CK10 에 동의한 분만. 비구독자 · 동의 안 한 분은 키 자체가 없다
-        ...(subscriber && p.ck10 ? { grade_no: p.grade, grade_basis: 'age_band' } : {}),
+        // D-197(CK10 폐지 · 청사진 6-2): 상대 등급은 누구에게도 주지 않는다 — grade_no 키 자체가 없다
       });
       const items = [
         ...ordered.filter((p) => visible(userId, s, p)).map((p) => item(p, 'free')),
@@ -153,7 +151,6 @@ export function createDemoRecs(now: () => number, access: RecsAccess = NO_ACCESS
           photos: photosFor(email, p),
           reasons: [...p.reasons, ...p.moreReasons],
           ...(promptsOf(p).length > 0 ? { prompts: promptsOf(p) } : {}), // 질문 카드(S14 0018 모양). 없으면 키 자체가 없다
-          ...(access.subscriber(userId) && p.ck10 ? { grade_no: p.grade, grade_basis: 'age_band' } : {}),
         },
         error: null,
       };
@@ -226,11 +223,11 @@ export function createDemoRecs(now: () => number, access: RecsAccess = NO_ACCESS
       }
       return added;
     },
-    gradeInfo(userId: string, id: string): { gradeNo: number; ck10: boolean } | null {
+    gradeInfo(userId: string, id: string): { gradeNo: number } | null {
       const s = stateOf(userId);
       const p = peopleById(id);
       if (!p || !visible(userId, s, p)) return null;
-      return { gradeNo: p.grade, ck10: p.ck10 };
+      return { gradeNo: p.grade };
     },
 
     // 시험 · 화면 점검: 서버(모의)에 남은 것

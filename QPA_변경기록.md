@@ -60,3 +60,54 @@
 | check:copy | 통과 92 · 실패 6 — A 생성 파일 · A 판 · B CK3/CK6 · I 지문 · O 4-9/5-5 · W CK16. 모두 법무 동의문구 · 판_관리 10-27 00:26 변경(QP-L) 대조, 앱 1부 글 쪽 실패 0. W 대화형 설문 437 · L 08 모두 통과 |
 | check:tokens | 통과 5 · 실패 0 |
 | check:grade | 통과(W9 새로 생긴 곳 0) |
+
+---
+
+# 2부-가 (D-197, 10-27) — 법무 확정 원본 반영 · CK10 정리
+
+- 기준: 법무/QPL_변경기록.md 6장(6-A · 6-B · 6-C) · 팀장 지시(D-197)
+
+| 단계 | 상태 |
+|---|---|
+| 6-A gen:legal --fingerprints | 끝 — consent.ts 판 CK1 · 3 · 6 = consent-2026.10.27-v1 · CK9 = 10.14-v2 · 지문 새로 · consentContent · legalTerms(운영자 표 +3줄 · 24세) · legalPrivacy(24세) · fillIns(+ 수수료표 · 보증보험 웹 주소, null) |
+| 6-B 손으로 고칠 줄 | 끝 — 아래 표 |
+| 6-C CK10 정리 | 끝 — 아래 표 |
+| 시험 · 커밋 | 끝 — 아래 '2부-가 시험' |
+
+## 6-B
+| # | 자리 | 한 일 |
+|---|---|---|
+| B1 · B2 | `NOTIFY.marketingNotes[2]` · `pushPrime` | 동의문구 4-9 · 5-5 글 그대로 |
+| B3 · B4 | `CHAT.CK16.why` · `optional` | 동의문구 4-16 글 그대로(기획 키 — 기획 확인은 나중 메모) |
+| B5 | `config/laterConsent.ts` CK16 | consent-2026.10.26-v2 |
+| B6 | `GRADE16.howReview` 끝 문장 | 5-7 C10 ⑤ 글 |
+| B7 | C6 `GRADE16.limits` · C7 `SETTINGS16` | 확인만 — 1부에서 이미 v5 |
+| B8 | `SAFETY_MINOR` | 만 24세. 같은 문장이 든 `CHILD_SAFETY.policy` 셋째 문장도 24세로(약관 제20조 ④와 같게) |
+| B9 | `businessInfo.ts` · `BUSINESS` · 사업자 정보 쪽 | 통신판매업 신고번호 줄(사업자등록번호 다음, 비면 그 줄만 숨김) · 연결 3줄(수수료표 보기 · 이용약관 보기 · 보증보험 손해배상 청구 절차 — 웹 주소가 비면 그 줄만 숨김, 약관은 앱 안 시트) · 주소 변수 `{주소}`(FILL_INS['주소']) 그대로. 법정 6줄 중 하나라도 비면 '사업자 정보' 줄 자체 숨김(1부 규칙 유지) |
+| B10 | 주석 '만 19세' | 하지 않음(선택, 화면 글 아님) |
+
+## 6-C CK10 정리 (읽기 · 쓰기 0)
+| # | 자리 | 한 일 |
+|---|---|---|
+| C1 | `lib/settingsApi.ts` | `OptionalCode` · `OPTIONAL_CODES` 에서 CK10 뺌 → loadConsents 가 CK10 을 읽지 않음 · setOptional 로 쓸 수 없음 |
+| C2 | `config/gradeConsent.ts` · settingsApi 판 분기 | 파일 지움 · 분기 지움 |
+| C3 | `ConsentManagePage.tsx` | CK10 분기 지움 |
+| C4 | `productCopy.ts` N08 | 숨김 상점 글은 그대로(카피 16-B 대조 대상) + 주석. 앱 코드가 N08 로 CK10 을 쓰는 곳 없음 |
+| C5 | 데모 | `demo/people.ts` ck10 칸 24곳 지움 · `demoRecs` · `shopDemo` 가 상대 grade_no 를 주지 않음. `settingsDemo` 철회 허용 목록 · `demoBackend` 검사식은 서버 0033 규칙 흉내라 그대로(서버 안 고침) |
+| 점검 | `check-copy-rules.mjs` R12 | 법 낱말 '보증보험'만 보증 말 검사에서 뺌(사람 · 만남 보증 아님) |
+
+## 백엔드 확인 거리 (고치지 않음 · 메모만, grep 읽기 전용 · backend/.env 열지 않음)
+- CK10 을 읽는 서버 함수 있음: `private.grade_consent_on(uuid)`(`backend/migrations/0012_grade_shop.sql:971`, consents 의 CK10 최근 기록) → `private.grade_badge(viewer, target, day)`(같은 파일 1001줄, 구독자 + CK10 일 때 상대 등급 번호). v4 상대 등급 배지 길 — 백엔드가 읽지 않게 정리 필요.
+- `revoke_consent` 최신판(`0033_survey_interview.sql:1069 · 1080`)이 CK10 철회를 받고 상대 화면 등급을 지움 · consents 검사식(0033:178)에 CK10 이 선택 칸으로 남음 — 옛 기록 철회 · 탈퇴 삭제용으로 둘지 백엔드 판단.
+- 가입 나이: `private.pl_const('MIN_SIGNUP_AGE')` = **24**(`0024_prelaunch_mode.sql:61`) → `private.signup_age_ok` · A01 저장 트리거 `survey_answers_age_floor`(0024:954 ~ 977)가 24세로 막음. 법무 메모의 `private.signup_config.min_age` 이름은 grep 에 없음(이름 다름). 0001:734 · 0023:3193 의 옛 만 19세 A01 검사는 남아 있으나 24세 트리거가 먼저 돈다(0024 주석).
+
+## 2부-가 시험 (10-27)
+| 시험 | 결과 |
+|---|---|
+| tsc | 0 |
+| eslint(바꾼 파일) | 0 오류 · 0 경고 |
+| jest | 83묶음 1567/1567 통과 |
+| check:copy | 통과 98 · 실패 0(A · I · O · W · B 모두 통과 — 마케팅 카피.md 맞춤 뒤) |
+| check:tokens · check:grade | 5/0 · 통과 |
+- 새 시험(qpaSettingsV5): 통신판매업 줄 · 연결 3줄 하나씩 비면 그 줄만 숨김(함수 + 화면) · CK10 을 앱 어디서도 읽지 않음(OPTIONAL_CODES · src 전체 grep) · 가입 나이 24 안내(02 · 03 CK2 · 10 · 아동 안전, 게시 글 만 19세 0).
+- 고친 시험: serverFlow(뒷자리 판 = 지금 CK1 날짜 기준) · legalContent(CK1 요약 7줄) · l17a(판 수 17, CK10 빠짐) · settingsSafety(24세) · settingsGrade · gradeScreen(howReview) · gradeBadge · shopApi · f24DemoPeople(상대 등급 번호 없음).

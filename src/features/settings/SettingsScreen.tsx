@@ -18,7 +18,7 @@ import { TabHeader } from '@/components/TabHeader';
 import { TextButton } from '@/components/TextButton';
 import { Toast } from '@/components/Toast';
 import { AppText } from '@/components/AppText';
-import { BUSINESS_INFO, businessRows, reportNoLine, type BusinessInfo } from '@/content/businessInfo';
+import { BUSINESS_INFO, businessLinks, businessRows, reportNoLine, type BusinessInfo } from '@/content/businessInfo';
 import { SETTINGS } from '@/content/settingsCopy';
 import { LegalReader } from '@/features/consent/LegalReader';
 import type { GradeApi } from '@/lib/gradeApi';
@@ -45,6 +45,7 @@ export type SettingsDeps = SupportDeps & {
   api: SettingsApi;
   grade?: Pick<GradeApi, 'loadMine' | 'loadProcessing' | 'setProcessing'>; // 있으면 등급 스위치(등급 계산 멈추기)를 그린다(F13 · v5 12-Q)
   business?: BusinessInfo; // 사업자 정보 · 신고번호 값(없으면 content/businessInfo.ts 의 BUSINESS_INFO — 한 곳). 시험에서 값을 넣어 본다
+  openUrl?: (url: string) => Promise<void>; // 사업자 정보 연결 줄(수수료표 · 보증보험 청구 절차 웹 주소). 없으면 Linking.openURL
   now: () => number;
   resetLocal: () => void; // 기기에 남은 가입 진행 · 설문 임시 저장 지우기(점검표 A-14)
   pushStatus: () => Promise<PushStatus>; // 지금 푸시 권한(묻지 않음)
@@ -70,6 +71,14 @@ export function defaultSettingsDeps(): SettingsDeps {
     },
   };
 }
+
+const openExternal = async (url: string) => {
+  try {
+    await Linking.openURL(url);
+  } catch {
+    // 열 수 없으면 아무 일도 없다
+  }
+};
 
 export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
   const router = useRouter();
@@ -201,7 +210,17 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
       case 'image-credit':
         return <ImageCreditPage onBack={toList} />;
       case 'business-info':
-        return bizRows ? <BusinessInfoPage rows={bizRows} onBack={toList} /> : null;
+        return bizRows ? (
+          <BusinessInfoPage
+            rows={bizRows}
+            links={businessLinks(business)}
+            onOpenLink={(link) => {
+              if (link.url === null) setLegalOpen(true); // 이용약관: 앱 안 약관 화면
+              else void (deps.openUrl ?? openExternal)(link.url);
+            }}
+            onBack={toList}
+          />
+        ) : null;
       default:
         return null;
     }

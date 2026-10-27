@@ -1,9 +1,14 @@
 // QP-A 1부(D-196): 마케팅 확정 문구(카피.md 12-Q · 14장) 반영 — 사업자 정보 줄 · 신고번호 한 줄(값 없으면 숨김 / 있으면 보임) · 약관 맨 아래 한 줄 ·
 //  동의 관리 확정 글(CONSENT_MANAGE) · 설문 · 프로필 '추천' 글 → '짝' 글. 값은 content/businessInfo.ts 한 곳(FILL_INS)에서 읽고 지금은 모두 비어 있다.
+import fs from 'node:fs';
+import path from 'node:path';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 
-import { BUSINESS_INFO, businessRows, reportNoLine, type BusinessInfo } from '@/content/businessInfo';
-import { PROFILE } from '@/content/copy';
+import { BUSINESS_INFO, businessLinks, businessRows, reportNoLine, type BusinessInfo } from '@/content/businessInfo';
+import { CONSENT_ITEMS } from '@/content/consentContent';
+import { CHILD_SAFETY, PROFILE, SAFETY_GUIDE, SIGN_IN } from '@/content/copy';
+import { LEGAL_PRIVACY } from '@/content/legalPrivacy';
+import { LEGAL_TERMS } from '@/content/legalTerms';
 import { CHAT_V6 } from '@/content/surveyChatCopy';
 import { SURVEY_LITE } from '@/content/surveyLiteCopy';
 import { BUSINESS, CONSENT_MANAGE, SETTINGS, WITHDRAW } from '@/content/settingsCopy';
@@ -12,7 +17,7 @@ import { GRADE16, SETTINGS16 } from '@/content/shopCopy';
 import { LegalReader } from '@/features/consent/LegalReader';
 import { SettingsScreen, type SettingsDeps } from '@/features/settings/SettingsScreen';
 import { QUESTION_COPY } from '@/features/surveyV2/questionCopy';
-import type { SettingsApi } from '@/lib/settingsApi';
+import { OPTIONAL_CODES, type SettingsApi } from '@/lib/settingsApi';
 
 import { allTexts, has, hasText, mount, must, press, textOf } from './renderHelpers';
 
@@ -70,7 +75,7 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('사업자 정보 · 신고번호 값(한 곳)', () => {
   test('지금 값은 모두 비어 있다(신고 수리 전) → 신고번호 줄 · 사업자 정보 줄 모두 없음', () => {
-    expect(BUSINESS_INFO).toEqual(EMPTY);
+    expect(BUSINESS_INFO).toEqual({ ...EMPTY, ecomNo: null, feeTableUrl: null, bondClaimUrl: null });
     expect(reportNoLine()).toBeNull();
     expect(businessRows()).toBeNull();
   });
@@ -174,5 +179,87 @@ describe('카피.md 12-Q · 14장 확정 글이 앱 글과 같다', () => {
     expect(QUESTION_COPY.F07.help).toBe("'그 외'는 종교를 '그 외'로 고른 분끼리 이어져서 여기서는 고를 수 없어요.");
     expect(QUESTION_COPY.F12.help).toBe('고른 조건은 짝을 고를 때 더 무겁게 봐요. 고르지 않아도 괜찮아요.');
     expect(CHAT_V6['CHAT.F12.ack.t1']).toBe('고른 조건은 짝을 고를 때 더 무겁게 볼게요. 나중에 바꿀 수 있어요.');
+  });
+});
+
+// ── 2부-가(D-197): 법무 확정 원본 — 통신판매업 줄 · 연결 3줄(줄마다 비면 숨김) · CK10 폐지 · 가입 나이 24 ──
+describe('사업자 정보 줄 하나씩 — 비면 그 줄만 숨김(D-197)', () => {
+  const ALL: BusinessInfo = { ...FULL, ecomNo: '2027-서울강남-0001', feeTableUrl: 'https://example.com/fee', bondClaimUrl: 'https://example.com/bond' };
+
+  test('통신판매업 신고번호는 사업자등록번호 다음 줄 · 비면 그 줄만 빠지고 나머지 6줄은 그대로', () => {
+    expect(businessRows(ALL)?.map((r) => r.key)).toEqual(['name', 'ceo', 'reportNo', 'bizRegNo', 'ecomNo', 'address', 'phone']);
+    expect(businessRows(ALL)?.find((r) => r.key === 'ecomNo')?.label).toBe('통신판매업 신고번호');
+    expect(businessRows({ ...ALL, ecomNo: null })?.map((r) => r.key)).toEqual(['name', 'ceo', 'reportNo', 'bizRegNo', 'address', 'phone']);
+    expect(businessRows({ ...ALL, ecomNo: '  ' })?.some((r) => r.key === 'ecomNo')).toBe(false);
+  });
+
+  test('연결 3줄: 수수료표 · 보증보험은 웹 주소가 비면 그 줄만 숨김, 이용약관은 늘 있다', () => {
+    expect(businessLinks(ALL).map((l) => l.label)).toEqual(['수수료표 보기', '이용약관 보기', '보증보험 손해배상 청구 절차']);
+    expect(businessLinks({ ...ALL, feeTableUrl: null }).map((l) => l.key)).toEqual(['terms', 'bondClaim']);
+    expect(businessLinks({ ...ALL, bondClaimUrl: null }).map((l) => l.key)).toEqual(['feeTable', 'terms']);
+    expect(businessLinks(EMPTY).map((l) => l.key)).toEqual(['terms']);
+    expect(businessLinks()).toEqual([{ key: 'terms', label: '이용약관 보기', url: null }]); // 한 곳(FILL_INS)은 지금 비어 있다
+  });
+
+  test('화면: 값이 모두 있으면 7줄 + 연결 3줄 · 수수료표는 웹 주소를 열고 이용약관은 앱 안 약관 시트를 연다', async () => {
+    const d = { ...deps(ALL), openUrl: jest.fn(async () => undefined) };
+    const tree = await show(d);
+    await press(tree, 'settings-row-business-info');
+    expect(hasText(tree, '2027-서울강남-0001')).toBe(true);
+    await press(tree, 'settings-business-link-feeTable');
+    expect(d.openUrl).toHaveBeenCalledWith('https://example.com/fee');
+    await press(tree, 'settings-business-link-terms');
+    expect(has(tree, 'legal-reader')).toBe(true);
+  });
+
+  test('화면: 통신판매업 · 수수료표 · 보증보험 값이 비면 그 줄들만 없다', async () => {
+    const tree = await show(deps(FULL));
+    await press(tree, 'settings-row-business-info');
+    expect(has(tree, 'settings-business-ecomNo')).toBe(false);
+    expect(has(tree, 'settings-business-link-feeTable')).toBe(false);
+    expect(has(tree, 'settings-business-link-bondClaim')).toBe(false);
+    expect(has(tree, 'settings-business-link-terms')).toBe(true);
+    expect(has(tree, 'settings-business-address')).toBe(true);
+  });
+});
+
+describe('CK10 폐지(D-197) — 앱 어디서도 읽거나 쓰지 않는다', () => {
+  test('선택 동의 목록 · 동의 읽기 결과에 CK10 이 없다', () => {
+    expect(OPTIONAL_CODES).not.toContain('CK10');
+    expect(OPTIONAL_CODES).toEqual(['CK4', 'CK9', 'CK11', 'CK12', 'CK13', 'CK14', 'CK15', 'CK16']);
+  });
+
+  test("앱 코드(src, 시험 · 주석 제외)에 'CK10' · ck10 을 쓰는 줄이 없다 · config/gradeConsent.ts 는 지웠다", () => {
+    const root = path.join(__dirname, '..');
+    const hits: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of fs.readdirSync(dir)) {
+        const full = path.join(dir, name);
+        if (fs.statSync(full).isDirectory()) {
+          if (name !== '__tests__') walk(full);
+        } else if (/\.(ts|tsx)$/.test(name)) {
+          fs.readFileSync(full, 'utf8').split(/\r?\n/).forEach((line, i) => {
+            const code = line.replace(/\/\/.*$/, '').replace(/\/\*.*?\*\//g, '');
+            if (/CK10|ck10/.test(code)) hits.push(`${path.relative(root, full)}:${i + 1}`);
+          });
+        }
+      }
+    };
+    walk(root);
+    // 남는 것은 숨김 상점 글(N08) · 서버 규칙을 흉내 내는 데모의 철회 허용 목록(서버 0033 그대로 — 서버는 고치지 않음)뿐
+    expect(hits.map((h) => h.split(path.sep).join('/')).filter((h) => !/^lib\/(settingsDemo|demoBackend)\.ts:/.test(h))).toEqual([]);
+    expect(fs.existsSync(path.join(root, 'config', 'gradeConsent.ts'))).toBe(false);
+  });
+});
+
+describe('가입 나이 24(D-197)', () => {
+  test('02 안내 · 거절 글 · 03 CK2 · 10 신고 사유 아래 · 아동 안전 글이 모두 만 24세 · 게시 글에 만 19세 0', () => {
+    expect(SIGN_IN.ageNotice).toBe('만 24세 이상만 가입할 수 있어요.');
+    expect(SIGN_IN.errors.underage).toBe('만 24세 이상만 가입할 수 있어요.');
+    expect(CONSENT_ITEMS.find((i) => i.code === 'CK2')?.label).toBe('[필수] 만 24세 이상이에요');
+    expect(SAFETY_GUIDE.minorNote).toBe('만 24세 미만으로 보인다는 신고가 들어오면 24시간 안에 먼저 확인해요.');
+    expect(CHILD_SAFETY.policy).toContain('만 24세 미만으로 보인다는 신고가');
+    const posted = JSON.stringify([CONSENT_ITEMS, LEGAL_TERMS, LEGAL_PRIVACY, SAFETY_GUIDE, CHILD_SAFETY, SIGN_IN]);
+    expect(posted).not.toMatch(/만 19세/);
   });
 });

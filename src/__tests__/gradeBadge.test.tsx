@@ -1,8 +1,8 @@
-// F13 조건 3 · 4: 09 추천 카드 · 10 상대 프로필의 등급 배지 — 구독자 + 상대가 CK10 에 동의한 분만 "{n}등급" + 배지, 미동의는 표시 없음, 비구독자는 아무것도 없음(NV47 한 줄만),
+// F13 조건 3 · 4 → D-197(CK10 폐지): 09 추천 카드 · 10 상대 프로필의 등급 배지는 누구에게도 없다. 옛 규칙: 구독자 + 상대가 CK10 에 동의한 분만 "{n}등급" + 배지, 미동의는 표시 없음, 비구독자는 아무것도 없음(NV47 한 줄만),
 //  말풍선 NV82 · 10 상세 NV55 · NV81 · NV85 · 한계 문구 · 09 '추가로 받은 추천' 구역(NV63). 실제 recsApi · gradeApi 를 모의 서버(lib/shopDemo · demoRecs) 위에서 돌린다.
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 
-import { BADGE16, GRADE16, SHOP16 } from '@/content/shopCopy';
+import { BADGE16, SHOP16 } from '@/content/shopCopy';
 import { CandidateScreen, type CandidateDeps } from '@/features/recs/CandidateScreen';
 import { RecommendationsScreen, type RecsDeps } from '@/features/recs/RecommendationsScreen';
 import { createGradeApi } from '@/lib/gradeApi';
@@ -43,12 +43,6 @@ beforeEach(() => {
   for (const key of Object.keys(mockParams)) delete mockParams[key];
 });
 const flush = () => act(async () => void (await new Promise((resolve) => setTimeout(resolve, 0))));
-// 칩처럼 testID 가 부품 → 안쪽 누름 요소로 겹칠 때, 실제 누를 수 있는 요소
-const tapInner = async (tree: ReactTestRenderer, id: string) => {
-  const node = tree.root.findAll((n) => n.props.testID === id && typeof n.props.onPress === 'function')[0];
-  await act(async () => void node.props.onPress());
-  await flush();
-};
 
 async function openRecs(scene: string, before?: (r: Awaited<ReturnType<typeof makeShopRig>>) => Promise<void>) {
   const rig = await makeShopRig(scene);
@@ -78,28 +72,12 @@ describe('조건 3 · 09 추천 카드 배지', () => {
     expect(has(tree, 'recs-extra-title')).toBe(false);
   });
 
-  test('구독자: 서버 순서 그대로 · CK10 동의한 분만 칩(W9: 풍경 아이콘만, 숫자 글 없음), 동의 안 한 분은 칩 자리도 없다', async () => {
+  test('D-197(CK10 폐지 · 청사진 6-2): 구독자에게도 상대 등급 칩이 없다 · 서버 순서는 그대로', async () => {
     const { tree } = await openRecs('shopsub');
-    expect([0, 1, 2].map((i) => textOf(tree, `rec-head-${i}`)?.slice(0, 2))).toEqual(['김O', '최O', '박O']); // 서버 순서: cand-1(2등급) · cand-3 · cand-2(6등급)
-    expect([has(tree, 'rec-grade-0'), has(tree, 'rec-grade-2')]).toEqual([true, true]);
-    expect(has(tree, 'rec-grade-0-text')).toBe(false);
-    expect(has(tree, 'rec-grade-1')).toBe(false);
-    expect(has(tree, 'rec-grade-1-wrap')).toBe(false);
-    const chip = tree.root.findAll((n) => n.props.testID === 'rec-grade-0').at(-1)!;
-    expect(chip.props.accessibilityLabel).toBe('이분의 등급 아이콘'); // GI2(숫자 없음)
-    expect(has(tree, 'rec-grade-0-image')).toBe(true);
-    // 등급 숫자 글이 카드에 없다
+    expect([0, 1, 2].map((i) => textOf(tree, `rec-head-${i}`)?.slice(0, 2))).toEqual(['김O', '최O', '박O']); // 서버 순서: cand-1 · cand-3 · cand-2
+    expect([0, 1, 2].map((i) => has(tree, `rec-grade-${i}`))).toEqual([false, false, false]);
+    expect(has(tree, 'rec-grade-0-bubble')).toBe(false);
     expect(allTexts(tree).filter((t) => /\d\s*등급|점수/.test(t))).toEqual([]);
-  });
-
-  test('칩을 누르면 말풍선(W9: NV85 한 줄, 숫자 · 방향 문구 없음), 다시 누르면 닫힌다', async () => {
-    const { tree } = await openRecs('shopsub');
-    expect(has(tree, 'rec-grade-0-bubble')).toBe(false);
-    await tapInner(tree, 'rec-grade-0');
-    expect(has(tree, 'rec-grade-0-bubble-title')).toBe(false);
-    expect(textOf(tree, 'rec-grade-0-bubble-note')).toBe(BADGE16.notLife);
-    await tapInner(tree, 'rec-grade-0');
-    expect(has(tree, 'rec-grade-0-bubble')).toBe(false);
   });
 
   test('등급 계산을 멈춘 구독자는 서버 순서가 비구독자와 같다(앱은 순서를 바꾸지 않는다)', async () => {
@@ -120,13 +98,10 @@ describe('조건 4 · 09 "추가로 받은 추천" 구역 (1회 매칭)', () => 
     expect(allTexts(tree).join(' ')).not.toMatch(/등급/); // 비구독자 추가 카드에도 배지가 없다
   });
 
-  test('구독자의 추가 카드에도 CK10 동의 상대만 칩이 붙는다', async () => {
+  test('D-197: 구독자의 추가 카드에도 상대 등급 칩이 없다', async () => {
     const { tree } = await openRecs('shopsub-moslot', async (r) => void (await createShopApi(r.client).useMatchOnce(newRequestId())));
     expect(has(tree, 'recs-extra-title')).toBe(true);
-    expect(has(tree, 'rec-grade-3')).toBe(true); // 이OO(동의)
-    expect(has(tree, 'rec-grade-4')).toBe(false); // 장OO(미동의)
-    expect(has(tree, 'rec-grade-5')).toBe(true);
-    expect(has(tree, 'rec-grade-5-text')).toBe(false);
+    expect([3, 4, 5].map((i) => has(tree, `rec-grade-${i}`))).toEqual([false, false, false]);
   });
 
   test('추가 카드에 보낸 호감은 무료 3건 한도에 세지 않는다', async () => {
@@ -140,16 +115,11 @@ describe('조건 4 · 09 "추가로 받은 추천" 구역 (1회 매칭)', () => 
 });
 
 describe('조건 3 · 10 상대 프로필 등급', () => {
-  test('구독자 + 동의한 상대: NV55 + 배지 그림 + NV81 + NV85 + 한계 문구(C6)', async () => {
+  test('D-197: 구독자가 보는 10 상대 프로필에도 등급 배지 · NV55 · 한계 문구가 없다', async () => {
     const { tree } = await openCandidate('shopsub', 'demo-cand-1');
-    expect(textOf(tree, 'candidate-grade-text')).toBe('9단계 중 2등급 · 이분 나이대 기준이에요.');
-    expect(textOf(tree, 'candidate-grade-direction')).toBe('숫자가 작을수록 계산 점수가 높은 쪽이에요.');
-    expect(textOf(tree, 'candidate-grade-notlife')).toBe('등급은 이분의 인생을 대변하지 않아요.');
-    expect(textOf(tree, 'candidate-grade-limits')).toBe(GRADE16.limits);
-    expect(tree.root.findAll((n) => n.props.testID === 'candidate-grade-badge-image').length + tree.root.findAll((n) => n.props.testID === 'candidate-grade-badge').length).toBeGreaterThan(0);
-    expect(has(tree, 'candidate-grade-subscribe')).toBe(false); // 구독자에게 NV47 은 없다
-    // 박스 '왜 추천했나요'의 둘째 문장은 점수 말 하나뿐, 등급 말이 아니다
-    expect(textOf(tree, 'candidate-why-note')).toBe('추천 점수는 보여주지 않아요.');
+    expect(has(tree, 'candidate-grade')).toBe(false);
+    expect(has(tree, 'candidate-grade-subscribe')).toBe(false);
+    expect(allTexts(tree).filter((t) => /\d\s*등급/.test(t))).toEqual([]);
   });
 
   test('구독자 + 동의하지 않은 상대: 배지 자리도 "비공개" 글자도 없다 · NV47 도 없다', async () => {

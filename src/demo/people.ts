@@ -2,7 +2,7 @@
 //  · 모두 가상의 사람이다. 실존 인물 · 실명 · 실제 회사 이름 0 — 표시는 성 + OO, 직업은 '대기업 · 공기업 · 전문직 · 공무원' 같은 범주, 학교는 설문 v2 학교 목록(M14 schoolIndex)에 있는 이름
 //  · 남 12(n 1~12 = demo-cand-1~12) · 여 12(n 13~24 = demo-cand-13~24). n 13 은 데모 로그인 계정 '나'(이하나)의 사진 · 결혼관이라 추천 목록에는 나오지 않는다
 //  · 데모 '나'는 처음에 여성(이하나 — 08 프로필)이라 남성 12명이 추천 · 호감에 나온다. 이메일에 asmale 이 있으면 '나'가 남성이고 여성이 나온다
-//  · 등급(grade)은 서버가 가진 값처럼 1~9 고루(남 1~9 · 여 1~9, '나' 4 와 같은 등급 · 한 단계 위 · 아래가 섞임). 화면에는 지금 규칙 그대로 — 구독자 + 상대 CK10 동의 때만 '{n}등급' 칩
+//  · 등급(grade)은 서버가 가진 값처럼 1~9 고루(남 1~9 · 여 1~9, '나' 4 와 같은 등급 · 한 단계 위 · 아래가 섞임). 상대 등급은 화면에 주지 않는다(D-197 CK10 폐지 · 청사진 6-2)
 //  · 사진 키 key(pNN) = B24 의 `디자인/데모인물/앱용/pNN_face · full · free.webp`(→ app/assets/demo/people/, scripts/link-demo-people.mjs). B24 인물목록.csv 는 p01~p12 여 · p13~p24 남이라
 //    성별 · 나이 느낌으로 짝지었다(예: n 9 윤OO 34 디자이너 = p16 30대 중반 '전시회에서 그림 보기', n 13 '나' 29 = p01 20대 후반 '카페 창가'). 파일이 없으면 사진 함수가 '없음'으로 답해 기본 그림이 보인다
 //  · 호감 데모(likesDemo)의 다섯 사람(demo-liker-1~3 · demo-sent-1 · demo-match-1)은 이 24명 중 다섯의 다른 id(별칭)다 — 같은 얼굴 · 같은 답
@@ -25,7 +25,6 @@ export type DemoPerson = {
   age: number; // 만 나이
   region: { sido: string; sigungu: string };
   grade: number; // 1~9(서버 값 흉내 — 화면에는 지금 규칙대로만)
-  ck10: boolean; // '내 등급 보이기' 동의
   religion: string | null; // A06(null = 가림)
   edu: string; // B01
   school: string; // B02 학교(목록 이름)
@@ -51,7 +50,7 @@ const GRAD = '졸업했어요';
 export const DEMO_PEOPLE: readonly DemoPerson[] = [
   // ── 남성 12(처음 '나'(여성)에게 보이는 분들) ──────────────────────────
   {
-    n: 1, key: 'p21', gender: 'M', name: '김OO', age: 32, region: R('서울', '강남구'), grade: 2, ck10: true,
+    n: 1, key: 'p21', gender: 'M', name: '김OO', age: 32, region: R('서울', '강남구'), grade: 2,
     religion: '기독교', edu: '석사', school: '한양대학교', showSchool: false, schoolState: GRAD, job: '대기업', income: '7천만~1억 원',
     open: { A09: '비흡연', A05: 178, D03: '대졸', A04: '부산', A10: '월 1~2회', A11: '군필', A08: '없음', D05: '1명', D06: '첫째(장남·장녀)', B03: '경영학', B04: '없음', C03: '대리·과장급', C04: '정규직', C06: '1억~3억', G02: '보통', G03: ['단정', '캐주얼'] },
     marriage: { E01: '1년~2년', E02: '갖고 싶은 편이에요', E06: '서울' },
@@ -60,7 +59,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F06', 'E02', 'E03'], moreReasons: ['F07', 'E05'], legacyPhotos: [A, A, P],
   },
   {
-    n: 2, key: 'p14', gender: 'M', name: '박OO', age: 30, region: R('경기', '성남시'), grade: 6, ck10: true,
+    n: 2, key: 'p14', gender: 'M', name: '박OO', age: 30, region: R('경기', '성남시'), grade: 6,
     // 종교 · 연봉 · 부모님 칸은 가렸다(A06 · C05 · D03 · D04 없음) — 이유에도 종교가 없다
     religion: null, edu: '대졸', school: '가천대학교', showSchool: false, schoolState: GRAD, job: '전문직', income: null,
     open: { A09: '비흡연', A05: 172 },
@@ -70,7 +69,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F06', 'E05', 'E07'], moreReasons: [], legacyPhotos: [P, P, P],
   },
   {
-    n: 3, key: 'p23', gender: 'M', name: '최OO', age: 33, region: R('서울', '송파구'), grade: 3, ck10: false,
+    n: 3, key: 'p23', gender: 'M', name: '최OO', age: 33, region: R('서울', '송파구'), grade: 3,
     religion: '천주교', edu: '대졸', school: '서울시립대학교', showSchool: true, schoolState: GRAD, job: '공무원', income: '4천만~6천만 원',
     open: { D03: '대졸', D04: '1억~3억 원', A04: '서울', A10: '안 마심', B03: '행정학', C04: '정규직', A05: 175 },
     marriage: { E01: '1년~2년', E02: '꼭 갖고 싶어요', E05: 4 },
@@ -79,7 +78,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F06', 'F07', 'E02'], moreReasons: ['E03', 'E06'], legacyPhotos: [A, N, N],
   },
   {
-    n: 4, key: 'p18', gender: 'M', name: '문OO', age: 32, region: R('서울', '마포구'), grade: 4, ck10: true,
+    n: 4, key: 'p18', gender: 'M', name: '문OO', age: 32, region: R('서울', '마포구'), grade: 4,
     religion: '무교', edu: '대졸', school: '경희대학교', showSchool: true, schoolState: GRAD, job: '교사', income: '5천만~6천만 원',
     open: { A05: 176, A09: '비흡연', A11: '군필', B03: '국어교육' },
     marriage: { E01: '6개월~1년', E02: '갖고 싶은 편이에요', E03: 5 },
@@ -88,7 +87,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F06', 'E01'], moreReasons: ['E03'], legacyPhotos: [A, A, A],
   },
   {
-    n: 5, key: 'p24', gender: 'M', name: '한OO', age: 31, region: R('서울', '강서구'), grade: 7, ck10: true,
+    n: 5, key: 'p24', gender: 'M', name: '한OO', age: 31, region: R('서울', '강서구'), grade: 7,
     religion: '무교', edu: '대졸', school: '인천대학교', showSchool: false, schoolState: GRAD, job: '중견기업', income: '4천만~5천만 원',
     open: { A05: 174, A09: '비흡연', A11: '군필' },
     marriage: { E01: '1년~2년', E07: '한 통장으로 합쳐서 같이 관리해요' },
@@ -97,7 +96,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F03', 'E06'], moreReasons: [], legacyPhotos: [P, N, N],
   },
   {
-    n: 6, key: 'p20', gender: 'M', name: '오OO', age: 29, region: R('경기', '수원시'), grade: 3, ck10: false,
+    n: 6, key: 'p20', gender: 'M', name: '오OO', age: 29, region: R('경기', '수원시'), grade: 3,
     religion: '불교', edu: '대졸', school: '아주대학교', showSchool: false, schoolState: GRAD, job: '간호사', income: '4천만~5천만 원',
     open: { A05: 177, A09: '비흡연', A11: '군필', B03: '간호학' },
     marriage: { E02: '꼭 갖고 싶어요' },
@@ -106,7 +105,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F07', 'E03'], moreReasons: [], legacyPhotos: [A, A, N],
   },
   {
-    n: 7, key: 'p17', gender: 'M', name: '이OO', age: 31, region: R('서울', '서초구'), grade: 3, ck10: true,
+    n: 7, key: 'p17', gender: 'M', name: '이OO', age: 31, region: R('서울', '서초구'), grade: 3,
     religion: '무교', edu: '석사', school: '중앙대학교', showSchool: true, schoolState: '수료했어요', job: '의료직', income: '5천만~6천만 원',
     open: { A05: 180, A09: '비흡연', A11: '군필', B03: '물리치료학' },
     marriage: { E01: '1년~2년', E03: 4 },
@@ -115,7 +114,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F06', 'E01'], moreReasons: [], legacyPhotos: [A, P, N],
   },
   {
-    n: 8, key: 'p19', gender: 'M', name: '장OO', age: 37, region: R('부산', '해운대구'), grade: 5, ck10: false,
+    n: 8, key: 'p19', gender: 'M', name: '장OO', age: 37, region: R('부산', '해운대구'), grade: 5,
     religion: '무교', edu: '대졸', school: '부산대학교', showSchool: false, schoolState: GRAD, job: '대기업', income: '8천만~1억 원',
     open: { A05: 173, A11: '군필', C03: '차장·부장급' },
     marriage: { E01: '6개월~1년', E06: '부산·대구·울산·경상' },
@@ -124,7 +123,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['E02', 'E03'], moreReasons: [], legacyPhotos: [P, N, N],
   },
   {
-    n: 9, key: 'p16', gender: 'M', name: '윤OO', age: 34, region: R('서울', '서초구'), grade: 8, ck10: true,
+    n: 9, key: 'p16', gender: 'M', name: '윤OO', age: 34, region: R('서울', '서초구'), grade: 8,
     religion: '기독교', edu: '대졸', school: '홍익대학교', showSchool: true, schoolState: GRAD, job: '디자이너', income: '4천만~5천만 원',
     open: { A05: 171, A11: '군필', B03: '시각디자인' },
     marriage: { E01: '3년 뒤' },
@@ -133,7 +132,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F06', 'F07'], moreReasons: [], legacyPhotos: [A, A, N],
   },
   {
-    n: 10, key: 'p13', gender: 'M', name: '박OO', age: 29, region: R('경기', '성남시'), grade: 1, ck10: true,
+    n: 10, key: 'p13', gender: 'M', name: '박OO', age: 29, region: R('경기', '성남시'), grade: 1,
     religion: '천주교', edu: '석사', school: '연세대학교', showSchool: false, schoolState: GRAD, job: '전문직', income: '1억~1억 5천만 원',
     open: { A05: 179, A09: '비흡연', A11: '군필', C08: '회계사' },
     marriage: { E01: '1년~2년', E02: '꼭 갖고 싶어요', E05: 4 },
@@ -142,7 +141,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F06', 'E07'], moreReasons: [], legacyPhotos: [A, N, N],
   },
   {
-    n: 11, key: 'p15', gender: 'M', name: '신OO', age: 26, region: R('대전', '유성구'), grade: 5, ck10: false,
+    n: 11, key: 'p15', gender: 'M', name: '신OO', age: 26, region: R('대전', '유성구'), grade: 5,
     religion: '불교', edu: '대졸', school: '충남대학교', showSchool: true, schoolState: GRAD, job: '공기업', income: '4천만~5천만 원',
     open: { A05: 175, A11: '군필' },
     marriage: { E01: '3년 뒤', E06: '대전·세종·충청' },
@@ -151,7 +150,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['E01', 'E03'], moreReasons: [], legacyPhotos: [P, P, N],
   },
   {
-    n: 12, key: 'p22', gender: 'M', name: '서OO', age: 30, region: R('경기', '고양시'), grade: 9, ck10: true,
+    n: 12, key: 'p22', gender: 'M', name: '서OO', age: 30, region: R('경기', '고양시'), grade: 9,
     religion: '무교', edu: '전문대', school: '동서울대학교', showSchool: false, schoolState: GRAD, job: '중소기업', income: '3천만~4천만 원',
     open: { A05: 170, A11: '군필' },
     marriage: { E02: '만나는 분과 의논해서 정할래요' },
@@ -161,7 +160,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
   },
   // ── 여성 12(n 13 = '나' · 이메일 asmale 이면 n 14~24 가 추천 · 호감에 나온다) ─────────
   {
-    n: 13, key: 'p01', gender: 'F', name: '이OO', age: 29, region: R('서울', '마포구'), grade: 4, ck10: true,
+    n: 13, key: 'p01', gender: 'F', name: '이OO', age: 29, region: R('서울', '마포구'), grade: 4,
     religion: '무교', edu: '대졸', school: '숙명여자대학교', showSchool: false, schoolState: GRAD, job: '중견기업', income: '4천만~6천만 원',
     open: { A05: 163, A09: '비흡연' },
     marriage: { E01: '1년~2년', E02: '갖고 싶은 편이에요' },
@@ -170,7 +169,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: [], moreReasons: [], legacyPhotos: [A, A, A],
   },
   {
-    n: 14, key: 'p11', gender: 'F', name: '강OO', age: 27, region: R('서울', '성동구'), grade: 5, ck10: true,
+    n: 14, key: 'p11', gender: 'F', name: '강OO', age: 27, region: R('서울', '성동구'), grade: 5,
     religion: '무교', edu: '대졸', school: '건국대학교', showSchool: true, schoolState: GRAD, job: '대기업', income: '5천만~6천만 원',
     open: { A05: 163, A09: '비흡연' },
     marriage: { E01: '2년~3년', E03: 5 },
@@ -179,7 +178,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F06', 'E03', 'E01'], moreReasons: [], legacyPhotos: [A, A, A],
   },
   {
-    n: 15, key: 'p10', gender: 'F', name: '조OO', age: 31, region: R('경기', '성남시'), grade: 2, ck10: true,
+    n: 15, key: 'p10', gender: 'F', name: '조OO', age: 31, region: R('경기', '성남시'), grade: 2,
     religion: '천주교', edu: '석사', school: '이화여자대학교', showSchool: false, schoolState: GRAD, job: '전문직', income: '7천만~8천만 원',
     open: { A05: 165, A09: '비흡연', C08: '약사' },
     marriage: { E01: '1년~2년', E02: '꼭 갖고 싶어요', E05: 4 },
@@ -188,7 +187,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F07', 'E02'], moreReasons: ['E05'], legacyPhotos: [A, A, A],
   },
   {
-    n: 16, key: 'p07', gender: 'F', name: '송OO', age: 24, region: R('경기', '수원시'), grade: 7, ck10: false,
+    n: 16, key: 'p07', gender: 'F', name: '송OO', age: 24, region: R('경기', '수원시'), grade: 7,
     religion: '무교', edu: '대졸', school: '수원대학교', showSchool: false, schoolState: GRAD, job: '중소기업', income: '3천만~4천만 원',
     open: { A05: 160 },
     marriage: { E01: '3년 뒤' },
@@ -197,7 +196,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['E01', 'E03'], moreReasons: [], legacyPhotos: [A, A, A],
   },
   {
-    n: 17, key: 'p06', gender: 'F', name: '권OO', age: 33, region: R('서울', '강남구'), grade: 1, ck10: true,
+    n: 17, key: 'p06', gender: 'F', name: '권OO', age: 33, region: R('서울', '강남구'), grade: 1,
     religion: '무교', edu: '박사', school: '서울대학교', showSchool: false, schoolState: GRAD, job: '전문직', income: '1억~1억 5천만 원',
     open: { A05: 166, C08: '의사' },
     marriage: { E01: '6개월~1년', E03: 4 },
@@ -206,7 +205,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F06', 'E03'], moreReasons: ['E07'], legacyPhotos: [A, A, A],
   },
   {
-    n: 18, key: 'p04', gender: 'F', name: '황OO', age: 35, region: R('부산', '해운대구'), grade: 6, ck10: true,
+    n: 18, key: 'p04', gender: 'F', name: '황OO', age: 35, region: R('부산', '해운대구'), grade: 6,
     religion: '불교', edu: '대졸', school: '동아대학교', showSchool: true, schoolState: GRAD, job: '교사', income: '5천만~6천만 원',
     open: { A05: 162 },
     marriage: { E01: '6개월~1년', E02: '갖고 싶은 편이에요', E06: '부산·대구·울산·경상' },
@@ -215,7 +214,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F07', 'E02'], moreReasons: [], legacyPhotos: [A, A, A],
   },
   {
-    n: 19, key: 'p09', gender: 'F', name: '안OO', age: 28, region: R('대전', '유성구'), grade: 3, ck10: false,
+    n: 19, key: 'p09', gender: 'F', name: '안OO', age: 28, region: R('대전', '유성구'), grade: 3,
     religion: '무교', edu: '대졸', school: '한남대학교', showSchool: false, schoolState: GRAD, job: '공기업', income: '4천만~5천만 원',
     open: { A05: 164 },
     marriage: { E01: '2년~3년', E02: '꼭 갖고 싶어요', E06: '대전·세종·충청' },
@@ -224,7 +223,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F06', 'E01'], moreReasons: [], legacyPhotos: [A, A, A],
   },
   {
-    n: 20, key: 'p05', gender: 'F', name: '류OO', age: 30, region: R('인천', '연수구'), grade: 8, ck10: true,
+    n: 20, key: 'p05', gender: 'F', name: '류OO', age: 30, region: R('인천', '연수구'), grade: 8,
     religion: '기독교', edu: '전문대', school: '부천대학교', showSchool: false, schoolState: GRAD, job: '자영업', income: null,
     open: { A05: 161 },
     marriage: { E01: '1년~2년', E07: '각자 관리하고 생활비만 나눠요' },
@@ -233,7 +232,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['E02', 'E05'], moreReasons: [], legacyPhotos: [A, A, A],
   },
   {
-    n: 21, key: 'p12', gender: 'F', name: '전OO', age: 36, region: R('대구', '수성구'), grade: 4, ck10: true,
+    n: 21, key: 'p12', gender: 'F', name: '전OO', age: 36, region: R('대구', '수성구'), grade: 4,
     religion: '그 외', edu: '대졸', school: '경북대학교', showSchool: true, schoolState: GRAD, job: '공무원', income: '4천만~5천만 원',
     open: { A05: 163 },
     marriage: { E01: '6개월~1년', E02: '만나는 분과 의논해서 정할래요' },
@@ -242,7 +241,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['E03', 'E06'], moreReasons: [], legacyPhotos: [A, A, A],
   },
   {
-    n: 22, key: 'p03', gender: 'F', name: '홍OO', age: 26, region: R('서울', '관악구'), grade: 9, ck10: false,
+    n: 22, key: 'p03', gender: 'F', name: '홍OO', age: 26, region: R('서울', '관악구'), grade: 9,
     religion: '무교', edu: '대졸', school: '세종대학교', showSchool: false, schoolState: '수료했어요', job: '프리랜서', income: '3천만~4천만 원',
     open: { A05: 158 },
     marriage: { E01: '3년 뒤' },
@@ -251,7 +250,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['E01', 'F01'], moreReasons: [], legacyPhotos: [A, A, A],
   },
   {
-    n: 23, key: 'p08', gender: 'F', name: '고OO', age: 39, region: R('경기', '고양시'), grade: 5, ck10: true,
+    n: 23, key: 'p08', gender: 'F', name: '고OO', age: 39, region: R('경기', '고양시'), grade: 5,
     religion: '천주교', edu: '석사', school: '한국외국어대학교', showSchool: true, schoolState: GRAD, job: '외국계 기업', income: '8천만~1억 원',
     open: { A05: 167, B04: '어학연수' },
     marriage: { E01: '6개월~1년', E02: '만나는 분과 의논해서 정할래요', E07: '만나는 분과 의논해서 정할래요' },
@@ -260,7 +259,7 @@ export const DEMO_PEOPLE: readonly DemoPerson[] = [
     reasons: ['F07', 'E07'], moreReasons: [], legacyPhotos: [A, A, A],
   },
   {
-    n: 24, key: 'p02', gender: 'F', name: '배OO', age: 32, region: R('광주', '서구'), grade: 6, ck10: true,
+    n: 24, key: 'p02', gender: 'F', name: '배OO', age: 32, region: R('광주', '서구'), grade: 6,
     religion: '그 외', edu: '대졸', school: '전남대학교', showSchool: false, schoolState: GRAD, job: '중견기업', income: '4천만~5천만 원',
     open: { A05: 162 },
     marriage: { E01: '1년~2년', E06: '광주·전라' },

@@ -305,7 +305,7 @@ describe('조건 2 · 16-G2 변화 기록 · 16-G3 목표 · 16-G4 해설 (W9 �
     expect(has(tree, 'how-few')).toBe(false);
     expect(textOf(tree, 'how-part-0')).toContain('설정에서 멈추지 않은 모든 회원의 등급을 계산해요.');
     expect(textOf(tree, 'how-part-2')).toBe(GI.howProcess);
-    expect(textOf(tree, 'how-part-4')).toContain('멈추면 내 등급이 지워지고 추천 상대를 고르는 데도 더는 쓰이지 않아요.');
+    expect(textOf(tree, 'how-part-4')).toContain('멈추면 내 등급이 지워지고 짝을 고르는 데도 더는 쓰이지 않아서, 다시 켜기 전까지 탑승권을 살 수 없어요.');
     expect(allTexts(tree).join(' ')).not.toMatch(/\d\s*등급|숫자가 작을수록|위 등급|내려갈/);
   });
 });
