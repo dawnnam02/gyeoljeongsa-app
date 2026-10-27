@@ -234,6 +234,9 @@ try {
     }
     if (!(await wait(`!${q(`chat-card-${id}`)} || !window.__visible(${q(`chat-card-${id}`)})`, 4000))) throw new Error(`${id} 에서 넘어가지 않았어요`);
     if (id === 'A11') {
+      // QP-13: 내 답 말풍선(누르면 고치기)의 누르는 면 높이 48 이상
+      const meSmall = await b.evaluate(`[...document.querySelectorAll('[data-testid^="chat-me-"]')].filter((e) => window.__visible(e) && e.getAttribute('role') === 'button').map((e) => [e.getAttribute('data-testid'), Math.round(e.getBoundingClientRect().height)]).filter(([, h]) => h < 48)`);
+      check('E', 'QP-13: 내 답 말풍선 누르는 면 높이 48 이상', Array.isArray(meSmall) && meSmall.length === 0, JSON.stringify(meSmall));
       // 지난 답 고치기: 성별 내 답을 눌러 그 자리에서
       await tap('chat-me-A02');
       const editing = await wait(`!!${q('chat-edit-start')}`, 3000);

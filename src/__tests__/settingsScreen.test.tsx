@@ -6,7 +6,8 @@ import path from 'node:path';
 
 import { CHILD_SAFETY, COMMON, SAFETY_GUIDE, SUPPORT } from '@/content/copy';
 import { CONSENT_ITEMS } from '@/content/consentContent';
-import { BLOCKED, CONSENT_MANAGE, IMAGE_CREDIT, LICENSES, NOTIFY, REPORTS, SECURITY, SETTINGS, SUPPORT_ACTIONS } from '@/content/settingsCopy';
+import { BLOCKED, CONSENT_MANAGE, IMAGE_CREDIT, LICENSES, NOTIFY, REPORTS, SECURITY, SETTINGS } from '@/content/settingsCopy';
+import { SupportPage } from '@/features/settings/InfoPages';
 import { pushStatusOf, type PushStatus } from '@/features/settings/deviceDeps';
 import { SettingsScreen, type SettingsDeps } from '@/features/settings/SettingsScreen';
 import { blockedHead, fillContact, reportDate, SETTINGS_ROWS } from '@/features/settings/settingsLogic';
@@ -359,16 +360,26 @@ describe('12 하위 화면', () => {
     expect(hasText(tree2, REPORTS.empty)).toBe(true);
   });
 
-  test('고객센터: 문의 이메일 · 운영 시간(N27) + 아동 안전 문의(N35), 값이 정해지기 전에는 [복사] · [메일 앱 열기] 꺼짐', async () => {
+  test('고객센터(QP-04): 값이 정해지기 전에는 이메일 · 운영 시간 · 아동 안전 연락처 줄과 [복사] · [메일 앱 열기]가 없고, 자리 글 {…} 이 화면에 없다 · 아동 안전 문의 글은 그대로', async () => {
     const { deps } = setup();
     const tree = await show(deps);
     await press(tree, 'settings-row-support');
-    expect(textOf(tree, 'settings-support-email')).toBe(SUPPORT.emailLabel);
-    expect(textOf(tree, 'settings-support-hours')).toBe(SUPPORT.hoursLabel);
-    for (const text of [CHILD_SAFETY.row, CHILD_SAFETY.body, CHILD_SAFETY.contact, CHILD_SAFETY.policy, SUPPORT_ACTIONS.copy, SUPPORT_ACTIONS.openMail]) expect(hasText(tree, text)).toBe(true);
-    expect(propOf(tree, 'settings-support-copy', 'disabled')).toBe(true);
+    for (const id of ['settings-support-card', 'settings-support-email', 'settings-support-hours', 'settings-support-copy', 'settings-support-mail', 'settings-child-contact']) expect(has(tree, id)).toBe(false);
+    for (const text of [CHILD_SAFETY.row, CHILD_SAFETY.body, CHILD_SAFETY.policy]) expect(hasText(tree, text)).toBe(true);
+    expect(allTexts(tree).some((t) => /\{[^}]+\}/.test(t))).toBe(false);
+  });
+
+  test('고객센터(QP-04): 값이 있으면 줄 · 버튼이 보이고 [복사] · [메일 앱 열기]가 그 값을 쓴다 · 운영 시간만 비면 그 줄만 없다', async () => {
+    const { deps } = setup();
+    const tree = await mount(<SupportPage deps={deps} contact={{ email: 'help@example.com', hours: null }} onBack={() => undefined} onToast={() => undefined} />);
+    trees.push(tree);
+    expect(textOf(tree, 'settings-support-email')).toBe('문의 이메일 help@example.com');
+    expect(has(tree, 'settings-support-hours')).toBe(false);
+    expect(textOf(tree, 'settings-child-contact')).toBe('아동 안전 담당 연락처 help@example.com');
     await press(tree, 'settings-support-mail');
-    expect(deps.openMail).not.toHaveBeenCalled();
+    expect(deps.openMail).toHaveBeenCalledWith('help@example.com');
+    await press(tree, 'settings-support-copy');
+    expect(deps.copyText).toHaveBeenCalledWith('help@example.com');
   });
 
   test('안전 안내: 제목 + 7줄(N34) · 오픈소스 라이선스: 안내(법무 5-6) + Lucide · Pretendard · npm 3줄, 누르면 전문 · 이미지 출처 고지(N30)', async () => {

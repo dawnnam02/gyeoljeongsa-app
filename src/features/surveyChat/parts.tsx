@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   aiBubble: { backgroundColor: colors.bubbleAi, borderRadius: radius.lg, borderTopLeftRadius: space.s4 + 2, paddingHorizontal: space.s16 - 2, paddingVertical: space.s8 + 1 },
   why: { paddingHorizontal: space.s4 },
   meRow: { flexDirection: 'row', justifyContent: 'flex-end', alignSelf: 'stretch' },
-  meTouch: { maxWidth: layout.bubbleMaxWidth, borderRadius: radius.pill },
+  meTouch: { maxWidth: layout.bubbleMaxWidth, borderRadius: radius.pill, minHeight: size.touchMin, justifyContent: 'center' }, // QP-13: 누르는 면 48 이상(말풍선 모양은 그대로, 위아래 투명 여백)
   meBubble: { maxWidth: layout.bubbleMaxWidth, backgroundColor: colors.accentAlt, borderRadius: space.s20, paddingHorizontal: space.s16, paddingVertical: space.s8 + 1 },
   dim: { opacity: alpha.disabled },
   topic: { flexDirection: 'row', alignItems: 'center', gap: space.s8, marginVertical: space.s4 },

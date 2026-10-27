@@ -1,6 +1,6 @@
 // 07 내 성향 화면(F3 통과 조건 3 · 4 · 5 · 6): 스키마 값 그대로 표시 · 태그 삭제 · 추가(최대 5) · 요약 수정 · 축 조정 · 저장은 user_edited 만 ·
 // 이대로 확정 · 직접 입력 모드 · 근거 접기/펼치기 · 등급 · 점수 0
-import { act } from 'react-test-renderer';
+import { act, type ReactTestRenderer } from 'react-test-renderer';
 import { BackHandler } from 'react-native';
 
 import { COMMON, TRAITS } from '@/content/copy';
@@ -79,6 +79,12 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
+// QP-09: 막대 옆 숫자 글자는 화면에 그리지 않는다 — 값은 스크린리더 값(accessibilityValue.now)으로 읽는다
+const valueOf = (tree: ReactTestRenderer, id: string): string | null => {
+  const node = tree.root.findAll((n) => typeof n.props.testID === 'string' && n.props.testID.startsWith(id) && n.props.accessibilityValue?.now !== undefined)[0];
+  return node ? String(node.props.accessibilityValue.now) : null;
+};
+
 describe('보기 상태 (조건 3: 스키마 값 그대로)', () => {
   test('제목 · 부제 · 막대 아래 안내 · 칩 소제목 · 요약 제목 · 버튼이 카피.md 07 그대로다', async () => {
     const tree = await show(setup({ ok: true, row: okRow() }));
@@ -92,7 +98,7 @@ describe('보기 상태 (조건 3: 스키마 값 그대로)', () => {
     const tree = await show(setup({ ok: true, row: okRow() }));
     for (const key of AXIS_ORDER) {
       expect(hasText(tree, AXIS_NAMES[key])).toBe(true);
-      expect(textOf(tree, `trait-bar-${key}-value`)).toBe(String(ORIGINAL.traits[key]));
+      expect(valueOf(tree, `trait-bar-${key}`)).toBe(String(ORIGINAL.traits[key]));
       expect(host(tree, `trait-bar-${key}`).props.accessibilityValue).toEqual({ min: 0, max: 100, now: ORIGINAL.traits[key] });
     }
   });
@@ -107,7 +113,7 @@ describe('보기 상태 (조건 3: 스키마 값 그대로)', () => {
   test('수정본(user_edited)이 있으면 수정본을 보인다', async () => {
     const edited = { traits: { ...ORIGINAL.traits, extraversion: 45 }, tags: ['차분함'], summary: '고친 요약이에요. 계획을 세우고 지키는 편이에요. 가족과 보내는 시간이 중요해요.' };
     const tree = await show(setup({ ok: true, row: okRow({ edited }) }));
-    expect(textOf(tree, 'trait-bar-extraversion-value')).toBe('45');
+    expect(valueOf(tree, 'trait-bar-extraversion')).toBe('45');
     expect(hasText(tree, '#차분함')).toBe(true);
     expect(hasText(tree, '#가족 중심')).toBe(false);
   });
@@ -177,12 +183,12 @@ describe('수정 상태 (조건 4)', () => {
     const key = 'planning';
     const start = ORIGINAL.traits[key];
     await action(tree, `trait-slider-${key}`, 'increment');
-    expect(textOf(tree, `trait-slider-${key}-value`)).toBe(String(snapTrait(start + 5))); // 5단위로 맞춰진다(74 → 80)
+    expect(valueOf(tree, `trait-slider-${key}`)).toBe(String(snapTrait(start + 5))); // 5단위로 맞춰진다(74 → 80)
     await action(tree, `trait-slider-${key}`, 'decrement');
     await action(tree, `trait-slider-${key}`, 'decrement');
-    expect(textOf(tree, `trait-slider-${key}-value`)).toBe(String(snapTrait(snapTrait(start + 5) - 10)));
+    expect(valueOf(tree, `trait-slider-${key}`)).toBe(String(snapTrait(snapTrait(start + 5) - 10)));
     for (let i = 0; i < 25; i += 1) await action(tree, `trait-slider-${key}`, 'increment');
-    expect(textOf(tree, `trait-slider-${key}-value`)).toBe('100');
+    expect(valueOf(tree, `trait-slider-${key}`)).toBe('100');
   });
 
   test('태그를 ×로 지우면 줄고, 더하면 느는데 5개를 넘길 수 없다', async () => {
@@ -244,7 +250,7 @@ describe('수정 상태 (조건 4)', () => {
     expect(Object.keys(saved).sort()).toEqual(['summary', 'tags', 'traits']); // evidence · 원본 열은 없다
     expect(s.confirm).not.toHaveBeenCalled();
     expect(has(tree, 'screen-07')).toBe(true);
-    expect(textOf(tree, 'trait-bar-extraversion-value')).toBe(String(snapTrait(ORIGINAL.traits.extraversion + 5)));
+    expect(valueOf(tree, 'trait-bar-extraversion')).toBe(String(snapTrait(ORIGINAL.traits.extraversion + 5)));
     expect(textOf(tree, 'traits-summary')).toBe(summary);
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
@@ -257,7 +263,7 @@ describe('수정 상태 (조건 4)', () => {
     await press(tree, 'traits-save');
     expect(hasText(tree, TRAITS.saveFailed)).toBe(true);
     expect(has(tree, 'screen-07-edit')).toBe(true);
-    expect(textOf(tree, 'trait-slider-family-value')).toBe(String(snapTrait(ORIGINAL.traits.family - 5)));
+    expect(valueOf(tree, 'trait-slider-family')).toBe(String(snapTrait(ORIGINAL.traits.family - 5)));
   });
 
   test('[취소]: 고친 내용을 버리고 보기 상태로 돌아간다. 서버에는 아무것도 보내지 않는다', async () => {
@@ -265,7 +271,7 @@ describe('수정 상태 (조건 4)', () => {
     await action(tree, 'trait-slider-family', 'increment');
     await press(tree, 'traits-cancel');
     expect(has(tree, 'screen-07')).toBe(true);
-    expect(textOf(tree, 'trait-bar-family-value')).toBe(String(ORIGINAL.traits.family));
+    expect(valueOf(tree, 'trait-bar-family')).toBe(String(ORIGINAL.traits.family));
     expect(s.saveEdited).not.toHaveBeenCalled();
   });
 
@@ -371,7 +377,7 @@ describe('직접 입력 상태 (06 [직접 입력하기] → 07, 조건 2)', () 
     const { tree } = await manual();
     expect(has(tree, 'screen-07-manual')).toBe(true);
     expect(hasText(tree, TRAITS.manualTitle)).toBe(true);
-    for (const key of AXIS_ORDER) expect(textOf(tree, `trait-slider-${key}-value`)).toBe(String(offer.initialTraits[key]));
+    for (const key of AXIS_ORDER) expect(valueOf(tree, `trait-slider-${key}`)).toBe(String(offer.initialTraits[key]));
     for (const tag of offer.tagCandidates) expect(has(tree, `tag-pick-${tag}`)).toBe(true);
     expect(has(tree, 'evidence-toggle')).toBe(false); // 직접 입력에는 근거가 없다
   });
@@ -379,7 +385,7 @@ describe('직접 입력 상태 (06 [직접 입력하기] → 07, 조건 2)', () 
   test('서버 재료가 없으면(앱을 다시 열었을 때) 처음값 50과 앱에 둔 후보 목록을 쓴다', async () => {
     mockParams.mode = 'manual';
     const tree = await show(setup({ ok: true, row: failedRow }));
-    for (const key of AXIS_ORDER) expect(textOf(tree, `trait-slider-${key}-value`)).toBe('50');
+    for (const key of AXIS_ORDER) expect(valueOf(tree, `trait-slider-${key}`)).toBe('50');
     expect(has(tree, 'tag-pick-차분함')).toBe(true);
   });
 

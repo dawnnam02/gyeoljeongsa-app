@@ -38,7 +38,8 @@ export function readPrompts(raw: unknown): PromptCard[] {
   return out;
 }
 
-export function PromptCards({ prompts, testID = 'candidate-prompts' }: { prompts: readonly PromptCard[] | null | undefined; testID?: string }) {
+// noteHidden: v5 공개 뒤 10(QP-01) — 짝과는 이미 대화방이 열려 있어 '서로 수락한 뒤의 연락 방법' 한 줄(NF10-04)을 그리지 않는다
+export function PromptCards({ prompts, testID = 'candidate-prompts', noteHidden = false }: { prompts: readonly PromptCard[] | null | undefined; testID?: string; noteHidden?: boolean }) {
   const cards = (prompts ?? []).slice(0, PROMPT_CARD_MAX);
   if (cards.length === 0) return null;
   return (
@@ -56,7 +57,7 @@ export function PromptCards({ prompts, testID = 'candidate-prompts' }: { prompts
           </AppText>
         </Card>
       ))}
-      <ContactReceiverNote testID={`${testID}-note`} />
+      {noteHidden ? null : <ContactReceiverNote testID={`${testID}-note`} />}
     </View>
   );
 }

@@ -55,17 +55,13 @@ export const BOARDING = {
   noMatch: {
     title: '완벽한 사람을 찾지 못했어요',
     body: '탑승권 1장을 크레딧으로 돌려드렸어요. 다음 회차에 그대로 쓸 수 있어요.',
-    reasons: {
-      balance: '이번 회차는 같은 지역 남녀 수가 맞지 않아 늦게 탑승한 분부터 크레딧으로 돌려드렸어요.',
-      no_fit: '꼭 맞아야 할 조건이 모두 맞는 분이 이번 회차에는 없었어요.',
-      gap: '수준이 가까운 분이 이번 회차에는 없었어요.',
-    } satisfies Record<Exclude<CreditReason, 'used'>, string>,
+    // 이유 줄(balance · no_fit · gap)은 화면에 두지 않는다 — 이유 코드는 기록용, 화면은 제목 한 줄(카피.md 14-5-2 · 청사진 4-3, QPM 3-2)
     credits: '크레딧 보기',
   },
   ineligible: {
     not_confirmed: { title: '확정을 마치면 탈 수 있어요', body: '사진과 설문 확인이 끝나면 탑승권을 살 수 있어요.', action: null },
     politics_missing: { title: '설문 한 문항이 남았어요', body: '정치 성향 문항에 답하면 탑승권을 살 수 있어요.', action: '설문으로' },
-    paused: { title: '수준 계산이 멈춰 있어요', body: '계산을 멈춰 두면 짝을 고를 수 없어 탑승권을 살 수 없어요. 설정에서 다시 켤 수 있어요.', action: '설정으로' },
+    paused: { title: '등급 계산이 멈춰 있어요', body: '등급 계산을 멈춰 두면 짝을 고를 수 없어 탑승권을 살 수 없어요. 설정에서 다시 켤 수 있어요.', action: '설정으로' }, // 카피.md 14-5-2(QPM 3-2) — 설정 줄 '등급 계산 멈추기'와 같은 말
   } satisfies Record<Ineligible, { title: string; body: string; action: string | null }>,
   creditsLink: (n: number) => `크레딧 ${n}장`,
   sheet: {
@@ -119,9 +115,10 @@ export const CREDITS = {
   note: '크레딧 1장으로 다음 회차 탑승권 1장을 탈 수 있어요. 받은 날부터 1년 동안 쓸 수 있어요.',
   historyTitle: '내역',
   reasons: {
-    balance: '남녀 수가 맞지 않아 돌려받음',
-    no_fit: '조건이 맞는 분이 없어 돌려받음',
-    gap: '수준이 가까운 분이 없어 돌려받음',
+    // 세 이유를 한 줄로(카피.md 14-5-2 · 청사진 4-3, QPM 3-2) — 남녀 수 · 수준 말을 내역에 남기지 않는다
+    balance: '짝을 찾지 못해 돌려받음',
+    no_fit: '짝을 찾지 못해 돌려받음',
+    gap: '짝을 찾지 못해 돌려받음',
     used: '탑승권으로 씀',
   } satisfies Record<CreditReason, string>,
   delta: (d: number) => (d > 0 ? `+${d}장` : `${d}장`),

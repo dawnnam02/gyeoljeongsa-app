@@ -192,8 +192,15 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
   await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => undefined);
   await cdp.send('Page.bringToFront').catch(() => undefined);
 
+  // QP-15: 페이지가 멈추거나(무한 반복 · 렌더 고리) 연결이 끊기면 Runtime.evaluate 가 영원히 답하지 않아 점검이 15분 넘게 멈췄다(1/3 재현).
+  //  60초(EVAL_TIMEOUT_MS)를 넘기면 멈춘 곳을 알리며 실패로 끝낸다 — 무한 대기 대신 '어느 단계에서 페이지가 답하지 않았는지'가 남는다
+  const evalTimeoutMs = Number(process.env.EVAL_TIMEOUT_MS ?? 60000);
   const evaluate = async (expression) => {
-    const r = await cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`브라우저가 ${evalTimeoutMs / 1000}초 동안 답하지 않음(페이지 멈춤 또는 연결 끊김) — 식: ${String(expression).slice(0, 80)}`)), evalTimeoutMs);
+    });
+    const r = await Promise.race([cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }), timeout]).finally(() => clearTimeout(timer));
     if (r.exceptionDetails) throw new Error(`브라우저 식 오류: ${r.exceptionDetails.exception?.description ?? r.exceptionDetails.text}`);
     return r.result.value;
   };

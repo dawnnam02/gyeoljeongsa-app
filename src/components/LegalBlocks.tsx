@@ -1,9 +1,10 @@
 // 법무 문서(이용약관 · 개인정보 처리방침 · 동의 전문)를 그리는 조각들. 글은 그대로 두고 모양만 입힌다.
 //  제목(장 · 조) · 문단 · 목록(• · 1.) · 표. 표는 폭 360 에서 넘치지 않게 줄마다 카드로 쌓아 '항목명: 값' 으로 보인다.
 // 문서가 길어서(처리방침 200여 조각) FlatList 로 보여 줄 수 있게 조각 하나를 그리는 LegalBlockView 와 목록 LegalBlockList 를 따로 둔다.
-import { memo, type ReactElement } from 'react';
+import { memo, useMemo, type ReactElement } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 
+import { visibleLegalBlocks, type FillValues } from '@/content/fillLegal';
 import type { LegalBlock } from '@/content/types';
 import { colors, radius, size, space } from '@/theme/tokens';
 
@@ -61,14 +62,17 @@ type ListProps = {
   header?: ReactElement | null;
   footer?: ReactElement | null;
   testID?: string;
+  values?: FillValues; // 자리 글 값(없으면 content/fillIns.ts — 한 곳). 시험에서 값을 넣어 본다
 };
 
 // 읽는 화면: 위에 header(요약 등), 가운데 문서, 아래 footer. 화면에 보이는 만큼만 그린다.
-export function LegalBlockList({ blocks, header, footer, testID }: ListProps) {
+// QP-04: 자리 글({대표자} 등)은 값이 있으면 넣고, 값이 빈 줄(표 행 · 문단 · 목록 줄)은 그리지 않는다(content/fillLegal.ts)
+export function LegalBlockList({ blocks, header, footer, testID, values }: ListProps) {
+  const shown = useMemo(() => visibleLegalBlocks(blocks, values), [blocks, values]);
   return (
     <FlatList
       testID={testID}
-      data={blocks}
+      data={shown}
       keyExtractor={(_, index) => String(index)}
       renderItem={({ item }) => <LegalBlockView block={item} />}
       ListHeaderComponent={header}

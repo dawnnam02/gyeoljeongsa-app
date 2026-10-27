@@ -13,7 +13,7 @@ import { Toggle } from '@/components/Toggle';
 import { COMMON } from '@/content/copy';
 import { SETTINGS } from '@/content/settingsCopy';
 import { dist, haptic, Rise, scene, SkeletonLines, WaitState } from '@/motion';
-import { colors, radius, size, space } from '@/theme/tokens';
+import { alpha, colors, radius, size, space } from '@/theme/tokens';
 
 // 줄 묶음 카드(card 면 · 둥글기 16 · 줄 사이 line 1)
 export function RowGroup({ children, testID }: { children: ReactNode; testID?: string }) {
@@ -63,6 +63,7 @@ export function SwitchRow({ label, note, on, last = false, disabled = false, onP
       aria-checked={on}
       aria-disabled={disabled}
       disabled={disabled}
+      offLook="own" // QP-16: 잠긴 줄도 글은 그대로 읽히게(대비 4.5 이상) — 흐림은 스위치에만
       onPress={() => {
         haptic.selection(); // 스위치를 바꿈(D25 10-5 새 자리)
         onPress();
@@ -76,7 +77,9 @@ export function SwitchRow({ label, note, on, last = false, disabled = false, onP
         <AppText variant="body">{label}</AppText>
         {note ? <AppText variant="caption">{note}</AppText> : null}
       </View>
-      <Toggle on={on} pressed={pressed && !disabled} testID={testID ? `${testID}-toggle` : undefined} />
+      <View style={disabled ? styles.offToggle : null}>
+        <Toggle on={on} pressed={pressed && !disabled} testID={testID ? `${testID}-toggle` : undefined} />
+      </View>
     </Pressable>
   );
 }
@@ -153,6 +156,7 @@ const styles = StyleSheet.create({
   divider: { borderBottomWidth: 1, borderBottomColor: colors.line },
   pressed: { backgroundColor: colors.line },
   flex: { flex: 1, flexShrink: 1 },
+  offToggle: { opacity: alpha.disabled }, // QP-16: 잠긴 스위치만 흐리게
   page: { flex: 1 }, // 바탕은 화면 감싸개(Screen)의 bgGrad 가 보이게 투명(F17)
   pageBody: { paddingHorizontal: size.screenPadding, paddingTop: space.s8, paddingBottom: space.s32, gap: space.s16 },
   center: { alignItems: 'center', justifyContent: 'center', gap: space.s12, paddingVertical: space.s40 },

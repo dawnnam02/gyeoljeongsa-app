@@ -39,12 +39,14 @@ export function ToggleRow({ label, on, locked, range, last, onPress, testID }: P
       onPressOut={() => setPressed(false)}
       effect="none"
       testID={testID}
-      style={[styles.row, !last && styles.divider, locked && styles.locked]}>
+      style={[styles.row, !last && styles.divider]}>
       <View style={styles.texts}>
         <AppText variant="body">{label}</AppText>
         {range ? <AppText variant="caption">{PROFILE_DRAFT.rangeNote}</AppText> : null}
       </View>
-      <Toggle on={on} pressed={pressed && !locked} />
+      <View style={locked ? styles.locked : null}>
+        <Toggle on={on} pressed={pressed && !locked} />
+      </View>
     </Pressable>
   );
 }
@@ -52,6 +54,6 @@ export function ToggleRow({ label, on, locked, range, last, onPress, testID }: P
 const styles = StyleSheet.create({
   row: { minHeight: size.listRow, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.s12, paddingHorizontal: space.s16, paddingVertical: space.s8 },
   divider: { borderBottomWidth: 1, borderBottomColor: colors.line },
-  locked: { opacity: alpha.disabled },
+  locked: { opacity: alpha.disabled }, // QP-16: 잠긴 줄은 스위치만 흐리게 — 글(이름 · '구간으로만 보여요')은 그대로 읽히게(대비 4.5 이상)
   texts: { flex: 1 },
 });

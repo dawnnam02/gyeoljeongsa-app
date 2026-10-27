@@ -141,6 +141,18 @@ try {
   await measure('T3 공개 순간');
   await tap('reveal-profile');
   check('4', '[프로필 자세히 보기] → 10 상대 상세(문OO)', (await wait(`location.pathname.startsWith('/candidate/') && !!${visQ('candidate-head')}`, 8000)) && (await visText('candidate-head')).startsWith('문OO · 32'), await visText('candidate-head'));
+  // QP-01(치명): 공개된 한 분 상세는 보기 + [대화 시작하기]만 — 넘기기 · 호감 · 수락/거절 · '왜 추천했나요' · 등급 · '서로 수락한 뒤의 연락 방법' 0
+  const tenText = await screenText('screen-10');
+  check('4', 'QP-01: 10 상대 상세(공개 뒤)에 [넘기기] · [호감 보내기] · 수락/거절 · 왜 추천 · 등급 · 수락 뒤 연락 줄 0, 아래 버튼은 [대화 시작하기] 하나',
+    !(await vis('candidate-pass')) && !(await vis('candidate-like')) && !(await vis('candidate-accept')) && !(await vis('candidate-decline')) && !(await vis('candidate-why')) && !(await vis('candidate-grade')) && !/추천|호감|수락한 뒤|등급/.test(tenText) && (await visText('candidate-chat')) === '대화 시작하기',
+    tenText.slice(0, 80));
+  await b.evaluate(`(() => { const el = ${visQ('screen-10')}; if (el) el.scrollTop = 99999; })()`);
+  await shot('T3_10_상대상세_아래');
+  await measure('10 상대 상세(공개 뒤)');
+  await tap('candidate-chat');
+  check('4', 'QP-01: [대화 시작하기] → 대화방(/chat/…) · 호감 토스트 0', (await wait(`location.pathname.startsWith('/chat/')`, 6000)) && !(await b.evaluate(`document.body.innerText.includes('호감을 보냈어요')`)), await b.evaluate('location.pathname'));
+  await b.evaluate('history.back()');
+  await wait(`location.pathname.startsWith('/candidate/')`, 6000);
   await b.evaluate('history.back()');
   await wait(`location.pathname === '/reveal'`, 6000);
   await b.evaluate('history.back()');
@@ -148,10 +160,10 @@ try {
 
   // ═══ 5. 찾지 못함 · 크레딧 · 다른 장면 ═══
   await scene('none');
-  check('5', `'완벽한 사람을 찾지 못했어요' + 크레딧으로 돌려드림 + 이유 한 줄 + [크레딧 보기]`, (await visText('boarding-status-title')) === '완벽한 사람을 찾지 못했어요' && (await visText('boarding-status-body')).startsWith('탑승권 1장을 크레딧으로 돌려드렸어요.') && (await vis('boarding-nomatch-reason')) && (await vis('boarding-open-credits')), await visText('boarding-status-body'));
+  check('5', `'완벽한 사람을 찾지 못했어요' + 크레딧으로 돌려드림 + [크레딧 보기] · 이유 줄 없음(카피 14-5-2)`, (await visText('boarding-status-title')) === '완벽한 사람을 찾지 못했어요' && (await visText('boarding-status-body')).startsWith('탑승권 1장을 크레딧으로 돌려드렸어요.') && !(await vis('boarding-nomatch-reason')) && (await vis('boarding-open-credits')), await visText('boarding-status-body'));
   await shot('T1_찾지못함');
   await tap('boarding-open-credits');
-  check('5', `T5 크레딧: 잔액 '1장' · 내역 '조건이 맞는 분이 없어 돌려받음 · +1장' · 스토어 환불 한 줄`, (await wait(`location.pathname === '/credits' && !!${visQ('credits-balance')}`, 6000)) && (await visText('credits-balance')) === '1장' && (await visText('credits-row-0')).includes('조건이 맞는 분이 없어 돌려받음') && (await visText('credits-row-0-delta')) === '+1장' && (await vis('credits-refund')), await visText('credits-row-0'));
+  check('5', `T5 크레딧: 잔액 '1장' · 내역 '짝을 찾지 못해 돌려받음 · +1장'(카피 14-5-2) · 스토어 환불 한 줄`, (await wait(`location.pathname === '/credits' && !!${visQ('credits-balance')}`, 6000)) && (await visText('credits-balance')) === '1장' && (await visText('credits-row-0')).includes('짝을 찾지 못해 돌려받음') && (await visText('credits-row-0-delta')) === '+1장' && (await vis('credits-refund')), await visText('credits-row-0'));
   await shot('T5_크레딧');
   await measure('T5 크레딧');
   await b.evaluate('history.back()');

@@ -201,8 +201,8 @@ describe('문구 고르기 · 채우기(V6-K 0장)', () => {
     expect(slotName(null)).toBeNull();
   });
 
-  test('글 434개에 느낌표 · 등급 · 점수 말 0', () => {
-    const bad = Object.entries(CHAT_V6).filter(([, t]) => /[!！]|등급|점수/.test(t));
+  test("글 434개에 느낌표 · 등급 · 점수 말 0(예외: CHAT.A06.why '등급에는 쓰지 않아요.' — 기획 QPP, 쓰지 않는다는 안내)", () => {
+    const bad = Object.entries(CHAT_V6).filter(([k, t]) => /[!！]|등급|점수/.test(k === 'CHAT.A06.why' ? t.split('등급에는 쓰지 않아요.').join('') : t));
     expect(bad).toEqual([]);
     expect(Object.keys(CHAT_V6).length).toBeGreaterThanOrEqual(434);
   });

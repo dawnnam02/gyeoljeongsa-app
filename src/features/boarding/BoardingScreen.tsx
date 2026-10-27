@@ -239,16 +239,11 @@ function StatusCard({ state, view, moment = false, onBuy, onOpen }: { state: Boa
         <Button label={BOARDING.matched.open} onPress={() => onOpen(hrefOf('/reveal'))} testID="boarding-open-reveal" />,
       );
     case 'no_match': {
-      const reason = state.result?.kind === 'no_match' && state.result.reason ? BOARDING.noMatch.reasons[state.result.reason] : null;
+      // 이유 줄은 두지 않는다(카피.md 14-5-2, QPM 3-2) — 제목 '완벽한 사람을 찾지 못했어요' 한 줄 + 크레딧 안내
       return card(
         BOARDING.noMatch.title,
         BOARDING.noMatch.body,
         <Button label={BOARDING.noMatch.credits} variant="secondary" onPress={() => onOpen(hrefOf('/credits'))} testID="boarding-open-credits" />,
-        reason ? (
-          <AppText variant="caption" testID="boarding-nomatch-reason">
-            {reason}
-          </AppText>
-        ) : null,
       );
     }
     case 'ineligible': {

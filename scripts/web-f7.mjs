@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { findBrowser, openBrowser } from './lib/browser.mjs';
+import { findBrowser, openBrowser, sleep } from './lib/browser.mjs';
 import { APP_DIR } from './lib/legal-source.mjs';
 
 const distDir = path.resolve(APP_DIR, process.argv[2] ?? 'dist-demo');
@@ -35,6 +35,7 @@ function check(group, title, ok, detail = '') {
 const load = (file) => import(pathToFileURL(file).href);
 const { REPORT_SHEET, SAFETY_GUIDE, CHILD_SAFETY, SUPPORT, SIGN_IN } = await load(path.join(APP_DIR, 'src', 'content', 'copy.ts'));
 const S = await load(path.join(APP_DIR, 'src', 'content', 'settingsCopy.ts'));
+const CK16_VERSION = (await load(path.join(APP_DIR, 'src', 'config', 'laterConsent.ts'))).LATER_CONSENT_VERSIONS.CK16; // 판은 한 곳(판_관리 2-1 → laterConsent.ts)
 
 const b = await openBrowser({ distDir, shotDir, width: Number(process.env.SHOT_WIDTH ?? 360), height: 740 });
 let exitCode = 0;
@@ -99,9 +100,9 @@ try {
   const EMAIL = 'settingsf7@email.com'; // 장면 settings: 차단 2명 · 신고 3건이 미리 있다
   check('A', '09 → 탭 "설정" → 12(/settings) 목록', await toSettings(EMAIL), `경로 ${await path0()}`);
   const rowsShown = await b.evaluate(`[...document.querySelectorAll('[data-testid^="settings-row-"]:not([data-testid$="-chevron"])')].map((el) => el.innerText.replace(/\\s+/g, ' ').trim())`);
-  // D-191(v5 기준): 이 장면(v4on)은 숨긴 상점을 켜 두므로 '구매 · 등급 구독' 줄까지 13줄. 실서버 v5 처음값(상점 숨김)이면 이 줄이 빠져 12줄(SettingsScreen W10)
-  check('A', '줄 13개(v5 · v4on 장면): 알림 · 공개 · 인증(오른쪽 "준비 중") · 구매 · 등급 구독 · 차단 · 신고 · 보안 · 고객센터 · 동의 · 이용약관 · 안전 안내 · 정보 › 오픈소스 라이선스 · 이미지 출처 고지, 임시 설문 동안 희망 조건 수정 숨김 D-48',
-    rowsShown.length === 13 && rowsShown[0].startsWith(S.SETTINGS.rows.notifications) && rowsShown[2].includes(S.SETTINGS.verificationSoon) && rowsShown[3].startsWith('구매') && rowsShown[10].startsWith(S.SETTINGS.rows.safety) && rowsShown[12].startsWith(S.SETTINGS.rows.imageCredit) && !rowsShown.some((r) => r.startsWith(S.SETTINGS.rows.preferences)), rowsShown.map((r) => r.split(' ')[0]).join(' / '));
+  // QP-A(v5 · 카피.md 12-Q): '구매 · 등급 구독' 자리에 '크레딧 · 구매 내역'(→ T5, 상점 스위치와 상관없이). 사업자 정보 줄은 값이 비어 숨김 → 13줄
+  check('A', '줄 13개(v5): 알림 · 공개 · 인증(오른쪽 "준비 중") · 크레딧 · 구매 내역 · 차단 · 신고 · 보안 · 고객센터 · 동의 · 이용약관 · 안전 안내 · 정보 › 오픈소스 라이선스 · 이미지 출처 고지, 임시 설문 동안 희망 조건 수정 숨김 D-48 · 사업자 정보(값 비어) 숨김',
+    rowsShown.length === 13 && rowsShown[0].startsWith(S.SETTINGS.rows.notifications) && rowsShown[2].includes(S.SETTINGS.verificationSoon) && rowsShown[3].startsWith(S.SETTINGS.rows.credits) && rowsShown[10].startsWith(S.SETTINGS.rows.safety) && rowsShown[12].startsWith(S.SETTINGS.rows.imageCredit) && !rowsShown.some((r) => r.startsWith(S.SETTINGS.rows.preferences)), rowsShown.map((r) => r.split(' ')[0]).join(' / '));
   check('A', '"정보" 묶음 글 · [로그아웃] · [탈퇴하기]가 있고 "모든 데이터 삭제"라는 말은 없다', (await inner('settings-info-label')) === S.SETTINGS.rows.infoGroup && (await q('settings-logout')) && (await q('settings-withdraw')) && !(await has('모든 데이터 삭제')), '');
   check('A', '12 에 등급 숫자 · 점수 · 순위 · 높음/낮음 말이 없다(v5 6-2: 등급 말은 아이콘 설명으로 남음)', await noScore(), '');
   await measure('12 목록 위');
@@ -113,12 +114,13 @@ try {
   check('A', '인증 서류 제출 → 이동 없이 토스트 "준비 중이에요"', (await b.waitFor(`document.body.innerText.includes(${JSON.stringify(S.SETTINGS.verificationToast)})`)) && (await path0()) === '/settings', '');
 
   // ═══ B. 알림 ═══
-  check('B', '알림 → 스위치 3개(N19) + 마케팅 알림 + 아래 글 3줄', (await openRow('notifications', `!!window.__q('settings-notify-like')`)) && (await has(S.NOTIFY.recommendation)) && (await has(S.NOTIFY.marketing)) && (await has(S.NOTIFY.marketingNotes[2])), '');
-  check('B', '서비스 알림 처음값 켜짐 3 · 마케팅 꺼짐(03 에서 선택 동의 안 함)', (await checked('settings-notify-recommendation')) && (await checked('settings-notify-like')) && (await checked('settings-notify-match')) && !(await checked('settings-notify-marketing')), '');
-  await b.click(sel('settings-notify-like'));
-  await b.waitFor(`window.__q('settings-notify-like').getAttribute('aria-checked') === 'false'`);
+  // QP-A(v5 · 12-Q): 서비스 알림은 '이번 주 만날 분이 정해졌을 때' 하나 — 호감 · 연결 줄 없음
+  check('B', '알림 → 서비스 스위치 1개(v5) + 마케팅 알림 + 아래 글 3줄 · 호감 · 연결 줄 없음', (await openRow('notifications', `!!window.__q('settings-notify-recommendation')`)) && (await has(S.NOTIFY.recommendation)) && (await has(S.NOTIFY.marketing)) && (await has(S.NOTIFY.marketingNotes[2])) && !(await q('settings-notify-like')) && !(await q('settings-notify-match')), '');
+  check('B', '서비스 알림 처음값 켜짐 · 마케팅 꺼짐(03 에서 선택 동의 안 함)', (await checked('settings-notify-recommendation')) && !(await checked('settings-notify-marketing')), '');
+  await b.click(sel('settings-notify-recommendation'));
+  await b.waitFor(`window.__q('settings-notify-recommendation').getAttribute('aria-checked') === 'false'`);
   const notify = (await peekSettings(EMAIL)).notify;
-  check('B', '"호감을 받았을 때"를 끄면 서버(모의) profiles.notify_like 만 false', notify && notify.notify_like === false && notify.notify_recommendation === true && notify.notify_match === true, JSON.stringify(notify));
+  check('B', '"이번 주 만날 분이 정해졌을 때"를 끄면 서버(모의) profiles.notify_recommendation 만 false', notify && notify.notify_recommendation === false && notify.notify_like === true && notify.notify_match === true, JSON.stringify(notify));
   await measure('12 알림');
   await note('F7_12h_알림_360x740.png');
   await back('notifications');
@@ -161,9 +163,9 @@ try {
   await b.click(sel('settings-consent-CK16'));
   await b.waitFor(`window.__q('settings-consent-CK16').getAttribute('aria-checked') === 'true'`);
   const c3 = await peekConsents(EMAIL);
-  check('D', 'L17A: CK16 켜기 → 동의 기록(판 consent-2026.10.26-v1)', c3.some((c) => c.item_code === 'CK16' && c.agreed && c.revoked_at === null && c.text_version === 'consent-2026.10.26-v1'), JSON.stringify(c3.filter((c) => c.item_code === 'CK16')));
+  check('D', `L17A: CK16 켜기 → 동의 기록(판 ${CK16_VERSION})`, c3.some((c) => c.item_code === 'CK16' && c.agreed && c.revoked_at === null && c.text_version === CK16_VERSION), JSON.stringify(c3.filter((c) => c.item_code === 'CK16')));
   await b.click(sel('settings-consent-CK16'));
-  check('D', 'L17A: CK16 끄기 → 확인창 "동의를 거둘까요?"', (await b.waitFor(`!!window.__q('settings-later-off-confirm')`)) && (await inner('settings-later-off-title')) === S.CONSENT_LATER.offTitle, '');
+  check('D', 'L17A: CK16 끄기 → 확인창 "동의를 거둘까요?"', (await b.waitFor(`!!window.__q('settings-later-off-confirm')`)) && (await inner('settings-later-off-title')) === S.CONSENT_MANAGE.offTitle, '');
   await b.click(sel('settings-later-off-confirm'));
   await b.waitFor(`window.__q('settings-consent-CK16').getAttribute('aria-checked') === 'false'`);
   const c4 = await peekConsents(EMAIL);
@@ -171,6 +173,7 @@ try {
   await measure('12 동의 관리 CK11 ~ CK16');
   await b.click(sel('settings-consent-view-CK15'));
   check('D', 'L17A: CK15 보기 › → 동의문구 4-15 요약 시트', await b.waitFor(`!!window.__q('consent-summary-CK15')`), '');
+  await b.waitFor(`!!document.querySelector('[aria-label="닫기"]')`, 5000); // QP-21: 시트가 열리는 동안 [닫기]가 늦게 붙는다
   await b.click('[aria-label="닫기"]');
   await b.waitFor(`!window.__q('consent-summary-CK15')`);
   await back('consents');
@@ -194,8 +197,9 @@ try {
   await back('reports');
 
   // ═══ G. 고객센터 · 안전 안내 · 라이선스 · 이미지 고지 · 약관 ═══
-  await openRow('support', `!!window.__q('settings-support-card')`);
-  check('G', '고객센터: 문의 이메일 · 운영 시간(값이 정해지기 전에는 {…} 그대로) + 아동 안전 문의(N35)', (await has(SUPPORT.emailLabel)) && (await has(CHILD_SAFETY.row)) && (await has(CHILD_SAFETY.policy)), '');
+  await openRow('support', `!!window.__q('settings-child-safety')`);
+  // QP-04: 값(FILL_INS)이 비면 이메일 · 운영 시간 · 연락처 줄과 [복사] · [메일 앱 열기]를 그리지 않는다 — 자리 글 {…} 0
+  check('G', '고객센터(QP-04): 값이 정해지기 전에는 이메일 · 운영 시간 줄 없음 · 자리 글 {…} 0 + 아동 안전 문의(N35)', !(await has(SUPPORT.emailLabel)) && !(await q('settings-support-copy')) && !(await b.evaluate(`/\{[^}]+\}/.test(document.body.innerText)`)) && (await has(CHILD_SAFETY.row)) && (await has(CHILD_SAFETY.policy)), '');
   await measure('12 고객센터');
   await note('F7_12c_고객센터_360x740.png');
   await back('support');
@@ -220,6 +224,22 @@ try {
   await b.click(sel('settings-row-legal'));
   check('G', '이용약관 · 개인정보 처리방침 → 03 과 같은 읽기 시트(탭 2개)', (await b.waitFor(`!!window.__q('legal-tab-terms') && !!window.__q('legal-tab-privacy')`)), '');
   await measure('12 약관 시트');
+  // QP-04: 약관 · 처리방침의 자리 글({운영자 상호 또는 성명} · {공개일} …)은 값이 비면 그 줄째 숨김 — 끝까지 내려 보며 확인
+  const legalHoles = async () => {
+    let found = [];
+    for (let i = 0; i < 40; i += 1) {
+      found = found.concat(await b.evaluate(`(document.body.innerText.match(/[{][^}]{1,20}[}]/g) || [])`));
+      const end = await b.evaluate(`(() => { const el = window.__q('legal-reader-list'); if (!el) return true; const before = el.scrollTop; el.scrollTop = before + 600; return el.scrollTop === before; })()`);
+      await sleep(80);
+      if (end) break;
+    }
+    return [...new Set(found)];
+  };
+  const termsHoles = await legalHoles();
+  await b.click(sel('legal-tab-privacy'));
+  await sleep(300);
+  const privacyHoles = await legalHoles();
+  check('G', 'QP-04: 약관 · 처리방침 화면에 자리 글 {…} 0(값이 빈 줄은 숨김)', termsHoles.length === 0 && privacyHoles.length === 0, [...termsHoles, ...privacyHoles].join(' '));
   await b.click('[aria-label="닫기"]');
   await b.waitFor(`!window.__q('legal-tab-terms')`);
 

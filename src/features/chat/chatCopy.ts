@@ -16,7 +16,7 @@ export const CHAT = {
     lastPurged: '지난 대화예요.',
     unreadA11y: (n: number) => `읽지 않은 메시지 ${n}개`,
     rowA11y: (name: string, state: string) => `${name}님과의 대화방, ${state}`,
-    loadFailed: '대화방을 불러오지 못했어요.',
+    loadFailed: '대화방을 불러오지 못했어요. 다시 시도해 주세요.', // 카피.md 14-5-2(QPM 3-2)
   },
   room: {
     headerA11yMore: '대화방 메뉴',
@@ -30,7 +30,7 @@ export const CHAT = {
     closedMediaNote: '사진과 음성도 그때 함께 지워져요.',
     startNote: (name: string) => `${name}님과 대화방이 열렸어요. 7일 동안 이야기할 수 있어요.`,
     purgedMedia: '지워진 첨부예요.',
-    loadFailed: '대화를 불러오지 못했어요.',
+    loadFailed: '대화를 불러오지 못했어요. 다시 시도해 주세요.', // 14-5-2
     gone: '이 대화방은 더 이상 볼 수 없어요.',
     olderLoad: '지난 글 더 보기',
   },
@@ -45,14 +45,14 @@ export const CHAT = {
   },
   send: {
     sending: '보내는 중',
-    failed: '보내지 못했어요.',
+    failed: '보내지 못했어요. 다시 보내 주세요.', // 14-5-2
     retry: '다시 보내기',
     discard: '지우기',
-    blocked: '보낼 수 없는 표현이 있어요. 고쳐서 다시 보내 주세요.',
+    blocked: '보낼 수 없는 표현이 있어요. 돈을 요구하거나 거친 말로 읽히는 부분을 고쳐서 다시 보내 주세요.', // 14-5-2
     closed: '대화방이 닫혀 보낼 수 없어요.',
-    limited: '짧은 시간에 너무 많이 보냈어요. 잠시 뒤에 다시 보내 주세요.',
-    format: '보낼 수 없는 파일이에요.',
-    size: '파일이 너무 커서 보내지 못했어요.',
+    limited: '요청이 많았어요. 잠시 뒤에 다시 보내 주세요.', // 14-5-2(1-1 rate_limited)
+    format: '보낼 수 없는 파일이에요. 사진이나 음성만 보낼 수 있어요.', // 14-5-2
+    size: '파일이 커서 보내지 못했어요. 사진은 10MB, 음성은 3MB까지 보낼 수 있어요.', // 14-5-2
     caution: '링크가 들어 있어요. 열기 전에 주소를 한 번 더 확인해 주세요.',
   },
   photo: {
@@ -73,11 +73,11 @@ export const CHAT = {
     play: '음성 재생',
     pause: '음성 멈춤',
     a11y: (mine: boolean, len: string) => `${mine ? '내가 보낸' : '받은'} 음성 메시지, ${len}`,
-    tooShort: '1초보다 짧은 녹음은 보내지 않았어요.',
+    tooShort: '1초보다 짧은 녹음은 보내지 않았어요. 조금 더 길게 녹음해 주세요.', // 14-5-2
     tooBig: '음성은 3MB까지 보낼 수 있어요.',
-    denied: '마이크 권한이 꺼져 있어요. 기기 설정에서 켜 주세요.',
+    denied: '음성을 보내려면 마이크 권한이 필요해요. 기기 설정에서 켤 수 있고, 글과 사진은 그대로 보낼 수 있어요.', // 14-5-2(1-1 권한 거부)
     unavailable: '이 기기에서는 아직 음성을 녹음할 수 없어요.',
-    playFailed: '음성을 재생하지 못했어요.',
+    playFailed: '음성을 재생하지 못했어요. 다시 눌러 주세요.', // 14-5-2
   },
   menu: {
     title: '대화방',

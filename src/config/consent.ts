@@ -12,12 +12,12 @@ export const CONSENT_TEXT_VERSIONS: Readonly<Record<ConsentCode, string>> = {
   CK1: "consent-2026.10.27-v1",
   CK2: "consent-2026.10.18-v1",
   CK3: "consent-2026.10.27-v1",
-  CK4: "consent-2026.10.14-v1",
+  CK4: "consent-2026.10.27-v1",
   CK5: "consent-2026.10.14-v1",
   CK6: "consent-2026.10.27-v1",
   CK7: "consent-2026.10.14-v1",
-  CK8: "consent-2026.10.26-v1",
-  CK9: "consent-2026.10.14-v2",
+  CK8: "consent-2026.10.27-v1",
+  CK9: "consent-2026.10.14-v3",
 };
 // 약관 · 처리방침 판과 시행일(시행 전에는 {공개일}). 출시 빌드는 {공개일}이 남으면 막힌다
 export const LEGAL_DOC_VERSIONS = {
@@ -39,16 +39,16 @@ export const CONSENT_TEXT_FINGERPRINTS: Readonly<Record<ConsentCode, string>> = 
   CK1: "2a4ec408761f",
   CK2: "f8167545f89d",
   CK3: "e6d212bc5527",
-  CK4: "4ad5c9f33b8f",
+  CK4: "56ea6ad35f51",
   CK5: "bfb551bd3af5",
   CK6: "585658258315",
   CK7: "07b25c716338",
-  CK8: "e8464f9135f5",
-  CK9: "908f46030368",
+  CK8: "9c5d88f3e4ab",
+  CK9: "2e5e24446387",
 };
 // 약관 · 처리방침: 표식 구간과 작업 표시를 걸러낸 글의 지문
 export const LEGAL_DOC_FINGERPRINTS = {
-  terms: "5c5cb0e43ceb",
-  privacy: "6dfa6fedea3f",
+  terms: "e02fbfdb484c",
+  privacy: "da8d4a550bc9",
 } as const;
 // <fingerprints:end>

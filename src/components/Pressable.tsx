@@ -65,6 +65,7 @@ export function Pressable({
   accessibilityRole = 'button',
   onPressIn,
   onPressOut,
+  onPress,
   ...rest
 }: AppPressableProps) {
   const reduceMotion = useReduceMotion();
@@ -101,6 +102,15 @@ export function Pressable({
     onPressOut?.(event);
   };
 
+  // QP-14(웹 접근성): 누른 버튼이 포커스를 쥔 채 화면이 바뀌면(앞 화면 · 시트 뒤가 aria-hidden 이 됨) 브라우저가 경고하고 화면 읽기가 새 화면을 놓친다.
+  //  웹에서만, 켜고 끄는 칸(스위치 · 체크 · 라디오 · 탭)이 아닌 누름은 동작 전에 포커스를 놓는다
+  const handlePress = onPress
+    ? (event: GestureResponderEvent) => {
+        if (Platform.OS === 'web' && !KEEP_FOCUS_ROLES.has(String(accessibilityRole))) releaseWebFocus();
+        onPress(event);
+      }
+    : undefined;
+
   const resolved = typeof style === 'function' ? style({ pressed }) : style;
 
   return (
@@ -110,12 +120,19 @@ export function Pressable({
       disabled={disabled}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      onPress={handlePress}
       android_ripple={useSystemRipple ? { color: rippleColor(surface), borderless: false } : undefined}
       style={[resolved, clip ? styles.clip : null, disabled && offLook === 'fade' ? styles.disabled : null, { transform: pressShift !== 0 ? [{ translateY: shift }, { scale }] : [{ scale }] }]}>
       {children}
       {overlay ? <Animated.View style={[styles.overlay, { opacity: shade }]} /> : null}
     </AnimatedPressable>
   );
+}
+
+const KEEP_FOCUS_ROLES = new Set(['switch', 'checkbox', 'radio', 'tab', 'adjustable']);
+function releaseWebFocus() {
+  const doc = (globalThis as { document?: { activeElement?: { blur?: () => void } | null } }).document;
+  doc?.activeElement?.blur?.();
 }
 
 const styles = StyleSheet.create({

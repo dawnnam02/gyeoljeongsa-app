@@ -43,31 +43,42 @@ export function SupportPage({ deps, contact = SUPPORT_CONTACT, onBack, onToast }
   };
   return (
     <SubPage title={SUPPORT.rowName} onBack={onBack} testID="settings-support">
-      <Card style={styles.card} testID="settings-support-card">
-        <AppText variant="body" testID="settings-support-email">
-          {fillContact(SUPPORT.emailLabel, contact)}
-        </AppText>
-        <View style={styles.line} />
-        <AppText variant="body" testID="settings-support-hours">
-          {fillContact(SUPPORT.hoursLabel, contact)}
-        </AppText>
-      </Card>
-      <View style={styles.buttons}>
-        <View style={styles.half}>
-          <Button label={SUPPORT_ACTIONS.copy} variant="secondary" disabled={!email} onPress={() => void copy()} testID="settings-support-copy" />
+      {/* QP-04: 값(FILL_INS)이 빈 줄은 그리지 않는다 — 자리 글 '{고객센터 이메일}' 을 화면에 보이지 않음. 이메일이 없으면 [복사] · [메일 앱 열기]도 없다 */}
+      {email || contact.hours ? (
+        <Card style={styles.card} testID="settings-support-card">
+          {email ? (
+            <AppText variant="body" testID="settings-support-email">
+              {fillContact(SUPPORT.emailLabel, contact)}
+            </AppText>
+          ) : null}
+          {email && contact.hours ? <View style={styles.line} /> : null}
+          {contact.hours ? (
+            <AppText variant="body" testID="settings-support-hours">
+              {fillContact(SUPPORT.hoursLabel, contact)}
+            </AppText>
+          ) : null}
+        </Card>
+      ) : null}
+      {email ? (
+        <View style={styles.buttons}>
+          <View style={styles.half}>
+            <Button label={SUPPORT_ACTIONS.copy} variant="secondary" onPress={() => void copy()} testID="settings-support-copy" />
+          </View>
+          <View style={styles.half}>
+            <Button label={SUPPORT_ACTIONS.openMail} onPress={() => void deps.openMail(email)} testID="settings-support-mail" />
+          </View>
         </View>
-        <View style={styles.half}>
-          <Button label={SUPPORT_ACTIONS.openMail} disabled={!email} onPress={() => email && void deps.openMail(email)} testID="settings-support-mail" />
-        </View>
-      </View>
+      ) : null}
       <Card style={styles.card} testID="settings-child-safety">
         <AppText variant="bodyBold" accessibilityRole="header">
           {CHILD_SAFETY.row}
         </AppText>
         <AppText variant="body">{CHILD_SAFETY.body}</AppText>
-        <AppText variant="bodyBold" testID="settings-child-contact">
-          {fillContact(CHILD_SAFETY.contact, contact)}
-        </AppText>
+        {email ? (
+          <AppText variant="bodyBold" testID="settings-child-contact">
+            {fillContact(CHILD_SAFETY.contact, contact)}
+          </AppText>
+        ) : null}
         <AppText variant="caption" tone="text">
           {CHILD_SAFETY.policy}
         </AppText>

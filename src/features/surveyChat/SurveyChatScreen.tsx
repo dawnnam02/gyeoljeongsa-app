@@ -962,13 +962,10 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
                   </AppText>
                 ))}
                 <LaterConsentLink code="CK16" label={t('CHAT.CK16.more')} full testID="chat-ck16-more" />
-                <View style={styles.pair}>
-                  <View style={styles.half}>
-                    <Button label={t('CHAT.CK16.agree')} variant="secondary" onPress={() => void answerCk16(true)} disabled={busy} testID="chat-ck16-agree" />
-                  </View>
-                  <View style={styles.half}>
-                    <Button label={t('CHAT.CK16.skip')} variant="secondary" onPress={() => void answerCk16(false)} disabled={busy} testID="chat-ck16-skip" />
-                  </View>
+                {/* QP-17: 두 버튼 글이 길어 360 폭에서 두 줄로 꺾이므로 나란히 대신 위아래로 둔다 */}
+                <View style={styles.stack}>
+                  <Button label={t('CHAT.CK16.agree')} variant="secondary" onPress={() => void answerCk16(true)} disabled={busy} testID="chat-ck16-agree" />
+                  <Button label={t('CHAT.CK16.skip')} variant="secondary" onPress={() => void answerCk16(false)} disabled={busy} testID="chat-ck16-skip" />
                 </View>
               </View>
             </Appear>
@@ -1176,6 +1173,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
+  stack: { gap: space.s8, marginTop: space.s8 },
   content: { paddingHorizontal: size.screenPadding, paddingTop: space.s8, paddingBottom: space.s48, gap: space.s12 },
   now: { paddingHorizontal: size.screenPadding, paddingBottom: space.s8 },
   block: { gap: space.s12 },
@@ -1183,8 +1181,6 @@ const styles = StyleSheet.create({
   centerText: { textAlign: 'center' },
   ck16: { gap: space.s8, borderRadius: radius.lg, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.line, padding: space.s16 },
   ck16Head: { flexDirection: 'row', alignItems: 'center', gap: space.s8 },
-  pair: { flexDirection: 'row', gap: space.s8, marginTop: space.s8 },
-  half: { flex: 1, minWidth: 0 },
   wrapCard: { alignItems: 'center', gap: space.s12, paddingVertical: space.s16 },
   paper: { gap: space.s16, borderRadius: radius.xl, backgroundColor: colors.card, padding: space.s16 },
   field: { gap: space.s4 },

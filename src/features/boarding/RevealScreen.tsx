@@ -112,7 +112,7 @@ export function RevealScreen({ deps }: { deps: RevealDeps }) {
               </Fade>
             ) : null}
             <Fade visible delay={play ? R.cta2Delay : 0} duration={play ? R.cta : 0} name="edOut">
-              <Button label={REVEAL.profile} variant="secondary" onPress={() => router.push({ pathname: '/candidate/[id]', params: { id: result.partnerId } })} testID="reveal-profile" />
+              <Button label={REVEAL.profile} variant="secondary" onPress={() => router.push({ pathname: '/candidate/[id]', params: { id: result.partnerId, from: 'reveal', ...(result.chatId ? { chat: result.chatId } : {}) } })} testID="reveal-profile" />
             </Fade>
           </View>
         </ScrollView>
@@ -128,11 +128,7 @@ export function RevealScreen({ deps }: { deps: RevealDeps }) {
           <AppText variant="body" style={styles.textCenter} testID="reveal-body">
             {BOARDING.noMatch.body}
           </AppText>
-          {result.reason ? (
-            <AppText variant="caption" style={styles.textCenter} testID="reveal-reason">
-              {BOARDING.noMatch.reasons[result.reason]}
-            </AppText>
-          ) : null}
+          {/* 이유 줄 없음(카피.md 14-5-2, QPM 3-2) */}
           <View style={styles.actions}>
             <Button label={BOARDING.noMatch.credits} onPress={() => router.push(hrefOf('/credits'))} testID="reveal-credits" />
             <Button label={REVEAL.back} variant="secondary" onPress={back} testID="reveal-back" />

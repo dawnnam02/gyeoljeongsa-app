@@ -73,7 +73,7 @@ describe('ReportBlockSheet 화면', () => {
     expect(isOpen(tree, 'report-reasons')).toBe(true);
     expect(hasText(tree, REPORT_SHEET.reasonTitle)).toBe(true);
     for (const code of REPORT_CODES) expect(has(tree, `report-reason-${code}`)).toBe(true);
-    expect(textOf(tree, 'report-minor-note')).toBe('만 24세 미만으로 보인다는 신고가 들어오면 24시간 안에 먼저 확인해요.');
+    expect(textOf(tree, 'report-minor-note')).toBe('만 19세 미만으로 보이면 24시간 안에 먼저 확인해요. 결정사는 만 24세 이상만 가입할 수 있어요.');
     expect(textOf(tree, 'report-anonymous-note')).toBe('신고한 분이 누구인지는 상대에게 알리지 않아요.');
     expect(propOf(tree, 'report-desc', 'placeholder')).toBe('무슨 일이 있었는지 적어 주세요. (선택)');
     await press(tree, 'report-submit');

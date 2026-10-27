@@ -58,8 +58,11 @@ let exitCode = 0;
 const note = async (name) => console.log(`       스크린샷 ${await b.shot(name)}`);
 const text = () => b.evaluate('window.__text()');
 const has = async (s) => (await text()).includes(s);
-// 흐린 모양(x40%)인가: 눌림은 받지만 흐린 버튼(R7)은 aria-disabled 가 웹에 안 나가서 그려진 불투명도로 본다
-const dimmed = (testId) => b.evaluate(`getComputedStyle(window.__q(${JSON.stringify(testId)})).opacity < 0.6`);
+// 흐린(비활성) 모양인가. QP-21: 버튼 v2 는 투명도 대신 색으로 비활성을 그린다(offLook 'own' · 글자 sub 색, 가이드 4-4). 눌림을 받는 흐린 버튼(R7 dimmed)은
+//  웹에 aria-disabled 가 나가지 않아, 글자 색이 sub 토큰인지로 본다(옛 투명도 모양 · aria-disabled 도 받는다)
+const SUB_HEX = (/\bsub:\s*'(#[0-9A-Fa-f]{6})'/.exec(fs.readFileSync(path.join(APP_DIR, 'src', 'theme', 'tokens.ts'), 'utf8')) ?? [])[1] ?? '#75665F';
+const SUB_RGB = `rgb(${parseInt(SUB_HEX.slice(1, 3), 16)}, ${parseInt(SUB_HEX.slice(3, 5), 16)}, ${parseInt(SUB_HEX.slice(5, 7), 16)})`;
+const dimmed = (testId) => b.evaluate(`(() => { const el = window.__q(${JSON.stringify(testId)}); if (!el) return false; if (el.getAttribute('aria-disabled') === 'true' || getComputedStyle(el).opacity < 0.6) return true; const label = [...el.querySelectorAll('div')].find((d) => d.innerText.trim() && !d.querySelector('div')); return !!label && getComputedStyle(label).color === ${JSON.stringify(SUB_RGB)}; })()`);
 // 입력 칸이 잠겨 있는가(react-native-web 은 editable=false 를 readOnly 로 그린다)
 const isLocked = (selector) => b.evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); return !!(el.readOnly || el.disabled); })()`);
 
@@ -176,7 +179,7 @@ try {
   const clock2 = await b.evaluate(`(document.body.innerText.match(/(\\d\\d):(\\d\\d) 뒤에 다시 받을 수 있어요/) || []).slice(1).join(':')`);
   const secs = (s) => Number(s.split(':')[0]) * 60 + Number(s.split(':')[1]);
   check('B', '시계가 줄어든다(2초 남짓 사이에 1~3초 줄어듦)', clock1 && clock2 && secs(clock1) - secs(clock2) >= 1 && secs(clock1) - secs(clock2) <= 4, `${clock1} → ${clock2}`);
-  check('B', '다시 받을 수 있을 때까지 [인증번호 받기]는 흐리다(누르는 효과 없음)', (await dimmed('signin-send')), '');
+  check('B', '다시 받을 수 있을 때까지 [인증번호 받기]는 흐리다(누르는 효과 없음)', (await dimmed('signin-send')), await b.evaluate(`(() => { const el = window.__q('signin-send'); return el ? el.outerHTML.slice(0, 300) : 'none'; })()`));
   await note('F1_02_인증번호_입력_360x740.png');
 
   // 인증번호 틀림 = 15 인증 실패 모양
@@ -355,29 +358,28 @@ try {
   check('F', '앱을 열면 스플래시가 먼저 보인다(글꼴이 오기 전)', splashUp, '');
   if (splashUp) {
     await sleep(500);
-    const geo = await b.evaluate(`(() => { const logo = document.querySelector('[data-testid="splash"] img'); const r = logo.getBoundingClientRect(); const ring = window.__q('splash-ring').getBoundingClientRect(); const line = window.__q('splash-line').getBoundingClientRect(); return { cx: Math.round(r.left + r.width / 2), cy: Math.round(r.top + r.height / 2), lw: Math.round(r.width), vw: innerWidth, vh: innerHeight, ring: Math.round(ring.width), ringTop: Math.round(ring.top), lineTop: Math.round(line.top), logoBottom: Math.round(r.bottom), lineBottom: Math.round(line.bottom), ringBottom: Math.round(ring.bottom), hasSlow: !!window.__q('splash-slow'), text: window.__text() }; })()`);
-    check('F', '로고가 화면 정중앙(가로 · 세로 ±1)이고 폭이 160이다', Math.abs(geo.cx - geo.vw / 2) <= 1 && Math.abs(geo.cy - geo.vh / 2) <= 1 && geo.lw === 160, `중앙 ${geo.cx},${geo.cy} / 화면 ${geo.vw}x${geo.vh} · 로고 폭 ${geo.lw}`);
-    check('F', '브랜드 한 줄이 로고 아래 24, 링(24)이 한 줄 아래 24에 있다', Math.abs(geo.lineTop - geo.logoBottom - 24) <= 3 && geo.ring === 24 && Math.abs(geo.ringTop - geo.lineBottom - 24) <= 2, `한 줄 간격 ${geo.lineTop - geo.logoBottom} · 링 ${geo.ring} · 링 간격 ${geo.ringTop - geo.lineBottom}`);
-    check('F', '0.5초 때는 "불러오는 중이에요" 안내가 없다', !geo.hasSlow && geo.text.includes('결혼을 정말 하고 싶은 사람들'), '');
+    // QP-21: 스플래시는 D42 이후 로고 타일(splash-tile) · 가로 줄 · 글자 로고 · 한 줄 모양이고, 링은 3초가 넘을 때(splashSlowMs)만 '불러오는 중이에요'와 함께 나온다.
+    //  옛 점검(로고 img · 0.5초 때 링)을 지금 모양으로 맞췄다
+    const geo = await b.evaluate(`(() => { const tile = window.__q('splash-tile'); const line = window.__q('splash-line'); if (!tile || !line) return null; const r = tile.getBoundingClientRect(); const l = line.getBoundingClientRect(); return { cx: Math.round(r.left + r.width / 2), vw: innerWidth, tileBottom: Math.round(r.bottom), lineTop: Math.round(l.top), hasSlow: !!window.__q('splash-slow'), hasRing: !!window.__q('splash-ring'), text: window.__text() }; })()`);
+    check('F', '로고 타일이 가로 가운데(±1)이고 브랜드 한 줄이 타일 아래에 있다', !!geo && Math.abs(geo.cx - geo.vw / 2) <= 1 && geo.lineTop > geo.tileBottom, geo ? `중앙 ${geo.cx} / 화면 ${geo.vw} · 타일 아래 ${geo.tileBottom} · 한 줄 위 ${geo.lineTop}` : '타일 · 한 줄 없음');
+    check('F', '0.5초 때는 링 · "불러오는 중이에요" 안내가 없다', !!geo && !geo.hasSlow && !geo.hasRing && geo.text.includes('결혼을 정말 하고 싶은 사람들'), '');
     await note('F11_스플래시_360x740.png');
 
+    await sleep(3000);
+    const slowShown = await b.evaluate(`!!window.__q('splash-slow') && window.__q('splash-slow').innerText`);
+    check('F', '3초가 넘도록 준비가 안 끝나면 링과 "불러오는 중이에요"가 나온다', slowShown === '불러오는 중이에요' && (await b.evaluate(`!!window.__q('splash-ring')`)), String(slowShown));
+    await note('F11_스플래시_로딩길어짐_360x740.png');
+
     // 링이 도는가: 같은 요소의 transform 이 시간에 따라 바뀐다
-    const spin = async () => b.evaluate(`getComputedStyle(window.__q('splash-ring-arc')).transform`);
-    // 번들을 막 만든 직후나 컴퓨터가 바쁠 때는 첫 화면 그리기가 늦어 두 번 읽은 값이 같을 수 있다(B-Q1-01). 앱 결함이 아니라 점검 타이밍이라, 최대 4초 동안 230ms 간격으로 읽어 값이 한 번이라도 달라지면 돈 것으로 본다
+    const spin = async () => b.evaluate(`(() => { const el = window.__q('splash-ring-arc'); return el ? getComputedStyle(el).transform : 'none'; })()`);
+    // 번들을 막 만든 직후나 컴퓨터가 바쁠 때는 첫 화면 그리기가 늦어 두 번 읽은 값이 같을 수 있다(B-Q1-01). 최대 4초 동안 230ms 간격으로 읽어 값이 한 번이라도 달라지면 돈 것으로 본다
     const t1 = await spin();
     let t2 = t1;
     for (let i = 0; i < 18 && t2 === t1; i += 1) {
       await sleep(230);
       t2 = await spin();
     }
-    // 실패했을 때 원인을 가린다: 브라우저가 프레임을 그리고 있는데도 값이 안 바뀌면 앱, 프레임이 0이면 브라우저(환경)
-    const frames = t1 !== t2 ? null : await b.evaluate(`new Promise((resolve) => { let n = 0; const stop = Date.now() + 400; const tick = () => { n += 1; if (Date.now() < stop) requestAnimationFrame(tick); else resolve(n); }; requestAnimationFrame(tick); })`);
-    check('F', '링이 돈다(호의 회전 값이 시간에 따라 바뀐다)', t1 !== t2, `${t1.slice(0, 40)} → ${t2.slice(0, 40)}${frames === null ? '' : ` · 0.4초 동안 그려진 프레임 ${frames}`}`);
-
-    await sleep(3000);
-    const slowShown = await b.evaluate(`!!window.__q('splash-slow') && window.__q('splash-slow').innerText`);
-    check('F', '3초가 넘도록 준비가 안 끝나면 링 아래에 "불러오는 중이에요"가 나온다', slowShown === '불러오는 중이에요', String(slowShown));
-    await note('F11_스플래시_로딩길어짐_360x740.png');
+    check('F', '링이 돈다(호의 회전 값이 시간에 따라 바뀐다)', t1 !== t2, `${t1.slice(0, 40)} → ${t2.slice(0, 40)}`);
 
     // 동작 줄이기: 링 정지
     await b.cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });

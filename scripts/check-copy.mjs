@@ -20,6 +20,8 @@
 //  W. 대화형 설문 글(V6-F, surveyChatCopy.ts CHAT_V6)이 카피.md 13장 표와 한 글자씩 같은가 · 느낌표 · 등급 · 점수 말 0 · CK16 카드 글 = 동의문구 4-16(L17A)
 //  QP-A(D-196): 카피.md 14장 'v5 문구 바꿈'(14-0 '1장 표보다 앞선다')의 14-1 · 14-2 표는 같은 키의 옛 줄(08 표 · 13장 표)보다 앞선다(V5_COPY).
 //        12-Q · 14장 글도 P · S 대조 원본에 넣는다. '매칭'은 '1회 매칭'(숨김 v4)과 '주간 매칭'(14-1 v5 글) 자리에만.
+//  X. v5 새 화면 글(탑승권 T1 · 공개 T3 · 크레딧 T5 · 채팅 T4 — boardingCopy.ts · chatCopy.ts)이 카피.md 14-5-1 · 14-5-2 표(첫 칸 'T1 `키`' 꼴)와 같은가(QP-A 2부-나, 팀장 결정)
+//        글 함수는 자리마다 표시 글자를 넣어 부르고, 카피의 {…} 자리와 같은 자리인지 본다. '(줄 없음)'은 앱에 그 키가 없어야 한다
 //  J. 06 AI 정리 중 · 07 내 성향의 글이 카피.md 06 · 07 · 화면_요구사항(N13 · N14)에 그대로 있는가 · 근거 문항 이름 · 직접 입력 태그 후보(F3)
 // 사용: node scripts/check-copy.mjs   (npm run check:copy)
 // 종료 코드: 0 통과 · 1 실패
@@ -659,7 +661,7 @@ try {
   check('S', '작업 표시(▲W# · NV 번호 · B10 · D-번호)가 앱 글로 새지 않는다', marksS.length === 0, marksS.join('\n'));
   // 등급 · 점수 말은 허용 구역 글 파일에만(카피 16-J): 이 글 파일(shopCopy · productCopy)과 법무 게시본(consentContent · legalPrivacy · legalTerms) 밖의 content 파일에는 없다
   const zoneFiles = fs.readdirSync(contentDir).filter((f) => f.endsWith('.ts') && !['shopCopy.ts', 'productCopy.ts', 'consentContent.ts', 'legalPrivacy.ts', 'legalTerms.ts', 'types.ts', 'fillIns.ts'].includes(f));
-  const leaked = zoneFiles.filter((f) => /등급|점수/.test(fs.readFileSync(path.join(contentDir, f), 'utf8').split('\n').filter((l) => !l.trim().startsWith('//') && !/^\s*whyNote:/.test(l)).join('\n')));
+  const leaked = zoneFiles.filter((f) => /등급|점수/.test(fs.readFileSync(path.join(contentDir, f), 'utf8').split('\n').filter((l) => !l.trim().startsWith('//') && !/^\s*whyNote:/.test(l)).map((l) => (/^\s*'CHAT\.A06\.why':/.test(l) ? l.replace(/\/\/.*$/, '').split('등급에는 쓰지 않아요.').join('') : l)).join('\n'))); // CHAT.A06.why 예외(기획 QPP)
   check('S', `등급 · 점수 말은 허용 구역 글 파일(16 상점 · 09/10 배지 · 12 설정 줄)에만 있고 그 밖 글 파일(${zoneFiles.length}개)에는 없다(카피 16-J. 예외 하나: 10 상자 whyNote "추천 점수는 보여주지 않아요.", 법무 L10 W1 확정)`, leaked.length === 0, leaked.join(', '));
   // R1 C①(D-123 ④): 설문 v2 글(features/surveyV2 의 copy.ts · questionCopy.ts)도 같은 점검에 넣는다. 등급 말은 카피 16-J L-7 세 자리만(declineHint · A06 도움말 · 세부사항 머리), 점수 말 0
   const sv2Dir = path.join(APP_DIR, 'src', 'features', 'surveyV2');
@@ -705,8 +707,10 @@ try {
     const diffs = app.filter(([k, t]) => rows.get(k) !== t).map(([k, t]) => `${k}: 앱 "${t}" / 카피 "${rows.get(k)}"`);
     const only = [...rows.keys()].filter((k) => !(k in (cc.CHAT_V6 ?? {})));
     check('W', `대화형 설문 글 ${app.length}개가 카피.md 13장 표와 한 글자씩 같다(표 ${rows.size}줄)`, app.length > 400 && diffs.length === 0 && only.length === 0, [...diffs, ...only.map((k) => `카피에만 있음: ${k}`)].join('\n'));
-    const bad = app.filter(([, t]) => /[!！]|등급|점수/.test(t)).map(([k]) => k);
-    check('W', '대화형 설문 글에 느낌표 · 등급 · 점수 말 0', bad.length === 0, bad.join(' '));
+    // 기획 QPP(10-27): CHAT.A06.why '…등급에는 쓰지 않아요.'는 쓰지 않는다는 안내라 허용(설문 v2 A06 도움말 · 카피 16-J L-7 과 같은 뜻)
+    const NEG_GRADE = '등급에는 쓰지 않아요.';
+    const bad = app.filter(([k, t]) => /[!！]|등급|점수/.test(k === 'CHAT.A06.why' ? t.split(NEG_GRADE).join('') : t)).map(([k]) => k);
+    check('W', "대화형 설문 글에 느낌표 · 등급 · 점수 말 0(예외: CHAT.A06.why '등급에는 쓰지 않아요.')", bad.length === 0, bad.join(' '));
     // L17A: CK16 카드 글이 동의문구 4-16 화면 문구와 같다(요약 줄은 '모으는 것: ' 같은 머리를 뗀 글). title 은 기획 V6-K 글(법무 '글 쓰는 속도 분석 [선택]'과 다름 — 팀장 확인 대기)
     const ck16 = parseLaterConsents(readDoc(SOURCES.consent)).items.find((i) => i.code === 'CK16');
     const body = (head) => (ck16.summary.find((s) => s.startsWith(`${head}: `)) ?? '').slice(head.length + 2);
@@ -721,6 +725,51 @@ try {
     const polRows = new Map(sec13.split(/\r?\n/).filter((l) => /^\| `POL\./.test(l)).map(cells).map((r) => [r[0].replace(/`/g, '').split(' ')[0], r[1]]));
     const polDiffs = Object.entries(polField).filter(([k, f]) => !ck15?.[f] || !new RegExp(`${k.slice(4)}: CK15\\.${f}\\b`).test(polSrc) || polRows.get(k) !== ck15[f]).map(([k, f]) => `${k}: 앱이 CK15.${f} 를 가리키나 / 카피 13-1 "${polRows.get(k)}" / 동의문구 4-15 "${ck15?.[f]}"`);
     check('W', '정치 성향 동의 글 4개(POL9 ~ POL12)가 동의문구 4-15 화면 문구 · 카피.md 13-1 과 같다', polDiffs.length === 0, polDiffs.join('\n'));
+  }
+
+  // ── X. v5 새 화면 글(카피.md 14-5, 검수 QP-07 · 마케팅 QPM 3차) ──
+  {
+    const bc = await load(path.join(APP_DIR, 'src', 'features', 'boarding', 'boardingCopy.ts'));
+    const ch = await load(path.join(APP_DIR, 'src', 'features', 'chat', 'chatCopy.ts'));
+    const roots = { BOARDING: bc.BOARDING, REVEAL: bc.REVEAL, CREDITS: bc.CREDITS, CHAT: ch.CHAT };
+    const from = copyText.search(/^#### 14-5-1\. /m);
+    const to = copyText.search(/^#### 14-5-3\. /m);
+    const rowsX = (from >= 0 && to > from ? copyText.slice(from, to) : '')
+      .split(/\r?\n/)
+      .filter((l) => /^\| T\d `[A-Z]+\./.test(l))
+      .map(cells)
+      .map((r) => [(/`([^`]+)`/.exec(r[0]) ?? [])[1], r[1]]);
+    const SLOT = '§';
+    const MARK = '\u0001';
+    const norm = (t) => t.replace(/\{[^{}]+\}/g, SLOT);
+    const resolve = (key) => key.replace(/\[(\d+)\]/g, '.$1').split('.').reduce((o, k) => (o == null ? undefined : o[k]), roots);
+    // 숫자로 갈래가 나뉘는 함수(+n장 / -n장 등)는 표시 글자로 부를 수 없어 예시 값 둘로 부른다
+    const NUMERIC = { 'CREDITS.delta': [[1], [-1]] };
+    const diffsX = [];
+    let funcs = 0;
+    for (const [key, want] of rowsX) {
+      const v = resolve(key);
+      if (want === '(줄 없음)') {
+        if (v !== undefined) diffsX.push(`${key}: 카피 '(줄 없음)'인데 앱에 글이 있음`);
+        continue;
+      }
+      const alts = want.split(' / ').map(norm);
+      let got;
+      if (typeof v === 'string') got = [v];
+      else if (typeof v === 'function') {
+        funcs += 1;
+        const calls = NUMERIC[key] ?? [Array.from({ length: Math.max(1, v.length) }, () => MARK)];
+        got = calls.map((args) => String(v(...args)).split(MARK).join(SLOT).replace(/\d+/g, (n) => (NUMERIC[key] ? SLOT : n)));
+      } else if (Array.isArray(v) && v.every((x) => typeof x === 'string')) got = [v.join(' / ')];
+      else {
+        diffsX.push(`${key}: 앱에 없음(또는 글이 아님)`);
+        continue;
+      }
+      const whole = norm(want);
+      const ok = got.length === 1 ? got[0] === whole || alts.includes(got[0]) : got.every((g) => alts.includes(g));
+      if (!ok) diffsX.push(`${key}: 앱 "${got.join(' / ')}" / 카피 "${want}"`);
+    }
+    check('X', `v5 새 화면 글 ${rowsX.length}줄(14-5-1 · 14-5-2, 글 함수 ${funcs}개 포함)이 boardingCopy.ts · chatCopy.ts 와 같다`, rowsX.length >= 180 && diffsX.length === 0, diffsX.join('\n') || `표 ${rowsX.length}줄`);
   }
 
   // R1 A⑦ T04 · K11: 오류 · 안내 문구 규칙(카피.md 1-1)과 v4 글 대조(카피.md 7장). 규칙 본문은 check-copy-rules.mjs

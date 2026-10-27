@@ -1,5 +1,7 @@
 // 07 내 성향의 5축 막대. 보기 상태는 읽기만(TraitBar), 수정 · 직접 입력 상태는 끌어서 바꾼다(TraitSlider).
 // 값은 0~100의 성향 위치이고 좋고 나쁨이 아니다(카피.md 07). 등급 · 점수 같은 말은 어디에도 쓰지 않는다.
+// QP-09(검수): 대화형 설문의 '내 성향'(숫자 0)과 맞춰 막대 옆 숫자 글자는 화면에 그리지 않는다. 위치는 막대 길이로만 보이고,
+//  스크린리더 값(accessibilityValue · 이름 안의 값)은 끌어서 고치는 데 필요해 그대로 둔다.
 import { useLayoutEffect, useRef, useState } from 'react';
 import { PanResponder, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
@@ -27,9 +29,6 @@ export function TraitBar({ name, value, testID }: BarProps) {
       <View style={styles.track}>
         <View style={[styles.fill, { width: `${value}%` }]} />
       </View>
-      <AppText variant="captionMedium" style={styles.value} testID={testID ? `${testID}-value` : undefined}>
-        {String(value)}
-      </AppText>
     </View>
   );
 }
@@ -72,9 +71,6 @@ export function TraitSlider({ name, value, onChange, testID }: SliderProps) {
     <View style={styles.sliderBlock}>
       <View style={styles.sliderHead}>
         <AppText variant="bodyMedium">{name}</AppText>
-        <AppText variant="bodyBold" testID={`${testID}-value`}>
-          {String(value)}
-        </AppText>
       </View>
       <View
         style={styles.touch}
@@ -106,7 +102,6 @@ const styles = StyleSheet.create({
   track: { flex: 1, height: size.barTrait, borderRadius: radius.pill, backgroundColor: colors.line, overflow: 'hidden' },
   fill: { height: size.barTrait, borderRadius: radius.pill, backgroundColor: colors.accent },
   sliderTrack: { height: size.barTrait, borderRadius: radius.pill, backgroundColor: colors.line, overflow: 'hidden' },
-  value: { width: layout.traitValueWidth, textAlign: 'right' },
   sliderBlock: { gap: space.s4 },
   sliderHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   touch: { height: size.touchMin, justifyContent: 'center' },

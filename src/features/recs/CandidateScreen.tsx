@@ -9,7 +9,10 @@
 //  움직임 · 햅틱(D25 장면 4 · 4장, F17): [호감 보내기]를 누르면 Light → 보내지면 버튼이 '호감 보냄'으로 바뀌고 작은 편지 한 통이 위로 떠난다(700) → 09 + 토스트.
 //   하루 한도 안내 Warning · 보내기 · 수락 실패 Error · 받은 호감 수락 Success. 동작 줄이기: 편지 없이 바로 09
 //  표시하지 않는 것: 점수 · 순위(받지도 않는다). "왜 추천했나요" 둘째 문장은 법무가 유지하라고 확인한 글(별도 문자열)
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+//  v5(QP-01 치명, 청사진 6-1 '10 바뀜: T3 뒤 상대 프로필로'): T3 [프로필 자세히 보기]로 들어오면(from=reveal) 보기만 한다 —
+//   [넘기기] · [호감 보내기] · 수락/거절 · '왜 추천했나요' · 등급 · '서로 수락한 뒤의 연락 방법' 줄 · 호감 토스트 0. 아래 버튼은 [대화 시작하기](T3 와 같은 글, 대화방이 있을 때만) 하나.
+//   짝 상태(get_pair_state) · 상대 등급(get_partner_grade)도 읽지 않는다. 뒤로 가면 T3(없으면 탑승권 탭)
+import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
@@ -23,6 +26,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { OfflineArt } from '@/components/StateArt';
 import { Toast } from '@/components/Toast';
 import { CANDIDATE, COMMON, RECS, REPORT_SHEET, SAFETY } from '@/content/copy';
+import { REVEAL } from '@/features/boarding/boardingCopy';
 import { LIKES } from '@/content/likesCopy';
 import { BADGE16, GRADE16 } from '@/content/shopCopy';
 import { GradeImage } from '@/features/grade/GradeBadge';
@@ -34,6 +38,7 @@ import type { CandidateData, RecsApi } from '@/lib/recsApi';
 import { gradeApi, likesApi, recsApi } from '@/lib/services';
 import { setToast as passToast } from '@/lib/toastBus';
 import { goBackOr } from '@/navigation/go';
+import { V5_HOME } from '@/navigation/v5Hide';
 import { layout } from '@/theme/layout';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 import { ReportBlockSheet } from '@/features/safety/ReportBlockSheet';
@@ -51,8 +56,10 @@ const first = (value: string | string[] | undefined) => (Array.isArray(value) ? 
 
 export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }) {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; from?: string; chat?: string }>();
   const id = first(params.id) ?? '';
+  const v5 = first(params.from) === 'reveal'; // QP-01: 공개된 한 분 — 보기 + [대화 시작하기]만
+  const chatId = first(params.chat) ?? null;
   const { api, toastMs } = deps;
   const likes = deps.likes ?? likesApi;
   const grade = deps.grade ?? gradeApi;
@@ -94,6 +101,7 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
     }
     setLoadError(null);
     setData(result.data);
+    if (v5) return; // QP-01: 짝은 이미 이어졌다 — 호감 상태 · 상대 등급을 읽지 않는다
     // 하단 모양: 보낸 분 "호감 보냄" · 받은 호감 [거절][수락] · 연결 안내 · 오늘 한도를 다 썼으면 미리 흐리게(서버가 보낼 때 최종으로 막는다)
     if (result.data) {
       const pair = await api.pairState(id);
@@ -104,7 +112,7 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
       if (!alive.current) return;
       setPartner(pg);
     }
-  }, [api, grade, id]);
+  }, [api, grade, id, v5]);
 
   useFocusEffect(
     useCallback(() => {
@@ -133,7 +141,7 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
     node.measureInWindow((x, y, w, h) => done({ x, y, width: w, height: h }));
   };
   useEffect(() => () => cancelHandoff(id), [id]);
-  const leave = () => goBackOr(router, '/recommendations');
+  const leave = () => (v5 ? goBackOr(router, V5_HOME) : goBackOr(router, '/recommendations'));
   const back = () => {
     if (!viaHandoff) return leave();
     measureGallery((rect) => {
@@ -330,10 +338,10 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
             testID="candidate-glance"
           />
         </Rise>
-        <PromptCards prompts={data.prompts} />
+        <PromptCards prompts={data.prompts} noteHidden={v5} />
         <MarriageViews answers={data.answers} />
 
-        {shownGrade !== null ? (
+        {shownGrade !== null && !v5 ? (
           <Card style={styles.grade} testID="candidate-grade">
             <View style={styles.gradeHead}>
               <GradeImage n={shownGrade} size={layout.tierBadgeCard} testID="candidate-grade-badge" />
@@ -380,7 +388,7 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
           </Card>
         ) : null}
 
-        {data.reasons.length > 0 ? (
+        {data.reasons.length > 0 && !v5 ? (
           <Card style={styles.why} testID="candidate-why" accessible accessibilityLabel={`${CANDIDATE.whyTitle}. ${why} ${CANDIDATE.whyNote}`}>
             <AppText variant="bodyBold">{CANDIDATE.whyTitle}</AppText>
             <AppText variant="body" tone="text" testID="candidate-why-body">
@@ -401,6 +409,13 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
         {/* v5(QP-A, 카피.md 14-1): 상대 등급 열람 · 구독 권유 줄(NV47) 없음 */}
       </ScrollView>
 
+      {v5 ? (
+        chatId ? (
+          <BottomCTA onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)} testID="candidate-cta">
+            <Button label={REVEAL.chat} onPress={() => router.push(`/chat/${chatId}` as unknown as Href)} testID="candidate-chat" />
+          </BottomCTA>
+        ) : null
+      ) : (
       <BottomCTA onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)} testID="candidate-cta">
         {mailing && !reduce ? <MailFly testID="candidate-mail" /> : null}
         {limit ? (
@@ -440,6 +455,7 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
           />
         )}
       </BottomCTA>
+      )}
 
       <ReportBlockSheet
         visible={sheet}

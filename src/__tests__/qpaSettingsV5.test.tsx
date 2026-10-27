@@ -252,14 +252,18 @@ describe('CK10 폐지(D-197) — 앱 어디서도 읽거나 쓰지 않는다', (
   });
 });
 
-describe('가입 나이 24(D-197)', () => {
-  test('02 안내 · 거절 글 · 03 CK2 · 10 신고 사유 아래 · 아동 안전 글이 모두 만 24세 · 게시 글에 만 19세 0', () => {
+describe('가입 나이 24(D-197) · 미성년 신고 한 줄(L19 D-198)', () => {
+  test('02 안내 · 거절 글 · 03 CK2 는 만 24세 · 게시 글 어디에도 가입 자격 "만 19세 이상" 0', () => {
     expect(SIGN_IN.ageNotice).toBe('만 24세 이상만 가입할 수 있어요.');
     expect(SIGN_IN.errors.underage).toBe('만 24세 이상만 가입할 수 있어요.');
     expect(CONSENT_ITEMS.find((i) => i.code === 'CK2')?.label).toBe('[필수] 만 24세 이상이에요');
-    expect(SAFETY_GUIDE.minorNote).toBe('만 24세 미만으로 보인다는 신고가 들어오면 24시간 안에 먼저 확인해요.');
-    expect(CHILD_SAFETY.policy).toContain('만 24세 미만으로 보인다는 신고가');
-    const posted = JSON.stringify([CONSENT_ITEMS, LEGAL_TERMS, LEGAL_PRIVACY, SAFETY_GUIDE, CHILD_SAFETY, SIGN_IN]);
-    expect(posted).not.toMatch(/만 19세/);
+    const posted = JSON.stringify([CONSENT_ITEMS, LEGAL_TERMS, LEGAL_PRIVACY, SIGN_IN]);
+    expect(posted).not.toMatch(/만 19세 이상(?! 만 24세 미만)/); // L19: "만 19세 이상 만 24세 미만" 구간 처리 문장은 가입 자격이 아니다
+  });
+
+  test('10 신고 사유 아래 · 안전 안내 · 아동 안전 글: 아동 보호 우선 확인은 만 19세, 가입 자격은 만 24세 — 동의문구 5-6 글 그대로(L19)', () => {
+    const line = '만 19세 미만으로 보이면 24시간 안에 먼저 확인해요. 결정사는 만 24세 이상만 가입할 수 있어요.';
+    expect(SAFETY_GUIDE.minorNote).toBe(line);
+    expect(CHILD_SAFETY.policy.endsWith(line)).toBe(true);
   });
 });

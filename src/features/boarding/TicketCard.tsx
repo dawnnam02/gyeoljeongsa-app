@@ -29,7 +29,7 @@ export function TicketCard({ roundNo, regionName, when, status, testID = 'ticket
         ) : null}
       </View>
       <View style={styles.route}>
-        <View style={styles.flex}>
+        <View style={styles.fromCol}>
           <AppText variant="caption">{BOARDING.from}</AppText>
           <AppText variant="bodyMedium" testID={`${testID}-from`}>
             {regionName ?? BOARDING.fromDefault}
@@ -62,6 +62,7 @@ const styles = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'center', gap: space.s12 },
   flex: { flex: 1 },
   route: { flexDirection: 'row', gap: space.s16 },
+  fromCol: { flexShrink: 1, maxWidth: '40%' }, // QP-17: 출발(짧은 지역 이름)은 제 길이만, 남는 폭은 도착 글('여행지에서 만날 한 분')에 — 360 폭에서 '분' 한 글자만 내려가지 않게
   cut: { borderTopWidth: 1, borderColor: colors.line, borderStyle: 'dashed' },
   row: { gap: space.s4 },
 });

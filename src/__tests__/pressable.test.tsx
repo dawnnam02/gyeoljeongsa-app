@@ -104,7 +104,9 @@ describe('① scale', () => {
     );
     await pressIn(tree);
     await pressOut(tree);
-    expect(target(tree).props.onPress).toBe(onPress);
+    // QP-14: 웹에서 포커스를 놓으려고 감싸 넘기므로 같은 함수가 아니라, 부르면 원래 함수가 한 번 불리는지 본다
+    act(() => target(tree).props.onPress({ nativeEvent: {} }));
+    expect(onPress).toHaveBeenCalledTimes(1);
     expect(onPressIn).toHaveBeenCalledTimes(1);
     expect(onPressOut).toHaveBeenCalledTimes(1);
   });
