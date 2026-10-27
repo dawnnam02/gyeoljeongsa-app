@@ -59,8 +59,8 @@ export function GlanceRow({ cells, testID }: { cells: readonly { label: string; 
       {shown.map((c, i) => (
         <View key={c.label} style={[styles.cell, i > 0 ? styles.cellLine : null]} accessible accessibilityLabel={`${c.label} ${c.value}`} testID={testID ? `${testID}-${i}` : undefined}>
           <AppText variant="caption">{c.label}</AppText>
-          <AppText variant="bodyBold" numberOfLines={1}>
-            {c.value}
+          <AppText variant="bodyBold" numberOfLines={2}>
+            {c.value /* D43 D3: 360 폭에서 '서울 마…' 잘림 → 두 줄까지 */}
           </AppText>
         </View>
       ))}

@@ -157,7 +157,7 @@ describe('조건 5 · H2 새 그림 38~75', () => {
 
   test('화면 코드가 그림을 가리킨다: 05 사진 칸 가이드 54~56 · 09 목록 끝 47 · 불러오기 실패 52', () => {
     const read = (f: string) => fs.readFileSync(path.join(APP, 'src', f), 'utf8');
-    expect(read('features/photosLite/PhotosLiteScreen.tsx')).toContain('H2_PHOTO_GUIDE.photoGuideFace');
+    expect(read('features/photosLite/PhotosLiteScreen.tsx')).toContain('<PhotoSlotArt name={slot}'); // D43 B5: 옛 PNG 대신 사진 칸 그림 새판
     expect(read('features/recs/RecommendationsScreen.tsx')).toContain('H2_EMPTY_ART.emptyRecsEnd');
     for (const f of ['likes/LikesScreen', 'profile/ProfileScreen', 'recs/CandidateScreen', 'recs/RecommendationsScreen', 'ai/TraitsScreen', 'consent/ConsentScreen', 'photosLite/PhotosLiteScreen']) expect(read(`features/${f}.tsx`)).toContain('<OfflineArt');
     expect(read('features/settings/ListPages.tsx')).toContain('H2_EMPTY_ART.emptyBlocked');

@@ -15,20 +15,22 @@ import { curve, scene2 } from '@/motion';
 import { colors, radius, size, space, type } from '@/theme/tokens';
 
 import { AppText } from './AppText';
-import { Icon } from './Icon';
+import { Icon, type IconName } from './Icon';
 import { Pressable } from './Pressable';
 
 export type ChipVariant = 'selected' | 'tag' | 'inactive' | 'tab';
 
-type Props = { label: string; variant?: ChipVariant; selected?: boolean; onPress?: () => void; accessibilityLabel?: string; testID?: string };
+// lead: 글자 앞 아이콘 16 · accent(D43 A13 · A14 — 08 알약 '인증 대기' · '사진 확인 중'). 체크가 보이는 고른 칩에서는 그리지 않는다
+type Props = { label: string; variant?: ChipVariant; selected?: boolean; lead?: IconName; onPress?: () => void; accessibilityLabel?: string; testID?: string };
 
-export function Chip({ label, variant = 'tag', selected = false, onPress, accessibilityLabel, testID }: Props) {
+export function Chip({ label, variant = 'tag', selected = false, lead, onPress, accessibilityLabel, testID }: Props) {
   const tab = variant === 'tab';
   const look = tab ? (selected ? variantStyle.tabOn : variantStyle.tab) : variantStyle[variant];
   const checked = !tab && variant === 'selected';
   const body = (
     <View style={[styles.chip, look, checked && styles.withCheck]} testID={onPress ? undefined : testID}>
       {checked ? <Icon name="check" size={space.s16} color={colors.accent} testID={testID ? `${testID}-check` : undefined} /> : null}
+      {lead && !checked ? <Icon name={lead} size={space.s16} color={colors.accent} testID={testID ? `${testID}-lead` : undefined} /> : null}
       <AppText variant={tab && selected ? 'captionBold' : 'captionMedium'} tone={tab ? (selected ? 'accent' : 'text') : variant === 'inactive' ? 'sub' : 'accent'}>
         {label}
       </AppText>

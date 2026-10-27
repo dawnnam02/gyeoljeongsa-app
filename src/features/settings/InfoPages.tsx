@@ -65,7 +65,7 @@ export function SupportPage({ deps, contact = SUPPORT_CONTACT, onBack, onToast }
             <Button label={SUPPORT_ACTIONS.copy} variant="secondary" onPress={() => void copy()} testID="settings-support-copy" />
           </View>
           <View style={styles.half}>
-            <Button label={SUPPORT_ACTIONS.openMail} onPress={() => void deps.openMail(email)} testID="settings-support-mail" />
+            <Button label={SUPPORT_ACTIONS.openMail} variant="secondary" onPress={() => void deps.openMail(email)} testID="settings-support-mail" />
           </View>
         </View>
       ) : null}
@@ -75,7 +75,7 @@ export function SupportPage({ deps, contact = SUPPORT_CONTACT, onBack, onToast }
         </AppText>
         <AppText variant="body">{CHILD_SAFETY.body}</AppText>
         {email ? (
-          <AppText variant="bodyBold" testID="settings-child-contact">
+          <AppText variant="bodyMedium" testID="settings-child-contact">
             {fillContact(CHILD_SAFETY.contact, contact)}
           </AppText>
         ) : null}

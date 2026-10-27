@@ -42,6 +42,7 @@ import { V5_HOME } from '@/navigation/v5Hide';
 import { layout } from '@/theme/layout';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 import { ReportBlockSheet } from '@/features/safety/ReportBlockSheet';
+import type { SafetyApi } from '@/features/safety/reportLogic';
 
 import { PhotoBox } from './PhotoBox';
 import { MarriageViews } from './MarriageViews';
@@ -49,8 +50,21 @@ import { PromptCards } from './PromptCards';
 import { detailInfoLine, galleryPhotos, headLineDetail, heightText, openItems, plain, REASON_NAMES, regionText, tableRows, whySentence } from './recsLogic';
 import { usePhotoUrls } from './usePhotoUrls';
 
-export type CandidateDeps = { api: Pick<RecsApi, 'loadCandidate' | 'pairState' | 'photoUrl' | 'pass' | 'sendLike' | 'report' | 'block'>; likes?: Pick<LikesApi, 'accept' | 'decline'>; grade?: Pick<GradeApi, 'partnerGrade'>; toastMs: number };
+// chat: v5 대화방에서 연 10(from=reveal&chat=방)의 신고 · 차단은 0031 report_chat_partner · block_chat_partner(방 id)로 — v4 report_user · block_user 는 추천 · 호감 관계만 받아 대화 짝에게 실패한다(R-A)
+export type CandidateDeps = { api: Pick<RecsApi, 'loadCandidate' | 'pairState' | 'photoUrl' | 'pass' | 'sendLike' | 'report' | 'block'>; likes?: Pick<LikesApi, 'accept' | 'decline'>; grade?: Pick<GradeApi, 'partnerGrade'>; chat?: () => SafetyApi; toastMs: number };
 const defaultDeps: CandidateDeps = { api: recsApi, likes: likesApi, grade: gradeApi, toastMs: TOAST_MS };
+
+// 대화방 신고 · 차단(chatService 는 처음 쓸 때 만든다 — 시험이 서버 설정 없이 이 파일을 읽을 수 있게)
+//  누를 때 처음 만든다(그리기만 할 때는 서버 설정을 읽지 않는다)
+const chatSafetyApi = () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { chatApi } = require('@/features/chat/chatService') as typeof import('@/features/chat/chatService');
+  return chatApi();
+};
+const defaultChatSafety = (): SafetyApi => ({
+  report: (room, reason, description) => chatSafetyApi().report(room, reason, description),
+  block: (room) => chatSafetyApi().block(room),
+});
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
@@ -61,6 +75,10 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
   const v5 = first(params.from) === 'reveal'; // QP-01: 공개된 한 분 — 보기 + [대화 시작하기]만
   const chatId = first(params.chat) ?? null;
   const { api, toastMs } = deps;
+  const safetyForChat = (): SafetyApi => {
+    const c = (deps.chat ?? defaultChatSafety)();
+    return { report: c.report, block: c.block };
+  };
   const likes = deps.likes ?? likesApi;
   const grade = deps.grade ?? gradeApi;
   useCaptureBlock();
@@ -459,8 +477,8 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
 
       <ReportBlockSheet
         visible={sheet}
-        targetId={id}
-        api={api}
+        targetId={chatId ?? id}
+        api={chatId ? safetyForChat() : api}
         onClose={() => setSheet(false)}
         onReported={() => {
           setSheet(false);

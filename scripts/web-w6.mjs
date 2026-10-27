@@ -201,6 +201,9 @@ try {
 
   const errors = b.errors.filter((e) => !/favicon/.test(e));
   check('8', '콘솔 오류 · 예외 0', errors.length === 0, errors.slice(0, 3).join(' | '));
+  // QP-14: 화면이 바뀔 때 숨는 쪽에 포커스가 남으면 브라우저가 'Blocked aria-hidden …' 경고를 낸다 — 0 이어야 한다
+  const ariaWarn = (b.warnings ?? []).filter((w) => /aria-hidden/i.test(w));
+  check('8', '콘솔 경고 aria-hidden 0(QP-14)', ariaWarn.length === 0, `${ariaWarn.length}건 ${ariaWarn.slice(0, 2).join(' | ')}`);
   const outside = [...b.requests.values()].filter((x) => !x.url.startsWith(b.origin) && !x.url.startsWith('data:') && !x.url.startsWith('blob:'));
   check('8', '바깥 요청 0', outside.length === 0, outside.slice(0, 3).map((x) => x.url).join(' | '));
 } catch (error) {

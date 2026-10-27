@@ -28,6 +28,6 @@ export const INTRO_SCENES: readonly IllustrationScene[] = ['onboarding1', 'onboa
 // 그림 칸: 4:3(원본 320×240). 큰 칸 폭은 디자인 페이지 350 → 온보딩 칸과 같은 348까지, 상태 칸(불러오기 실패 등)은 240
 export const illustration = {
   ratio: 4 / 3,
-  hero: 348,
+  hero: 390, // D43 D1: 화면 폭 − 40 까지 늘리되 최대 390(옛 348) · 늘 가운데
   state: 240,
 } as const;

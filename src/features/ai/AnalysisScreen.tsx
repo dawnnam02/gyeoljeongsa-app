@@ -10,12 +10,13 @@ import { ProgressBar } from '@/motion';
 import { CTA_PADDING, CtaFade, Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
-import { Ring } from '@/components/Ring';
+import { Illustration } from '@/components/Illustration';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ANALYSIS, COMMON } from '@/content/copy';
 import { aiApi } from '@/lib/services';
 import { goForward } from '@/navigation/go';
 import { useSignupStore } from '@/store';
+import { illustration } from '@/theme/illustrations';
 import { layout } from '@/theme/layout';
 import { colors, size, space } from '@/theme/tokens';
 
@@ -83,9 +84,8 @@ export function AnalysisScreen({ deps = defaultDeps }: { deps?: AnalysisDeps }) 
           </View>
         ) : (
           <View style={styles.center}>
-            <View style={styles.spinner} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-              <Ring size={layout.spinner} stroke={layout.spinnerStroke} testID="analysis-spinner" />
-            </View>
+            {/* D43 B1: 돌림 고리 대신 그림 4안 '정리중' 장면(상태 칸 240). 진행은 아래 막대가 보여 준다 */}
+            <Illustration scene="organizing" maxWidth={illustration.state} testID="analysis-art" />
             <AppText variant="title" accessibilityRole="header" testID="analysis-title" style={styles.centered}>
               {ANALYSIS.title}
             </AppText>
@@ -146,7 +146,6 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: size.screenPadding, paddingVertical: space.s24 },
   center: { alignItems: 'center', gap: space.s12 },
   centered: { textAlign: 'center' },
-  spinner: { width: layout.spinner, height: layout.spinner, alignItems: 'center', justifyContent: 'center' },
   bar: { maxWidth: layout.analysisBarWidth, marginTop: space.s12 },
   steps: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
   step: { flexDirection: 'row' },

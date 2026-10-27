@@ -5,7 +5,7 @@ import { ActivityIndicator, BackHandler, ScrollView, StyleSheet, View, type Imag
 
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
-import { Icon } from '@/components/Icon';
+import { Icon, type IconName } from '@/components/Icon';
 import { Pressable } from '@/components/Pressable';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { OfflineArt, StateArt } from '@/components/StateArt';
@@ -34,7 +34,7 @@ export function GroupLabel({ text, testID }: { text: string; testID?: string }) 
 
 // 이동 줄: 왼쪽 이름 · 오른쪽 보조 글(예: "준비 중") 또는 ›(D42-C 1안 chevron 20 · sub)
 const CHEVRON = 20;
-export function NavRow({ label, right, last = false, onPress, testID }: { label: string; right?: string; last?: boolean; onPress: () => void; testID?: string }) {
+export function NavRow({ label, right, icon, last = false, onPress, testID }: { label: string; right?: string; icon?: IconName; last?: boolean; onPress: () => void; testID?: string }) {
   return (
     <Pressable
       accessibilityLabel={right ? `${label}, ${right}` : label}
@@ -43,6 +43,7 @@ export function NavRow({ label, right, last = false, onPress, testID }: { label:
       effect="none"
       testID={testID}
       style={({ pressed }) => [styles.row, !last && styles.divider, pressed && styles.pressed]}>
+      {icon ? <Icon name={icon} size={24} color={colors.text} testID={testID ? `${testID}-icon` : undefined} /> : null}
       <AppText variant="body" style={styles.flex}>
         {label}
       </AppText>
@@ -132,7 +133,7 @@ export function LoadState({ state, empty, art, onRetry, testID }: { state: 'load
 }
 
 // 윤곽 버튼(Figma 12b 로그아웃 · 12l 차단 해제): bg 면 + accent 1px 선 + accent 글자. 작은 것은 높이 32(터치 44)
-export function OutlineButton({ label, small = false, busy = false, accessibilityLabel, onPress, testID }: { label: string; small?: boolean; busy?: boolean; accessibilityLabel?: string; onPress: () => void; testID?: string }) {
+export function OutlineButton({ label, icon, small = false, busy = false, accessibilityLabel, onPress, testID }: { label: string; icon?: IconName; small?: boolean; busy?: boolean; accessibilityLabel?: string; onPress: () => void; testID?: string }) {
   return (
     <Pressable
       accessibilityLabel={busy ? COMMON.loading : (accessibilityLabel ?? label)}
@@ -143,7 +144,16 @@ export function OutlineButton({ label, small = false, busy = false, accessibilit
       testID={testID}
       style={small ? styles.smallTouch : undefined}>
       <View style={[styles.outline, small ? styles.outlineSmall : styles.outlineLarge]}>
-        {busy ? <ActivityIndicator color={colors.accent} /> : <AppText variant={small ? 'captionMedium' : 'bodyMedium'} tone="accent">{label}</AppText>}
+        {busy ? (
+          <ActivityIndicator color={colors.accent} />
+        ) : (
+          <View style={styles.outlineInner}>
+            {icon ? <Icon name={icon} size={20} color={colors.accent} testID={testID ? `${testID}-icon` : undefined} /> : null}
+            <AppText variant={small ? 'captionMedium' : 'bodyMedium'} tone="accent">
+              {label}
+            </AppText>
+          </View>
+        )}
       </View>
     </Pressable>
   );
@@ -164,6 +174,7 @@ const styles = StyleSheet.create({
   centerText: { textAlign: 'center' },
   smallTouch: { minHeight: size.touchMin, justifyContent: 'center' },
   outline: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.accent, backgroundColor: colors.bg, borderRadius: radius.md },
+  outlineInner: { flexDirection: 'row', alignItems: 'center', gap: space.s8 }, // 버튼 안 아이콘 20 · 글자 앞 8(D43 A 공통 규격)
   outlineLarge: { minHeight: size.button, paddingHorizontal: space.s16 },
   outlineSmall: { minHeight: size.buttonSmall, paddingHorizontal: space.s12, borderRadius: radius.sm },
 });

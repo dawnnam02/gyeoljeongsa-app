@@ -243,18 +243,18 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
           <Animated.ScrollView contentContainerStyle={styles.list} onScroll={collapse.onScroll} scrollEventThrottle={16} testID="settings-list">
             <RowGroup testID="settings-rows">
               {main.map((row) => (
-                <NavRow key={row.key} label={row.label} right={row.right} onPress={() => onRow(row)} testID={`settings-row-${row.key}`} />
+                <NavRow key={row.key} label={row.label} right={row.right} icon={row.icon} onPress={() => onRow(row)} testID={`settings-row-${row.key}`} />
               ))}
               <View style={styles.infoHead}>
                 <GroupLabel text={SETTINGS.rows.infoGroup} testID="settings-info-label" />
               </View>
               {info.map((row, i) => (
-                <NavRow key={row.key} label={row.label} last={i === info.length - 1} onPress={() => onRow(row)} testID={`settings-row-${row.key}`} />
+                <NavRow key={row.key} label={row.label} icon={row.icon} last={i === info.length - 1} onPress={() => onRow(row)} testID={`settings-row-${row.key}`} />
               ))}
             </RowGroup>
             {deps.grade ? <GradeSwitches grade={deps.grade} onToast={showToast} /> : null}
-            <OutlineButton label={SETTINGS.logout} busy={loggingOut} onPress={() => void logout()} testID="settings-logout" />
-            <TextButton label={SETTINGS.withdraw} onPress={() => setWithdrawOpen(true)} testID="settings-withdraw" />
+            <OutlineButton label={SETTINGS.logout} icon="logout" busy={loggingOut} onPress={() => void logout()} testID="settings-logout" />
+            <TextButton label={SETTINGS.withdraw} icon="withdraw" onPress={() => setWithdrawOpen(true)} testID="settings-withdraw" />
             {reportLine ? (
               <AppText variant="caption" tone="sub" style={styles.reportLine} testID="settings-report-no">
                 {reportLine}

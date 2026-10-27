@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/AppText';
-import { Button } from '@/components/Button';
+import { TextButton } from '@/components/TextButton';
 import { env } from '@/config/env';
 import { DEMO } from '@/content/demo';
 import { aiApi } from '@/lib/services';
@@ -19,15 +19,18 @@ export function DemoSkipBar() {
     void aiApi.startDemo(scenario); // 모의 서버가 건을 바로 만든다. 처리가 끝나기를 기다리지 않고 06 이 상태를 읽는다
     router.push('/analysis');
   };
+  // FB-011: 줄이 대화 화면 아래를 늘 크게 가리지 않게 — 안내 한 줄 + 글자 버튼 셋을 한 줄(넘치면 다음 줄)로 작게. 버튼 이름 · testID 는 그대로(점검 스크립트가 쓴다)
   return (
     <SafeAreaView edges={['bottom']} style={styles.bar} testID="demo-skip">
       <View style={styles.inner}>
-        <AppText variant="caption" testID="demo-skip-note">
+        <AppText variant="caption" numberOfLines={1} testID="demo-skip-note">
           {DEMO.skipNote}
         </AppText>
-        <Button label={DEMO.skip.ok} onPress={() => skip('ok')} testID="demo-skip-ok" />
-        <Button label={DEMO.skip.fail} variant="secondary" onPress={() => skip('fail')} testID="demo-skip-fail" />
-        <Button label={DEMO.skip.slow} variant="secondary" onPress={() => skip('slow')} testID="demo-skip-slow" />
+        <View style={styles.row}>
+          <TextButton label={DEMO.skip.ok} variant="captionMedium" onPress={() => skip('ok')} testID="demo-skip-ok" />
+          <TextButton label={DEMO.skip.fail} variant="captionMedium" onPress={() => skip('fail')} testID="demo-skip-fail" />
+          <TextButton label={DEMO.skip.slow} variant="captionMedium" onPress={() => skip('slow')} testID="demo-skip-slow" />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -35,5 +38,6 @@ export function DemoSkipBar() {
 
 const styles = StyleSheet.create({
   bar: { backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.line },
-  inner: { paddingHorizontal: size.screenPadding, paddingVertical: space.s12, gap: space.s8 },
+  inner: { paddingHorizontal: size.screenPadding, paddingVertical: space.s4 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', columnGap: space.s4 },
 });

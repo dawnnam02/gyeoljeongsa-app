@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
+import { Icon } from '@/components/Icon';
 import { BottomSheet } from '@/components/BottomSheet';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { haptic } from '@/motion';
@@ -133,8 +134,13 @@ export function ReportBlockSheet({ visible, targetId, api, onClose, onReported, 
               effect="none"
               style={({ pressed }) => [styles.item, styles.itemLine, pressed && styles.pressed]}
               testID={id('menu-report')}>
-              <AppText variant="bodyMedium">{REPORT_SHEET.report}</AppText>
-              <AppText variant="caption">{REPORT_SHEET.reportHint}</AppText>
+              <View style={styles.itemRow}>
+                <Icon name="report" size={24} color={colors.accent} testID={id('menu-report-icon')} />
+                <View style={styles.itemText}>
+                  <AppText variant="bodyMedium">{REPORT_SHEET.report}</AppText>
+                  <AppText variant="caption">{REPORT_SHEET.reportHint}</AppText>
+                </View>
+              </View>
             </Pressable>
             <Pressable
               accessibilityLabel={`${REPORT_SHEET.block}. ${REPORT_SHEET.blockHint}`}
@@ -146,8 +152,13 @@ export function ReportBlockSheet({ visible, targetId, api, onClose, onReported, 
               effect="none"
               style={({ pressed }) => [styles.item, pressed && styles.pressed]}
               testID={id('menu-block')}>
-              <AppText variant="bodyMedium">{REPORT_SHEET.block}</AppText>
-              <AppText variant="caption">{REPORT_SHEET.blockHint}</AppText>
+              <View style={styles.itemRow}>
+                <Icon name="block" size={24} color={colors.accent} testID={id('menu-block-icon')} />
+                <View style={styles.itemText}>
+                  <AppText variant="bodyMedium">{REPORT_SHEET.block}</AppText>
+                  <AppText variant="caption">{REPORT_SHEET.blockHint}</AppText>
+                </View>
+              </View>
             </Pressable>
             {menuError ? (
               <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" accessibilityLiveRegion="polite" testID={id('menu-error')}>
@@ -231,6 +242,7 @@ export function ReportBlockSheet({ visible, targetId, api, onClose, onReported, 
       <ConfirmDialog
         visible={visible && step === 'block'}
         title={REPORT_SHEET.blockConfirm}
+        danger
         confirmLabel={REPORT_SHEET.block}
         cancelLabel={REPORT_SHEET.cancel}
         busy={busy}
@@ -243,6 +255,8 @@ export function ReportBlockSheet({ visible, targetId, api, onClose, onReported, 
 }
 
 const styles = StyleSheet.create({
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: space.s12 }, // 줄 앞 아이콘 24(D43 A3 · A4)
+  itemText: { flex: 1, gap: space.s4 },
   sheetTitle: { paddingVertical: space.s8, borderBottomWidth: 1, borderBottomColor: colors.line },
   item: { minHeight: size.listRow, justifyContent: 'center', gap: space.s4, paddingVertical: space.s12 },
   itemLine: { borderBottomWidth: 1, borderBottomColor: colors.line },

@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   logo: { width: layout.logoWidth, height: layout.logoHeight },
   slide: { gap: space.s12 },
   // 소개 그림 칸: 4:3(폭 348까지, D42-I). 작은 화면에서는 본문이 위아래로 스크롤되고 버튼 둘은 아래에 고정된다
-  art: { alignSelf: 'stretch', maxWidth: illustration.hero, aspectRatio: illustration.ratio, borderRadius: radius.xl, backgroundColor: colors.card, overflow: 'hidden' },
+  art: { alignSelf: 'center', width: '100%', maxWidth: illustration.hero, aspectRatio: illustration.ratio, borderRadius: radius.xl, backgroundColor: colors.card, overflow: 'hidden' },
   artImage: { width: '100%', height: '100%', maxWidth: undefined, borderRadius: 0 },
   dots: { flexDirection: 'row', marginLeft: -dotPad, marginTop: -dotPad },
   dotTouch: { width: size.touchMin, height: size.touchMin, alignItems: 'center', justifyContent: 'center' },

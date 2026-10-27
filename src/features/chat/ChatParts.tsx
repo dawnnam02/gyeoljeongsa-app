@@ -6,6 +6,7 @@
 import { Image, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
+import { Icon, type IconName } from '@/components/Icon';
 import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { Pressable } from '@/components/Pressable';
 import { TextButton } from '@/components/TextButton';
@@ -159,13 +160,15 @@ export function MessageBubble({ message: m, sendState = 'sent', mediaUri, voice,
   );
 }
 
-export function Banner({ text, action, testID }: { text: string; action?: { label: string; onPress: () => void }; testID: string }) {
+// lead: 글 앞 아이콘 16 · sub(D43 A11 — 연장을 고른 뒤 상태 줄 accept)
+export function Banner({ text, action, lead, testID }: { text: string; action?: { label: string; onPress: () => void; icon?: IconName }; lead?: IconName; testID: string }) {
   return (
     <View style={styles.banner} testID={testID}>
+      {lead ? <Icon name={lead} size={16} color={colors.sub} testID={`${testID}-lead`} /> : null}
       <AppText variant="small" style={styles.flex} testID={`${testID}-text`}>
         {text}
       </AppText>
-      {action ? <TextButton label={action.label} variant="captionMedium" onPress={action.onPress} testID={`${testID}-action`} /> : null}
+      {action ? <TextButton label={action.label} variant="captionMedium" icon={action.icon} onPress={action.onPress} testID={`${testID}-action`} /> : null}
     </View>
   );
 }

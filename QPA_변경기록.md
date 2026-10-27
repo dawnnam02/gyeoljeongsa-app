@@ -178,8 +178,8 @@
 | 2-d 이어받음 정리(10-27 오후, 다음 직원) | 끝 — 앞 직원이 CRLF 로 바꾼 3파일(model · questions · surveyV2Demo.test) LF 로 되돌림 · 취소 함수 이름을 백엔드 R 변경기록 3장 0037 B 설계 이름 `cancel_ticket_seat` 로(인자 p_round_no 는 앱 제안) · raFinish 토스트 시간 때문에 1개 실패 → 고침 |
 | 시험(1 ~ 2단계) | tsc 0 · eslint(바꾼 파일) 0 · jest 85묶음 1591/1591 · check:copy 99/0 · check:grade 통과 |
 | 커밋 | 3부-가 |
-| 3 디자인 QA(D43) · 사진칸 그림 · 아이콘 14곳 · 07 숫자 | 대기 |
-| 4 QP-14 · FB-011 · FB-012 · 10 신고 · 차단 | 대기 |
+| 3 디자인 QA(D43) · 사진칸 그림 · 아이콘 14곳 · 07 숫자 | 끝(높음 7 · 아이콘 13곳 + 4 · 보통 일부) — 아래 '3부-나' |
+| 4 QP-14 · FB-011 · FB-012 · 10 신고 · 차단 | 코드 끝 · QP-14 웹 확인 진행 중 |
 | 5 F25 숨김 v4 글 74곳 | 대기 |
 
 ## 서버 함수 이름(백엔드 0037 전 — 앱은 데모 경로로 돈다)
@@ -189,3 +189,37 @@
 | 아는 분 피하기 | `get_avoid_settings()` · `set_avoid_orgs({ p_companies, p_schools })` · `set_share_email({ p_on })` | 백엔드 메모는 표 이름만(contact_settings 등) — 함수 이름은 앱 제안, 0037 F 때 맞춤 |
 | 알림 토큰 | `register_device(p_platform, p_os_version, p_app_version, p_push_token)` | 0004:616 있음 · 표 devices(0001) |
 | 대화 알림 스위치 | profiles `notify_chat` 열 | 0036 |
+
+## 3부-나 (디자인 QA D43 · 검수 남은 것, 10-27)
+### D43 높음 7
+| # | 처리 | 자리 |
+|---|---|---|
+| B1 07 정리 중 | 돌림 고리 → 그림 4안 `organizing`(상태 칸 240) | `ai/AnalysisScreen.tsx` |
+| B2 T5 불러오기 실패 | 그림 `error` 240 + 글 + [다시 시도] | `boarding/CreditScreen.tsx` |
+| C1 가입 아래 🔒 | 1안 `security` 16 · sub | `components/LockNote.tsx` |
+| D1 그림 칸 430 | `illustration.hero` 348 → 390 · 온보딩 칸 가운데(width 100%) | `theme/illustrations.ts` · `OnboardingScreen.tsx` |
+| E1 낱말 중간 줄바꿈 | 웹 `word-break: keep-all`(AppText 공통) | `components/AppText.tsx` |
+| F1 10 아래 v4 버튼 | QP-01(2부-나)로 이미 고침 — 공개 뒤 10 은 [대화 시작하기] 하나 | 확인만 |
+| F2 등급 스위치 2줄 | 1부로 '멈추기' 한 줄 · 이번에 '내 등급' 줄(my_icon_view) | 확인 + 아이콘 |
+### D43 A 아이콘(14곳 중 A12 decline 은 팀장 결정으로 0)
+- 설정 줄 앞 24: 알림 bell · 공개 범위 visibility · 내 등급 my_icon_view · 아는 분 피하기 profile · 희망 조건 how_to · 인증 서류 doc_verify · 크레딧 credit · 차단 목록 block · 신고 내역 report · 보안 security · 고객센터 support · 동의 관리 consent · 약관 · 라이선스 · 이미지 출처 · 사업자 정보 document · 안전 안내 safety (`settingsLogic.ts` RowDef.icon · `SettingsParts.tsx` NavRow)
+- 로그아웃 logout 20 accent(OutlineButton icon) · 탈퇴하기 withdraw 20 accent(TextButton icon)
+- T4 메뉴 연장 extend · 나가기 leave · 신고 · 차단 report(accent) 24 · 방 위 띠 '연장 알아보기' extend 20 · 연장 고른 뒤 상태 줄 accept 16 sub
+- 신고 시트 '신고하기' report · '차단하기' block 24 accent · T5 잔액 카드 credit 24 accent · 08 알약 '인증 대기' verified · '사진 확인 중' photo_checking 16 accent(Chip lead)
+### D43 보통 · 낮음 중 한 것
+- B5 05 사진 칸 그림 3장 연결: `components/PhotoSlotArt.tsx`(디자인/D43_사진칸그림/paths.json 그대로, 색은 토큰) — 옛 PNG 는 등록만 남김
+- C3 차단 확인창 [차단하기] = 위험 버튼(ConfirmDialog `danger`) · C4 고객센터 [메일 앱 열기] = 보조(테두리) · E4 아동 안전 연락처 bodyMedium · D3 10 숫자 칸 값 두 줄까지 · E3 CK16 제목은 이미 bodyBold(확인만) · D2 CK16 버튼 세로(QP-17 로 이미)
+- 하지 않음(이번 범위 밖 · 팀장 결정 필요): B3 T3 끝 장면 로고 타일 · B4 탭 뒤 흐린 로고 · C2 옛 실루엣 조건 · D4 · D5 · D6(데모 칸) · D7 · D8 · E2(E1 로 대부분) · E5 글자 링크 chevron · F3(QP-03 으로 이미) · F4(R-A 알림 2줄로 이미)
+- 07 숫자 숨김: QP-09(2부-나) `TraitBar.tsx` 확인 — 막대만, 스크린리더 값 그대로
+### 검수 남은 것
+- 10 상세 신고 · 차단: 대화방에서 연 10(from=reveal&chat=방)은 0031 `report_chat_partner` · `block_chat_partner`(방 id)로 — v4 `report_user` · `block_user` 는 추천 · 호감 관계만 받아 대화 짝에게 실패(`recs/CandidateScreen.tsx` deps.chat, chatService 는 누를 때 만듦)
+- FB-011: 데모 건너뛰기 줄 = 안내 한 줄 + 글자 버튼 셋 한 줄(큰 버튼 셋 → 높이 약 1/3). 이름 · testID 그대로
+- FB-012: 점검 도구 `clickText` 가 요소가 없으면 5초까지 다시 찾음(`scripts/lib/browser.mjs`) — 데모 줄이 늦게 떠도 첫 실행 통과
+- QP-14: 점검 도구가 브라우저 경고(Log · console.warn)를 모음 · web-w6 에 'aria-hidden 경고 0' 줄
+### 3부-나 시험
+| 시험 | 결과 |
+|---|---|
+| tsc | 0 |
+| eslint(바꾼 파일) | 0 |
+| jest | 86묶음 1600/1600(새 raDesign 7 · qpbDefects +1) |
+| check:copy · grade · tokens | 99/0 · 통과 · 5/0 |

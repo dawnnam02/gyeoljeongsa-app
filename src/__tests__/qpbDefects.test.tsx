@@ -50,18 +50,18 @@ beforeEach(() => {
 });
 const flush = () => act(async () => void (await new Promise((resolve) => setTimeout(resolve, 0))));
 
-async function openCandidate(params: Record<string, string>) {
+async function openCandidate(params: Record<string, string>, chat?: CandidateDeps['chat']) {
   const rig = await makeShopRig('plain');
   Object.assign(mockParams, params);
   const api = createRecsApi(rig.client, rig.deps.now);
   const pairState = jest.spyOn(api, 'pairState');
   const grade = createGradeApi(rig.client);
   const partnerGrade = jest.spyOn(grade, 'partnerGrade');
-  const deps: CandidateDeps = { api, likes: createLikesApi(rig.client), grade, toastMs: 50 };
+  const deps: CandidateDeps = { api, likes: createLikesApi(rig.client), grade, chat, toastMs: 50 };
   const tree = await mount(<CandidateScreen deps={deps} />);
   shown.push(tree);
   await flush();
-  return { tree, pairState, partnerGrade };
+  return { tree, pairState, partnerGrade, api };
 }
 
 describe('QP-01(치명) · 공개 뒤 10 상대 상세는 보기 + [대화 시작하기]만', () => {
@@ -74,6 +74,18 @@ describe('QP-01(치명) · 공개 뒤 10 상대 상세는 보기 + [대화 시�
     expect(partnerGrade).not.toHaveBeenCalled();
     await press(tree, 'candidate-chat');
     expect(mockRouter.push).toHaveBeenCalledWith('/chat/demo-chat-1-1');
+  });
+
+  test('R-A: 대화방에서 연 10 의 차단은 v5 대화 함수(방 번호)로 — v4 block_user 를 부르지 않는다', async () => {
+    const chat = { report: jest.fn(async () => ({ ok: true as const })), block: jest.fn(async () => ({ ok: true as const })) };
+    const { tree, api } = await openCandidate({ id: 'demo-cand-1', from: 'reveal', chat: 'demo-chat-1-1' }, () => chat);
+    const v4Block = jest.spyOn(api, 'block');
+    await press(tree, 'candidate-header-right');
+    await press(tree, 'report-menu-block');
+    await press(tree, 'report-block-confirm-confirm');
+    await flush();
+    expect(chat.block).toHaveBeenCalledWith('demo-chat-1-1');
+    expect(v4Block).not.toHaveBeenCalled();
   });
 
   test('대화방 번호가 없으면 아래 버튼 자리도 없다 · 뒤로는 T3(없으면 탑승권 탭)', async () => {

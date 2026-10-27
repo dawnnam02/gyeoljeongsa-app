@@ -7,8 +7,11 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { Icon } from '@/components/Icon';
+import { Illustration } from '@/components/Illustration';
 import { Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { illustration } from '@/theme/illustrations';
 import { colors, size, space } from '@/theme/tokens';
 
 import type { BoardingApi, CreditLoad } from './boardingApi';
@@ -39,6 +42,7 @@ export function CreditScreen({ deps }: { deps: { api: Pick<BoardingApi, 'ledger'
       <ScreenHeader title={CREDITS.headerTitle} onBack={back} testID="credits-header" />
       {load === null ? null : !load.ok ? (
         <View style={[styles.pad, styles.gap]} testID="credits-error">
+          <Illustration scene="error" maxWidth={illustration.state} testID="credits-error-art" />
           <AppText variant="body" tone="sub" accessibilityRole="alert">
             {CREDITS.failed}
           </AppText>
@@ -47,7 +51,10 @@ export function CreditScreen({ deps }: { deps: { api: Pick<BoardingApi, 'ledger'
       ) : (
         <ScrollView contentContainerStyle={[styles.pad, styles.gap]} testID="credits-scroll">
           <Card style={styles.gapSmall} testID="credits-balance-card">
-            <AppText variant="caption">{CREDITS.balanceLabel}</AppText>
+            <View style={styles.balanceHead}>
+              <Icon name="credit" size={24} color={colors.accent} testID="credits-icon" />
+              <AppText variant="caption">{CREDITS.balanceLabel}</AppText>
+            </View>
             <AppText variant="title" testID="credits-balance">
               {CREDITS.balance(load.balance)}
             </AppText>
@@ -89,6 +96,7 @@ export function CreditScreen({ deps }: { deps: { api: Pick<BoardingApi, 'ledger'
 }
 
 const styles = StyleSheet.create({
+  balanceHead: { flexDirection: 'row', alignItems: 'center', gap: space.s8 }, // D43 A10
   pad: { paddingHorizontal: size.screenPadding, paddingTop: space.s16, paddingBottom: space.s40 },
   gap: { gap: space.s16 },
   gapSmall: { gap: space.s8 },

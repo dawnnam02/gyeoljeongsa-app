@@ -173,10 +173,13 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
   const cdp = new CDP(ws);
 
   const errors = [];
+  const warnings = []; // QP-14: 브라우저 경고(aria-hidden 포커스 등 Log 영역) · console.warn — 점검 스크립트가 세어 보고한다
   const requests = new Map();
   cdp.on((m) => {
     const p = m.params;
     if (m.method === 'Runtime.consoleAPICalled' && ['error', 'assert'].includes(p.type)) errors.push(`console.${p.type}: ${p.args.map((x) => x.value ?? x.description ?? x.type).join(' ').slice(0, 200)}`);
+    else if (m.method === 'Runtime.consoleAPICalled' && p.type === 'warning') warnings.push(`console.warn: ${p.args.map((x) => x.value ?? x.description ?? x.type).join(' ').slice(0, 200)}`);
+    else if (m.method === 'Log.entryAdded' && p.entry?.level === 'warning') warnings.push(`log: ${String(p.entry.text ?? '').slice(0, 200)}`);
     else if (m.method === 'Runtime.exceptionThrown') errors.push(`예외: ${(p.exceptionDetails.exception?.description ?? p.exceptionDetails.text).split('\n')[0].slice(0, 200)}`);
     else if (m.method === 'Network.requestWillBeSent') requests.set(p.requestId, { url: p.request.url, status: null, failed: null });
     else if (m.method === 'Network.responseReceived') {
@@ -187,7 +190,7 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
       if (r) r.failed = p.errorText;
     }
   });
-  for (const d of ['Page', 'Runtime', 'Network']) await cdp.send(`${d}.enable`);
+  for (const d of ['Page', 'Runtime', 'Network', 'Log']) await cdp.send(`${d}.enable`);
   // 다른 창이 앞에 있거나 컴퓨터가 바쁠 때 브라우저가 이 페이지를 '안 보이는 창'으로 보고 애니메이션 프레임을 멈추는 것을 막는다(B-Q1-01 "링이 돈다" 가끔 실패)
   await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => undefined);
   await cdp.send('Page.bringToFront').catch(() => undefined);
@@ -212,6 +215,7 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
     cdp,
     evaluate,
     errors,
+    warnings,
     requests,
     viewport,
     // 주소를 열고(새로 불러온다) 조건 식이 참이 될 때까지 기다린다
@@ -258,9 +262,10 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
       await sleep(250);
     },
     // 이 글자를 가진 누를 수 있는 요소를 누른다(role 로 거른다)
-    async clickText(text, role = 'button', nth = 0, holdMs = 80) {
+    // FB-012: 요소가 아직 없으면(데모 줄이 늦게 뜰 때 등) 5초까지 0.25초마다 다시 찾는다 — 처음 실행이 가끔 실패하던 것
+    async clickText(text, role = 'button', nth = 0, holdMs = 80, waitMs = 5000) {
       const tag = `data-click-${Date.now()}`;
-      const ok = await evaluate(`(() => {
+      const find = () => evaluate(`(() => {
         const out = [];
         for (const el of document.querySelectorAll('body *')) {
           if ((el.innerText || '').trim() !== ${JSON.stringify(text)}) continue;
@@ -273,6 +278,11 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
         target.setAttribute(${JSON.stringify(tag)}, '1');
         return true;
       })()`);
+      let ok = await find();
+      for (const end = Date.now() + waitMs; !ok && Date.now() < end; ) {
+        await sleep(250);
+        ok = await find();
+      }
       if (!ok) throw new Error(`누를 요소가 없어요: "${text}" (${role})`);
       await api.click(`[${tag}]`, holdMs);
       await evaluate(`document.querySelector('[${tag}]')?.removeAttribute(${JSON.stringify(tag)})`);

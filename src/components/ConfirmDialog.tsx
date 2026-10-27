@@ -20,13 +20,14 @@ type Props = {
   confirmLabel: string;
   cancelLabel: string;
   busy?: boolean;
+  danger?: boolean; // 되돌릴 수 없는 일(차단 등)은 위험 버튼 꼴(버튼 v3 danger, D43 C3)
   error?: string | null;
   onConfirm: () => void;
   onCancel: () => void;
   testID?: string;
 };
 
-export function ConfirmDialog({ visible, title, body, sub, note, confirmLabel, cancelLabel, busy = false, error, onConfirm, onCancel, testID }: Props) {
+export function ConfirmDialog({ visible, title, body, sub, note, confirmLabel, cancelLabel, busy = false, danger = false, error, onConfirm, onCancel, testID }: Props) {
   const id = (part: string) => (testID ? `${testID}-${part}` : undefined);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel} testID={testID}>
@@ -59,7 +60,7 @@ export function ConfirmDialog({ visible, title, body, sub, note, confirmLabel, c
             </AppText>
           ) : null}
           <View style={styles.buttons}>
-            <Button label={confirmLabel} loading={busy} onPress={onConfirm} testID={id('confirm')} />
+            <Button label={confirmLabel} variant={danger ? 'danger' : 'primary'} loading={busy} onPress={onConfirm} testID={id('confirm')} />
             <Button label={cancelLabel} variant="secondary" disabled={busy} onPress={onCancel} testID={id('cancel')} />
           </View>
         </View>

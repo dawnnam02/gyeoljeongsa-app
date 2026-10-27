@@ -1,4 +1,5 @@
 // 12 설정 규칙(화면 없이 시험한다): 줄 차례 · 하위 화면 이름 · 날짜 글 · 차단한 사람 이름 줄 · 고객센터 값 채우기 · 탈퇴 인증번호 오류 글.
+import type { IconName } from '@/components/Icon';
 import { PREFERENCES_EDIT_ENABLED } from '@/config/flags';
 import { COMMON, SIGN_IN } from '@/content/copy';
 import { REPORTS, SETTINGS, WITHDRAW } from '@/content/settingsCopy';
@@ -17,27 +18,28 @@ export type RowAction =
   | { kind: 'credits' } // 크레딧 · 구매 내역(카피.md 12-Q, 옛 NV35 '구매 · 등급 구독' 자리) → T5 크레딧 · 내역. 상점이 꺼져도 보인다
   | { kind: 'grade' }; // 내 등급(D-200 ② · 정책 P3-10) → 16-G(/grade, 상점 밖에서 여는 화면)
 
-export type RowDef = { key: string; label: string; action: RowAction; group: 'main' | 'info'; right?: string };
+// icon: 줄 앞 아이콘(D43 A · 1안 24 · text). 디자인 QA 14곳 중 설정 몫(A3 ~ A7) + 함께 붙일 것(공개 범위 · 보안 · 동의 관리 · 안전 안내)
+export type RowDef = { key: string; label: string; action: RowAction; group: 'main' | 'info'; right?: string; icon?: IconName };
 
 // 차례: Figma 12 3:473 · 12b 201:36 = K2 12 '설정 줄과 이동' + 카피.md 12 목록. '희망 조건 수정'은 임시 설문(F2L) 동안 숨긴다(D-48, config/flags.ts)
 const ALL_ROWS: readonly RowDef[] = [
-  { key: 'notifications', label: SETTINGS.rows.notifications, action: { kind: 'page', page: 'notifications' }, group: 'main' },
-  { key: 'visibility', label: SETTINGS.rows.visibility, action: { kind: 'visibility' }, group: 'main' },
-  { key: 'grade', label: SETTINGS.rows.grade, action: { kind: 'grade' }, group: 'main' }, // D-200 ②(화면_요구사항 12-1 차례)
-  { key: 'avoid', label: SETTINGS.rows.avoid, action: { kind: 'page', page: 'avoid' }, group: 'main' }, // D-200 ① 12-5
-  { key: 'preferences', label: SETTINGS.rows.preferences, action: { kind: 'preferences' }, group: 'main' },
-  { key: 'verification', label: SETTINGS.rows.verification, action: { kind: 'soon' }, group: 'main', right: SETTINGS.verificationSoon },
-  { key: 'credits', label: SETTINGS.rows.credits, action: { kind: 'credits' }, group: 'main' },
-  { key: 'blocked', label: SETTINGS.rows.blocked, action: { kind: 'page', page: 'blocked-list' }, group: 'main' },
-  { key: 'reports', label: SETTINGS.rows.reports, action: { kind: 'page', page: 'report-history' }, group: 'main' },
-  { key: 'security', label: SETTINGS.rows.security, action: { kind: 'page', page: 'security' }, group: 'main' },
-  { key: 'support', label: SETTINGS.rows.support, action: { kind: 'page', page: 'support' }, group: 'main' },
-  { key: 'consents', label: SETTINGS.rows.consents, action: { kind: 'page', page: 'consent-management' }, group: 'main' },
-  { key: 'legal', label: SETTINGS.rows.legal, action: { kind: 'legal' }, group: 'main' },
-  { key: 'safety', label: SETTINGS.rows.safety, action: { kind: 'page', page: 'safety' }, group: 'main' },
-  { key: 'licenses', label: SETTINGS.rows.licenses, action: { kind: 'page', page: 'licenses' }, group: 'info' },
-  { key: 'image-credit', label: SETTINGS.rows.imageCredit, action: { kind: 'page', page: 'image-credit' }, group: 'info' },
-  { key: 'business-info', label: SETTINGS.rows.businessInfo, action: { kind: 'page', page: 'business-info' }, group: 'info' }, // 값 6개가 모두 있을 때만(SettingsScreen 이 거른다)
+  { key: 'notifications', label: SETTINGS.rows.notifications, action: { kind: 'page', page: 'notifications' }, group: 'main', icon: 'bell' },
+  { key: 'visibility', label: SETTINGS.rows.visibility, action: { kind: 'visibility' }, group: 'main', icon: 'visibility' },
+  { key: 'grade', label: SETTINGS.rows.grade, action: { kind: 'grade' }, group: 'main', icon: 'my_icon_view' }, // D-200 ②(화면_요구사항 12-1 차례)
+  { key: 'avoid', label: SETTINGS.rows.avoid, action: { kind: 'page', page: 'avoid' }, group: 'main', icon: 'profile' }, // D-200 ① 12-5
+  { key: 'preferences', label: SETTINGS.rows.preferences, action: { kind: 'preferences' }, group: 'main', icon: 'how_to' },
+  { key: 'verification', label: SETTINGS.rows.verification, action: { kind: 'soon' }, group: 'main', right: SETTINGS.verificationSoon, icon: 'doc_verify' },
+  { key: 'credits', label: SETTINGS.rows.credits, action: { kind: 'credits' }, group: 'main', icon: 'credit' },
+  { key: 'blocked', label: SETTINGS.rows.blocked, action: { kind: 'page', page: 'blocked-list' }, group: 'main', icon: 'block' },
+  { key: 'reports', label: SETTINGS.rows.reports, action: { kind: 'page', page: 'report-history' }, group: 'main', icon: 'report' },
+  { key: 'security', label: SETTINGS.rows.security, action: { kind: 'page', page: 'security' }, group: 'main', icon: 'security' },
+  { key: 'support', label: SETTINGS.rows.support, action: { kind: 'page', page: 'support' }, group: 'main', icon: 'support' },
+  { key: 'consents', label: SETTINGS.rows.consents, action: { kind: 'page', page: 'consent-management' }, group: 'main', icon: 'consent' },
+  { key: 'legal', label: SETTINGS.rows.legal, action: { kind: 'legal' }, group: 'main', icon: 'document' },
+  { key: 'safety', label: SETTINGS.rows.safety, action: { kind: 'page', page: 'safety' }, group: 'main', icon: 'safety' },
+  { key: 'licenses', label: SETTINGS.rows.licenses, action: { kind: 'page', page: 'licenses' }, group: 'info', icon: 'document' },
+  { key: 'image-credit', label: SETTINGS.rows.imageCredit, action: { kind: 'page', page: 'image-credit' }, group: 'info', icon: 'document' },
+  { key: 'business-info', label: SETTINGS.rows.businessInfo, action: { kind: 'page', page: 'business-info' }, group: 'info', icon: 'document' }, // 값 6개가 모두 있을 때만(SettingsScreen 이 거른다)
 ];
 export const SETTINGS_ROWS: readonly RowDef[] = ALL_ROWS.filter((r) => PREFERENCES_EDIT_ENABLED || r.key !== 'preferences');
 

@@ -226,9 +226,9 @@ export function ProfileScreen({ deps = defaultDeps }: { deps?: ProfileDeps }) {
               {headText}
             </AppText>
             <View style={styles.badges}>
-              {data.verification === 'pending' ? <Chip label={PROFILE.badgeVerifyPending} variant={note === 'verify' ? 'selected' : 'tag'} onPress={() => toggle('verify')} testID="badge-verify" /> : null}
+              {data.verification === 'pending' ? <Chip label={PROFILE.badgeVerifyPending} lead="verified" variant={note === 'verify' ? 'selected' : 'tag'} onPress={() => toggle('verify')} testID="badge-verify" /> : null}
               {data.verification === 'verified' ? <Chip label={PROFILE_DRAFT.badgeVerified} variant="tag" testID="badge-verified" /> : null}
-              {badges.checking ? <Chip label={PROFILE.badgePhotoChecking} variant={note === 'checking' ? 'selected' : 'tag'} onPress={() => toggle('checking')} testID="badge-photo-checking" /> : null}
+              {badges.checking ? <Chip label={PROFILE.badgePhotoChecking} lead="photo_checking" variant={note === 'checking' ? 'selected' : 'tag'} onPress={() => toggle('checking')} testID="badge-photo-checking" /> : null}
               {badges.retry ? <Chip label={PROFILE.badgePhotoRetry} variant={note === 'retry' ? 'selected' : 'tag'} onPress={() => toggle('retry')} testID="badge-photo-retry" /> : null}
             </View>
           </View>

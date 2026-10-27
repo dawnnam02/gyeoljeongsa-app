@@ -11,6 +11,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-native';
 
+import { PhotoSlotArt } from '@/components/PhotoSlotArt';
 import { CTA_PADDING, CtaFade, Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
@@ -28,7 +29,6 @@ import { PHOTO_SLOTS, type JpegFile, type LiteAnswers, type LoadOutcome, type Ph
 import { goBackOr, goForward } from '@/navigation/go';
 import { layout } from '@/theme/layout';
 import { PHOTO_ICONS } from '@/theme/photoIcons';
-import { H2_PHOTO_GUIDE } from '@/theme/uiAssets';
 import { colors, radius, size, space } from '@/theme/tokens';
 
 import { QuestionInput } from '../surveyLite/inputs';
@@ -381,8 +381,6 @@ export function PhotosLiteScreen({ deps: given, onMissing, mode = 'normal' }: Pr
   );
 }
 
-const SLOT_GUIDE = { face: H2_PHOTO_GUIDE.photoGuideFace, full: H2_PHOTO_GUIDE.photoGuideFull, free: H2_PHOTO_GUIDE.photoGuideFree } as const;
-
 function SlotBox({ slot, view, locked, onPress }: { slot: PhotoSlot; view: SlotView; locked: boolean; onPress: () => void }) {
   const name = PHOTOS_LITE.slots[slot];
   return (
@@ -400,7 +398,7 @@ function SlotBox({ slot, view, locked, onPress }: { slot: PhotoSlot; view: SlotV
         ) : (
           <View style={styles.slotEmpty}>
             {/* 사진 가이드 그림(H2 54 정면 · 55 전신 · 56 자유): 어떤 사진을 올릴지 보인다. 카메라 + 는 칸 모서리로 옮겨 '누르면 올린다'를 남긴다 */}
-            <Image source={SLOT_GUIDE[slot]} style={styles.guideArt} resizeMode="contain" accessibilityIgnoresInvertColors testID={`photoslite-guide-art-${slot}`} />
+            <PhotoSlotArt name={slot} size={layout.photoGuideArt} testID={`photoslite-guide-art-${slot}`} />
             <AppText variant="caption" tone="text">
               {name}
             </AppText>
@@ -428,7 +426,6 @@ const styles = StyleSheet.create({
   slot: { aspectRatio: 3 / 4, borderRadius: radius.lg, backgroundColor: colors.line, overflow: 'hidden' },
   slotError: { borderWidth: layout.inputBorderActive, borderColor: colors.accent },
   slotEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.s8 },
-  guideArt: { width: layout.photoGuideArt, height: layout.photoGuideArt },
   camera: { position: 'absolute', top: space.s8, right: space.s8, width: space.s24, height: space.s24 }, // Figma 05 카메라+ 32×32 → 가이드 그림을 넣으며 모서리 24
   preview: { width: '100%', height: '100%' },
   overlay: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center' },

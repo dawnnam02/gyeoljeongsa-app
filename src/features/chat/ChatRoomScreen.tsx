@@ -11,6 +11,7 @@ import { Image, Modal, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/AppText';
+import { Icon, type IconName } from '@/components/Icon';
 import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/Button';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -278,7 +279,8 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
           {open ? (
             <Banner
               text={room.myExtend ? CHAT.extend.wantNote : openLine(room.closesAt, now)}
-              action={{ label: CHAT.room.extendLink, onPress: () => setSheet('extend') }}
+              lead={room.myExtend ? 'accept' : undefined}
+              action={{ label: CHAT.room.extendLink, onPress: () => setSheet('extend'), icon: 'extend' }}
               testID="chat-room-banner"
             />
           ) : null}
@@ -344,10 +346,11 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
         </AppText>
         {open ? (
           <>
-            <MenuItem label={CHAT.menu.extend} hint={CHAT.menu.extendHint} onPress={() => setSheet('extend')} testID="chat-menu-extend" />
+            <MenuItem label={CHAT.menu.extend} hint={CHAT.menu.extendHint} icon="extend" onPress={() => setSheet('extend')} testID="chat-menu-extend" />
             <MenuItem
               label={CHAT.menu.leave}
               hint={CHAT.menu.leaveHint}
+              icon="leave"
               onPress={() => {
                 haptic.warning(); // 되돌릴 수 없는 확인창(D25 4장)
                 setDialogError(null);
@@ -357,7 +360,7 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
             />
           </>
         ) : null}
-        <MenuItem label={CHAT.menu.safety} hint={CHAT.menu.safetyHint} onPress={() => setSheet('safety')} testID="chat-menu-safety" last />
+        <MenuItem label={CHAT.menu.safety} hint={CHAT.menu.safetyHint} icon="report" danger onPress={() => setSheet('safety')} testID="chat-menu-safety" last />
         <Button label={CHAT.menu.cancel} variant="secondary" onPress={() => setSheet('none')} testID="chat-menu-cancel" />
       </BottomSheet>
 
@@ -434,11 +437,15 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
   );
 }
 
-function MenuItem({ label, hint, onPress, testID, last = false }: { label: string; hint: string; onPress: () => void; testID: string; last?: boolean }) {
+// 메뉴 줄 앞 아이콘 24(D43 A1 · A2 · A3, 신고 · 차단은 accent)
+function MenuItem({ label, hint, icon, danger = false, onPress, testID, last = false }: { label: string; hint: string; icon: IconName; danger?: boolean; onPress: () => void; testID: string; last?: boolean }) {
   return (
-    <Pressable accessibilityLabel={`${label}. ${hint}`} onPress={onPress} effect="none" style={({ pressed }) => [styles.item, !last && styles.itemLine, pressed && styles.pressed]} testID={testID}>
-      <AppText variant="bodyMedium">{label}</AppText>
-      <AppText variant="caption">{hint}</AppText>
+    <Pressable accessibilityLabel={`${label}. ${hint}`} onPress={onPress} effect="none" style={({ pressed }) => [styles.item, styles.itemRow, !last && styles.itemLine, pressed && styles.pressed]} testID={testID}>
+      <Icon name={icon} size={24} color={danger ? colors.accent : colors.text} testID={`${testID}-icon`} />
+      <View style={styles.itemText}>
+        <AppText variant="bodyMedium">{label}</AppText>
+        <AppText variant="caption">{hint}</AppText>
+      </View>
     </Pressable>
   );
 }
@@ -452,6 +459,8 @@ const styles = StyleSheet.create({
   startNote: { textAlign: 'center', paddingHorizontal: size.screenPadding },
   sheetTitle: { paddingVertical: space.s8, borderBottomWidth: 1, borderBottomColor: colors.line },
   item: { minHeight: size.listRow, justifyContent: 'center', gap: space.s4, paddingVertical: space.s12 },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: space.s12 },
+  itemText: { flex: 1, gap: space.s4 },
   itemLine: { borderBottomWidth: 1, borderBottomColor: colors.line },
   pressed: { opacity: alpha.pressed },
   viewer: { flex: 1, backgroundColor: colors.text },
