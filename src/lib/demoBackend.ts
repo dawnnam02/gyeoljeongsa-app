@@ -159,13 +159,18 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
   const likes = createDemoLikes({ now, people: (id) => recs.person(id) }); // 11 호감(F6)
   const settings = createDemoSettings({ now, people: (id) => recs.person(id) ?? likes.person(id) }); // 12 설정(F7). 11 에서 차단한 가상 사람도 이름이 나온다
   // V5 W6: 탑승권 · 크레딧(서버 0030 · 0032 · 0037 이름 · 모양). 탑승 관문(검수 B0, 10-27): 실서버 ticket_profile_ready 와 같은 조건 —
-  //  설문 모의 서버(demo/surveyV2Backend 공유 기록)의 CK15 + 정치 답 + 종교 답. 데모 줄로 설문을 건너뛴 계정 · 설문 기록이 없는 장면 · 시험 계정은 준비됨으로 본다
+  //  설문 모의 서버(demo/surveyV2Backend 공유 기록)의 CK15 + 정치 답 + 종교 답 · 등급(멈춤 = 상점 모의 서버 계산 멈춤 · 계산 전 = 이메일 gradenew).
+  //  0039 reason_detail 과 같은 차례(정치 → 등급 멈춤 → 등급 아직 → 종교). 데모 줄로 설문을 건너뛴 계정 · 설문 기록이 없는 장면 · 시험 계정은 설문 몫을 준비됨으로 본다
   const boarding = createDemoBoarding({
-    profileReady: (u) => {
-      if ([...accounts.values()].some((a) => a.id === u.id && a.surveySkipped)) return true;
+    profileDetail: (u) => {
+      const skipped = [...accounts.values()].some((a) => a.id === u.id && a.surveySkipped);
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { demoSurveyReady } = require('@/demo/surveyV2Backend') as typeof import('@/demo/surveyV2Backend');
-      return demoSurveyReady(u.id) ?? true;
+      const { demoSurveyDetail } = require('@/demo/surveyV2Backend') as typeof import('@/demo/surveyV2Backend');
+      const survey = skipped ? null : (demoSurveyDetail(u.id) ?? null);
+      if (survey === 'politics_missing') return survey;
+      if (!shop.peek(u).processing) return 'grade_paused';
+      if (u.email.split('@')[0].toLowerCase().includes('gradenew')) return 'grade_pending';
+      return survey;
     },
   });
   const v4 = createDemoV4({ now }); // F22 · D-134: 기능 스위치(get_feature_flags)만 잇는다 — 강조 · 만남 뒤 피드백 응답은 F19 2단계 몫

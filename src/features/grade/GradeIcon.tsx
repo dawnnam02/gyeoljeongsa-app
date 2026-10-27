@@ -9,13 +9,14 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { Icon } from '@/components/Icon';
 import { ICON_PATHS } from '@/components/iconPaths';
+import { GRADE_ICON_KEYS, isGradeIconKey, type GradeIconKey } from '@/lib/gradeApi';
 import { colors, radius, space } from '@/theme/tokens';
 
 import { GI } from './iconCopy';
 
-export const GRADE_ICON_KEYS = ['sea', 'mountain', 'moon', 'cloud', 'island', 'bridge', 'forest', 'sun', 'field'] as const; // 시안 배열 순서 그대로(등급 순서 아님)
-export type GradeIconKey = (typeof GRADE_ICON_KEYS)[number];
-export const isGradeIconKey = (v: unknown): v is GradeIconKey => typeof v === 'string' && (GRADE_ICON_KEYS as readonly string[]).includes(v);
+// 풍경 키 9개는 서버 응답을 읽는 lib/gradeApi 가 원본(시안 배열 순서 그대로 · 등급 순서 아님) — 여기서는 다시 내보내기만
+export { GRADE_ICON_KEYS, isGradeIconKey };
+export type { GradeIconKey };
 
 const ICONS: Record<GradeIconKey, (typeof ICON_PATHS)[GradeIconKey]> = Object.fromEntries(GRADE_ICON_KEYS.map((k) => [k, ICON_PATHS[k]])) as Record<GradeIconKey, (typeof ICON_PATHS)[GradeIconKey]>;
 export const gradeIconName = (key: GradeIconKey) => ICONS[key].name;

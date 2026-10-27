@@ -8,6 +8,9 @@
 //    도장 자리에 로고 타일 52 가 잉크 번짐(560) · 상태 카드 제목 줄 가림(200 뒤) · 부제(280 뒤) · 남은 날(360 뒤)이 위에서 걷힘. 동작 줄이기면 모두 투명도 150
 //  · 결제 시트 아래 '결혼중개 계약 설명 보기'(L17A · D-190 ⑤, 약관 제14조의2 ③ BR09): 약관 제14조의2 글 그대로 연다(사기 전 설명 · 다시 보기 자리)
 //  · 결제 버튼을 누르면 먼저 계약 설명 확인 기록(0037 ack_ticket_contract, 판 = 보인 요약 블록 글의 지문) → 남으면 결제. 실패하면 결제하지 않고 오류 한 줄
+//    0039 관문: 잡기 · 데모 결제 · 크레딧 탑승이 contract_ack_required 로 돌아오면(이 화면이 남긴 기록이 서버에 없음) 기록을 다시 남기고 한 번만 다시 부른다.
+//    그래도 같으면 일반 결제 오류 글 — 확인 기록 없이 결제로 넘어가는 길 0
+//  · 살 수 없음(not_eligible)으로 막히면 화면을 다시 읽어 T1 '살 수 없음' 카드(0039 reason_detail 로 가른 글)를 보인다
 //  · [탑승 취소] 성공(0037 result 'credited') → 크레딧 1장이 늘고 T1(판매 중)
 //  · 장면 그림(D42-I 4안 · D-176): 상태 카드 위에 상태마다 한 장(boardingArt.ts SCENE_OF). 불러오기 실패는 '오류' 그림. 살 수 없음(ineligible)은 그림 없음
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
@@ -56,7 +59,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   const [sheet, setSheet] = useState(false);
   const [contract, setContract] = useState(false); // 결혼중개 계약 설명(약관 제14조의2, L17A)
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<BuyFailure | null>(null);
+  const [error, setError] = useState<Exclude<BuyFailure, 'ack_required'> | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [stamp, setStamp] = useState(0); // 탑승권을 받은 순간 로고 타일을 한 번 찍는다
   const [askCancel, setAskCancel] = useState(false); // T2 [탑승 취소] 확인창(D-200 ④ · D-201)
@@ -92,11 +95,11 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   // 결제 전 계약 설명 확인 기록(0037 ack_ticket_contract · R40). 요약 블록을 보인 시트에서 결제 버튼을 누를 때 — 남지 않으면 결제로 넘어가지 않는다.
   //  결제가 실패해 다시 누르면 같은 기록을 쓴다(같은 회차 · 같은 판). 결제가 끝나면 비운다
   const acked = useRef<string | null>(null);
-  const ackFirst = async (roundNo: number): Promise<BuyFailure | null> => {
+  const ackFirst = async (roundNo: number, again = false): Promise<'network' | 'server' | null> => {
     if (!deps.api.ackContract) return null;
     const version = contractVersion([BOARDING.sheet.contractSummaryTitle, ...summary.map((l) => l.text)]);
     const key = `${roundNo}|${version}`;
-    if (acked.current === key) return null;
+    if (acked.current === key && !again) return null;
     const a = await deps.api.ackContract(roundNo, version);
     if (!a.ok) return a.reason;
     acked.current = key;
@@ -113,11 +116,17 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
       setError(ackFail);
       return;
     }
-    const r = await deps.api.buy(deps.newId(), useCredit, state.round.no);
+    let r = await deps.api.buy(deps.newId(), useCredit, state.round.no);
+    if (!r.ok && r.reason === 'ack_required' && deps.api.ackContract) {
+      // 0039 관문(contract_ack_required): 확인 기록을 다시 남기고 한 번만 다시 — 같은 요약 블록을 이미 보였으니 같은 판
+      acked.current = null;
+      const again = await ackFirst(state.round.no, true);
+      r = again ? { ok: false, reason: again } : await deps.api.buy(deps.newId(), useCredit, state.round.no);
+    }
     setBusy(false);
     if (!r.ok) {
-      setError(r.reason);
-      if (r.reason === 'sold_out' || r.reason === 'closed' || r.reason === 'already' || r.reason === 'credited') reload();
+      setError(r.reason === 'ack_required' ? 'server' : r.reason);
+      if (r.reason === 'sold_out' || r.reason === 'closed' || r.reason === 'already' || r.reason === 'credited' || r.reason === 'not_eligible') reload();
       return;
     }
     haptic.success(); // 구매가 확인됨(D25 4장)

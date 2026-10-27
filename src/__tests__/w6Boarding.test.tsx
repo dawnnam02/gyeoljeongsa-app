@@ -125,10 +125,13 @@ describe('데모 서버(demo/boardingDemo)', () => {
     const d = createDemoBoarding();
     const me = u('a@email.com');
     const api = createBoardingApi({ rpc: ((name: string, args?: Record<string, unknown>) => d.rpc(me, name, args)) as never });
+    expect(await api.ackContract(1, 'contract-5-8-0000beef')).toEqual({ ok: true }); // 0039 관문: 확인 기록 먼저(화면은 결제 버튼에서 부른다)
     expect(await api.buy('r1', false, 1)).toEqual({ ok: true, roundNo: 1 });
     expect((await d.rpc(me, 'demo_buy_ticket', { p_request_id: 'r1' })).data).toMatchObject({ result: 'already_granted', round_no: 1, outcome: 'seat' });
     expect(await api.buy('r2', false, 1)).toEqual({ ok: false, reason: 'already' });
     const credit = createBoardingApi({ rpc: ((name: string, args?: Record<string, unknown>) => d.rpc(u('boardcredit@email.com'), name, args)) as never });
+    expect(await credit.buy('c0', true, 2)).toEqual({ ok: false, reason: 'ack_required' }); // 0039: 크레딧 탑승도 같은 관문
+    expect(await credit.ackContract(2, 'contract-5-8-0000beef')).toEqual({ ok: true });
     expect(await credit.buy('c1', true, 2)).toEqual({ ok: true, roundNo: 2 });
     const ledger = await credit.ledger();
     expect(ledger.ok && [ledger.balance, ledger.items.map((x) => x.reason)]).toEqual([0, ['used', 'balance']]);

@@ -5,6 +5,8 @@
 //                 비구독자 = 잠금 안내(GI5) + [내 등급 알려 주세요] + [구독 알아보기] + 링크(잠김 그림은 여기만)
 //                 첫 계산 전(NV46) · 나이대 합침(NV48) · 계산 멈춤(reason 'stopped') · 불러오기 실패(R8)
 //  16-G2 변화 기록(날짜 · 이유 + 전/새 아이콘 그림) · 16-G3 도움이 되는 일 · 16-G4 등급은 어떻게 정해지나요(모든 회원 무료)
+//  3부-사(0039 get_my_grade v5): 그림은 서버 grade_icon 그대로(숫자 0). 구독 잠금이 없어져 '내 등급 알려 주세요'(16-G5 무료 열람 요청, 법상 필수)는
+//   보기 · 계산 전 · 멈춤 화면의 링크 줄 맨 위에 둔다(잠금 화면에만 있던 단추 — 길이 사라지지 않게). 서버가 주지 않는 칸(나이대 합침 · 매너 · 올릴 여지)은 그리지 않는다
 // 서버 값만 그린다: 총 원점수 · 추천 점수는 받지도 보이지도 않는다. 영역 점수(areas)도 W9 부터 그리지 않는다.
 import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
@@ -98,13 +100,14 @@ export function GradeBody({ shop, deps, nav, onAccess }: { shop: ShopState | nul
           </AppText>
         )}
         <Card style={styles.linksCard}>
+          <LinkRow label={GRADE16.lockedAccess} onPress={onAccess} testID="grade-pending-access" />
           <LinkRow label={GRADE16.links[2]} onPress={() => nav.push({ name: 'grade-how' })} last testID="grade-pending-how" />
         </Card>
       </View>
     );
   }
 
-  const tasks = upTasks(data.actionable);
+  const tasks = upTasks(data.actionable ?? []);
   const go = (key: 'verify' | 'ans' | 'act') => {
     if (key === 'verify') router.navigate('/settings'); // 12 인증 서류 제출(준비 중 줄)
     else if (key === 'ans') router.push('/profile'); // 08 프로필 선택 항목
@@ -113,7 +116,7 @@ export function GradeBody({ shop, deps, nav, onAccess }: { shop: ShopState | nul
 
   return (
     <View style={styles.page} testID="grade-ready">
-      <MyFlock icon={iconOf(undefined, data.gradeNo)} testID="grade-flock" />
+      <MyFlock icon={data.icon} testID="grade-flock" />
       {data.bandMerged ? (
         <AppText variant="caption" testID="grade-merged">
           {GRADE16.merged}
@@ -167,6 +170,7 @@ export function GradeBody({ shop, deps, nav, onAccess }: { shop: ShopState | nul
       </Card>
 
       <Card style={styles.linksCard} testID="grade-links">
+        <LinkRow label={GRADE16.lockedAccess} onPress={onAccess} testID="grade-link-access" />
         <LinkRow label={GRADE16.links[0]} onPress={() => nav.push({ name: 'grade-history' })} testID="grade-link-history" />
         <LinkRow label={GRADE16.links[1]} onPress={() => nav.push({ name: 'grade-goal' })} testID="grade-link-goal" />
         <LinkRow label={GRADE16.links[2]} onPress={() => nav.push({ name: 'grade-how' })} testID="grade-link-how" />
@@ -235,7 +239,9 @@ export function GoalBody({ deps }: { deps: Deps }) {
       </View>
     );
   }
-  const tasks = goalTasks(data.actionable);
+  // v5 서버(0039)는 올릴 여지(actionable)를 보내지 않는다 — 그때는 할 일 줄만 보이고 '완료' 표시를 만들지 않는다(사실이 아닌 완료 0)
+  const known = data.actionable !== null;
+  const tasks = goalTasks(data.actionable ?? []);
   return (
     <View style={styles.page} testID="goal-body">
       <AppText variant="bodyBold" testID="goal-pick">
@@ -247,7 +253,7 @@ export function GoalBody({ deps }: { deps: Deps }) {
             <AppText variant="body" tone="text" style={styles.flex}>
               {t.text}
             </AppText>
-            {t.done ? <Chip label={t.doneText} variant="tag" testID={`goal-task-${t.key}-done`} /> : null}
+            {known && t.done ? <Chip label={t.doneText} variant="tag" testID={`goal-task-${t.key}-done`} /> : null}
           </View>
         ))}
       </Card>

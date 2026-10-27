@@ -1,10 +1,12 @@
 // 내 등급(16-G1~G5) · 상대 등급(10) · 등급 계산 멈추기(12)가 서버와 주고받는 일(F13). 원본: backend/스키마.md 11-2 · 11-4 · 11-8, S8c 변경기록(항목 키 13개 · reason 'stopped').
-//  · get_my_grade → 비구독자 { locked:true } 만. 구독자 { locked:false, ready:true, grade_no(1~9, 1등급 = 위), basis:'age_band', band, band_merged, shown_at, next_at, top[≤3]{item, pts},
-//                     manner_ok, actionable[≤3]{item, up_to}, verify_on } · 첫 계산 전 / 멈춤 { locked:false, ready:false, reason:'not_computed'|'stopped', first_ready_at }.  원점수는 오지 않는다
+//  · get_my_grade v5(0039 덧B · 3부-사): 보기 { locked:false, ready:true, state:'shown', grade_icon(풍경 키 하나), basis:'age_band', band, shown_at, next_at }
+//                     · 멈춤 { locked:false, ready:false, state:'paused', reason:'stopped' } · 계산 전 { locked:false, ready:false, state:'pending', reason:'not_computed', first_ready_at }
+//                     등급 숫자(grade_no) · 점수 · 기여 키는 없다 — 앱은 grade_icon 하나만 그림으로 쓰고 숫자를 읽지 않는다. 옛 서버(0023) { locked:true } 는 잠금으로 둔다
+//                     (옛 서버가 보내던 areas · top · actionable · manner_ok · verify_on 은 와도 읽기만 하고, 없으면 그 칸을 그리지 않는다)
 //  · get_partner_grade(p_partner) → 비구독자 { locked:true } · 구독자 { user_id } + (상대가 CK10 동의 · 등급 있음) grade_no · grade_basis
 //  · list_grade_history → { locked, items[{ at, from_no, to_no, reason }] }   · request_grade_access → { request_id, received_at, due_at, merged }
-//  · S8d: get_my_grade.areas{cond, verify, sincere}('+n점', 합 금지) · get_grade_processing() → { processing, stopped_at }
-//  · set_grade_processing(p_on) → { processing }   · 앱은 서버가 준 값만 그린다(R5): 등급을 계산 · 정렬 · 거르지 않는다. 비구독자 화면에 등급 힌트를 만들지 않는다
+//  · S8d: get_grade_processing() → { processing, stopped_at }
+//  · set_grade_processing(p_on) → { processing }   · 앱은 서버가 준 값만 그린다(R5): 등급을 계산 · 정렬 · 거르지 않는다. 등급 힌트를 만들지 않는다
 //  · 로그에는 이벤트 이름과 코드만
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -21,15 +23,19 @@ export const GRADE_AREA_OF: Readonly<Record<GradeItemKey, GradeAreaKey>> = {
   v_sch: 'verify', v_job: 'verify', v_ast: 'verify',
   ans: 'sincere', act: 'sincere', mnr: 'sincere',
 };
+// 등급 풍경 키 9개(청사진 6-2 · 0039 grade_icon_of). 순서는 시안 배열 그대로이고 등급 순서가 아니다 — 등급 ↔ 풍경 짝은 서버만 안다
+export const GRADE_ICON_KEYS = ['sea', 'mountain', 'moon', 'cloud', 'island', 'bridge', 'forest', 'sun', 'field'] as const;
+export type GradeIconKey = (typeof GRADE_ICON_KEYS)[number];
+export const isGradeIconKey = (v: unknown): v is GradeIconKey => typeof v === 'string' && (GRADE_ICON_KEYS as readonly string[]).includes(v);
 const isItem = (v: unknown): v is GradeItemKey => typeof v === 'string' && (GRADE_ITEM_KEYS as readonly string[]).includes(v);
 
 export type GradeAreas = Readonly<Record<GradeAreaKey, number>>;
 export type GradePoint = { item: GradeItemKey; pts: number };
 export type MyGrade =
-  | { kind: 'locked' } // 비구독자
+  | { kind: 'locked' } // 옛 서버(0023) 비구독자 — v5 서버는 보내지 않는다
   | {
       kind: 'ready';
-      gradeNo: number; // 1~9
+      icon: GradeIconKey; // 0039 grade_icon — 내 풍경 하나(숫자 0)
       band: string;
       bandMerged: boolean;
       shownAt: number | null;
@@ -37,7 +43,7 @@ export type MyGrade =
       areas: GradeAreas | null; // S8d: 영역별 '+n점'(조건 · 인증 · 답변 성실도). 세 값을 더하지 않는다(합 비공개). 서버가 안 주면 null
       top: GradePoint[]; // 기여 상위 3(매너 제외)
       mannerOk: boolean;
-      actionable: GradePoint[]; // 올릴 수 있는 항목(up_to 를 pts 로 담는다)
+      actionable: GradePoint[] | null; // 올릴 수 있는 항목(up_to 를 pts 로 담는다). v5 서버는 보내지 않는다(null — 완료 표시를 만들지 않는다)
       verifyOn: boolean;
     }
   | { kind: 'pending'; reason: 'not_computed' | 'stopped'; firstReadyAt: number | null };
@@ -74,18 +80,19 @@ function readAreas(v: unknown): GradeAreas | null {
 
 export type GradeProcessing = { processing: boolean; stoppedAt: number | null };
 
+// 0039 v5 모양을 읽는다. 보기인데 아는 풍경 키가 없으면 null(오류 화면 — 숫자로 짐작해 그리지 않는다)
 export function parseMyGrade(raw: unknown): MyGrade | null {
   if (!isRecord(raw)) return null;
   if (raw.locked === true) return { kind: 'locked' };
   if (raw.locked !== false) return null;
-  if (raw.ready !== true) {
-    return { kind: 'pending', reason: raw.reason === 'stopped' ? 'stopped' : 'not_computed', firstReadyAt: time(raw.first_ready_at) };
+  if (raw.ready !== true || raw.state === 'paused' || raw.state === 'pending') {
+    const stopped = raw.state === 'paused' || raw.reason === 'stopped';
+    return { kind: 'pending', reason: stopped ? 'stopped' : 'not_computed', firstReadyAt: time(raw.first_ready_at) };
   }
-  const gradeNo = asGradeNo(raw.grade_no);
-  if (gradeNo === null) return null;
+  if (!isGradeIconKey(raw.grade_icon)) return null;
   return {
     kind: 'ready',
-    gradeNo,
+    icon: raw.grade_icon,
     band: typeof raw.band === 'string' ? raw.band : '',
     bandMerged: raw.band_merged === true,
     shownAt: time(raw.shown_at),
@@ -93,7 +100,7 @@ export function parseMyGrade(raw: unknown): MyGrade | null {
     areas: readAreas(raw.areas),
     top: points(raw.top, 'pts').slice(0, 3),
     mannerOk: raw.manner_ok === true,
-    actionable: points(raw.actionable, 'up_to').slice(0, 3),
+    actionable: Array.isArray(raw.actionable) ? points(raw.actionable, 'up_to').slice(0, 3) : null,
     verifyOn: raw.verify_on === true,
   };
 }

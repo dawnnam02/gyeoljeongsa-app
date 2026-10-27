@@ -9,7 +9,8 @@
 //  S17(D-85): 서버 0020 처럼 G9 · N14(SHOP_DROPPED)는 꺼진 상품이다 — 목록에 내지 않고(43개, 순서 12 · 42 는 빈 채) can_purchase 는 product_off, demo_purchase 는 오류 product_off.
 //  N16 은 위험 C(빨간 라벨).
 //  S19(D-122, 질문지 1 ⓐ): 서버 0026 처럼 X12 · X13 · X15 · X16 · X17 · X18 · N15 도 꺼진 상품이다(SHOP_DROPPED) — 목록 36개(순서 12 · 27 · 28 · 30 ~ 33 · 42 · 43 빈 채) · 구매는 위와 같은 product_off.
-//  S8d 서버 함수 3개도 같은 모양이다: get_grade_processing{processing, stopped_at} · list_my_purchases{items[]} · demo_restore_purchases{result, reason, product_key, period_end}. get_my_grade 에는 areas{cond, verify, sincere}가 있다.
+//  S8d 서버 함수 3개도 같은 모양이다: get_grade_processing{processing, stopped_at} · list_my_purchases{items[]} · demo_restore_purchases{result, reason, product_key, period_end}.
+//  get_my_grade 는 0039 v5 모양(3부-사): { locked:false, ready, state shown | pending | paused, grade_icon · basis · band · shown_at · next_at | first_ready_at · reason } — 숫자 · 점수 · 구독 잠금 0
 //  구매 복원 장면: shoprestore = 구독 거래는 있고 구독 연결만 없는 계정(복원하면 연결됨)
 // 장면은 이메일 앞부분으로 고른다:
 //   shopsub 구독 중 · shopoff 갱신 꺼짐 · shopgrace 결제 문제 · shopprice 가격 인상 동의 대기 · shopend 구독 끝남 · shoplive 실결제 모드(구매 시작 안 함)
@@ -33,6 +34,7 @@ export type DemoShopUser = { id: string; email: string };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const KST_MS = 9 * 3_600_000;
 const SLOW_MS = 32_000; // payslow: 앱의 '확인이 늦어요'(30초)를 넘기는 시간
+const SERVER_ICON = ['cloud', 'sun', 'sea', 'bridge', 'mountain', 'field', 'moon', 'forest', 'island'] as const; // 0039 grade_icon_of 짝 표(서버 흉내 — 앱 화면은 키만 받는다)
 const NAMES = new Set(['get_shop_state', 'can_purchase', 'demo_purchase', 'get_match_once_preview', 'use_match_once', 'demo_end_subscription', 'get_my_grade', 'get_partner_grade', 'list_grade_history', 'request_grade_access', 'set_grade_processing', 'get_grade_processing', 'list_my_purchases', 'demo_restore_purchases']);
 
 // 서버 시드(0012 store_products)에서 N07(D-62)을 뺀 45개: [sort, catalog_id, key, 서버 이름, 구역, 종류, 가격, 상태, 위험]. G9 · N14 는 꺼진 행(D-85, 서버 live_on false) · N16 위험은 0020 뒤 값(C)
@@ -336,38 +338,25 @@ export function createDemoShop(now: () => number, hooks: DemoShopHooks) {
     return run <= t ? run : run - DAY_MS;
   }
 
+  // 0039 덧B get_my_grade v5: 구독과 상관없이 모든 회원이 자기 풍경 하나(grade_icon). 등급 숫자 · 점수 · 기여 키 0 · 멈춤 state 'paused' · 계산 전 'pending'
+  //  등급 → 풍경 짝 = 서버 grade_icon_of(1 cloud · 2 sun · 3 sea · 4 bridge · 5 mountain · 6 field · 7 moon · 8 forest · 9 island) — 응답에는 키만
   function myGrade(user: DemoShopUser): Result {
     const s = stateOf(user);
     const l = local(user.email);
     if (l.includes('gradefail')) return fail('XX000', 'internal');
-    if (!isActive(s)) return ok({ locked: true });
     const next = lastRun() + DAY_MS;
+    if (!s.processing) return ok({ locked: false, ready: false, state: 'paused', reason: 'stopped' });
     const n = gradeNo(user);
-    if (n === null) {
-      return ok({ locked: false, ready: false, reason: s.processing ? 'not_computed' : 'stopped', first_ready_at: new Date(next).toISOString() });
-    }
+    if (n === null) return ok({ locked: false, ready: false, state: 'pending', reason: 'not_computed', first_ready_at: new Date(next).toISOString() });
     return ok({
       locked: false,
       ready: true,
-      grade_no: n,
+      state: 'shown',
+      grade_icon: SERVER_ICON[n - 1],
       basis: 'age_band',
       band: '28-32',
-      band_merged: l.includes('gradeband'),
       shown_at: new Date(lastRun()).toISOString(),
       next_at: new Date(next).toISOString(),
-      areas: { cond: 46.2, verify: 3.5, sincere: 4.8 }, // S8d: 영역별 '+n점'. 세 값을 더하지 않는다(합 비공개)
-      top: [
-        { item: 'sch', pts: 15.8 },
-        { item: 'inc', pts: 14.2 },
-        { item: 'job', pts: 11.3 },
-      ],
-      manner_ok: true,
-      actionable: [
-        { item: 'v_sch', up_to: 2.1 },
-        { item: 'ans', up_to: 2.4 },
-        { item: 'act', up_to: 0.6 },
-      ],
-      verify_on: false, // 1차: 서류 인증 준비 중(NV43)
     });
   }
   function history(user: DemoShopUser): Result {

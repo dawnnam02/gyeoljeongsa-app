@@ -396,3 +396,29 @@
 | 데모 chatnew · 상대 먼저 | chatnew(fresh) · chatfirst(partnerFirst) · 목록 데모 줄 바꾸면 기록 지움 | ○ |
 | 시험 | jest 1680/1680 · tsc 0 · check:copy 99/0 · tokens 5/0 · grade 통과 · web-w6 36/0 · web-f7 63/0 · web-d46 390 · 360 17/0 · 캡처 2장 | ○ |
 | 덧붙임 ① ② ③ · B0 · CK11 확인 · gen:legal | 모두 반영(위 0 ~ 0-4 · 4-c) | ○ |
+
+# 3부-사 0039 응답 · 종교 동의 카드 (D-219, 10-27 ~) — 상태 저장(멈춰도 이어감)
+
+- 기준: `팀장/세부청사진/S_3부사_종교동의.md` · backend `R_변경기록.md` 8-4(0039 응답 표) · 검수 `Q9_6칸감사_v5.md` N1 · N3 ~ N6 · `웹점검_f1f3_원인.md` · B0 `_log/QP2/b_bbae/b0_ck4off.log` · 테스트웹 FB-014 ~ 016
+- 차례: ② 0039 응답 5종 → ③ meetSeen 보관 → ④ 검수 결함 · 웹 f1 · f3 → ⑤ FB-014 ~ 016 → ① 종교 동의 카드(카피 도착 뒤). 묶음마다 커밋 · 푸시 0
+- 바닥선(bbaef90): jest 91묶음 1,680/1,680
+
+| 단계 | 상태 |
+|---|---|
+| ② 0039 응답 5종 | 끝(커밋 ②) — 아래 '② 표' |
+| ③ meetSeen | 진행 |
+| ④ 검수 결함 · 웹 | 대기 |
+| ⑤ FB-014 ~ 016 | 대기 |
+| ① 종교 동의 카드 | 카피 도착 대기 |
+
+### ② 0039 응답 5종 (R_변경기록 8-4 표 → 앱)
+| 응답 | 앱이 읽는 곳 | 화면 |
+|---|---|---|
+| `get_my_grade` v5 `grade_icon` · state shown / pending / paused | `lib/gradeApi` parseMyGrade(풍경 키만 · grade_no 읽지 않음 · 모르는 키면 오류 화면) · GradeIcon 키 목록은 lib 한 곳 | 16-G1 내 무리 = 서버 키 그대로(iconBridge 는 16-G2 변화 기록만 — list_grade_history 0012 는 숫자). 구독 잠금이 없어져 '내 등급 알려 주세요'(무료 열람 요청)를 보기 · 계산 전 · 멈춤 화면 링크 맨 위에. 서버가 안 주는 칸(합침 · 매너 · 올릴 여지)은 0 · 목표 쪽 '완료' 표시 0 |
+| `reason_detail` | `boardingApi.ineligibleOf` | politics_missing → 정치 문항 글 · grade_paused → 등급 계산 멈춤 글 + [설정으로] · profile_missing · grade_pending · religion_missing(① 전) · 모름 · 없음 → 일반 안내('확정을 마치면 탈 수 있어요'). 결제가 not_eligible 로 막히면 다시 읽어 카드로 |
+| `contract_ack_required` | BUY_REASON · demo_buy 오류 → `ack_required` | 결제 버튼 → ack_ticket_contract → hold → demo_buy(크레딧은 board_with_credit). 관문에 걸리면 ack 다시 · 한 번만 다시 부름 → 또 걸리면 일반 결제 오류 글(결제 0) |
+| `list_ticket_history` `held` | parseHistory | 그 장(+1)과 옮긴 줄 모두 그리지 않음(해지 계정 — age_terminate 와 같은 화면 0) · 잔액은 서버 값 |
+| `set_avoid_org` `org_key_missing` | settingsApi setOrg → 'off'(feature_off 도) | 되돌리고 '준비 중이에요' 토스트 · 다시 시도 글 0 · 빼기는 그대로 |
+- 데모 모의 서버: boardingDemo 관문 3곳 · 판 형식 `^contract-5-8-[0-9a-f]{8}$` · reason_detail(demoBackend profileDetail: 설문 정치 → 등급 멈춤(상점 모의 processing) → 이메일 gradenew = grade_pending → 설문 종교) · shopDemo get_my_grade v5 · settingsDemo 장면 avoidnokey
+- 시험: 새 `s3sa0039.test.tsx` 10 · 고친 기대값 8묶음(gradeScreen · shopApi · s8dConnect · settingsGrade · f24DemoPeople · r3bae · b0BoardGate · w6Boarding — 잠금 화면은 옛 서버 응답을 끼워 시험)
+- 확인(②만 바뀐 때): tsc 0 · jest 92묶음 1,690/1,691 → staticRules 1(boardingDemo 주석의 grade 낱말) 고친 뒤 33/33 · check:copy 99/0 · grade 통과 · tokens 5/0

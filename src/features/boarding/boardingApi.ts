@@ -1,17 +1,18 @@
 // 탑승권(V5 W6 · 청사진 v5 4-1 · 6-1 T1 · T2 · T3 · T5)이 서버와 주고받는 일. 이름 · 인자 · 응답 = 백엔드 확정 정의(3부-바, 10-27 — 읽기만 대조):
-//  get_ticket_state()  0030 [5] → { price_krw, payment_mode, round{ round_no, match_day 'YYYY-MM-DD', match_weekday, match_time 'HH:MI', match_text, sale_open_at, sale_close_at, close_text,
+//  get_ticket_state()  0030 [5] · 0039 → { price_krw, payment_mode, round{ round_no, match_day 'YYYY-MM-DD', match_weekday, match_time 'HH:MI', match_text, sale_open_at, sale_close_at, close_text,
 //      sale_state before | open | closed | ended } | null, seat{ state held | boarded | matched | returned, paid_by purchase | credit, hold_until, boarded_at, return_reason } | null,
-//      region(권역 글), can_board, reason(ticket_board_check 사유 | null), credit{ balance, next_expire_on } }  — 정원 · 남은 좌석 · 인원 키 없음
+//      region(권역 글), can_board, reason(ticket_board_check 사유 | null), reason_detail(0039 — reason 이 profile_incomplete 일 때 profile_missing · politics_missing ·
+//      grade_paused · grade_pending · religion_missing, 그 밖 null), credit{ balance, next_expire_on } }  — 정원 · 남은 좌석 · 인원 키 없음
 //  get_weekly_match()  0032 [6] → { off: true } | { state none | waiting | matched | not_found, round_no, match_at } + matched{ partner_id, room_id, partner(공개 범위 답 A12 · A01 · A03 …) } · not_found{ credited }
-//  hold_ticket_seat({ p_round_no })  0030 → { ok, reason, round_no, hold_until } — 결제 창 열기 전 자리 잡기(10분)
+//  hold_ticket_seat({ p_round_no })  0030 · 0039 → { ok, reason, reason_detail, round_no, hold_until } — 결제 창 열기 전 자리 잡기(10분). 그 회차 계약 설명 확인 기록이 없으면 reason contract_ack_required
 //  release_ticket_hold()  0030 → { released } — 결제가 끝나지 못했을 때 잡은 자리 놓기
-//  demo_buy_ticket({ p_request_id uuid })  0030 → { result boarded | credited | already_granted, round_no, tx_id, reason?, outcome? } · 오류 closed · demo_not_allowed · invalid_request · no_hold · forbidden
+//  demo_buy_ticket({ p_request_id uuid })  0030 · 0039 → { result boarded | credited | already_granted, round_no, tx_id, reason?, outcome? } · 오류 closed · demo_not_allowed · invalid_request · no_hold · forbidden · contract_ack_required
 //      (payment_mode = demo 일 때만. 스토어 결제 · 영수증 검증은 W7 — 법인 뒤)
-//  board_with_credit({ p_round_no })  0030 → { ok, reason, round_no, paid_by }
+//  board_with_credit({ p_round_no })  0030 · 0039 → { ok, reason, reason_detail, round_no, paid_by } · reason contract_ack_required(확인 기록 없음)
 //  list_ticket_history()  0030 · 0037 R37 → { tickets[{ round_no, match_day, state, paid_by, price_krw, boarded_at, return_reason }],
-//      credits[{ id, reason, round_no, created_at, expires_on(R37 늘 null), state open | used | expired | revoked, used_round_no }], balance }
+//      credits[{ id, reason, round_no, created_at, expires_on(R37 늘 null), state open | used | expired | revoked | held(0039 — B안 해지로 R41 에 옮긴 장), used_round_no }], balance }
 //  cancel_ticket_seat({ p_round_no })  0037 [4] → { ok, round_no, paid_by, result 'credited', lot_id } · 오류 closed · not_found
-//  ack_ticket_contract({ p_round_no, p_text_version })  0037 [9] → { ok }
+//  ack_ticket_contract({ p_round_no, p_text_version })  0037 [9] · 0039 → { ok } · 판은 'contract-5-8-' + 16진 8자만(그 밖 invalid_value) — 잡기 · 데모 결제 · 크레딧 탑승의 관문
 //  · 아는 키만 읽는다. 남은 좌석 수 · 정원 · 순번 · 점수 · 등급 같은 키는 와도 버린다(척추 4번 질문 · 재촉 0)
 //  · 크레딧 끝나는 날(credit.next_expire_on · credits[].expires_on)은 읽지 않는다 — 0037 뒤 기한 없음(D-200 ③), 화면에 날짜 칸 0
 //  · 로그에는 이벤트 이름과 코드만
@@ -47,7 +48,8 @@ export type BoardingState = {
 export type BoardingFailure = 'network' | 'server' | 'missing' | 'session';
 export type BoardingLoad = { ok: true; state: BoardingState } | { ok: false; reason: BoardingFailure };
 // credited = 결제는 됐지만 자리를 못 줘 크레딧 1장(0030 paid_no_seat) — 화면은 크레딧 안내 한 줄
-export type BuyFailure = 'sold_out' | 'already' | 'closed' | 'not_eligible' | 'no_credit' | 'credited' | 'network' | 'server';
+// ack_required = 0039 관문: 그 회차 계약 설명 확인 기록이 없음(contract_ack_required). 화면은 확인 기록을 다시 남기고 한 번만 다시 부른다 — 그래도 나면 일반 오류 글('server')
+export type BuyFailure = 'sold_out' | 'already' | 'closed' | 'not_eligible' | 'no_credit' | 'credited' | 'ack_required' | 'network' | 'server';
 export type BuyResult = { ok: true; roundNo: number } | { ok: false; reason: BuyFailure };
 // at = 화면에 적을 날짜(모르면 null — 쓴 날 · 회수한 날은 서버가 주지 않는 때가 있다)
 export type CreditItem = { at: number | null; delta: number; reason: CreditReason; roundNo: number | null };
@@ -88,8 +90,14 @@ export const LOT_REASON: Readonly<Record<string, CreditReason>> = {
 export const LOT_REASON_COPY_PENDING = ['age_terminate'] as const;
 // 서버 회차 판매 상태 → 화면 단계 · 탈 수 없는 사유 → 화면 글. 모르는 값은 살 수 없는 쪽(closed)
 const PHASE: Readonly<Record<string, BoardingPhase>> = { before: 'before_sale', open: 'on_sale', closed: 'closed', ended: 'revealed' };
-//  profile_incomplete(정치 · 등급 · 종교 · 성별 · 지역 중 빈 것)는 서버 사유가 하나라 정치 문항 글로 보낸다 — 등급 계산 멈춤('paused' 글)은 앱이 가르지 못함(변경기록 메모)
-const INELIGIBLE: Readonly<Record<string, Ineligible>> = { state: 'not_confirmed', review_pending: 'not_confirmed', profile_incomplete: 'politics_missing' };
+const INELIGIBLE: Readonly<Record<string, Ineligible>> = { state: 'not_confirmed', review_pending: 'not_confirmed' };
+// profile_incomplete(정치 · 등급 · 종교 · 성별 · 지역 중 빈 것)는 0039 reason_detail 로 가른다(3부-사). 글이 있는 상세만 그 글,
+//  모르는 상세 · 상세 없음(0039 전 서버) · 글이 아직 없는 상세(profile_missing · grade_pending · religion_missing — 카피 대기)는 일반 안내('확정을 마치면 탈 수 있어요') — 빈 화면 0
+const INELIGIBLE_DETAIL: Readonly<Record<string, Ineligible>> = { politics_missing: 'politics_missing', grade_paused: 'paused' };
+export function ineligibleOf(reason: unknown, detail: unknown): Ineligible | null {
+  if (reason === 'profile_incomplete') return fromMap(INELIGIBLE_DETAIL, detail) ?? 'not_confirmed';
+  return fromMap(INELIGIBLE, reason);
+}
 // hold · board_with_credit 의 사유(ticket_board_check · payment_closed · no_credit) → 결제 오류 글
 const BUY_REASON: Readonly<Record<string, BuyFailure>> = {
   full: 'sold_out',
@@ -104,6 +112,7 @@ const BUY_REASON: Readonly<Record<string, BuyFailure>> = {
   review_pending: 'not_eligible',
   profile_incomplete: 'not_eligible',
   no_credit: 'no_credit',
+  contract_ack_required: 'ack_required', // 0039 계약 설명 확인 관문
 };
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -148,7 +157,7 @@ export function parseTicketState(raw: unknown, deviceNow: number): BoardingState
     seat: reason === 'full' ? 'full' : 'open',
     ticket,
     credits: balance !== null && balance > 0 ? balance : 0,
-    ineligible: fromMap(INELIGIBLE, reason),
+    ineligible: ineligibleOf(reason, raw.reason_detail),
     result: null,
     past: [],
   };
@@ -172,6 +181,8 @@ export function parseWeeklyMatch(raw: unknown): RoundResult | null {
 }
 
 // list_ticket_history → T5 내역(+1 = 받은 장 · −1 = 그 장을 씀 · 스토어 환불로 회수). 새것부터
+//  0039 state 'held'(B안 해지로 R41 에 옮긴 장 — 재가입 때 이어 줌)는 해지 계정의 장이라 그 장(+1)과 옮긴 줄을 모두 그리지 않는다(age_terminate 와 같은 '화면 0',
+//  잔액에도 들지 않음 — 서버 balance 그대로). 모르는 state 도 받은 줄(+1)만 그린다(빈 화면 0)
 export function parseHistory(raw: unknown): { balance: number; items: CreditItem[] } | null {
   if (!isRecord(raw) || !Array.isArray(raw.credits)) return null;
   const tickets = rows(raw.tickets);
@@ -183,7 +194,7 @@ export function parseHistory(raw: unknown): { balance: number; items: CreditItem
   for (const l of rows(raw.credits)) {
     const reason = fromMap(LOT_REASON, l.reason);
     const at = time(l.created_at);
-    if (!reason || at === null) continue;
+    if (!reason || at === null || l.state === 'held') continue;
     const seq = (int(l.id) ?? 0) * 2;
     const roundNo = int(l.round_no);
     out.push({ at, delta: 1, reason, roundNo, key: at, seq });
@@ -213,7 +224,8 @@ const buyFailure = (error: { code?: string | null; message?: string | null }): B
   const f = readDbFailure(error);
   safeLog({ event: 'boarding.buy.fail', code: f.code ?? (f.network ? 'network' : 'unknown') });
   if (f.network) return 'network';
-  return String(error.message ?? '') === 'closed' ? 'closed' : 'server';
+  const m = String(error.message ?? '');
+  return m === 'closed' ? 'closed' : m === 'contract_ack_required' ? 'ack_required' : 'server'; // 0039 demo_buy_ticket 관문은 예외로 온다
 };
 
 type Rpc = Pick<SupabaseClient, 'rpc'>;

@@ -204,8 +204,8 @@ describe('데모 서버에 연결(09 · 10 · 11 · 16 · 내 등급)', () => {
     expect(await kin.read()).toEqual({ no: 4, on: false });
     expect(await kin.set(8)).toEqual({ no: 8, on: true });
     expect(ids((await listOf(client)).items)).toEqual([5, 9, 12]); // 끼리끼리 3명(윤OO 8 · 한OO 7 · 서OO 9)을 구독자 순서로: 나보다 위(7 이하) → 같은 등급 → 그 밖
-    const my = (await client.rpc('get_my_grade', {})).data as { grade_no: number };
-    expect(my.grade_no).toBe(8);
+    const my = (await client.rpc('get_my_grade', {})).data as Record<string, unknown>;
+    expect([my.grade_icon, 'grade_no' in my]).toEqual(['forest', false]); // 3부-사: 0039 v5 — 8 → 서버 짝 표 'forest', 숫자 키 0
     const hist = (await client.rpc('list_grade_history', {})).data as { items: { to_no: number }[] };
     expect(hist.items[0].to_no).toBe(8);
     expect((await client.rpc('demo_kin_me', { p_no: 10 })).error?.message).toBe('invalid_value');

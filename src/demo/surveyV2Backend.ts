@@ -96,9 +96,15 @@ const shared = createDemoV2Memory();
 // 탑승 관문 흉내(검수 B0 · 실서버 ticket_profile_ready 0030 · 0036 [8]): 유효한 CK15 + 정치 답 + 종교 A06 답(7코드). 이 모의 서버에 그 회원 기록이 없으면 null(설문을 열지 않음)
 const RELIGION_CODES: readonly unknown[] = ['none', 'protestant', 'catholic', 'buddhist', 'won', 'islam', 'other'];
 export function demoSurveyReady(userId: string, memory: DemoV2Memory = shared): boolean | null {
+  const d = demoSurveyDetail(userId, memory);
+  return d === undefined ? null : d === null;
+}
+// 0039 profile_ready_detail 의 설문 몫(같은 이름 · 같은 차례): 정치(CK15 + 답) → 종교 A06. 다 있으면 null, 이 모의 서버에 그 회원 기록이 없으면 undefined
+export function demoSurveyDetail(userId: string, memory: DemoV2Memory = shared): 'politics_missing' | 'religion_missing' | null | undefined {
   const u = memory.users.get(userId);
-  if (!u) return null;
-  return u.ck15 && u.politics !== null && RELIGION_CODES.includes(u.answers.A06);
+  if (!u) return undefined;
+  if (!u.ck15 || u.politics === null) return 'politics_missing';
+  return RELIGION_CODES.includes(u.answers.A06) ? null : 'religion_missing';
 }
 
 export type DemoV2Options = { memory?: DemoV2Memory; latencyMs?: number };

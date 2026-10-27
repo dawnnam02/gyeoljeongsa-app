@@ -108,9 +108,13 @@ describe('① 탑승권 — 서버 확정 이름 · 인자 · 응답', () => {
     const f = fakeClient((name) => (name === TICKET_STATE_RPC ? { data: { ...TICKET, seat: { state: 'held', paid_by: null, hold_until: '2027-01-01T00:00:00Z' }, reason: 'review_pending' }, error: null } : { data: null, error: { code: 'PGRST202', message: 'missing' } }));
     const l = await createBoardingApi(f.client).load();
     expect(l.ok && [l.state.ticket, l.state.result, l.state.ineligible]).toEqual([null, null, 'not_confirmed']);
+    // 3부-사(0039): profile_incomplete 는 reason_detail 로 가른다 — 상세가 없으면(0039 전 서버) 일반 안내(not_confirmed)
     const inc = fakeClient((name) => ({ data: name === TICKET_STATE_RPC ? { ...TICKET, reason: 'profile_incomplete' } : { off: true }, error: null }));
     const l2 = await createBoardingApi(inc.client).load();
-    expect(l2.ok && l2.state.ineligible).toBe('politics_missing');
+    expect(l2.ok && l2.state.ineligible).toBe('not_confirmed');
+    const pol = fakeClient((name) => ({ data: name === TICKET_STATE_RPC ? { ...TICKET, reason: 'profile_incomplete', reason_detail: 'politics_missing' } : { off: true }, error: null }));
+    const l3 = await createBoardingApi(pol.client).load();
+    expect(l3.ok && l3.state.ineligible).toBe('politics_missing');
   });
 
   test('[결제하기] = hold_ticket_seat(p_round_no) → demo_buy_ticket(p_request_id) · boarded → 탑승 · 같은 요청 already_granted(seat)도 탑승', async () => {
@@ -133,6 +137,7 @@ describe('① 탑승권 — 서버 확정 이름 · 인자 · 응답', () => {
       ['payment_closed', 'closed'],
       ['profile_incomplete', 'not_eligible'],
       ['review_pending', 'not_eligible'],
+      ['contract_ack_required', 'ack_required'], // 0039 관문
       ['weird', 'server'],
     ];
     for (const [reason, want] of table) {

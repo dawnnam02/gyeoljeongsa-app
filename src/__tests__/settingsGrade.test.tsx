@@ -163,7 +163,7 @@ describe('등급 계산 멈추기 (set_grade_processing)', () => {
   test('S8d: 비구독자가 멈춰 둔 채 설정을 열면 서버 get_grade_processing 값을 읽어 켜진 채로 보인다(앱을 다시 켜도 유지)', async () => {
     const rig = await makeShopRig('plain');
     await rig.gradeApi.setProcessing(false);
-    expect(await rig.gradeApi.loadMine()).toMatchObject({ ok: true, data: { kind: 'locked' } }); // 비구독자는 reason 을 못 본다
+    expect(await rig.gradeApi.loadMine()).toMatchObject({ ok: true, data: { kind: 'pending', reason: 'stopped' } }); // 0039 v5: 모든 회원이 멈춤 상태를 본다(구독 잠금 0)
     const settings = createSettingsApi(rig.client, 'test');
     const deps: SettingsDeps = { api: settings, grade: rig.gradeApi, now: () => rig.deps.now(), resetLocal: jest.fn(), pushStatus: async () => 'granted', requestPush: async () => 'granted', copyText: async () => true, openMail: async () => undefined };
     const tree = await mount(<SettingsScreen deps={deps} />);

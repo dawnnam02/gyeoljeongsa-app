@@ -3,6 +3,7 @@
 //       list_my_reports → [{ id, reason_code, status, created_at }] · revoke_consent(p_item) → 철회한 줄 수 | required_consent(선택 CK4 · CK9 · CK10 · CK11 ~ CK16 밖)
 //       12-5 0037 F: get_contact_block_state · sync_contact_hashes · set_contact_block_options · clear_contact_links · mark_contact_prompted · set_avoid_org · clear_avoid_orgs
 //       (스위치 avoid_org · contact_block 꺼짐이면 쓰기 함수가 feature_off — 이메일 장면 avoidoff · v4off)
+//       0039: 이메일 장면 avoidnokey = 서버 비밀 키(org_pepper · contact_pepper)가 없는 서버 — 더하기 set_avoid_org 가 org_key_missing(빼기는 됨)
 //  표   profiles 의 notify_* 열 읽기 · 고치기(다른 열은 permission denied)
 //  함수 delete-account { action:'start' } → { ok:true } | 429 locked · daily_limit · too_soon | 502 send_failed
 //                      { action:'confirm', token } → { ok:true, scheduled_at } | 400 invalid_token | 429 locked
@@ -182,6 +183,7 @@ export function createDemoSettings(options: { now?: () => number; people?: (id: 
       const name = orgKey(raw);
       if (!name) return fail('P0001', 'invalid_value');
       const set = kind === 'company' ? stateOf(user).avoid.companies : stateOf(user).avoid.schools;
+      if (on && user.email.split('@')[0].toLowerCase().startsWith('avoidnokey')) return fail('P0001', 'org_key_missing'); // 0039 [3]
       if (on) {
         if (!set.has(name) && set.size >= 5) return fail('P0001', 'too_many');
         set.add(name);

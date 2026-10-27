@@ -8,6 +8,7 @@
 //    [모두 지우기](서버 개수 기준 하나라도 있을 때) → 확인창 → clear_avoid_orgs + 기기 목록 지움 → '모두 지웠어요.'
 //  · 3부-바 지인 차단: 스위치 contact_block 꺼짐(또는 기기 연결 없음)이면 '준비 중' 그대로. 켜짐이면 시트(설명 · 이메일만 · CK11) →
 //    [주소록 허용하기] → CK11 동의 기록(없으면) → 권한 → 기기에서 이메일 해시 → sync_contact_hashes(lib/contactSync) → 결과 한 줄(토스트)
+//  · 3부-사(0039): 더하기가 org_key_missing(서버 비밀 키 아직 없음) · feature_off 로 막히면 되돌리고 '준비 중이에요' 한 줄(토스트) — 다시 시도 글 0. 빼기는 그대로 된다
 import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -26,7 +27,7 @@ import { localSchoolSearch } from '@/features/surveyV2/api';
 import { orgKey } from '@/lib/avoidLocal';
 import { runContactSync, type ContactSyncResult } from '@/lib/contactSync';
 import type { ContactPorts } from '@/lib/contactsServices';
-import type { AvoidSettings, Outcome, SettingsApi } from '@/lib/settingsApi';
+import type { AvoidOrgFailure, AvoidSettings, Outcome, SettingsApi } from '@/lib/settingsApi';
 import { colors, space } from '@/theme/tokens';
 
 import { GroupLabel, LoadState, NavRow, RowGroup, SubPage, SwitchRow } from './SettingsParts';
@@ -73,7 +74,7 @@ export function AvoidPage({ api, onBack, onToast, contact }: { api: Api; onBack:
   const failText = (reason: string) => (reason === 'network' ? COMMON.offline : AVOID.saveFailed);
 
   // 한 곳씩 서버에 보낸다(0037 set_avoid_org). 화면은 먼저 바꾸고, 실패하면 되돌린다
-  const saveOrgs = async (next: AvoidSettings, send: () => Promise<Outcome>) => {
+  const saveOrgs = async (next: AvoidSettings, send: () => Promise<Outcome<AvoidOrgFailure>>) => {
     if (!data || busy.current) return false;
     busy.current = true;
     const before = data;
@@ -84,7 +85,8 @@ export function AvoidPage({ api, onBack, onToast, contact }: { api: Api; onBack:
     if (!alive.current) return false;
     if (!result.ok) {
       setData(before);
-      setError(failText(result.reason));
+      if (result.reason === 'off') onToast(SETTINGS.verificationToast);
+      else setError(failText(result.reason));
       return false;
     }
     onToast(CONSENT_MANAGE.saved);

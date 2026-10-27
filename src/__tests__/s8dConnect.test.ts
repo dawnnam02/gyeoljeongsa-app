@@ -28,12 +28,13 @@ const must = <T,>(r: { ok: true; data: T } | { ok: false; reason: string }): T =
 };
 
 describe('S8d get_my_grade.areas', () => {
-  test('세 영역 숫자 그대로(앱이 더하지 않는다) · 없거나 모양이 틀리면 null', async () => {
+  test('세 영역 숫자 그대로(앱이 더하지 않는다) · 없거나 모양이 틀리면 null · 0039 v5 서버(데모)는 영역 키 자체가 없다', async () => {
     const r = rig();
     await login(r, 'shopsub-areas@email.co');
     const my = must(await r.grade.loadMine());
-    expect(my.kind === 'ready' && my.areas).toEqual({ cond: 46.2, verify: 3.5, sincere: 4.8 });
-    const base = { locked: false, ready: true, grade_no: 4, top: [], actionable: [] };
+    expect(my.kind === 'ready' && my.areas).toBeNull(); // 3부-사: 데모 = 0039 get_my_grade v5(풍경 키 하나 · 점수 0)
+    expect(parseMyGrade({ locked: false, ready: true, grade_icon: 'sea', areas: { cond: 46.2, verify: 3.5, sincere: 4.8 } })).toMatchObject({ kind: 'ready', areas: { cond: 46.2, verify: 3.5, sincere: 4.8 } });
+    const base = { locked: false, ready: true, grade_icon: 'bridge', top: [], actionable: [] };
     expect(parseMyGrade({ ...base, areas: { cond: 1, verify: 2 } })).toMatchObject({ kind: 'ready', areas: null });
     expect(parseMyGrade({ ...base, areas: { cond: 1, verify: -2, sincere: 3 } })).toMatchObject({ areas: null });
     expect(parseMyGrade(base)).toMatchObject({ areas: null });
@@ -45,13 +46,13 @@ describe('S8d get_grade_processing', () => {
   test('비구독자도 읽는다 · 멈추면 stopped_at · 다시 켜면 null', async () => {
     const r = rig();
     await login(r, 'plain-proc@email.co');
-    expect(must(await r.grade.loadMine()).kind).toBe('locked');
+    expect(must(await r.grade.loadMine()).kind).toBe('ready'); // 0039 v5: 구독과 상관없이 내 풍경 하나
     expect(must(await r.grade.loadProcessing())).toEqual({ processing: true, stoppedAt: null });
     await r.grade.setProcessing(false);
     const stopped = must(await r.grade.loadProcessing());
     expect(stopped.processing).toBe(false);
     expect(stopped.stoppedAt).toBe(START);
-    expect(must(await r.grade.loadMine()).kind).toBe('locked'); // 비구독자 등급 화면은 잠금 그대로, 멈춤 상태는 이 함수로만 안다
+    expect(must(await r.grade.loadMine())).toMatchObject({ kind: 'pending', reason: 'stopped' }); // 0039 v5: 멈춤(state paused)도 get_my_grade 가 알려 준다
     await r.grade.setProcessing(true);
     expect(must(await r.grade.loadProcessing())).toEqual({ processing: true, stoppedAt: null });
   });

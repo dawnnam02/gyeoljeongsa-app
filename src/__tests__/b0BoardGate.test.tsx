@@ -50,20 +50,21 @@ async function answer(survey: SupabaseClient, s: Steps) {
 const flush = () => act(async () => void (await new Promise((r) => setTimeout(r, 0))));
 
 describe('B0 탑승 관문 = 실서버 ticket_profile_ready(CK15 + 정치 답 + 종교 답)', () => {
-  const cases: [string, Steps][] = [
-    ['정치 빈칸(정치 카드 [나중에] → 제출)', { ck15: true, religion: true }],
-    ['CK15 없음', { politics: true, religion: true }],
-    ['종교 빈칸', { ck15: true, politics: true }],
+  // 3부-사: 0039 reason_detail 도 실서버 profile_ready_detail 과 같은 이름 · 같은 차례(정치 → 종교)
+  const cases: [string, Steps, string][] = [
+    ['정치 빈칸(정치 카드 [나중에] → 제출)', { ck15: true, religion: true }, 'politics_missing'],
+    ['CK15 없음', { politics: true, religion: true }, 'politics_missing'],
+    ['종교 빈칸', { ck15: true, politics: true }, 'religion_missing'],
   ];
-  test.each(cases)('%s → 탑승 0: can_board false · profile_incomplete · 자리 잡기 · 결제 · 크레딧 탑승 0', async (_name, steps) => {
+  test.each(cases)('%s → 탑승 0: can_board false · profile_incomplete · 자리 잡기 · 결제 · 크레딧 탑승 0', async (_name, steps, detail) => {
     const { client, survey } = await signIn(`b0-${Object.keys(steps).join('-')}@email.com`);
     await answer(survey, steps);
     const st = await client.rpc('get_ticket_state');
-    expect(st.data).toMatchObject({ can_board: false, reason: 'profile_incomplete' });
+    expect(st.data).toMatchObject({ can_board: false, reason: 'profile_incomplete', reason_detail: detail });
     const api = createBoardingApi(client);
     expect(await api.buy('rq-1', false, 1)).toEqual({ ok: false, reason: 'not_eligible' });
     expect(await api.buy('rq-2', true, 1)).toEqual({ ok: false, reason: 'not_eligible' });
-    expect((await client.rpc('hold_ticket_seat', { p_round_no: 1 })).data).toMatchObject({ ok: false, reason: 'profile_incomplete' });
+    expect((await client.rpc('hold_ticket_seat', { p_round_no: 1 })).data).toMatchObject({ ok: false, reason: 'profile_incomplete', reason_detail: detail });
     expect((await client.rpc('demo_buy_ticket', { p_request_id: 'rq-3' })).error?.message).toBe('no_hold'); // 잡은 자리가 없으니 결제도 0
     const w = await client.rpc('get_weekly_match');
     expect(w.data).toEqual({ state: 'none' }); // 탄 회차 0
@@ -72,8 +73,12 @@ describe('B0 탑승 관문 = 실서버 ticket_profile_ready(CK15 + 정치 답 + 
   test('셋 다 있으면 탈 수 있다(판매 중 → 결제 → 탑승)', async () => {
     const { client, survey } = await signIn('b0-ready@email.com');
     await answer(survey, { ck15: true, politics: true, religion: true });
-    expect((await client.rpc('get_ticket_state')).data).toMatchObject({ can_board: true, reason: null });
-    expect(await createBoardingApi(client).buy('ok-1', false, 1)).toEqual({ ok: true, roundNo: 1 });
+    expect((await client.rpc('get_ticket_state')).data).toMatchObject({ can_board: true, reason: null, reason_detail: null });
+    const api = createBoardingApi(client);
+    // 0039 관문: 계약 설명 확인 기록이 없으면 잡기부터 막힌다 → 확인 기록 뒤 결제
+    expect(await api.buy('ok-0', false, 1)).toEqual({ ok: false, reason: 'ack_required' });
+    expect(await api.ackContract(1, 'contract-5-8-0123abcd')).toEqual({ ok: true });
+    expect(await api.buy('ok-1', false, 1)).toEqual({ ok: true, roundNo: 1 });
   });
 
   test("데모 줄 '설문 완료 · 정상 응답'(건너뛰기)은 다 마친 사람 · 설문을 열지 않은 장면 계정도 그대로(웹 점검 · 장면)", async () => {
@@ -86,7 +91,7 @@ describe('B0 탑승 관문 = 실서버 ticket_profile_ready(CK15 + 정치 답 + 
     expect((await plain.client.rpc('get_ticket_state')).data).toMatchObject({ can_board: true });
   });
 
-  test("T1: '살 수 없음' 안내(카피 14-5 ineligible — 서버 사유가 하나라 정치 문항 글) · [탑승권 사기] 0", async () => {
+  test("T1: '살 수 없음' 안내(카피 14-5 ineligible — 0039 reason_detail politics_missing → 정치 문항 글) · [탑승권 사기] 0", async () => {
     const { client, survey } = await signIn('b0-t1@email.com');
     await answer(survey, { ck15: true, religion: true });
     const tree = await mount(<BoardingScreen deps={{ api: createBoardingApi(client), newId: () => 'rid', toastMs: 5_000 }} />);

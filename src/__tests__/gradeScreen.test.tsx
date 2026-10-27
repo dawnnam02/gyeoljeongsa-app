@@ -1,5 +1,5 @@
-// F13 조건 2: 내 등급(16-G1 · G2 · G3 · G4 · G5) — 구독자 = '9단계 중 {n}등급 · 같은 나이대 기준' + 배지 그림 + 막대 '조건 / 인증 / 답변 성실도' + 올리는 방법 3줄
-//  비구독자 잠금 화면(잠김 그림은 여기만) · 무료 열람 요청 시트 · '등급은 어떻게 정해지나요'. 모의 서버(lib/shopDemo)를 실제 gradeApi 위에서 돌린다.
+// F13 조건 2: 내 등급(16-G1 · G2 · G3 · G4 · G5). 모의 서버(lib/shopDemo)를 실제 gradeApi 위에서 돌린다.
+//  3부-사: 모의 서버 get_my_grade = 0039 v5(모든 회원 풍경 키 하나 · 숫자 · 점수 · 기여 · 구독 잠금 0). 잠금 화면은 옛 서버({locked:true})일 때만 — 그 시험은 loadMine 을 바꿔 끼운다
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -103,11 +103,11 @@ describe('규칙 함수', () => {
   });
 });
 
-describe('조건 2 · 16-G1 내 등급 (구독자)', () => {
+describe('조건 2 · 16-G1 내 등급 (0039 v5 — 모든 회원)', () => {
   test('W9 · D-154: 내 무리(풍경 아이콘 + 이름 + 나만 보여요) + NV71 · NV40 — 단계 숫자 · 방향 문구 · 숫자 그림 없음', async () => {
     const { tree } = await open('shopsub');
     expect(has(tree, 'shop-page-grade')).toBe(true);
-    expect(textOf(tree, 'grade-flock-name')).toBe('다리'); // 데모 4단계 → 가정 짝 '다리'(iconBridge)
+    expect(textOf(tree, 'grade-flock-name')).toBe('다리'); // 서버 grade_icon 'bridge' 그대로(iconBridge 를 지나지 않음)
     expect(must(tree, 'grade-flock-mine').props.accessibilityLabel).toBe('내 무리 아이콘, 다리');
     expect(has(tree, 'grade-flock-icon-bridge')).toBe(true);
     expect(textOf(tree, 'grade-flock-note')).toBe(GI.flockNote);
@@ -119,29 +119,32 @@ describe('조건 2 · 16-G1 내 등급 (구독자)', () => {
     expect(allTexts(tree).join(' ')).not.toMatch(/\d\s*등급|숫자가 작을수록|위 등급|\d+점/);
   });
 
-  test('W9: 점수 막대 · 총점 문구는 없고 매너 줄(NV41)은 남는다', async () => {
+  test('W9 · 0039: 점수 막대 · 총점 문구 · 매너 줄 · 바뀔 수 있는 일(올릴 여지)이 없다 — 서버가 그 키를 보내지 않는다', async () => {
     const { tree } = await open('shopsub');
     expect(has(tree, 'grade-bars')).toBe(false);
     expect(has(tree, 'grade-bar-cond-text')).toBe(false);
     expect(hasText(tree, '내 등급을 받친 항목')).toBe(false);
-    expect(textOf(tree, 'grade-manner')).toBe('매너: 신고 없이 잘 지내고 있어요.');
+    expect(has(tree, 'grade-manner')).toBe(false);
+    expect(has(tree, 'grade-up')).toBe(false);
+    expect(hasText(tree, '올리는 방법')).toBe(false);
     expect(allTexts(tree).join(' ')).not.toMatch(/총점|원점수|\d+점|퍼센트|%/);
   });
 
-  test('바뀔 수 있는 일 3줄(서류 인증하기 · 프로필 선택 항목 채우기 · 앱에 접속하기) + [하러 가기] + NV42 — 점수 없음', async () => {
-    const { tree } = await open('shopsub');
+  test('옛 서버가 올릴 여지(actionable)를 주면: 바뀔 수 있는 일 3줄 + [하러 가기] + NV42 — 점수 없음', async () => {
+    const { tree } = await open('shopsub', 'grade', (deps) => ({
+      grade: { ...deps.grade, loadMine: async () => ({ ok: true as const, data: { kind: 'ready' as const, icon: 'sea' as const, band: '28-32', bandMerged: false, shownAt: null, nextAt: null, areas: null, top: [], mannerOk: true, actionable: [{ item: 'v_sch' as const, pts: 2 }, { item: 'ans' as const, pts: 2 }, { item: 'act' as const, pts: 1 }], verifyOn: false } }) },
+    }));
     expect(hasText(tree, GI.tasksTitle)).toBe(true);
-    expect(hasText(tree, '올리는 방법')).toBe(false);
     for (const text of ['서류 인증하기', '프로필 선택 항목 채우기', '앱에 접속하기']) expect(hasText(tree, text)).toBe(true);
     expect(allTexts(tree).some((t) => t.startsWith('최대 +'))).toBe(false);
     expect(textOf(tree, 'grade-up-note')).toBe('등급이 바뀔지는 같은 나이대 회원들과 함께 정해져요.');
+    expect(textOf(tree, 'grade-manner')).toBe('매너: 신고 없이 잘 지내고 있어요.');
     await tap(tree, 'grade-up-ans-go');
     expect(mockRouter.push).toHaveBeenCalledWith('/profile');
     await tap(tree, 'grade-up-verify-go');
     expect(mockRouter.navigate).toHaveBeenCalledWith('/settings');
     await tap(tree, 'grade-up-act-go');
     expect(mockRouter.navigate).toHaveBeenCalledWith('/boarding'); // v5 홈(탑승권 탭) — 옛 09 는 숨김
-    // 학력 · 직업 · 연봉 · 자산을 할 일로 넣지 않는다
     expect(allTexts(tree).filter((t) => /학력|연봉|고용|직업군/.test(t) && /하기|하면|채우기/.test(t))).toEqual([]);
   });
 
@@ -151,7 +154,7 @@ describe('조건 2 · 16-G1 내 등급 (구독자)', () => {
     for (const text of [GI.verifyTitle, '학교 인증', '직업 인증', '자산 인증']) expect(hasText(tree, text)).toBe(true);
     expect(textOf(tree, 'grade-verify-soon')).toBe('서류 인증은 준비 중이에요. 시작되면 여기에서 할 수 있어요.');
     expect(has(tree, 'grade-verify-go')).toBe(false);
-    for (const [id, label] of [['grade-link-history', '등급 변화 기록'], ['grade-link-goal', '목표 정하기'], ['grade-link-how', '등급은 어떻게 정해지나요?'], ['grade-link-review', '설명 · 검토 요청']] as const) {
+    for (const [id, label] of [['grade-link-access', '내 등급 알려 주세요'], ['grade-link-history', '등급 변화 기록'], ['grade-link-goal', '목표 정하기'], ['grade-link-how', '등급은 어떻게 정해지나요?'], ['grade-link-review', '설명 · 검토 요청']] as const) {
       expect(must(tree, id).props.label).toBe(label);
     }
     expect(textOf(tree, 'grade-limits')).toBe(GRADE16.limits);
@@ -161,14 +164,15 @@ describe('조건 2 · 16-G1 내 등급 (구독자)', () => {
     expect(mockRouter.navigate).toHaveBeenCalledWith('/settings');
   });
 
-  test('나이대 합침(NV48) · 첫 계산 전(NV46) · 읽기 실패(공통 오류 + 다시 시도)', async () => {
+  test('나이대 합침(NV48 — 0039 v5 는 키 없음) · 첫 계산 전(NV46) · 읽기 실패(공통 오류 + 다시 시도)', async () => {
     const band = await open('shopsub-gradeband');
-    expect(textOf(band.tree, 'grade-merged')).toBe('가까운 나이대와 함께 계산했어요.');
+    expect(has(band.tree, 'grade-merged')).toBe(false);
     const first = await open('shopsub-gradenew');
     expect(has(first.tree, 'grade-pending-art')).toBe(true);
     expect(first.tree.root.findAll((n) => n.props.testID === 'grade-pending-art').at(-1)!.findAllByType(Image)[0].props.source).toBe(STATE_ART.noTier);
     expect(textOf(first.tree, 'grade-first')).toBe('첫 등급은 10월 17일 아침에 볼 수 있어요.');
     expect(has(first.tree, 'grade-flock')).toBe(false);
+    expect(must(first.tree, 'grade-pending-access').props.label).toBe('내 등급 알려 주세요'); // 계산 전에도 무료 열람 요청 길
     const bad = await open('shopsub-gradefail');
     expect(textOf(bad.tree, 'grade-error-text') ?? '').toBe('');
     expect(has(bad.tree, 'grade-error')).toBe(true);
@@ -176,7 +180,7 @@ describe('조건 2 · 16-G1 내 등급 (구독자)', () => {
     expect(has(bad.tree, 'grade-retry')).toBe(true);
   });
 
-  test('등급 계산을 멈춘 구독자(reason stopped)의 화면은 NV87 · NV88 · NV89 + [설정으로 가기] · 올리는 방법 · 막대 없음', async () => {
+  test('등급 계산을 멈춘 회원(0039 state paused)의 화면은 NV87 · NV88 · NV89 + [설정으로 가기] · 올리는 방법 · 막대 없음', async () => {
     const rig = await makeShopRig('shopsub');
     await rig.gradeApi.setProcessing(false);
     mockParams.page = 'grade';
@@ -186,7 +190,8 @@ describe('조건 2 · 16-G1 내 등급 (구독자)', () => {
     expect(textOf(tree, 'grade-stopped-big')).toBe('등급 계산을 멈췄어요');
     expect(textOf(tree, 'grade-stopped')).toBe('내 등급은 지워졌고, 다시 켜기 전까지 탑승권을 살 수 없어요.'); // NV88 v5(카피 14-1, QP-A)
     expect(textOf(tree, 'grade-stopped-how')).toBe("설정에서 '등급 계산 멈추기'를 끄면 다시 계산해요.");
-    expect(has(tree, 'grade-stopped-first')).toBe(true); // 데모 서버는 first_ready_at 을 준다(NV46 한 줄)
+    expect(has(tree, 'grade-stopped-first')).toBe(false); // 0039 멈춤 응답에는 first_ready_at 이 없다(다시 켜기 전까지 계산 0)
+    expect(has(tree, 'grade-pending-access')).toBe(true);
     await tap(tree, 'grade-stopped-go');
     expect(mockRouter.navigate).toHaveBeenCalledWith('/settings');
     expect(has(tree, 'grade-flock')).toBe(false);
@@ -194,9 +199,20 @@ describe('조건 2 · 16-G1 내 등급 (구독자)', () => {
   });
 });
 
-describe('조건 2 · 16-G1 비구독자 잠금 · 16-G5 무료 열람 요청', () => {
-  test('잠김 그림 · [내 등급 알려 주세요] 첫째 · 링크 — v5(QP-A, 카피 14-1): 구독 잠금 안내(GI5) · [구독 알아보기] 없음 · 등급 값 · 막대 · 흐린 배지 없음', async () => {
+// 옛 서버(0023) 비구독자 응답 { locked:true } — 0039 v5 서버 · 데모는 보내지 않는다
+const LOCKED = (deps: ShopDeps): Partial<ShopDeps> => ({ grade: { ...deps.grade, loadMine: async () => ({ ok: true as const, data: { kind: 'locked' as const } }) } });
+
+describe('조건 2 · 16-G1 옛 서버 잠금 · 16-G5 무료 열람 요청', () => {
+  test('0039 v5: 구독하지 않은 회원도 잠금이 아니라 내 풍경 하나 + [내 등급 알려 주세요] 링크', async () => {
     const { tree } = await open('plain');
+    expect(has(tree, 'grade-locked')).toBe(false);
+    expect(textOf(tree, 'grade-flock-name')).toBe('다리');
+    expect(must(tree, 'grade-link-access').props.label).toBe('내 등급 알려 주세요');
+    expect(allTexts(tree).join(' ')).not.toMatch(/구독|\d등급/);
+  });
+
+  test('잠김 그림 · [내 등급 알려 주세요] 첫째 · 링크 — v5(QP-A, 카피 14-1): 구독 잠금 안내(GI5) · [구독 알아보기] 없음 · 등급 값 · 막대 · 흐린 배지 없음', async () => {
+    const { tree } = await open('plain', 'grade', LOCKED);
     expect(has(tree, 'grade-locked')).toBe(true);
     expect(has(tree, 'grade-locked-text')).toBe(false);
     expect('locked' in GI).toBe(false);
@@ -214,13 +230,13 @@ describe('조건 2 · 16-G1 비구독자 잠금 · 16-G5 무료 열람 요청', 
   });
 
   test('구독이 끝난 사람의 잠금 화면 맨 위에는 NV65(내 등급은 계속 계산되고…)가 있다', async () => {
-    const { tree } = await open('shopend');
+    const { tree } = await open('shopend', 'grade', LOCKED);
     expect(textOf(tree, 'grade-ended')).toBe(SHOP16.endedSub);
   });
 
   test('[내 등급 알려 주세요] → 시트(NV67 · NV68) → [요청하기] → 토스트 NV69 · 다시 요청하면 NV70(같은 요청을 합칠 뿐 막지 않는다)', async () => {
     const { tree, backend, email } = await open('plain');
-    await tap(tree, 'grade-locked-access');
+    await tap(tree, 'grade-link-access');
     expect(isOpen(tree, 'access-sheet')).toBe(true);
     expect(textOf(tree, 'access-title')).toBe('내 등급 알려 주세요');
     expect(textOf(tree, 'access-body')).toBe('내 등급과 계산에 쓰인 항목을 무료로 알려 드려요. 요청한 날부터 10일 안에 답해 드려요.');
@@ -230,14 +246,14 @@ describe('조건 2 · 16-G1 비구독자 잠금 · 16-G5 무료 열람 요청', 
     expect(isOpen(tree, 'access-sheet')).toBe(false);
     expect(hasText(tree, '요청을 받았어요. 10월 26일까지 알려 드릴게요.')).toBe(true);
     expect(backend.peek.shop(email)?.accessRequested).toBe(true);
-    await tap(tree, 'grade-locked-access');
+    await tap(tree, 'grade-link-access');
     await tap(tree, 'access-send');
     expect(hasText(tree, '이미 받은 요청이 있어요. 10월 26일까지 알려 드릴게요.')).toBe(true);
   });
 
   test('요청 실패는 오류 글만 보이고 시트가 남는다 · 취소하면 요청이 없다', async () => {
     const { tree } = await open('plain', 'grade', (deps) => ({ grade: { ...deps.grade, requestAccess: async () => ({ ok: false as const, reason: 'network' as const }) } }));
-    await tap(tree, 'grade-locked-access');
+    await tap(tree, 'grade-link-access');
     await tap(tree, 'access-send');
     expect(isOpen(tree, 'access-sheet')).toBe(true);
     expect(textOf(tree, 'access-error')).toBe(COMMON.offline);

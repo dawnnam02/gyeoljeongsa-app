@@ -1,7 +1,9 @@
 // 데모 모드 모의 서버의 탑승권 부분(V5 W6). 이름 · 인자 · 응답 모양 = 서버 확정 정의(features/boarding/boardingApi 머리 주석, 3부-바 10-27):
 //  get_ticket_state · get_weekly_match · hold_ticket_seat · release_ticket_hold · demo_buy_ticket · board_with_credit · list_ticket_history (0030 · 0032 · 0037 R37)
 //  cancel_ticket_seat({ p_round_no }) — 0037 [4](D-202): 마감 전만, 결제 좌석 → 장부 cancel_credit · 크레딧 좌석 → cancel_return, 어느 쪽이든 크레딧 1장 → { ok, round_no, paid_by, result: 'credited', lot_id } · 오류 closed · not_found
-//  ack_ticket_contract({ p_round_no, p_text_version }) — 0037 [9](R40): 회차 · 판(4 ~ 60자)이 맞으면 기록 한 줄 → { ok: true } · 오류 invalid_value
+//  ack_ticket_contract({ p_round_no, p_text_version }) — 0037 [9](R40) · 0039: 회차 · 판('contract-5-8-' + 16진 8자)이 맞으면 기록 → { ok: true } · 오류 invalid_value
+//  0039 관문(3부-사): 그 회차 확인 기록이 없으면 hold_ticket_seat · board_with_credit = { ok:false, reason:'contract_ack_required' } · demo_buy_ticket = 오류 contract_ack_required
+//   (서버와 같은 차례: 잡기 · 크레딧 탑승은 탈 수 있는지 먼저 본 뒤 관문, 데모 결제는 잡은 자리를 찾은 뒤 관문). 탈 수 없는 사유 profile_incomplete 에는 reason_detail
 //  + 데모 전용 demo_boarding_scene({ p_scene }) (탑승권 화면 아래 데모 줄이 장면을 바꾼다)
 //  · 서버와 다른 점 하나: get_ticket_state 에 now(장면 시각)를 더 보낸다 — 시계와 상관없이 같은 화면(서버 0030 에는 없는 키, 앱은 있으면 쓴다)
 //  장면(이메일 앞부분 또는 데모 줄):
@@ -12,7 +14,8 @@
 //  · 회차 1 = 2026-12-23(수) 18:00 KST 첫 매칭(T-24). 크레딧 장면은 회차 2(12-30). 데모의 '지금'은 장면마다 정해 둔 시각
 //  · 만난 분 = 데모 인물 24명 가운데 '나'와 끼리끼리 순서 첫 분(demo/people kinOrder) — 남은 좌석 수 · 정원 · 점수 키는 보내지 않는다
 //  · 탑승 관문(검수 B0 · D46-A 덧붙임 10-27): 실서버 ticket_board_check → ticket_profile_ready(0030 · 0036 [8]) = politics_ready(CK15 유효 + 정치 답) · 등급 행 · 종교 답(7코드)과 같은 조건.
-//    회원 설문 상태는 demoBackend 가 profileReady 로 넘긴다(설문 모의 서버 기록). 하나라도 없으면 'profile_incomplete' — T1 '살 수 없음'(BOARDING.ineligible) · 자리 잡기 · 결제 · 크레딧 탑승 모두 0
+//    회원 상태는 demoBackend 가 profileDetail 로 넘긴다(설문 모의 서버 기록 · 등급 계산 멈춤). 하나라도 없으면 'profile_incomplete' + reason_detail(0039 profile_ready_detail 과 같은 이름)
+//    — T1 '살 수 없음'(BOARDING.ineligible) · 자리 잡기 · 결제 · 크레딧 탑승 모두 0
 import { kinOrder, myReligionOf, poolFor } from './people';
 
 type Row = Record<string, unknown>;
@@ -75,11 +78,13 @@ const sceneOfEmail = (email: string): BoardingScene => {
 
 const ON_BOARD: readonly SeatState[] = ['boarded', 'matched', 'returned'];
 
-// 회원이 탈 준비가 됐나(정치 · CK15 · 종교 · 등급). 주지 않으면 늘 준비됨(장면 · 시험용)
-export type DemoBoardingOptions = { profileReady?: (u: DemoBoardingUser) => boolean };
+// 회원이 탈 준비가 됐나(정치 · CK15 · 종교 · 등급). 0039 profile_ready_detail 과 같은 상세 이름(성별 · 지역 · 정치 · 등급 멈춤 · 등급 아직 · 종교 다섯 — 이름은 boardingApi 머리 주석)
+//  을 돌려주면 탈 수 없음, null 이면 준비됨. 주지 않으면 늘 준비됨(장면 · 시험용)
+export type DemoBoardingOptions = { profileDetail?: (u: DemoBoardingUser) => string | null };
+const CONTRACT_VERSION = /^contract-5-8-[0-9a-f]{8}$/; // 0039 판 값 형식(T128 ②)
 
 export function createDemoBoarding(options: DemoBoardingOptions = {}) {
-  const profileReady = options.profileReady ?? (() => true);
+  const profileDetail = options.profileDetail ?? (() => null);
   const states = new Map<string, State>();
   const seed = (scene: BoardingScene): State => {
     const s: State = { scene, seats: [], lots: [], txs: new Map(), acks: [] };
@@ -121,6 +126,8 @@ export function createDemoBoarding(options: DemoBoardingOptions = {}) {
   const partnerOf = (u: DemoBoardingUser) => kinOrder(poolFor(u.email), 4, myReligionOf(u.email))[0] ?? null;
   const seatOf = (s: State, no: number, kinds: readonly SeatState[]) => s.seats.find((x) => x.roundNo === no && kinds.includes(x.state)) ?? null;
   const liveHold = (s: State, no: number) => s.seats.find((x) => x.roundNo === no && x.state === 'held' && (x.holdUntil ?? 0) > nowOf(s)) ?? null;
+  // 탈 수 없는 사유의 상세(0039 reason_detail). 장면 boardpolitics 는 정치 문항
+  const detailOf = (s: State, u: DemoBoardingUser): string | null => (s.scene === 'politics' ? 'politics_missing' : profileDetail(u));
   // 서버 ticket_board_check 와 같은 순서(이 데모에 있는 사유만)
   const boardCheck = (s: State, no: number, u: DemoBoardingUser): string | null => {
     const r = roundNo(no);
@@ -128,11 +135,13 @@ export function createDemoBoarding(options: DemoBoardingOptions = {}) {
     const now = nowOf(s);
     if (now < r.open) return 'before_sale';
     if (now >= r.close) return 'closed';
-    if (s.scene === 'politics' || !profileReady(u)) return 'profile_incomplete'; // W2-8: 정치(CK15 + 답) · 등급 · 종교 중 하나라도 없으면 팔지 않는다
+    if (detailOf(s, u) !== null) return 'profile_incomplete'; // W2-8: 정치(CK15 + 답) · 등급 · 종교 중 하나라도 없으면 팔지 않는다
     if (seatOf(s, no, ON_BOARD)) return 'already_boarded';
     if (s.scene === 'full') return 'full';
     return null;
   };
+  const detailFor = (s: State, reason: string | null, u: DemoBoardingUser) => (reason === 'profile_incomplete' ? detailOf(s, u) : null);
+  const acked = (s: State, no: number) => s.acks.some((a) => a.roundNo === no);
   const fail = (message: string): DbResult => ({ data: null, error: { code: 'P0001', message } });
   const ok = (data: unknown): DbResult => ({ data, error: null });
   const newLot = (s: State, reason: string, no: number | null): Lot => {
@@ -172,6 +181,7 @@ export function createDemoBoarding(options: DemoBoardingOptions = {}) {
       region: '수도권',
       can_board: reason === null,
       reason,
+      reason_detail: detailFor(s, reason, u), // 0039
       credit: { balance: balance(s), next_expire_on: null }, // 0037 뒤 기한 없음
     });
   }
@@ -195,7 +205,8 @@ export function createDemoBoarding(options: DemoBoardingOptions = {}) {
     const held = liveHold(s, no);
     if (held) return ok({ ok: true, reason: null, round_no: no, hold_until: iso(held.holdUntil ?? 0) });
     const reason = boardCheck(s, no, u);
-    if (reason) return ok({ ok: false, reason, round_no: no, hold_until: null });
+    if (reason) return ok({ ok: false, reason, round_no: no, hold_until: null, reason_detail: detailFor(s, reason, u) });
+    if (!acked(s, no)) return ok({ ok: false, reason: 'contract_ack_required', round_no: no, hold_until: null }); // 0039 관문
     const r = roundNo(no) ?? ROUNDS[0];
     for (const x of s.seats) if (x.roundNo === no && x.state === 'held') x.state = 'lapsed';
     const until = Math.min(nowOf(s) + 10 * 60_000, r.close);
@@ -221,6 +232,7 @@ export function createDemoBoarding(options: DemoBoardingOptions = {}) {
     const last = [...s.seats].reverse().find((x) => (x.state === 'held' || x.state === 'lapsed') && nowOf(s) < (roundNo(x.roundNo)?.match ?? 0));
     if (!last) return fail('no_hold');
     const no = last.roundNo;
+    if (!acked(s, no)) return fail('contract_ack_required'); // 0039 관문
     const txId = `demo-tx-${s.txs.size + 1}`;
     if (liveHold(s, no) || boardCheck(s, no, u) === null) {
       board(s, no, 'purchase');
@@ -237,7 +249,8 @@ export function createDemoBoarding(options: DemoBoardingOptions = {}) {
     const s = stateOf(u);
     const no = typeof args.p_round_no === 'number' ? args.p_round_no : -1;
     const reason = boardCheck(s, no, u);
-    if (reason) return ok({ ok: false, reason, round_no: no, paid_by: null });
+    if (reason) return ok({ ok: false, reason, round_no: no, paid_by: null, reason_detail: detailFor(s, reason, u) });
+    if (!acked(s, no)) return ok({ ok: false, reason: 'contract_ack_required', round_no: no, paid_by: null }); // 0039 관문
     const lot = s.lots.filter((l) => l.usedRound === null).sort((a, b) => a.id - b.id)[0];
     if (!lot) return ok({ ok: false, reason: 'no_credit', round_no: no, paid_by: null });
     board(s, no, 'credit');
@@ -280,7 +293,7 @@ export function createDemoBoarding(options: DemoBoardingOptions = {}) {
   function ack(u: DemoBoardingUser, args: Row): DbResult {
     const s = stateOf(u);
     const v = args.p_text_version;
-    if (typeof v !== 'string' || v.length < 4 || v.length > 60 || !roundNo(args.p_round_no)) return fail('invalid_value');
+    if (typeof v !== 'string' || !CONTRACT_VERSION.test(v) || !roundNo(args.p_round_no)) return fail('invalid_value');
     s.acks.push({ roundNo: args.p_round_no as number, version: v });
     return ok({ ok: true });
   }

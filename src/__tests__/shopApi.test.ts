@@ -54,17 +54,22 @@ describe('응답 읽기: 아는 키만', () => {
     expect(JSON.stringify(parsed)).not.toMatch(/score|rank|secret/);
   });
 
-  test('내 등급: 비구독자 locked 만 · 구독자 grade_no 1~9 정수만 · 첫 계산 전 · 멈춤 · 항목 키 13개만', () => {
-    expect(parseMyGrade({ locked: true })).toEqual({ kind: 'locked' });
+  test('내 등급(0039 v5): 풍경 키 grade_icon 하나만 · 숫자 grade_no 는 읽지 않는다 · 첫 계산 전 · 멈춤(state paused) · 항목 키 13개만', () => {
+    expect(parseMyGrade({ locked: true })).toEqual({ kind: 'locked' }); // 옛 서버(0023) 비구독자
     expect(parseMyGrade({ locked: false, ready: false, reason: 'stopped', first_ready_at: '2026-10-17T00:00:00Z' })).toMatchObject({ kind: 'pending', reason: 'stopped' });
+    expect(parseMyGrade({ locked: false, ready: false, state: 'paused', reason: 'stopped' })).toEqual({ kind: 'pending', reason: 'stopped', firstReadyAt: null });
     expect(parseMyGrade({ locked: false, ready: false, reason: 'not_computed' })).toMatchObject({ kind: 'pending', reason: 'not_computed' });
-    expect(parseMyGrade({ locked: false, ready: true, grade_no: 0 })).toBeNull();
-    expect(parseMyGrade({ locked: false, ready: true, grade_no: 10 })).toBeNull();
-    expect(parseMyGrade({ locked: false, ready: true, grade_no: 4.5 })).toBeNull();
+    expect(parseMyGrade({ locked: false, ready: false, state: 'pending', reason: 'not_computed', first_ready_at: '2026-10-17T18:00:00Z' })).toEqual({ kind: 'pending', reason: 'not_computed', firstReadyAt: Date.parse('2026-10-17T18:00:00Z') });
+    expect(parseMyGrade({ locked: false, ready: true, grade_no: 3 })).toBeNull(); // 숫자만 오면 그리지 않는다(오류 화면)
+    expect(parseMyGrade({ locked: false, ready: true, state: 'shown', grade_icon: 'volcano' })).toBeNull(); // 모르는 풍경 키
+    expect(parseMyGrade({ locked: false, ready: true, state: 'shown', grade_icon: 'sea', grade_no: 3 })).not.toHaveProperty('gradeNo');
+    const v5 = parseMyGrade({ locked: false, ready: true, state: 'shown', grade_icon: 'island', basis: 'age_band', band: '28-32', shown_at: '2026-10-16T18:00:00Z', next_at: '2026-10-17T18:00:00Z' });
+    expect(v5).toMatchObject({ kind: 'ready', icon: 'island', band: '28-32', areas: null, top: [], actionable: null, mannerOk: false, verifyOn: false });
+    expect(Object.keys(v5 ?? {})).not.toContain('gradeNo');
     const ready = parseMyGrade({
       locked: false,
       ready: true,
-      grade_no: 3,
+      grade_icon: 'moon',
       band: '28-32',
       band_merged: true,
       shown_at: '2026-10-16T18:00:00Z',
@@ -76,11 +81,11 @@ describe('응답 읽기: 아는 키만', () => {
       verify_on: false,
       raw: 77,
     });
-    expect(ready).toMatchObject({ kind: 'ready', gradeNo: 3, bandMerged: true, mannerOk: true, verifyOn: false });
+    expect(ready).toMatchObject({ kind: 'ready', icon: 'moon', bandMerged: true, mannerOk: true, verifyOn: false });
     if (ready?.kind === 'ready') {
       expect(ready.areas).toEqual({ cond: 46.2, verify: 3.5, sincere: 4.8 });
       expect(ready.top.map((p) => p.item)).toEqual(['sch', 'job']); // 옛 키 · 음수는 버린다
-      expect(ready.actionable.map((p) => p.item)).toEqual(['v_sch']);
+      expect(ready.actionable?.map((p) => p.item)).toEqual(['v_sch']);
     }
     expect(JSON.stringify(ready)).not.toMatch(/raw|score/);
   });
@@ -333,29 +338,29 @@ describe('조건 4: 1회 매칭 (하루 2회 한도 · 남은 명분 · 못 채�
   });
 });
 
-describe('조건 2: 내 등급 (get_my_grade 13항목 · 비구독자 locked 만)', () => {
-  test('비구독자는 {locked:true} 한 키뿐 — 등급 힌트가 없다', async () => {
+describe('조건 2: 내 등급 (get_my_grade 0039 v5 — 모든 회원 풍경 하나 · 숫자 0)', () => {
+  test('구독하지 않은 회원도 내 풍경 하나(grade_icon)를 받는다 — 숫자 · 점수 · 기여 키 0 · 변화 기록은 그대로 잠김(0012)', async () => {
     const r = rig();
     await login(r, 'plain6@email.co');
     const { data } = await r.client.rpc('get_my_grade');
-    expect(data).toEqual({ locked: true });
-    expect(await r.grade.loadMine()).toEqual({ ok: true, data: { kind: 'locked' } });
+    expect(Object.keys(data as object).sort()).toEqual(['band', 'basis', 'grade_icon', 'locked', 'next_at', 'ready', 'shown_at', 'state']); // 0039 R_변경기록 8-4 표
+    expect(data).toMatchObject({ locked: false, ready: true, state: 'shown', grade_icon: 'bridge' }); // 데모 처음값 4 → 서버 짝 표 bridge
+    expect(JSON.stringify(data)).not.toMatch(/grade_no|areas|top|actionable|score/);
+    expect(await r.grade.loadMine()).toMatchObject({ ok: true, data: { kind: 'ready', icon: 'bridge' } });
     expect((await r.client.rpc('list_grade_history')).data).toEqual({ locked: true });
   });
 
-  test('구독자: 9단계 중 4 · 같은 나이대 기준 · 항목 키는 13개 안 · 총 원점수 키 없음', async () => {
+  test('구독 회원도 같은 모양(구독은 등급 화면에 0) · 같은 나이대 기준 · 올릴 여지 · 매너 키 없음', async () => {
     const r = rig();
     await login(r, 'shopsub5@email.co');
     const my = must(await r.grade.loadMine());
     expect(my.kind).toBe('ready');
     if (my.kind !== 'ready') return;
-    expect(my.gradeNo).toBe(4);
+    expect(my.icon).toBe('bridge');
     expect(my.band).toBe('28-32');
-    expect(my.top).toHaveLength(3);
-    expect(my.actionable.length).toBeLessThanOrEqual(3);
+    expect(my.top).toHaveLength(0);
+    expect(my.actionable).toBeNull();
     expect(my.verifyOn).toBe(false);
-    const { data } = await r.client.rpc('get_my_grade');
-    expect(Object.keys(data as object).sort()).toEqual(['actionable', 'areas', 'band', 'band_merged', 'basis', 'grade_no', 'locked', 'manner_ok', 'next_at', 'ready', 'shown_at', 'top', 'verify_on']); // 키 12 + 항목 객체(스키마 11-2)
   });
 
   test('첫 계산 전 · 나이대 합침 · 읽기 실패 · 변화 기록 있음/없음', async () => {
@@ -366,13 +371,13 @@ describe('조건 2: 내 등급 (get_my_grade 13항목 · 비구독자 locked 만
     expect(must(await r.grade.loadMine())).toMatchObject({ kind: 'pending', reason: 'stopped' });
     expect(must(await r.grade.loadHistory())).toEqual({ kind: 'items', items: [] });
     expect(await r.grade.setProcessing(true)).toEqual({ ok: true, processing: true });
-    expect(must(await r.grade.loadMine())).toMatchObject({ kind: 'ready', gradeNo: 4 });
+    expect(must(await r.grade.loadMine())).toMatchObject({ kind: 'ready', icon: 'bridge' });
     const hist = must(await r.grade.loadHistory());
     expect(hist.kind === 'items' && hist.items.filter((i) => i.fromNo !== null)).toHaveLength(3);
     await login(r, 'shopsub7gradenew@email.co');
     expect(must(await r.grade.loadMine())).toMatchObject({ kind: 'pending', reason: 'not_computed' });
     await login(r, 'shopsub8gradeband@email.co');
-    expect(must(await r.grade.loadMine())).toMatchObject({ kind: 'ready', bandMerged: true });
+    expect(must(await r.grade.loadMine())).toMatchObject({ kind: 'ready', bandMerged: false }); // 0039 v5 는 나이대 합침 키를 보내지 않는다
     await login(r, 'shopsub9gradefail@email.co');
     expect(await r.grade.loadMine()).toEqual({ ok: false, reason: 'server' });
   });

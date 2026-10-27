@@ -79,7 +79,7 @@ export const AVOID_RPC = {
   options: 'set_contact_block_options', // (p_auto_sync, p_share_my_key, p_enabled, p_avoid_on — 보내지 않은 칸은 그대로) → { ok } · p_share_my_key false 면 서버가 내 비교 키를 바로 지움
   clearContacts: 'clear_contact_links', // () → { ok } — 주소록으로 숨긴 목록 지움(CK11 철회와 같은 효과)
   prompted: 'mark_contact_prompted', // () → { ok } — 안내 시트를 보인 시각
-  setOrg: 'set_avoid_org', // (p_kind 'company' | 'school', p_name 60자 이하, p_on) → { ok, count } · 오류 feature_off(스위치 avoid_org 꺼짐) · too_many(5곳) · invalid_value
+  setOrg: 'set_avoid_org', // (p_kind 'company' | 'school', p_name 60자 이하, p_on) → { ok, count } · 오류 feature_off(스위치 avoid_org 꺼짐) · too_many(5곳) · invalid_value · org_key_missing(0039 — 더하기 때 서버 비밀 키 없음, 빼기는 됨)
   clearOrgs: 'clear_avoid_orgs', // () → { ok }
 } as const;
 
@@ -106,6 +106,7 @@ export function parseContactState(raw: unknown): ContactState | null {
 export type AvoidSettings = AvoidLocal & { shareEmail: boolean; orgOn: boolean; otherCount: number; contactOn: boolean };
 export type ContactOptions = { autoSync?: boolean; shareMyKey?: boolean; enabled?: boolean; avoidOn?: boolean };
 export type ContactSyncFailure = SettingsFailure | 'off' | 'consent' | 'limit' | 'invalid';
+export type AvoidOrgFailure = SettingsFailure | 'off'; // off = 0039 org_key_missing · feature_off
 const HASH64 = /^[0-9a-f]{64}$/;
 
 export function createSettingsApi(client: SupabaseClient, appVersion = 'dev', avoidStore: AvoidStore = memoryAvoidStore()) {
@@ -120,9 +121,17 @@ export function createSettingsApi(client: SupabaseClient, appVersion = 'dev', av
     const { data } = await client.auth.getSession();
     return data.session?.user?.id ?? '';
   };
-  const setOrg = async (kind: 'company' | 'school', name: string, on: boolean, next: (l: AvoidLocal) => AvoidLocal): Promise<Outcome> => {
+  // 오류 org_key_missing(0039 — 서버 비밀 키를 아직 넣지 않음) · feature_off(스위치 꺼짐)는 'off' — 다시 시도로 풀리지 않으니 화면은 '준비 중'(일반 안내)
+  const setOrg = async (kind: 'company' | 'school', name: string, on: boolean, next: (l: AvoidLocal) => AvoidLocal): Promise<Outcome<AvoidOrgFailure>> => {
     const { error } = await client.rpc(AVOID_RPC.setOrg, { p_kind: kind, p_name: name, p_on: on });
-    if (error) return { ok: false, reason: dbFail(error, 'settings.avoid.save.fail') };
+    if (error) {
+      const m = String(error.message ?? '');
+      if (m === 'org_key_missing' || m === 'feature_off') {
+        safeLog({ event: 'settings.avoid.save.off', code: m });
+        return { ok: false, reason: 'off' };
+      }
+      return { ok: false, reason: dbFail(error, 'settings.avoid.save.fail') };
+    }
     const id = await myId();
     await avoidStore.write(id, next(await avoidStore.read(id)));
     return { ok: true };
@@ -256,13 +265,13 @@ export function createSettingsApi(client: SupabaseClient, appVersion = 'dev', av
       return st ? { ok: true, data: st } : { ok: false, reason: 'server' };
     },
     // 피할 회사 한 곳 넣기(on) · 빼기. 서버가 받으면 기기 목록도 고친다
-    async setAvoidCompany(name: string, on: boolean): Promise<Outcome> {
+    async setAvoidCompany(name: string, on: boolean): Promise<Outcome<AvoidOrgFailure>> {
       const n = name.trim();
       const same = (c: string) => orgKey(c) === orgKey(n); // 서버에서 한 곳인 이름(기호 · (주) 차이)은 기기 목록에서도 한 줄
       return setOrg('company', n, on, (l) => ({ ...l, companies: on ? [...l.companies.filter((c) => !same(c)), n] : l.companies.filter((c) => !same(c)) }));
     },
     // 피할 학교 한 곳(내장 학교 목록의 키 · 이름 — 서버는 학교 표 이름과 비교하므로 이름을 보낸다)
-    async setAvoidSchool(school: AvoidSchool, on: boolean): Promise<Outcome> {
+    async setAvoidSchool(school: AvoidSchool, on: boolean): Promise<Outcome<AvoidOrgFailure>> {
       return setOrg('school', school.name, on, (l) => ({ ...l, schools: on ? [...l.schools.filter((s) => s.key !== school.key), { key: school.key, name: school.name }] : l.schools.filter((s) => s.key !== school.key) }));
     },
     async clearAvoidOrgs(): Promise<Outcome> {

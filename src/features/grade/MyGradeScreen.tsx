@@ -1,7 +1,7 @@
 // 16-G 내 등급 — v5 들어오는 곳(D-200 ② · 정책 P3-10 · 화면_요구사항 12-1 · 16-G): 12 설정 '내 등급' 줄로 연다(QP-12 해결 자리).
 //  본문은 상점 안 쪽과 같은 GradePages(아이콘 하나 · 같은 무리 설명 · 계산 방법 · 설명 요청 · 멈추기 안내, 숫자 · 막대 · 순서 0)를 그대로 쓴다.
 //  상점(v4_shop)이 꺼져 있어도 열린다 — 탭 위 화면(탭바 없음), 안의 쪽(변화 기록 · 도움이 되는 일 · 어떻게 정해지나요)은 이 화면 안에서 오간다.
-//  서버 메모(백엔드 몫): get_my_grade 가 v4 규칙(비구독자 locked)이면 모든 회원이 잠금 모양을 본다 — v5는 모두 자기 아이콘을 본다(P3-04)
+//  3부-사: 서버 0039 get_my_grade v5 — 모든 회원이 자기 풍경 키(grade_icon) 하나를 받는다(P3-04 · 검수 Q9-N2 해결). 숫자 0
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { BackHandler } from 'react-native';
