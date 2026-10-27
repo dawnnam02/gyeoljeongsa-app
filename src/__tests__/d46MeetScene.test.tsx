@@ -149,9 +149,10 @@ const advance = async (ms: number) => {
 const sceneText = (tree: ReactTestRenderer) => allTexts(tree).join('\n');
 
 describe('③ 화면: 대화방 첫 상태로 한 번(T4S)', () => {
-  test('데모 장면: chatnew = 막 열린 방(글 0) · chatfirst = 상대가 먼저 · 기본 open 은 내 글이 있어 장면 0 · 목록 데모 줄 끝에 둘', () => {
-    expect(['chatnew', 'chatfirst', 'x'].map((l) => sceneOfEmail(`${l}@email.com`))).toEqual(['fresh', 'partnerFirst', 'open']);
-    expect(DEMO_CHAT_SCENES.slice(-2)).toEqual(['fresh', 'partnerFirst']);
+  // 3부-사 FB-016(팀장 판단): 데모 기본 방 = 막 열린 방(글 0) — 짧은 길(공개 → [대화 시작하기])에서 장면이 나온다(K27 10-1). 대화가 이어진 방은 chatopen
+  test('데모 장면: 기본 · chatnew = 막 열린 방(글 0) · chatfirst = 상대가 먼저 · chatopen = 내 글이 있어 장면 0 · 목록 데모 줄 맨 앞에 둘', () => {
+    expect(['chatnew', 'chatfirst', 'x', 'chatopen'].map((l) => sceneOfEmail(`${l}@email.com`))).toEqual(['fresh', 'partnerFirst', 'fresh', 'open']);
+    expect(DEMO_CHAT_SCENES.slice(0, 3)).toEqual(['fresh', 'partnerFirst', 'open']);
     expect(CHAT.demo.scenes.fresh).toBe('막 열린 방');
   });
 
@@ -182,10 +183,11 @@ describe('③ 화면: 대화방 첫 상태로 한 번(T4S)', () => {
     expect(textOf(again.tree, 'chat-room-met-at')).toBe('수요일 저녁, 한강 벤치에서 처음 만났어요.');
   });
 
-  test('끝 줄 두 갈래: 상대가 먼저 보낸 방 → "먼저 말을 걸어왔어요" · 그림은 같다', async () => {
+  // FB-014: 데모 장면마다 방이 열린 주가 달라 장소가 차례로 돈다(chatfirst = 1회차 다음 주 → 둘째 장소)
+  test('끝 줄 두 갈래: 상대가 먼저 보낸 방 → "먼저 말을 걸어왔어요" · 그림은 같은 틀(장소만 열린 주 차례)', async () => {
     const { tree } = await openRoom('chatfirst@email.com');
     expect(textOf(tree, 'chat-meet-line')).toBe(FIRST);
-    expect(must(tree, 'chat-meet-block').props.accessibilityLabel).toBe(MEET_SCENE.a11y('한강 벤치', '수요일 저녁', FIRST));
+    expect(must(tree, 'chat-meet-block').props.accessibilityLabel).toBe(MEET_SCENE.a11y('한옥 골목', '수요일 저녁', FIRST));
     expect(has(tree, 'chat-meet-art-walker')).toBe(true);
   });
 
@@ -245,22 +247,22 @@ describe('③ 화면: 대화방 첫 상태로 한 번(T4S)', () => {
     spy.mockRestore();
   });
 
-  test('내 글이 있는 방(데모 기본 open): 장면 0 · 기록은 남김 · 기억 줄은 보임', async () => {
+  test('내 글이 있는 방(데모 chatopen): 장면 0 · 기록은 남김 · 기억 줄은 보임', async () => {
     const meet = deps();
-    const { tree, id } = await openRoom('w5open@email.com', meet);
+    const { tree, id } = await openRoom('chatopenw5@email.com', meet);
     expect(has(tree, 'chat-meet')).toBe(false);
     expect(meet.seen.has(id)).toBe(true);
     expect(textOf(tree, 'chat-room-met-at')).toBe('수요일 저녁, 한강 벤치에서 처음 만났어요.');
   });
 
-  test('닫힌 방 · 상대가 나간 방: 장면 0(읽기 전용) · 기록 0 · 기억 줄은 보임(두 사람 같은 글)', async () => {
-    for (const email of ['chatclosed@email.com', 'chatleft@email.com']) {
+  test('닫힌 방 · 상대가 나간 방: 장면 0(읽기 전용) · 기록 0 · 기억 줄은 보임(두 사람 같은 글) — FB-014 열린 주가 달라 장소도 다르다', async () => {
+    for (const [email, place] of [['chatclosed@email.com', '제주 바닷가'], ['chatleft@email.com', '카페 테라스']] as const) {
       const meet = deps();
       const { tree, id } = await openRoom(email, meet);
       expect(has(tree, 'chat-meet')).toBe(false);
       expect(has(tree, 'chat-room-closed')).toBe(true);
       expect(meet.seen.has(id)).toBe(false);
-      expect(textOf(tree, 'chat-room-met-at')).toBe('수요일 저녁, 한강 벤치에서 처음 만났어요.');
+      expect(textOf(tree, 'chat-room-met-at')).toBe(`수요일 저녁, ${place}에서 처음 만났어요.`);
     }
   });
 

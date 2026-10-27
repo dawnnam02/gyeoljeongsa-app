@@ -108,6 +108,10 @@ try {
   check('1', '/chat 가 열리고 대화방 줄이 보인다', await b.open('/chat', `!!window.__q('chat-row-0') || !!window.__q('chat-list-failed')`), '');
   await b.waitFor(`!window.__q('splash')`, 8000);
   await sleep(800);
+  // 3부-사 FB-016: 데모 기본 방은 막 열린 방(글 0) — 이 점검은 대화가 이어진 '열린 방'을 보므로 데모 줄로 두 번 넘긴다(막 열린 방 → 상대가 먼저 보냄 → 열린 방)
+  await nextScene('상대가 먼저 보냄');
+  await nextScene('열린 방');
+  await sleep(300);
   const head = await visText('chat-row-0-head');
   check('1', '줄 = 데모 인물 성 + OO · 나이 · 지역', /^[가-힣]OO · \d+ · \S+/.test(head), head);
   check('1', '마지막 글 · 읽지 않은 수 1', (await visText('chat-row-0-last')).length > 0 && (await visText('chat-row-0-unread')) === '1', `${await visText('chat-row-0-last')} / ${await visText('chat-row-0-unread')}`);
@@ -218,7 +222,8 @@ try {
   await nextScene('닫힌 방');
   await openFirstRoom();
   await sleep(500);
-  check('8', '7일 지난 방: 읽기만 · 위 띠 없음 · 지우는 날 1월 29일', !(await vis('chat-composer')) && !(await vis('chat-room-banner')) && (await visText('chat-room-closed-body')).includes('1월 29일 금요일까지'), await visText('chat-room-closed-body'));
+  // 3부-사 FB-014: 닫힌 방 장면은 열린 주가 1회차 3주 뒤(장소 차례가 보이게) → 지우는 날도 3주 뒤
+  check('8', '7일 지난 방: 읽기만 · 위 띠 없음 · 지우는 날 2월 19일', !(await vis('chat-composer')) && !(await vis('chat-room-banner')) && (await visText('chat-room-closed-body')).includes('2월 19일 금요일까지'), await visText('chat-room-closed-body'));
   await tap('chat-room-more');
   check('8', '닫힌 방 메뉴 = 신고 · 차단만(연장 · 나가기 없음)', (await vis('chat-menu-safety')) && !(await vis('chat-menu-extend')) && !(await vis('chat-menu-leave')), '');
   await shot('12_닫힌방');

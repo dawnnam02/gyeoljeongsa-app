@@ -42,6 +42,7 @@ import { ConsentManagePage } from './ConsentManagePage';
 import { GradeSwitches } from './GradeSwitches';
 import { GroupLabel, NavRow, OutlineButton, RowGroup } from './SettingsParts';
 import { SETTINGS_ROWS, type RowDef, type SettingsPage } from './settingsLogic';
+import { takeSettingsPage } from './settingsIntent';
 import { WithdrawFlow } from './WithdrawFlow';
 
 export type SettingsDeps = SupportDeps & {
@@ -107,15 +108,16 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
   }, []);
 
-  // 탭을 떠나면 목록으로(다시 들어오면 목록부터)
+  // 탭을 떠나면 목록으로(다시 들어오면 목록부터). 다른 화면이 쪽을 열어 달라고 남겼으면(settingsIntent — T2 · 사전 오픈 할 일 '아는 분 피하기') 그 쪽부터
   useFocusEffect(
-    useCallback(
-      () => () => {
+    useCallback(() => {
+      const want = takeSettingsPage();
+      if (want) setPage(want);
+      return () => {
         setPage('list');
         setLegalOpen(false);
-      },
-      [],
-    ),
+      };
+    }, []),
   );
 
   const toList = useCallback(() => setPage('list'), []);

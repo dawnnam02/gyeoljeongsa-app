@@ -145,9 +145,12 @@ describe('W5 응답 읽기: 아는 키만 · 모르는 모양은 버림', () => 
 });
 
 // ── 3. 데모 채팅 ─────────────────────────────────────────────────────────
+// 3부-사 FB-016: 데모 기본 방은 막 열린 방(글 0). 이 묶음의 시험은 대화가 이어진 방을 보므로 장면 낱말이 없는 이메일은 chatopen 장면으로 연다(사람 · 방 id 는 같음)
+const asOpen = (email: string) => (/chat(last|ext|left|closed|0|new|first|open)/.test(email) ? email : `chatopen${email}`);
 const demoFor = (email: string, over: { replyMs?: number } = {}) => {
   let clock = 1_000_000;
-  const api = createDemoChatApi({ who: async () => ({ id: `u-${email}`, email }), photoUri: (k) => `file:///${k}.webp`, replyMs: over.replyMs ?? 50, clock: () => clock });
+  const scened = asOpen(email);
+  const api = createDemoChatApi({ who: async () => ({ id: `u-${email}`, email: scened }), photoUri: (k) => `file:///${k}.webp`, replyMs: over.replyMs ?? 50, clock: () => clock });
   return { api, tick: (ms: number) => (clock += ms) };
 };
 
@@ -164,7 +167,7 @@ describe('W5 데모 채팅: 데모 인물과 대화 장면', () => {
     expect(await api.faceUrl(`demo-ph-${p.n}-face`)).toBe(`file:///${p.key}_face.webp`);
   });
   test('장면: 이메일 앞부분(chatlast · chatext · chatclosed · chat0) · 데모 줄로 다음 장면', async () => {
-    expect(['x', 'chatlast', 'chatext', 'chatleft', 'chatclosed', 'chat0'].map((l) => sceneOfEmail(`${l}@email.com`))).toEqual(['open', 'lastDay', 'extendWait', 'partnerLeft', 'closed', 'empty']);
+    expect(['x', 'chatopen', 'chatlast', 'chatext', 'chatleft', 'chatclosed', 'chat0'].map((l) => sceneOfEmail(`${l}@email.com`))).toEqual(['fresh', 'open', 'lastDay', 'extendWait', 'partnerLeft', 'closed', 'empty']);
     const { api } = demoFor('w5b@email.com');
     expect(hasDemoControls(api)).toBe(true);
     if (!hasDemoControls(api)) return;
@@ -179,6 +182,7 @@ describe('W5 데모 채팅: 데모 인물과 대화 장면', () => {
     expect(await api.demo.next()).toBe('empty');
     const empty = await api.listRooms();
     expect(empty.ok && empty.data).toEqual([]);
+    expect(await api.demo.next()).toBe('fresh'); // 처음(막 열린 방)으로
   });
   test('보내기: 글 · 연락처는 자유(T-20) · 금전 요구 · 욕설은 막음 · 데모실패는 처음 한 번 인터넷 실패', async () => {
     const { api } = demoFor('w5c@email.com');
@@ -456,7 +460,7 @@ describe('W5 화면: 대화방', () => {
     const { tree } = await openRoom('chatclosed@email.com');
     expect(has(tree, 'chat-composer')).toBe(false);
     expect(has(tree, 'chat-room-banner')).toBe(false);
-    expect(textOf(tree, 'chat-room-closed-body')).toBe(CHAT.room.closedExpired('1월 29일 금요일'));
+    expect(textOf(tree, 'chat-room-closed-body')).toBe(CHAT.room.closedExpired('2월 19일 금요일')); // FB-014: 닫힌 방 장면은 1회차 3주 뒤에 열린 방(닫힘 + 30일 뒤 지움)
     await press(tree, 'chat-room-more');
     expect(has(tree, 'chat-menu-extend')).toBe(false);
     expect(has(tree, 'chat-menu-leave')).toBe(false);

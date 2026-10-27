@@ -24,6 +24,7 @@ import { PREFERENCES_EDIT_ENABLED } from '@/config/flags';
 import { COMMON, RECS } from '@/content/copy';
 import { useFeatureFlags, type FlagsStore } from '@/hooks/useFeatureFlags';
 import { logoTile, StampTile, TOAST_MS } from '@/motion';
+import { openSettingsPage } from '@/features/settings/settingsIntent';
 import { resolveDest } from '@/navigation/resolve';
 import { colors, radius, size, space } from '@/theme/tokens';
 
@@ -50,6 +51,7 @@ type Props = {
 
 export function PrelaunchScreen({ state, failure, onRetry, onChanged, api, flags, deferDue = false, onDeferSeen, linkedHere = false, onLinkedHere, toastMs = TOAST_MS, demoBar }: Props) {
   const { isOn } = useFeatureFlags(flags);
+  const router = useRouter();
   const [sheet, setSheet] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -176,7 +178,7 @@ export function PrelaunchScreen({ state, failure, onRetry, onChanged, api, flags
           <View style={styles.tasks} testID="prelaunch-tasks">
             <AppText variant="bodyBold">{PRELAUNCH.tasksTitle}</AppText>
             {tasks.map((t) => (
-              <TaskRow key={t} task={t} onLink={() => setSheet(true)} />
+              <TaskRow key={t} task={t} onLink={() => setSheet(true)} onAvoid={() => openSettingsPage(router, 'avoid')} />
             ))}
           </View>
         ) : null}
@@ -271,9 +273,17 @@ function RegionCard({ region, api, onChanged }: { region: Region; api: Pick<Laun
   );
 }
 
-// 할 일 한 줄: 이름 + 한 줄 설명. 신청 잇기만 누를 곳이 있다. ①~③ 화면은 아직 없어 '준비 중'(단계표와 같은 낱말)
-function TaskRow({ task, onLink }: { task: WaitTask; onLink: () => void }) {
+// 할 일 한 줄: 이름 + 한 줄 설명. 신청 잇기 · 아는 분 피하기(3부-사 FB-015 — 12-5 를 바로 엶)만 누를 곳이 있다. 그 밖은 화면이 아직 없어 '준비 중'(단계표와 같은 낱말)
+function TaskRow({ task, onLink, onAvoid }: { task: WaitTask; onLink: () => void; onAvoid: () => void }) {
   const copy = PRELAUNCH.tasks[task];
+  if (task === 'avoid') {
+    return (
+      <Card onPress={onAvoid} accessibilityLabel={`${copy.name}, ${copy.line}`} testID="prelaunch-task-avoid" style={styles.taskCard}>
+        <AppText variant="bodyMedium">{copy.name}</AppText>
+        <AppText variant="caption">{copy.line}</AppText>
+      </Card>
+    );
+  }
   return (
     <View style={styles.task} testID={`prelaunch-task-${task}`}>
       <View style={styles.taskText}>
@@ -301,6 +311,7 @@ const styles = StyleSheet.create({
   todoFix: { borderWidth: size.focusRing, borderColor: colors.accent },
   first: { gap: space.s4 },
   tasks: { gap: space.s12 },
+  taskCard: { gap: space.s4 },
   task: { flexDirection: 'row', alignItems: 'center', gap: space.s12, minHeight: size.touchMin, paddingVertical: space.s8, borderTopWidth: 1, borderTopColor: colors.line },
   taskText: { flex: 1, gap: space.s4 },
 });

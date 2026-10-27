@@ -2,10 +2,13 @@
 //  · 상대 = 데모 인물 24명 가운데 '나'와 끼리끼리 순서 첫 분(탑승권 데모 demo/boardingDemo 와 같은 분 · 같은 방 id 'demo-chat-1-{n}'). 이름은 김OO 꼴(서버 mask_name 과 같음)
 //  · 회차 1 = 2026-12-23(수) 18:00 KST 에 열림 → 12-30(수) 18:00 닫힘. 데모 '지금'은 장면마다 정해 둔 시각 + 화면을 연 뒤 흐른 시간
 //  · 장면(이메일 앞부분 또는 목록 아래 데모 줄):
-//     (기본) open 열린 방 · 읽지 않은 글 1   chatlast lastDay 마지막 날   chatext extendWait 상대가 이미 연장을 원함(내가 고르면 7일 더)
+//     (기본) fresh 막 열린 방 · 글 0 — 3부-사 FB-016(팀장 판단): 짧은 길(공개 → [대화 시작하기])에서 만남 장면이 바로 나오게(K27 10-1). 끝 줄 '눈이 마주쳤어요'
+//     chatopen open 열린 방(대화가 이어진 방) · 읽지 않은 글 1 — 내 글이 있어 장면 0(정책 P4-22 '내 글이 있으면 장면 0' 그대로)
+//     chatlast lastDay 마지막 날   chatext extendWait 상대가 이미 연장을 원함(내가 고르면 7일 더)
 //     chatleft partnerLeft 상대가 나감(읽기만)   chatclosed closed 7일이 지나 닫힌 방(읽기만 · 30일 뒤 지움)   chat0 empty 방 없음
-//     D46 만남 장면(K27 10-1): chatnew fresh 막 열린 방 · 글 0(장면 끝 줄 '눈이 마주쳤어요')   chatfirst partnerFirst 상대가 먼저 글 1 · 내 글 0(끝 줄 '먼저 말을 걸어왔어요')
-//     (기본 open 은 내 글이 있어 장면이 없다 — 정책 P4-22 '내 글이 있으면 장면 0')
+//     chatnew fresh(기본과 같음)   chatfirst partnerFirst 상대가 먼저 글 1 · 내 글 0(끝 줄 '먼저 말을 걸어왔어요')
+//  · 3부-사 FB-014: 장소는 방이 열린 주로 차례 돈다(D-206) — 데모 장면마다 열린 주를 달리해(아래 WEEK_OF) 데모 줄로 장면을 바꾸면 장소 · 기억 한 줄이 바뀐다.
+//    기본(fresh)은 탑승권 데모 1회차(12-23)와 같은 날 · 같은 방 id 라 공개 → [대화 시작하기] 길이 이어진다
 //  · 거르기 흉내(0016 text_guard): 금전 요구 · 욕설만 text_blocked. 연락처는 자유(T-20). 링크(http · www)는 보내되 caution(받는 쪽 주의 표시)
 //    글에 '데모실패'가 있으면 처음 한 번 인터넷 실패(다시 보내기 확인용)
 //  · 내가 처음 글을 보내면 1.5초 뒤 상대가 한 번 답한다(실시간 흉내). 사진 = 데모 사진 파일 · 음성 = 길이만(소리 없음)
@@ -18,7 +21,11 @@ import type { ChatApi, Message, Outgoing, Room, SystemEvent } from './chatApi';
 import { DAY, PURGE_DAYS, ROOM_DAYS, TEXT_MAX, VOICE_MAX_BYTES } from './chatLogic';
 
 export type DemoChatScene = 'open' | 'lastDay' | 'extendWait' | 'partnerLeft' | 'closed' | 'empty' | 'fresh' | 'partnerFirst';
-export const DEMO_CHAT_SCENES: readonly DemoChatScene[] = ['open', 'lastDay', 'extendWait', 'partnerLeft', 'closed', 'empty', 'fresh', 'partnerFirst'];
+// 데모 줄 차례: 기본(막 열린 방) → 상대가 먼저 → 열린 방 → 마지막 날 → 연장 → 나감 → 닫힘 → 방 없음 → 처음으로
+export const DEMO_CHAT_SCENES: readonly DemoChatScene[] = ['fresh', 'partnerFirst', 'open', 'lastDay', 'extendWait', 'partnerLeft', 'closed', 'empty'];
+// 장면마다 방이 열린 주(1회차 12-23 에서 몇 주 뒤) — 장소 = 열린 날짜의 주 번호 차례(features/chat/meetLogic). 날짜가 글로 나오는 장면(열린 방 · 마지막 날 · 연장)은 0
+const WEEK_OF: Readonly<Record<DemoChatScene, number>> = { fresh: 0, partnerFirst: 1, open: 0, lastDay: 0, extendWait: 0, partnerLeft: 2, closed: 3, empty: 0 };
+const shiftOf = (scene: DemoChatScene) => WEEK_OF[scene] * 7 * DAY;
 
 const at = (iso: string) => Date.parse(iso);
 const MATCH_AT = at('2026-12-23T18:00:00+09:00');
@@ -46,7 +53,8 @@ export const sceneOfEmail = (email: string): DemoChatScene => {
   if (l.includes('chat0')) return 'empty';
   if (l.includes('chatnew')) return 'fresh';
   if (l.includes('chatfirst')) return 'partnerFirst';
-  return 'open';
+  if (l.includes('chatopen')) return 'open';
+  return 'fresh';
 };
 
 type Who = () => Promise<{ id: string; email: string } | null>;
@@ -71,9 +79,12 @@ const msg = (mine: boolean, kind: Message['kind'], body: string, when: number, e
 const sys = (event: SystemEvent, mine: boolean, when: number) => msg(mine, 'system', event, when);
 
 function seedRoom(p: DemoPerson, email: string, scene: DemoChatScene): RoomState {
-  const t = (iso8601: string) => at(iso8601);
+  const shift = shiftOf(scene);
+  const t = (iso8601: string) => at(iso8601) + shift;
+  const openedAt = MATCH_AT + shift;
+  const closesAt = CLOSES_AT + shift;
   const messages: Message[] = [
-    sys('opened', false, MATCH_AT),
+    sys('opened', false, openedAt),
     msg(false, 'text', '안녕하세요. 같은 날 이어지게 되어 반가워요. 저는 주말에 동네를 오래 걷는 편이에요.', t('2026-12-23T18:24:00+09:00')),
     msg(true, 'text', '안녕하세요. 저도 반가워요. 퇴근하고 천천히 걷는 걸 좋아해요.', t('2026-12-23T19:02:00+09:00')),
     msg(false, 'photo', '', t('2026-12-24T12:30:00+09:00'), { mediaId: `demo-key:${p.key}_free` }),
@@ -86,17 +97,17 @@ function seedRoom(p: DemoPerson, email: string, scene: DemoChatScene): RoomState
   if (scene === 'fresh') messages.splice(1); // 막 열린 방: 열림 시스템 글만
   if (scene === 'partnerFirst') messages.splice(2); // 상대 첫 글 하나만
   const closed = scene === 'closed' || scene === 'partnerLeft';
-  const closedAt = scene === 'partnerLeft' ? t('2026-12-26T11:00:00+09:00') : CLOSES_AT;
-  if (scene === 'closed') messages.push(sys('closed_expired', false, CLOSES_AT));
+  const closedAt = scene === 'partnerLeft' ? t('2026-12-26T11:00:00+09:00') : closesAt;
+  if (scene === 'closed') messages.push(sys('closed_expired', false, closesAt));
   if (scene === 'partnerLeft') messages.push(sys('partner_left', false, closedAt));
   // 상대가 연장을 원한 시스템 글(extend_requested, mine=false)은 서버가 보내지만 화면은 그리지 않는다(판단 — 변경기록 6장)
   if (scene === 'extendWait') messages.push(sys('extend_requested', false, t('2026-12-29T20:00:00+09:00')));
   const room: Room = {
     id: `demo-chat-1-${p.n}`,
     partner: { id: `demo-cand-${p.n}`, name: p.name, age: p.age, region: `${p.region.sido} ${p.region.sigungu}`, facePhotoId: `demo-ph-${p.n}-face` },
-    roundNo: 1,
-    openedAt: MATCH_AT,
-    closesAt: closed ? closedAt : CLOSES_AT,
+    roundNo: 1 + WEEK_OF[scene],
+    openedAt,
+    closesAt: closed ? closedAt : closesAt,
     closedAt: closed ? closedAt : null,
     closedReason: scene === 'closed' ? 'expired' : scene === 'partnerLeft' ? 'partner_left' : null,
     purgeAt: null,
@@ -135,7 +146,7 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
     const u = await me();
     return states.get(u.id) ?? seed(u.id, u.email, sceneOverride.get(u.id) ?? sceneOfEmail(u.email));
   };
-  const nowOf = (s: State) => SCENE_NOW[s.scene] + (clock() - s.startedAt);
+  const nowOf = (s: State) => SCENE_NOW[s.scene] + shiftOf(s.scene) + (clock() - s.startedAt);
   const notify = (id: string) => listeners.get(id)?.forEach((f) => f());
   const view = (r: RoomState): Room => ({ ...r.room, last: lastOf(r), purgeAt: r.room.closedAt !== null ? r.room.closedAt + PURGE_DAYS * DAY : null });
   const roomOf = (s: State, id: string) => s.rooms.find((r) => r.room.id === id && !r.gone) ?? null;
@@ -269,7 +280,7 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
     },
     now() {
       const s = states.values().next().value as State | undefined;
-      return s ? nowOf(s) : SCENE_NOW.open;
+      return s ? nowOf(s) : SCENE_NOW.fresh;
     },
     // 데모 전용(ChatApi 밖): 장면 읽기 · 바꾸기
     demo: {

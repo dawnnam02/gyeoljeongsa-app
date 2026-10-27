@@ -29,6 +29,8 @@ import { TextButton } from '@/components/TextButton';
 import { Toast } from '@/components/Toast';
 import { fillText } from '@/content/fillLegal';
 import { TermsArticleSheet } from '@/features/consent/TermsArticleSheet';
+import { PRELAUNCH } from '@/features/prelaunch/prelaunchCopy';
+import { openSettingsPage } from '@/features/settings/settingsIntent';
 import { haptic, InkTile, logoTile, MaskLine, scene2, SkeletonCard, SkeletonPulse, TOAST_MS, Wipe } from '@/motion';
 import { colors, size, space } from '@/theme/tokens';
 
@@ -200,7 +202,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
             />
             {stamp > 0 ? <InkTile key={stamp} size={logoTile.ticket} duration={scene2.ticket.stamp} style={styles.stamp} testID="boarding-stamp" /> : null}
           </View>
-          {view === 'boarded' || view === 'matched' || view === 'no_match' || view === 'before_sale' ? <Tasks state={state} onOpen={(path) => router.push(path)} /> : null}
+          {view === 'boarded' || view === 'matched' || view === 'no_match' || view === 'before_sale' ? <Tasks state={state} onOpen={(path) => router.push(path)} onAvoid={() => openSettingsPage(router, 'avoid')} /> : null}
           {deps.demoBar ? deps.demoBar(reload) : null}
         </ScrollView>
       )}
@@ -378,20 +380,23 @@ function StatusCard({ state, view, moment = false, onBuy, onOpen, onCancel, canc
   }
 }
 
-function Tasks({ state, onOpen }: { state: BoardingState; onOpen: (href: Href) => void }) {
-  const rows: { key: string; name: string; line: string; href: Href }[] = [
-    { key: 'profile', ...BOARDING.tasks.profile, href: hrefOf('/profile') },
-    { key: 'survey', ...BOARDING.tasks.survey, href: SURVEY_HREF },
+// 기다리는 동안 할 일(화면_요구사항 T2): 프로필 · 설문 다듬기 · 아는 분 피하기(12-5 — 3부-사 FB-015, 설정 안 쪽을 바로 엶) · 지난 대화.
+//  아는 분 피하기 줄 글은 사전 오픈 단계표 할 일과 같은 글(PRELAUNCH.tasks.avoid — 탑승권 쪽 전용 카피 키는 팀장 넘김)
+function Tasks({ state, onOpen, onAvoid }: { state: BoardingState; onOpen: (href: Href) => void; onAvoid: () => void }) {
+  const rows: { key: string; name: string; line: string; go: () => void }[] = [
+    { key: 'profile', ...BOARDING.tasks.profile, go: () => onOpen(hrefOf('/profile')) },
+    { key: 'survey', ...BOARDING.tasks.survey, go: () => onOpen(SURVEY_HREF) },
+    { key: 'avoid', ...PRELAUNCH.tasks.avoid, go: onAvoid },
   ];
   const chat = state.past.find((p) => p.chatId);
-  if (chat?.chatId) rows.push({ key: 'chats', name: BOARDING.tasks.chats.name, line: BOARDING.tasks.chats.line(state.past.length), href: hrefOf(`/chat/${chat.chatId}`) });
+  if (chat?.chatId) rows.push({ key: 'chats', name: BOARDING.tasks.chats.name, line: BOARDING.tasks.chats.line(state.past.length), go: () => onOpen(hrefOf(`/chat/${chat.chatId}`)) });
   return (
     <View style={styles.gapSmall} testID="boarding-tasks">
       <AppText variant="bodyBold" accessibilityRole="header">
         {BOARDING.tasksTitle}
       </AppText>
       {rows.map((r) => (
-        <Card key={r.key} onPress={() => onOpen(r.href)} accessibilityLabel={`${r.name}, ${r.line}`} testID={`boarding-task-${r.key}`} style={styles.gapTiny}>
+        <Card key={r.key} onPress={r.go} accessibilityLabel={`${r.name}, ${r.line}`} testID={`boarding-task-${r.key}`} style={styles.gapTiny}>
           <AppText variant="bodyMedium">{r.name}</AppText>
           <AppText variant="caption">{r.line}</AppText>
         </Card>
