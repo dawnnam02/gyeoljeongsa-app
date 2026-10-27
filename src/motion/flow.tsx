@@ -114,7 +114,8 @@ export function ProgressBar({ ratio, height = size.barProgress, style, fillTestI
   }, [clamped, reduce, scale]);
   const fill = useAnimatedStyle(() => ({ transform: [{ scaleX: scale.get() }] }));
   return (
-    <View style={[styles.track, { height }, style]} accessible accessibilityRole="progressbar" accessibilityLabel={accessibilityLabel} accessibilityValue={accessibilityValue} testID={testID}>
+    // 3부-사(검수 Q9-N4): RN-web 0.21 은 accessibilityValue 객체를 aria-valuenow 로 넘기지 않아 aria-value* 를 같이 준다
+    <View style={[styles.track, { height }, style]} accessible accessibilityRole="progressbar" accessibilityLabel={accessibilityLabel} accessibilityValue={accessibilityValue} aria-valuemin={accessibilityValue?.min} aria-valuemax={accessibilityValue?.max} aria-valuenow={accessibilityValue?.now} testID={testID}>
       <Animated.View style={[styles.fill, { height }, fill]} testID={fillTestID} />
     </View>
   );

@@ -68,6 +68,16 @@ export function fillContact(text: string, contact: SupportContact = SUPPORT_CONT
   return out;
 }
 
+// 12 고객센터 › 아동 안전 문의 본문(3부-사 · 검수 Q9-N6): 연락처 값이 없으면(신고번호 · 고객센터 값은 법인 뒤) '아래 연락처로 알려 주세요' 문장은 빼고
+//  앱 안 신고 길 문장만 남긴다 — 아래에 연락처가 없는데 '아래 연락처'를 말하지 않게. 글은 카피 원본 문장 그대로(새 글 0)
+export function childSafetyBody(body: string, hasContact: boolean): string {
+  if (hasContact) return body;
+  return body
+    .split(/(?<=\.) /)
+    .filter((sentence) => !sentence.includes('아래 연락처'))
+    .join(' ');
+}
+
 // 탈퇴 인증번호 단계의 오류 글(02 와 같은 글 · N31)
 export function withdrawStartError(reason: WithdrawStartFailure): string {
   switch (reason) {

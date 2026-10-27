@@ -366,12 +366,15 @@ describe('12 하위 화면', () => {
     expect(hasText(tree2, REPORTS.empty)).toBe(true);
   });
 
-  test('고객센터(QP-04): 값이 정해지기 전에는 이메일 · 운영 시간 · 아동 안전 연락처 줄과 [복사] · [메일 앱 열기]가 없고, 자리 글 {…} 이 화면에 없다 · 아동 안전 문의 글은 그대로', async () => {
+  test('고객센터(QP-04 · Q9-N6): 값이 정해지기 전에는 이메일 · 운영 시간 · 아동 안전 연락처 줄과 [복사] · [메일 앱 열기]가 없고, 자리 글 {…} 이 화면에 없다 · 아동 안전 문의 글은 「아래 연락처」 문장을 뺀 앱 신고 길 문장만', async () => {
     const { deps } = setup();
     const tree = await show(deps);
     await press(tree, 'settings-row-support');
     for (const id of ['settings-support-card', 'settings-support-email', 'settings-support-hours', 'settings-support-copy', 'settings-support-mail', 'settings-child-contact']) expect(has(tree, id)).toBe(false);
-    for (const text of [CHILD_SAFETY.row, CHILD_SAFETY.body, CHILD_SAFETY.policy]) expect(hasText(tree, text)).toBe(true);
+    for (const text of [CHILD_SAFETY.row, CHILD_SAFETY.policy]) expect(hasText(tree, text)).toBe(true);
+    expect(textOf(tree, 'settings-child-body')).toBe("앱에서는 신고 사유 '미성년자로 보임'이나 '부적절한 사진'으로도 알릴 수 있어요.");
+    expect(CHILD_SAFETY.body.endsWith(textOf(tree, 'settings-child-body') ?? '-')).toBe(true); // 카피 원본 문장 그대로(새 글 0)
+    expect(allTexts(tree).some((t) => t.includes('아래 연락처'))).toBe(false);
     expect(allTexts(tree).some((t) => /\{[^}]+\}/.test(t))).toBe(false);
   });
 
@@ -382,6 +385,7 @@ describe('12 하위 화면', () => {
     expect(textOf(tree, 'settings-support-email')).toBe('문의 이메일 help@example.com');
     expect(has(tree, 'settings-support-hours')).toBe(false);
     expect(textOf(tree, 'settings-child-contact')).toBe('아동 안전 담당 연락처 help@example.com');
+    expect(textOf(tree, 'settings-child-body')).toBe(CHILD_SAFETY.body); // 연락처가 있으면 '아래 연락처' 문장까지 그대로
     await press(tree, 'settings-support-mail');
     expect(deps.openMail).toHaveBeenCalledWith('help@example.com');
     await press(tree, 'settings-support-copy');

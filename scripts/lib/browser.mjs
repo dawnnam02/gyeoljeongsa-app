@@ -1,7 +1,7 @@
 // 웹 번들을 헤드리스 Edge(없으면 Chrome)로 열어 움직이는 도우미. 무료 · 네트워크 없음(로컬 서버 + 로컬 브라우저).
 // web-f1.mjs 가 쓴다(web-smoke.mjs 는 자기 안에 같은 코드를 따로 갖고 있다: F0 점검을 건드리지 않으려고).
 import { Buffer } from 'node:buffer';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -37,7 +37,14 @@ export async function serve(distDir) {
     fs.createReadStream(file).pipe(res);
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  return { origin: `http://127.0.0.1:${server.address().port}`, close: () => server.close() };
+  // 3부-사(검수 웹점검_f1f3_원인 3장 T1): 브라우저가 남긴 keep-alive 연결 때문에 server.close() 가 끝나지 않아 node 가 남던 것 — 연결을 모두 끊고 닫는다
+  return {
+    origin: `http://127.0.0.1:${server.address().port}`,
+    close: () => {
+      server.closeAllConnections?.();
+      server.close();
+    },
+  };
 }
 
 // 아주 작은 CDP 클라이언트(Node 내장 WebSocket)
@@ -301,7 +308,9 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
         /* 이미 닫힘 */
       }
       try {
-        proc.kill();
+        // Windows 의 Edge 는 자식 프로세스를 따로 띄워 proc.kill() 로는 주 창만 끝난다 → 프로세스 나무째 끝낸다(T1: 점검 끝 뒤 node · Edge 가 남던 것)
+        if (process.platform === 'win32' && proc.pid) spawnSync('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+        else proc.kill();
       } catch {
         /* 이미 끝남 */
       }

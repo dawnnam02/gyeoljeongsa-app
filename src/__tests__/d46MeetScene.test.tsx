@@ -201,6 +201,7 @@ describe('③ 화면: 대화방 첫 상태로 한 번(T4S)', () => {
     expect(M.total).toBe(6_240);
   });
 
+  // 3부-사: 화면 T4S · 정책 P4-25 · K27 4-3 = 동작 줄이기는 4초 머문 뒤 저절로 대화방([대화방으로 가기] 0). 카피 16-2 MEET_SCENE.go 메모의 '동작 줄이기 때 버튼'은 마케팅 고침 거리(팀장 넘김)
   test('동작 줄이기: 정지 그림(걸어오는 사람 칸 0) + 카드 + 끝 줄 → 4.3초 뒤 대화방', async () => {
     act(() => reduceMotionStore.set(true));
     jest.useFakeTimers();
@@ -209,6 +210,7 @@ describe('③ 화면: 대화방 첫 상태로 한 번(T4S)', () => {
     expect(has(tree, 'chat-meet-art-walker')).toBe(false);
     expect(textOf(tree, 'chat-meet-line')).toBe(QUIET);
     expect(has(tree, 'chat-meet-skip')).toBe(true);
+    expect(has(tree, 'chat-meet-go')).toBe(false); // 버튼은 화면 읽기 때만(T4S)
     await advance(M.reducedIn + M.reducedHold + M.reducedOut - 50);
     expect(has(tree, 'chat-meet')).toBe(true);
     await advance(60);

@@ -407,8 +407,8 @@
 |---|---|
 | ② 0039 응답 5종 | 끝(커밋 ②) — 아래 '② 표' |
 | ③ meetSeen | 끝(커밋 ③) — meetSeen 이 appStateStorage(SecureStore 조각 · 웹 메모리) · check_sec2 P7-f 통과 |
-| ④ 검수 결함 · 웹 | 진행 |
-| ⑤ FB-014 ~ 016 | 대기 |
+| ④ 검수 결함 · 웹 | 끝(커밋 ④) — 아래 '④ 표' |
+| ⑤ FB-014 ~ 016 | 진행 |
 | ① 종교 동의 카드 | 카피 도착 대기 |
 
 ### ② 0039 응답 5종 (R_변경기록 8-4 표 → 앱)
@@ -427,3 +427,16 @@
 - `features/chat/meetSeen.ts`: 기록 저장소 = `lib/secureStorage` appStateStorage(설문 임시 저장과 같은 길 — 네이티브 SecureStore 조각 · 이 기기 전용, 웹 메모리). 열쇠 chat.meetScene.v1 · 최근 20방 · 로그아웃 · 탈퇴 때 지움 그대로. `meetMemoryOf(저장소)` 로 시험
 - 시험 `s3saMeetStore.test.ts` 2(코드에 AsyncStorage 0 · 조각 저장 왕복 · 지움 · 틀린 값 버림 · 20방)
 - check_sec2(10-27 밤): P7-f 통과(허용 표식 3곳 그대로). 실패 2 = F-05s(npm audit, 앱 의존 — 예상) · V36-d(DB 묶음 'B안 시험 준비 실패 — account_status_suspend_window', 보안 시험 파일 21:59 다른 세션 개정 · 앱 코드 무관, 마지막에 다시)
+
+### ④ 검수 결함 · 웹 점검
+| 결함 | 원인 | 고침 | 확인 |
+|---|---|---|---|
+| N1 08 알약 두 줄 | Chip 의 lead 아이콘 칸이 세로(기본 column) | 앞 아이콘이 있으면 체크 칩과 같은 가로 줄(왼쪽 8 · 사이 4) | s3saDefects |
+| N3 16-G 웹 16px 넘침 | SubPage 가 오른쪽에서 들어오는 움직임(Rise x)이 탭 틀 밖 /grade 에서 문서를 잠깐 넘겨, 모바일 폭 웹이 406 으로 줄여 보인 채 남음(탐침: 230ms 에 my-grade 오른쪽 399) | MyGradeScreen 에 가로 자르는 틀(flex 1 · overflow hidden) | 탐침 390 → 390 · 430 → 430(전 406 · 446) · s3saDefects |
+| N4 aria-valuenow 0/5 | RN-web 0.21 은 accessibilityValue 객체를 넘기지 않음 | TraitBar · TraitSlider · ProgressBar · 설문 v2 진행에 aria-value* 같이(정치 막대 · 스위치는 이미 있음) | web-f3 이 aria-valuenow 로 07 값을 읽어 75/0 |
+| N5 대기 링 웹 멈춤 | RN Animated useNativeDriver → 웹 JS 대체가 호 transform 을 다시 쓰지 않음 | Ring 을 Reanimated withRepeat 로(네이티브 · 웹 같은 코드) | web-f1 '링이 돈다' 서로 다른 값 14개(전 1 ~ 5) · splash 11/11 |
+| N6 고객센터 문장만 | 연락처 값 없음 → 아래 줄 숨김, 본문 '아래 연락처로 알려 주세요'는 남음 | 연락처가 없으면 그 문장만 빼고 앱 신고 길 문장(원본 글 그대로) | settingsScreen · s3saDefects |
+| 웹 f1 | 링 판정이 '한 번 바뀜'이면 통과(T4) | 1.5초 동안 100ms 마다 · none 0 · 서로 다른 값 5개 넘게 | f1 75/1 — 남은 1 = C '덧붙이는 안내'(법무 동의문구 22:03 개정 · gen:legal 전, 앱 밖) |
+| 웹 f3 | 07 숫자 글자를 읽다 예외 → 뒤 61줄 안 돎 · 예외를 실패 수에 안 넣음(T2) · 끝난 뒤 Edge · node 남음(T1) | aria-valuenow 읽기 · 예외 = 실패 1 · 닫을 때 Edge 프로세스 나무째(taskkill /T) · 서버 연결 모두 끊음 | f3 75/0 · 정상 끝 |
+| 카피 16-2 go ↔ T4S | 앱은 T4S · 정책 P4-25(동작 줄이기 = 4초 뒤 저절로 · 버튼은 화면 읽기만) 그대로 | 시험에 '동작 줄이기 때 [대화방으로 가기] 0' 한 줄 · 머리 주석 | 카피 메모 쪽 고침은 팀장 넘김 |
+- 전체 jest(④ 뒤): 94묶음 1,696/1,698 — 실패 2 = legalGen · legalContent(법무 원본 22:03 ~ 22:07 개정, gen:legal 은 팀장 알림 뒤). check:copy 94/5 도 같은 까닭(A · B · I)

@@ -2,6 +2,7 @@
 // 값은 0~100의 성향 위치이고 좋고 나쁨이 아니다(카피.md 07). 등급 · 점수 같은 말은 어디에도 쓰지 않는다.
 // QP-09(검수): 대화형 설문의 '내 성향'(숫자 0)과 맞춰 막대 옆 숫자 글자는 화면에 그리지 않는다. 위치는 막대 길이로만 보이고,
 //  스크린리더 값(accessibilityValue · 이름 안의 값)은 끌어서 고치는 데 필요해 그대로 둔다.
+//  3부-사(검수 Q9-N4): RN-web 0.21 은 accessibilityValue 객체를 aria-valuenow 로 넘기지 않는다 → aria-value* 를 같이 준다(네이티브는 같은 값)
 import { useLayoutEffect, useRef, useState } from 'react';
 import { PanResponder, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
@@ -22,6 +23,9 @@ export function TraitBar({ name, value, testID }: BarProps) {
       accessibilityRole="progressbar"
       accessibilityLabel={TRAITS.sliderValue(name, value)}
       accessibilityValue={{ min: 0, max: 100, now: value }}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={value}
       testID={testID}>
       <AppText variant="bodyMedium" style={styles.name} numberOfLines={2}>
         {name}
@@ -80,6 +84,10 @@ export function TraitSlider({ name, value, onChange, testID }: SliderProps) {
         accessibilityLabel={name}
         accessibilityHint={TRAITS.sliderHint}
         accessibilityValue={{ min: 0, max: 100, now: value, text: String(value) }}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={value}
+        aria-valuetext={String(value)}
         accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
         onAccessibilityAction={(event) => {
           const delta = event.nativeEvent.actionName === 'increment' ? TRAIT_STEP : event.nativeEvent.actionName === 'decrement' ? -TRAIT_STEP : 0;

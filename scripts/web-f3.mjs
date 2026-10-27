@@ -76,8 +76,10 @@ async function toSurvey(email) {
   return b.waitFor(`location.pathname === '/survey/01'`);
 }
 const peek = (email) => b.evaluate(`JSON.stringify({ rows: window.__demoPeek.aiRows(${JSON.stringify(email.replace('@', 'v4on@'))}), active: window.__demoPeek.active(${JSON.stringify(email.replace('@', 'v4on@'))}) })`).then(JSON.parse);
-const slider = async (key) => Number(await b.evaluate(`window.__q('trait-slider-${key}-value').innerText`));
-const bar = async (key) => Number(await b.evaluate(`window.__q('trait-bar-${key}-value').innerText`)); // QP-09 뒤 숫자 글자가 없어 07 대조는 실패(기대값 갱신 미완 — 3부 보고)
+// 3부-사(검수 웹점검_f1f3_원인 2장 · Q9-N4): 07 막대 옆 숫자 글자는 QP-09 로 지웠다 → 화면 읽기 값(aria-valuenow)을 읽는다(앱이 웹에도 aria-value* 를 준다)
+const ariaNow = async (id) => b.evaluate(`(() => { const el = window.__q(${JSON.stringify(id)}); const v = el ? el.getAttribute('aria-valuenow') : null; return v === null ? NaN : Number(v); })()`);
+const slider = async (key) => ariaNow(`trait-slider-${key}`);
+const bar = async (key) => ariaNow(`trait-bar-${key}`);
 
 try {
   // ═══ A. 정상 응답 ═══
@@ -333,6 +335,7 @@ try {
   check('D', '바깥 주소(서버 · Claude 포함)로 나간 요청 0 · 실패한 요청 0', outside.length === 0 && failedReq.length === 0, `바깥 ${outside.length}(${outside.slice(0, 2).map((r) => r.url).join(',')}) · 실패 ${failedReq.length}`);
 } catch (error) {
   exitCode = 1;
+  results.push({ group: 'E', title: '점검 도중 오류', ok: false }); // 3부-사(T2): 예외도 실패 수에 넣는다('실패 0' 오해 방지)
   console.log(`[실패] 점검 도중 오류: ${String(error?.stack ?? error).split('\n').slice(0, 4).join(' | ')}`);
 } finally {
   b.close();

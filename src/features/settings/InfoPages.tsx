@@ -15,7 +15,7 @@ import { SUPPORT_CONTACT, type SupportContact } from '@/content/supportContact';
 import { useSecurityStore } from '@/store/securityStore';
 import { colors, space } from '@/theme/tokens';
 
-import { fillContact } from './settingsLogic';
+import { childSafetyBody, fillContact } from './settingsLogic';
 import { NavRow, RowGroup, SubPage, SwitchRow } from './SettingsParts';
 
 export function SecurityPage({ onBack }: { onBack: () => void }) {
@@ -73,7 +73,9 @@ export function SupportPage({ deps, contact = SUPPORT_CONTACT, onBack, onToast }
         <AppText variant="bodyBold" accessibilityRole="header">
           {CHILD_SAFETY.row}
         </AppText>
-        <AppText variant="body">{CHILD_SAFETY.body}</AppText>
+        <AppText variant="body" testID="settings-child-body">
+          {childSafetyBody(CHILD_SAFETY.body, !!email)}
+        </AppText>
         {email ? (
           <AppText variant="bodyMedium" testID="settings-child-contact">
             {fillContact(CHILD_SAFETY.contact, contact)}

@@ -674,7 +674,7 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
         <ScreenHeader title={SV2.headerTitle} onBack={canBack ? prev : undefined} rightLabel={stage === 'intro' ? undefined : SV2.tempSave} onRight={() => after('save')} testID="v2-header" />
         <ScrollView ref={scroller} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID="v2-scroll">
           {stage !== 'intro' ? (
-            <View style={styles.progress} accessible accessibilityRole="progressbar" accessibilityLabel={SV2.common.progressA11y(prog.done, prog.total)} accessibilityValue={{ min: 0, max: prog.total, now: prog.done }} testID="v2-progress">
+            <View style={styles.progress} accessible accessibilityRole="progressbar" accessibilityLabel={SV2.common.progressA11y(prog.done, prog.total)} accessibilityValue={{ min: 0, max: prog.total, now: prog.done }} aria-valuemin={0} aria-valuemax={prog.total} aria-valuenow={prog.done} testID="v2-progress">
               <View style={styles.bars}>
                 {prog.bars.map((b) => (
                   <ProgressBar key={b.key} ratio={b.ratio} style={styles.bar} fillTestID={`v2-bar-${b.key}`} />

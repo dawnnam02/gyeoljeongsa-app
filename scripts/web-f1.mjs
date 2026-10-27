@@ -373,13 +373,17 @@ try {
     // 링이 도는가: 같은 요소의 transform 이 시간에 따라 바뀐다
     const spin = async () => b.evaluate(`(() => { const el = window.__q('splash-ring-arc'); return el ? getComputedStyle(el).transform : 'none'; })()`);
     // 번들을 막 만든 직후나 컴퓨터가 바쁠 때는 첫 화면 그리기가 늦어 두 번 읽은 값이 같을 수 있다(B-Q1-01). 최대 4초 동안 230ms 간격으로 읽어 값이 한 번이라도 달라지면 돈 것으로 본다
+    //  3부-사(검수 웹점검_f1f3_원인 1장 T4): '한 번 바뀜'은 우연한 다시 그리기 · 링이 사라질 때(none)도 통과였다 → 1.5초 동안 100ms 마다 읽어 링이 내내 있고(none 0) 서로 다른 값이 5개 넘게
     const t1 = await spin();
-    let t2 = t1;
-    for (let i = 0; i < 18 && t2 === t1; i += 1) {
-      await sleep(230);
-      t2 = await spin();
+    const seen = new Set([t1]);
+    let gone = t1 === 'none';
+    for (let i = 0; i < 15; i += 1) {
+      await sleep(100);
+      const t = await spin();
+      if (t === 'none') gone = true;
+      seen.add(t);
     }
-    check('F', '링이 돈다(호의 회전 값이 시간에 따라 바뀐다)', t1 !== t2, `${t1.slice(0, 40)} → ${t2.slice(0, 40)}`);
+    check('F', '링이 돈다(호의 회전 값이 1.5초 동안 계속 바뀐다)', !gone && seen.size > 5, `서로 다른 값 ${seen.size}개 · 사라짐 ${gone}`);
 
     // 동작 줄이기: 링 정지
     await b.cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });

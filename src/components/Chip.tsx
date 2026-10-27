@@ -21,6 +21,7 @@ import { Pressable } from './Pressable';
 export type ChipVariant = 'selected' | 'tag' | 'inactive' | 'tab';
 
 // lead: 글자 앞 아이콘 16 · accent(D43 A13 · A14 — 08 알약 '인증 대기' · '사진 확인 중'). 체크가 보이는 고른 칩에서는 그리지 않는다
+//  3부-사(검수 Q9-N1): 아이콘과 글자를 한 줄(가로)로 — 전에는 세로로 쌓여 알약이 두 줄 높이였다. 체크 칩과 같은 줄 모양(왼쪽 여백 8 · 사이 4)
 type Props = { label: string; variant?: ChipVariant; selected?: boolean; lead?: IconName; onPress?: () => void; accessibilityLabel?: string; testID?: string };
 
 export function Chip({ label, variant = 'tag', selected = false, lead, onPress, accessibilityLabel, testID }: Props) {
@@ -28,7 +29,7 @@ export function Chip({ label, variant = 'tag', selected = false, lead, onPress, 
   const look = tab ? (selected ? variantStyle.tabOn : variantStyle.tab) : variantStyle[variant];
   const checked = !tab && variant === 'selected';
   const body = (
-    <View style={[styles.chip, look, checked && styles.withCheck]} testID={onPress ? undefined : testID}>
+    <View style={[styles.chip, look, (checked || (lead && !checked)) && styles.withCheck]} testID={onPress ? undefined : testID}>
       {checked ? <Icon name="check" size={space.s16} color={colors.accent} testID={testID ? `${testID}-check` : undefined} /> : null}
       {lead && !checked ? <Icon name={lead} size={space.s16} color={colors.accent} testID={testID ? `${testID}-lead` : undefined} /> : null}
       <AppText variant={tab && selected ? 'captionBold' : 'captionMedium'} tone={tab ? (selected ? 'accent' : 'text') : variant === 'inactive' ? 'sub' : 'accent'}>

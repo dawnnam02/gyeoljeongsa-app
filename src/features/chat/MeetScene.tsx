@@ -5,6 +5,7 @@
 //  · [건너뛰기] 처음부터 끝까지 같은 자리(터치 48) · 뒤로(안드로이드 버튼 · iOS 밀기)는 화면의 평소 뒤로 · 앱이 뒤로 가면 장면을 끝낸다(돌아오면 대화방)
 //  · mode still(동작 줄이기): 쉬는 모습 + 카드 + 끝 줄이 한 번에 투명도 150 → 4초 → 투명도 150 으로 대화방(합 4.3초, 이동 · 확대 · 걷힘 0)
 //  · mode reader(화면 읽기): 같은 정지 그림 · 저절로 넘김 0 · 장면 한 덩이 이름(MEET_SCENE.a11y) · 버튼은 [대화방으로 가기] 하나
+//    3부-사: 기준은 화면 T4S · 정책 P4-25(동작 줄이기 = 4초 뒤 저절로 · [대화방으로 가기] 는 화면 읽기만). 카피 16-2 go 메모의 '동작 줄이기 때 버튼'은 메모 쪽 고침 거리
 //  · 움직이는 속성은 transform · opacity 만(Reanimated). 시각은 공유 값 t 하나(meetTimeline)
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef } from 'react';
