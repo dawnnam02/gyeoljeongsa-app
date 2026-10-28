@@ -3,6 +3,8 @@
 //  수정: 막대를 끌고 · 칩을 ×로 지우거나 더하고 · 요약을 고친다. [취소] [저장] — [저장]은 user_edited 에만 쓴다(AI 원본 result 는 그대로), 확정이 아니다
 //  직접 입력(?mode=manual, 06 에서 옴): 막대 처음값은 서버가 준 값(없으면 50) · 칩은 후보에서 고른다 · 요약은 비워도 된다 · [이대로 확정] 한 번으로 저장 + 확정
 //  [이대로 확정] → confirm_profile → 08(처음 한 번). 정리 결과가 없으면 06 으로 되돌린다.
+//  3부-아(검수 QP-09 · 화면_요구사항 2-1 F2): 대화형 설문 '내 성향'을 마친 분(인터뷰 정리 status done)은 같은 확인을 두 번 하지 않는다 —
+//   07 을 보이지 않고 그 결과로 확정(confirm_profile) → 08. 확정이 안 되면 지금처럼 07 을 보인다. 06(AI 정리)을 건너뛰려면 서버가 인터뷰 확정으로 계정을 여는 길이 필요(백엔드 넘김)
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, ScrollView, StyleSheet, View } from 'react-native';
@@ -35,11 +37,25 @@ import { checkDraft, clipSummary, sameView, setTrait, SUMMARY_MAX_LEN, toEdited 
 export type TraitsDeps = {
   api: Pick<AiApi, 'loadLatest' | 'saveEdited' | 'confirm' | 'manual'>;
   setStage: (stage: 'traits-pending' | 'traits-confirmed') => void;
+  chatDone?: () => Promise<boolean>; // 대화형 설문 '내 성향'을 마쳤나(get_interview_summary status done). 없으면 늘 07 을 보인다(옛 시험)
+};
+
+// 대화형 설문 정리를 마쳤나 — 처음 쓸 때 대화형 설문 연결을 만든다(기기 모듈 · 서버 연결을 07 을 열 때만)
+const interviewDone = async (): Promise<boolean> => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { surveyChatDeps } = require('@/features/surveyChat/deps') as typeof import('@/features/surveyChat/deps');
+    const r = await surveyChatDeps().chat.summary();
+    return r.ok && r.data.status === 'done';
+  } catch {
+    return false;
+  }
 };
 
 const defaultDeps: TraitsDeps = {
   api: aiApi,
   setStage: (stage) => useSignupStore.getState().setStage(stage),
+  chatDone: interviewDone,
 };
 
 type Mode = 'view' | 'edit' | 'manual';
@@ -110,12 +126,30 @@ export function TraitsScreen({ deps = defaultDeps }: { deps?: TraitsDeps }) {
     }
     if (latest.confirmedAt) setStage('traits-confirmed');
     else setStage('traits-pending');
-    setRow(latest);
-    setView(shown);
-    setMode('view');
-    setLoading(false);
+    const showNow = () => {
+      if (!alive.current) return;
+      setRow(latest);
+      setView(shown);
+      setMode('view');
+      setLoading(false);
+    };
+    if (latest.confirmedAt || !deps.chatDone) {
+      showNow();
+      return;
+    }
+    // QP-09: 대화형 '내 성향'을 마쳤으면 07 을 건너뛰고 확정 → 08
+    void deps.chatDone().then(async (done) => {
+      if (!alive.current) return;
+      if (!done) return showNow();
+      const r = await api.confirm(latest.id);
+      if (!alive.current) return;
+      if (!r.ok) return showNow();
+      manualOfferStore.clear();
+      setStage('traits-confirmed');
+      goForward(router, { pathname: '/profile', params: { first: '1' } });
+    });
     },
-    [manualRequested, router, setStage],
+    [manualRequested, router, setStage, deps, api],
   );
   const load = useCallback(() => api.loadLatest().then(handleLoaded), [api, handleLoaded]);
 

@@ -32,7 +32,8 @@ export default function SurveyScreen() {
     };
   }, [ready, refresh]);
 
-  const v2Entry = notice === 'missing' ? 'missing' : 'resume';
+  // notice: missing(05 에서 빠진 문항) · politics · religion(3부-아 QP-32 — T1 [설문으로]가 그 한 문항으로)
+  const v2Entry = notice === 'missing' || notice === 'politics' || notice === 'religion' ? notice : 'resume';
   if (step === 'v2') return <SurveyV2Screen key={`v2-${notice ?? ''}`} entry={v2Entry} />;
   if (!isSurveyStep(step)) {
     return <Redirect href={{ pathname: '/survey/[step]', params: { step: '01' } }} />;

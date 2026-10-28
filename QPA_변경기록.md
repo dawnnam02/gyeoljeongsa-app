@@ -471,6 +471,6 @@
 |---|---|
 | ① gen:legal --fingerprints(법무 약관 제9조의2 ③ · 제14조의2 ⑦ · 처리방침 9-4 · R40 · R28 · 5-4 · R44) | 끝 — 약관 지문 3401d1970afa · 처리방침 6fead106379c · 동의 판 13개 그대로 · check:copy 103/0 · 법무 시험 42/42 |
 | ② consents.source · too_many_consents | 끝(커밋 ②) — consentApi source 한 칸(03 signup · 정치 · 종교 카드 survey_card · CK16 · 지인 차단 시트 CK11 feature_sheet · 동의 관리 · 알림 settings) · 54000 too_many_consents → reason 'limit'(동의 관리 글은 카피 묶음 tooMany) · 데모 서버 4값 검사 · 같은 오류 꼴 · 시험 s3aConsentSource 2 |
-| ③ 검수 결함 | 진행 |
-| ④ '9단계 중 n등급' 확인 | 대기 |
-| 카피 묶음(마케팅 대기) | 대기 |
+| ③ 검수 결함 | 끝(커밋 ③) — QP-10 데모 채팅 신고 · 차단 → 설정 신고 내역 · 차단 목록(demo_note_chat_safety, 실서버는 0031 이 같은 표) · QP-09 대화형 설문 요약이 done 이면 07 다시 확인 없이 확정 → 08(실패 · 미완료는 지금처럼 07) · QP-32 T1 [설문으로] → 설문 v2 한 문항 입구(notice politics · religion) — 그 문항만 하고 T1 로 · 시험 s3aDefects 6 · serverFlow source 칸 맞춤 |
+| ④ '9단계 중 n등급' 확인 | 끝 — v5 화면에 안 나옴(후보 등급 카드는 from=reveal 에서 가림 · 09 는 v4_daily_recs 꺼짐) → 그대로 · 1.1 정리 목록 |
+| 카피 묶음(마케팅 '3부-아 카피 끝') | 진행 — 20장 · 13-1 · 12-Q |

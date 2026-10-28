@@ -8,7 +8,7 @@
 //  · 다시 열면 서버 답 + 기기에 남은 답으로 채우고 첫 빈 필수 문항부터(N03). 다 찼으면 선택 단계 · 검토로
 //  · 검토: 주제별 답 · [고치기](고친 뒤 새로 생긴 빈 문항을 지나 검토로 돌아옴) · W1~W5 · [제출하고 사진 올리기] → 05
 // 등급 · 점수 숫자는 화면 · 코드에 없다(등급은 서버만). 글은 copy.ts · questionCopy.ts 만.
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, BackHandler, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -26,6 +26,7 @@ import { ConsentSummarySheet } from '@/features/consent/ConsentSummarySheet';
 import { RelCard } from '@/features/surveyChat/ChatInput';
 import { REL, REL_SHEET } from '@/features/surveyChat/relCopy';
 import { dist, ProgressBar, Rise, scene, TOAST_MS } from '@/motion';
+import { goBackOr } from '@/navigation/go';
 import { layout } from '@/theme/layout';
 import { colors, radius, size, space } from '@/theme/tokens';
 
@@ -68,7 +69,9 @@ import { coursesFor, SchoolInput, schoolLabel } from './SchoolInput';
 import { AppealStage, ReviewStage, StoryStage, type ReviewSection } from './stages';
 import type { ProofState, V2Value } from './types';
 
-export type SurveyV2Entry = 'resume' | 'missing';
+// 3부-아(검수 QP-32): T1 '설문 한 문항이 남았어요' [설문으로]는 그 문항으로 바로 — politics = 정치 막대 단계 · religion = 종교(A06, 동의가 없으면 카드부터).
+//  그 한 문항을 마치거나 [나중에 할게요] · ‹ 를 누르면 왔던 곳(T1)으로 돌아간다(흐름 · 검토로 이어 가지 않음)
+export type SurveyV2Entry = 'resume' | 'missing' | 'politics' | 'religion';
 type Props = { deps?: SurveyV2Deps; entry?: SurveyV2Entry; onDone?: () => void };
 
 const T_TEXT = ['T01', 'T02', 'T03'];
@@ -112,6 +115,8 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
   const [seen, setSeen] = useState<readonly ('story' | 'appeal')[]>([]);
   const [skipped, setSkipped] = useState<readonly ('story' | 'appeal')[]>([]);
   const [fromReview, setFromReview] = useState(false);
+  const focus = entry === 'politics' || entry === 'religion'; // T1 에서 한 문항만 고치러 옴
+  const leaveFocus = useCallback(() => goBackOr(router, '/boarding' as Href), [router]);
   const [shown, setShown] = useState(false); // [다음]을 눌러 이유 문구를 보이는 중
   const [notice, setNotice] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -167,7 +172,12 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
     // 자리: 첫 빈 필수 문항(서버가 알려 준 값 우선, 기기에 남은 답이 있으면 합친 답으로 다시 센다)
     const missing = mine?.pending.length ? firstMissing(a) : snap.firstMissing ?? firstMissing(a);
     const started = Object.keys(snap.answers).length > 0 || (mine?.pending.length ?? 0) > 0;
-    if (missing) {
+    if (entry === 'politics' && politics) {
+      setStage('politics');
+    } else if (entry === 'religion') {
+      setStage('flow');
+      setAt(RELIGION_ID);
+    } else if (missing) {
       setStage(started ? 'flow' : 'intro');
       setAt(missing);
       if (entry === 'missing') {
@@ -362,6 +372,10 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
 
   // 정치성향 단계 떠나기: 검토에서 왔으면 검토로, 아니면 결혼 이야기로
   const leavePolitics = () => {
+    if (focus) {
+      leaveFocus();
+      return;
+    }
     if (fromReview) {
       setFromReview(false);
       goTo('review');
@@ -415,6 +429,10 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
       setSaveError(SV2.saveFailed);
       return;
     }
+    if (focus) {
+      leaveFocus(); // 그 한 문항만 — 저장했으면 T1 로
+      return;
+    }
     const list = visibleFlow(stateRef.current.answers);
     const i = list.findIndex((q) => q.id === at);
     if (fromReview) {
@@ -437,6 +455,10 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
 
   const prev = useCallback(() => {
     if (busyRef.current) return;
+    if (focus) {
+      leaveFocus();
+      return;
+    }
     const st = stateRef.current;
     if (st.stage === 'flow') {
       const list = visibleFlow(st.answers);
@@ -453,9 +475,9 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
       goTo('flow', list[list.length - 1].id);
     } else if (st.stage === 'appeal') goTo('story');
     else if (st.stage === 'review') goTo('appeal');
-  }, [goTo, politics]);
+  }, [goTo, politics, focus, leaveFocus]);
 
-  const canBack = stage !== 'intro' && !(stage === 'flow' && visible[0]?.id === at);
+  const canBack = focus || (stage !== 'intro' && !(stage === 'flow' && visible[0]?.id === at));
 
   // Android 뒤로가기: 앞 문항 · 단계로, 첫 문항은 기본 동작
   useEffect(() => {

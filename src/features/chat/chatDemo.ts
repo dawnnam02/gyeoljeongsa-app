@@ -126,7 +126,9 @@ const lastOf = (s: RoomState): Room['last'] => {
 export type DemoControls = { scene(): Promise<DemoChatScene>; next(): Promise<DemoChatScene>; peek(): Promise<unknown> };
 export const hasDemoControls = (api: ChatApi): api is ChatApi & { demo: DemoControls } => 'demo' in api;
 
-export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) => string | null; replyMs?: number; clock?: () => number }): ChatApi & { demo: DemoControls } {
+// note(3부-아 QP-10): 신고 · 차단을 데모 로그인 모의 서버(12 신고 내역 · 차단 목록)에도 알린다 — 실서버는 같은 표라 따로 할 일 0
+export type DemoSafetyNote = (partnerId: string, reason?: string) => Promise<void>;
+export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) => string | null; replyMs?: number; clock?: () => number; note?: DemoSafetyNote }): ChatApi & { demo: DemoControls } {
   const photoUri = options.photoUri ?? demoPhotoUri;
   const clock = options.clock ?? Date.now;
   const replyMs = options.replyMs ?? 1_500;
@@ -252,6 +254,8 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
       if (!roomOf(s, roomId)) return { ok: false, reason: 'unavailable' };
       if (s.reports.some((x) => x.room === roomId)) return { ok: false, reason: 'already' };
       s.reports.push({ room: roomId, reason: reasonCode });
+      const pid = roomOf(s, roomId)?.room.partner.id;
+      if (pid) await options.note?.(pid, reasonCode).catch(() => undefined);
       return { ok: true };
     },
     async block(roomId) {
@@ -259,6 +263,7 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
       const r = roomOf(s, roomId);
       if (!r) return { ok: false, reason: 'unavailable' };
       r.gone = true; // 차단 뒤 서로 안 보임(방도 목록에서 빠짐)
+      await options.note?.(r.room.partner.id).catch(() => undefined);
       return { ok: true };
     },
     async mediaUrl(mediaId) {

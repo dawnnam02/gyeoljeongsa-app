@@ -715,6 +715,17 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
         const account = me();
         return account ? v4.rpc({ id: account.id, email: account.email }, name, args) : Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
       }
+      // 3부-아(검수 QP-10): 데모 채팅(features/chat/chatDemo — 메모리 따로)에서 한 신고 · 차단을 12 신고 내역 · 차단 목록에 잇는다.
+      //  실서버는 report_chat_partner(0031 → public.reports) · block_chat_partner(block_pair → 차단 표)가 같은 표에 남겨 list_my_reports · list_blocked_users 가 읽는다. 진짜 서버에는 없는 데모 전용 이름
+      if (name === 'demo_note_chat_safety') {
+        const account = me();
+        if (!account) return Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
+        const t = String(args.p_partner ?? '');
+        if (!t) return Promise.resolve({ data: null, error: { code: 'P0001', message: 'invalid_value' } });
+        if (typeof args.p_reason === 'string') settings.noteReport(settingsUser(account), t, args.p_reason); // 신고는 차단 목록에도(P5-03)
+        else settings.noteBlock(settingsUser(account), t);
+        return Promise.resolve({ data: { ok: true }, error: null });
+      }
       // 데모 줄(F24 끼리끼리): '나'의 등급을 1~9 로 두거나(p_no) 지금 값을 읽는다. 진짜 서버에는 없는 데모 전용 이름
       if (name === 'demo_kin_me') {
         const account = me();

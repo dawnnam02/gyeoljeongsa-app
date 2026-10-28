@@ -217,7 +217,8 @@ describe('동의 기록 저장 (F1 통과 조건 4: 항목별 동의 여부 · �
   test('행마다 사용자 · 문구 판 · 앱 버전이 들어 있고 시각은 서버가 채운다(보내지 않는다)', () => {
     const rows = buildConsentRows({ userId: 'u1', shown: CONSENT_CODES, checked: allChecked(), required: REQUIRED_SET, appVersion: '0.1.0' });
     for (const row of rows) {
-      expect(Object.keys(row).sort()).toEqual(['agreed', 'app_version', 'item_code', 'text_version', 'user_id']);
+      expect(Object.keys(row).sort()).toEqual(['agreed', 'app_version', 'item_code', 'source', 'text_version', 'user_id']); // 3부-아: 0041 받은 곳
+      expect(row.source).toBe('signup');
       expect(row.user_id).toBe('u1');
       expect(row.app_version).toBe('0.1.0');
       expect(row.text_version).toBe(CONSENT_TEXT_VERSIONS[row.item_code]);

@@ -54,6 +54,9 @@ const contractLines = (): { i: number; text: string }[] =>
 // 새 주소(탑승권 · 공개 · 크레딧)는 이 파일이 만든 라우트라 자동 주소 타입에 아직 없을 수 있다 — 문자열 그대로 넘긴다
 export const hrefOf = (path: string): Href => path as unknown as Href;
 const SURVEY_HREF: Href = { pathname: '/survey/[step]', params: { step: '01' } };
+// 3부-아(검수 QP-32): T1 살 수 없음 [설문으로]는 남은 그 문항으로 바로(설문 v2 한 문항 쪽 — 마치면 T1 로 돌아옴)
+const POLITICS_HREF: Href = { pathname: '/survey/[step]', params: { step: 'v2', notice: 'politics' } };
+const RELIGION_HREF: Href = { pathname: '/survey/[step]', params: { step: 'v2', notice: 'religion' } };
 
 export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   const router = useRouter();
@@ -374,7 +377,7 @@ function StatusCard({ state, view, moment = false, onBuy, onOpen, onCancel, canc
     case 'ineligible': {
       const k = state.ineligible ?? 'not_confirmed';
       const c = BOARDING.ineligible[k];
-      const href: Href | null = k === 'politics_missing' || k === 'religion_missing' ? SURVEY_HREF : k === 'paused' ? hrefOf('/settings') : null;
+      const href: Href | null = k === 'politics_missing' ? POLITICS_HREF : k === 'religion_missing' ? RELIGION_HREF : k === 'paused' ? hrefOf('/settings') : null;
       return card(c.title, c.body, c.action && href ? <Button label={c.action} variant="secondary" onPress={() => onOpen(href)} testID="boarding-ineligible-action" /> : undefined);
     }
   }

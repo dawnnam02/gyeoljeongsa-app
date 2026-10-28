@@ -153,7 +153,7 @@ describe('① 설문 A06 앞 종교 동의 카드', () => {
     expect(textOf(t1, 'boarding-status-body')).toBe('종교 문항에 답하면 탑승권을 살 수 있어요.');
     expect(has(t1, 'boarding-buy')).toBe(false);
     await tap(t1, 'boarding-ineligible-action');
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/survey/[step]', params: { step: '01' } });
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/survey/[step]', params: { step: 'v2', notice: 'religion' } });
   });
 
   test('03 에서 CK4 를 고른 회원은 카드 없이 A06 질문', async () => {

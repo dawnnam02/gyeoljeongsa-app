@@ -24,7 +24,9 @@ let api: ChatApi | null = null;
 let media: ChatMedia | null = null;
 
 export function chatApi(): ChatApi {
-  if (!api) api = env.demoMode ? createDemoChatApi({ who }) : createChatApi(supabase);
+  // 데모: 신고 · 차단을 데모 로그인 모의 서버의 12 신고 내역 · 차단 목록에도(검수 QP-10)
+  const note = async (partner: string, reason?: string) => void (await supabase.rpc('demo_note_chat_safety', { p_partner: partner, ...(reason ? { p_reason: reason } : {}) }));
+  if (!api) api = env.demoMode ? createDemoChatApi({ who, note }) : createChatApi(supabase);
   return api;
 }
 
