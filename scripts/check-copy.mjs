@@ -27,6 +27,9 @@
 //        X 에서 20장 줄 · 12-Q 새 줄 4개 · 13-1 POL7 · POL14 를 앱 글과 한 글자씩 맞춘다. '(줄 없음)'은 앱에 그 키가 없어야 한다
 //  LG. 탑승객 라운지 글(LG-F · D-220, features/lounge/loungeCopy.ts LOUNGE)이 카피.md 19장 표(첫 칸 'T4 · T6 `LOUNGE.키`' — 19-1 ~ 19-10, 209줄)와 한 글자씩 같은가 ·
 //        앱 LOUNGE 의 글이 모두 19장에 있는가(카피 밖 글 0) · 화면 금지어 14(세부청사진 3장 · 정책 PL-22) · 창가 · 통로 · 가운데 · 느낌표 · 숫자 0(19장 말투)
+//  IF2. 기내 서비스 · 연애 기능 글(IF2-F · D-223, features/inflight/if2CopyData.ts — gen-if2-copy)이 카피.md 21장 표와 한 글자씩 같은가 · 앱이 부르는 글 키가 모두 21장에 있는가 ·
+//        사본 밖 글 0 · 느낌표 · 숫자 · PF-18 금지 낱말 · 상대 화면 별자리 이름 · 일간 0 · 재미 정보 동의 시트 = 동의문구 4-17 · 생성 파일(라이브러리 · 그림 · 안전 낱말 · 아이콘) = 원본.
+//        21-18(BOARDING.matched.body · SETTINGS.rows.imageCredit · IMAGE_CREDIT.headerTitle)은 X · O 가 14-5-1 · 12 옛 줄 대신 읽는다(SEC2118)
 //  J. 06 AI 정리 중 · 07 내 성향의 글이 카피.md 06 · 07 · 화면_요구사항(N13 · N14)에 그대로 있는가 · 근거 문항 이름 · 직접 입력 태그 후보(F3)
 // 사용: node scripts/check-copy.mjs   (npm run check:copy)
 // 종료 코드: 0 통과 · 1 실패
@@ -205,6 +208,16 @@ try {
     const c = cells(l);
     for (const m of c[0].matchAll(/\b((?:TRAITS|GI|GRADE16|survey|BOARDING|AVOID)\.[A-Za-z0-9_.[\]]+)/g)) SEC20.set(m[1], c[1]);
   }
+  // IF2-F(D-223): 카피.md 21-18 '앱과 같은 커밋으로 바꿀 기존 줄'(첫 칸 '<화면> 키' — 백틱 없음) = 20장과 같은 길 — 같은 키의 옛 줄(14-5-1 · 12)보다 앞선다(SEC2118)
+  const from2118 = copyText.search(/^### 21-18\. /m);
+  const rest2118 = from2118 >= 0 ? copyText.slice(from2118 + 4) : '';
+  const sec2118 = from2118 >= 0 ? copyText.slice(from2118, from2118 + 4 + (rest2118.search(/^#{2,3} /m) >= 0 ? rest2118.search(/^#{2,3} /m) : rest2118.length)) : '';
+  const SEC2118 = new Map();
+  for (const l of sec2118.split(/\r?\n/)) {
+    if (!l.startsWith('| ') || /^\|\s*-/.test(l)) continue;
+    const c = cells(l);
+    for (const m of c[0].matchAll(/\b((?:BOARDING|SETTINGS|IMAGE_CREDIT)\.[A-Za-z0-9_.]+)/g)) SEC2118.set(m[1], c[1]);
+  }
   const copy02 = copyText.slice(copyText.search(/^### 02 /m), copyText.search(/^### 03 /m));
   const copy02Rows = copy02.split('\n').filter((l) => l.startsWith('|')).map(cells);
   const copy02Cell = (kind, startsWith) => {
@@ -274,7 +287,7 @@ try {
 
   // ── K. 게시되는 글에 작업 표시가 없는가 ─────────────────────────────
   const published = [];
-  for (const file of ['consentContent.ts', 'legalTerms.ts', 'legalPrivacy.ts']) {
+  for (const file of ['consentContent.ts', 'legalTerms.ts', 'legalPrivacy.ts', 'ck17Content.ts']) {
     const body = fs.readFileSync(path.join(contentDir, file), 'utf8').split('\n').filter((l) => !l.startsWith('//')).join('\n');
     published.push([file, body]);
   }
@@ -460,7 +473,7 @@ try {
   //  원본: 카피.md 12(B4 · B5 확정: R-D18-1~3 · R-F7-1~10) · 동의문구.md 4-9 · 5-5 · 5-6 · 정책 P5-11. 함수 글은 예시 값으로 만들어 대조한다
   const st = await load(path.join(contentDir, 'settingsCopy.ts'));
   const consentDocText = stripCode(readDoc(SOURCES.consent));
-  const copy12s = stripCode(copy12);
+  const copy12s = `${stripCode(copy12)}\n${[...SEC2118.values()].join('\n')}`; // 21-18 새 줄 이름(생성형 AI 고지)이 12 옛 줄보다 앞선다
   const copyCommon = stripCode(copySection(/^## 4\. /m, /^## 5\. /m));
   const lacks = (where, text, list) => list.filter(([, v]) => !text.includes(v)).map(([k, v]) => `${where} ${k}: "${v}"`);
   const o1 = lacks('카피 12', copy12s, Object.entries(st.SETTINGS.rows));
@@ -681,7 +694,7 @@ try {
   const marksS = shopStrings.filter(([, t]) => /▲W|\bW\d{1,2}\b|\bNV\d|\bB1[01]\b|D-\d\d/.test(t)).map(([where, t]) => `${where}: "${t.slice(0, 40)}"`);
   check('S', '작업 표시(▲W# · NV 번호 · B10 · D-번호)가 앱 글로 새지 않는다', marksS.length === 0, marksS.join('\n'));
   // 등급 · 점수 말은 허용 구역 글 파일에만(카피 16-J): 이 글 파일(shopCopy · productCopy)과 법무 게시본(consentContent · legalPrivacy · legalTerms) 밖의 content 파일에는 없다
-  const zoneFiles = fs.readdirSync(contentDir).filter((f) => f.endsWith('.ts') && !['shopCopy.ts', 'productCopy.ts', 'consentContent.ts', 'legalPrivacy.ts', 'legalTerms.ts', 'types.ts', 'fillIns.ts'].includes(f));
+  const zoneFiles = fs.readdirSync(contentDir).filter((f) => f.endsWith('.ts') && !['shopCopy.ts', 'productCopy.ts', 'consentContent.ts', 'legalPrivacy.ts', 'legalTerms.ts', 'ck17Content.ts', 'types.ts', 'fillIns.ts'].includes(f)); // IF2-F: ck17Content = 동의문구 4-17 게시본
   const leaked = zoneFiles.filter((f) => /등급|점수/.test(fs.readFileSync(path.join(contentDir, f), 'utf8').split('\n').filter((l) => !l.trim().startsWith('//') && !/^\s*whyNote:/.test(l)).map((l) => (/^\s*'CHAT\.A06\.why':/.test(l) ? l.replace(/\/\/.*$/, '').split('등급에는 쓰지 않아요.').join('') : /^\s*grade: '내 등급',/.test(l) ? '' : l.split('외모를 평가하거나 점수를 매기지 않아요.').join(''))).join('\n'))); // 예외: CHAT.A06.why(기획 QPP) · 12 설정 줄 '내 등급'(SETTINGS.rows.grade, D-200 ② — 허용 구역 '12 설정 줄') · 05 법무 5-4 '외모를 평가하거나 점수를 매기지 않아요.'(하지 않는다는 안내)
   check('S', `등급 · 점수 말은 허용 구역 글 파일(16 상점 · 09/10 배지 · 12 설정 줄)에만 있고 그 밖 글 파일(${zoneFiles.length}개)에는 없다(카피 16-J. 예외 하나: 10 상자 whyNote "추천 점수는 보여주지 않아요.", 법무 L10 W1 확정)`, leaked.length === 0, leaked.join(', '));
   // R1 C①(D-123 ④): 설문 v2 글(features/surveyV2 의 copy.ts · questionCopy.ts)도 같은 점검에 넣는다. 등급 말은 카피 16-J L-7 세 자리만(declineHint · A06 도움말 · 세부사항 머리), 점수 말 0
@@ -850,6 +863,7 @@ try {
       if (parts.length !== keys.length) continue;
       keys.forEach((k, i) => newer.set(k, parts[i]));
     }
+    for (const [k, v] of SEC2118) if (k.startsWith('BOARDING.')) newer.set(k, v); // IF2-F: 21-18(matched.body — 홈에 상대 이름 0)이 14-5-1 · 14-6 옛 줄보다 앞선다
     for (let i = 0; i < rowsX.length; i += 1) if (newer.has(rowsX[i][0])) rowsX[i] = [rowsX[i][0], newer.get(rowsX[i][0])];
     for (const [k, v] of newer) if (!rowsX.some(([key]) => key === k)) rowsX.push([k, v]);
     // D46-A: 카피.md 16장(만남 장면) 표 — 첫 칸 'T4S `MEET_SCENE.키`' · 'T4 `CHAT.room.metAt`'(16장 머리 말: V · W · X 읽기와 부딪히지 않는 꼴)
@@ -957,6 +971,103 @@ try {
     }
     if (rows19.length !== 209) diffsLG.push(`카피 19장 표가 209줄이 아님(${rows19.length}줄)`);
     check('LG', `탑승객 라운지 글 ${rows19.length}줄(카피 19-1 ~ 19-10)이 loungeCopy.ts LOUNGE 와 같고 · 앱 글 ${leaves.length}개가 모두 19장에 있고 · 금지어 14 · 창가/통로/가운데 · 느낌표 · 숫자 0`, rows19.length === 209 && diffsLG.length === 0, diffsLG.join('\n') || `표 ${rows19.length}줄`);
+  }
+
+  // ── IF2. 기내 서비스 · 연애 기능(IF2-F · D-223 — 카피.md 21장 '앱 반영' 뒤 대조) ──
+  //  ① 앱 글 사본(if2CopyData.ts — gen-if2-copy)이 카피.md 21장 표와 한 글자씩 같다(21장 키 372 = 글 371 + 끌어 쓰는 자리 1) · 기획 가안 키 0
+  //  ② 카피 밖 글 0: 앱이 부르는 tx · txList 키가 모두 21장에 있고, 기내 서비스 화면 파일에 사본 밖 한글 글이 없다(만남 계획 공유 바로가기 = 카피 v4 SAFE_SHARE.entry)
+  //  ③ 말투 · 금지어: 느낌표 · 숫자({…} 빼고) 0 · 정책 PF-18 · 법무 4-2 금지 낱말 0 · 앱 안 '운세' · '타로' 0 · 상대에게 보이는 글(궁합 카드 · 칩 · 대화방 칸)에 별자리 이름 · 일간 · 일주 · 띠 0
+  //  ④ 재미 정보 동의 시트 글(content/ck17Content.ts — gen-if2-assets 가 동의문구 4-17 에서 옮김)이 원본과 같다 · 판 = 판_관리(consent-2026.10.28-v1)
+  //  ⑤ 생성 파일(라이브러리 · 그림 · 안전 낱말 · 아이콘)이 원본(ai/IF2 · 디자인 원본 · migrations)과 같다
+  {
+    const diffsIF = [];
+    const gen = await load(path.join(APP_DIR, 'scripts', 'gen-if2-copy.mjs'));
+    const built = gen.buildIf2Copy();
+    const fileNow = fs.readFileSync(gen.IF2_COPY_FILE, 'utf8').replace(/\r\n/g, '\n');
+    if (fileNow !== gen.renderIf2Copy(built)) diffsIF.push('if2CopyData.ts 가 원본과 다름 → node scripts/gen-if2-copy.mjs');
+    if (built.source !== '21') diffsIF.push('카피.md 21장이 없음(초안 키로 만든 사본)');
+    if (built.pending.length) diffsIF.push(`21장에 없는 기획 가안 키: ${built.pending.join(', ')}`);
+    if (built.dup.length) diffsIF.push(`21장에 같은 키가 다른 글로 두 번: ${built.dup.join(', ')}`);
+    const sec21 = gen.chapter21(copyText) ?? '';
+    const rows21 = sec21.split(/\r?\n/).filter((l) => /^\| [^|`]*`[A-Z_]+\./.test(l));
+    if (rows21.length !== 372) diffsIF.push(`카피 21장 키 줄이 372가 아님(${rows21.length})`);
+    if (!/\*\*앱 반영\*\*/.test(sec21) || /\*\*앱 반영 전\*\*/.test(sec21)) diffsIF.push("카피 21장 표시가 '앱 반영'이 아님");
+    // ② 앱이 부르는 키
+    const keys = new Set(built.map.keys());
+    const srcFiles = [];
+    const walkDir = (dir) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const f = path.join(dir, e.name);
+        if (e.isDirectory()) walkDir(f);
+        else if (/\.(ts|tsx)$/.test(e.name) && !f.includes(`${path.sep}__tests__${path.sep}`)) srcFiles.push(f);
+      }
+    };
+    walkDir(path.join(APP_DIR, 'src'));
+    const stripC = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+    let calls = 0;
+    for (const f of srcFiles) {
+      const t = stripC(fs.readFileSync(f, 'utf8'));
+      for (const m of t.matchAll(/\btx\(\s*'([^']+)'/g)) {
+        calls += 1;
+        if (!keys.has(m[1])) diffsIF.push(`${rel(f)}: tx('${m[1]}') — 21장에 없는 키`);
+      }
+      for (const m of t.matchAll(/\btxList\(\s*'([^']+)'/g)) {
+        calls += 1;
+        if (!keys.has(`${m[1]}[0]`)) diffsIF.push(`${rel(f)}: txList('${m[1]}') — 21장에 없는 목록`);
+      }
+      for (const m of t.matchAll(/\btx(?:List)?\(\s*`([A-Z_]+)\.([a-zA-Z.]*)\$\{/g)) {
+        calls += 1;
+        if (![...keys].some((k) => k.startsWith(`${m[1]}.${m[2]}`))) diffsIF.push(`${rel(f)}: 글 키 ${m[1]}.${m[2]}… — 21장에 없는 묶음`);
+      }
+    }
+    // 기내 서비스 화면 파일의 한글 글(주석 밖)은 사본 · 동의 시트 글 · 바로가기 글뿐
+    const inflightDir = path.join(APP_DIR, 'src', 'features', 'inflight');
+    const SAFE_ENTRY = (copyText.split(/\r?\n/).find((l) => l.includes('`SAFE_SHARE.entry`') && l.startsWith('| 버튼')) ?? '').split('|').map((c) => c.trim())[3] ?? '';
+    for (const name of fs.readdirSync(inflightDir).filter((n) => /\.(ts|tsx)$/.test(n) && !['if2CopyData.ts', 'if2IconPaths.ts', 'if2Text.ts'].includes(n))) {
+      const t = stripC(fs.readFileSync(path.join(inflightDir, name), 'utf8'));
+      // 글자 상수를 앞에서부터 차례로 끊어 읽는다(따옴표 ' · 백틱) — 한글이 든 것만. 뒤에 ':' · ']' 가 오면 {자리 이름} · 데이터 이름이라 뺀다
+      const lits = [];
+      for (const m of t.matchAll(/'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`/g)) {
+        const body = m[0].slice(1, -1);
+        if (!/[가-힣]/.test(body)) continue;
+        if (/^\s*[:\]]/.test(t.slice(m.index + m[0].length))) continue;
+        lits.push(body);
+      }
+      for (const m of t.matchAll(/>\s*([^<>{}\n]*[가-힣][^<>{}\n]*?)\s*</g)) lits.push(m[1]); // JSX 글
+      const ALLOW = { 'If2Parts.tsx': ['원본'], 'inflightLogic.ts': ['${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일'] }; // 데이터 이름 · 날짜 꼴(화면 글 아님)
+      for (const lit of lits) {
+        if ((ALLOW[name] ?? []).includes(lit) || /^{[^}]+}$/.test(lit)) continue; // {자리 이름} 꼴 토큰
+        if (lit === SAFE_ENTRY && name === 'If2Sheets.tsx') continue;
+        diffsIF.push(`${name}: 사본 밖 한글 글 "${lit.slice(0, 30)}"`);
+      }
+    }
+    if (SAFE_ENTRY !== '만남 계획 공유') diffsIF.push(`카피 SAFE_SHARE.entry 줄이 '만남 계획 공유'가 아님("${SAFE_ENTRY}")`);
+    // ③ 말투 · 금지어(정책 PF-18 · 법무 4-2 · 카피 21장 머리)
+    const BANNED = ['운명의 짝', '별이 이어 준', '사주가 맞는 분', '궁합으로 찾은', '궁합 ○점', '잘 맞아요', '안 맞아요', '천생연분', '상극', '최고의 궁합', '결혼 시기', '이별', '조심하세요', '연애운', '행운 물건', '부적', '전문 상담', '심리 진단', '애착 유형', 'AI 연애 상담사', '졸업', '성혼', '커플', 'AI가 봐 드려요', 'AI 궁합', '운세', '타로', '점수', '퍼센트', '%'];
+    const PARTNER = ['PAIR_CARD.', 'FIRST_HINT.', 'TOPICS.', 'OPEN_TOGETHER.', 'ABOUT_ME.', 'FAREWELL.', 'HELLO_POSTCARD.bubble', 'MONEY_SAFETY.', 'HOME.'];
+    const SIGN_NAMES = ['양자리', '황소자리', '쌍둥이자리', '게자리', '사자자리', '처녀자리', '천칭자리', '전갈자리', '사수자리', '염소자리', '물병자리', '물고기자리'];
+    for (const [k, v] of built.map) {
+      const t = v.replace(/\{[^{}]+\}/g, '');
+      if (/[!！]/.test(t)) diffsIF.push(`${k}: 느낌표`);
+      if (/\d/.test(t)) diffsIF.push(`${k}: 숫자`);
+      for (const w of BANNED) if (t.includes(w)) diffsIF.push(`${k}: 금지 낱말 '${w}'`);
+      if (PARTNER.some((p) => k.startsWith(p))) {
+        for (const w of [...SIGN_NAMES, '일간', '일주', '띠 ']) if (t.includes(w)) diffsIF.push(`${k}: 상대에게 보이는 글에 '${w}'`);
+      }
+    }
+    // ④ 재미 정보 동의 시트 = 동의문구 4-17
+    const lc = fs.readFileSync(path.join(APP_DIR, 'src', 'config', 'laterConsent.ts'), 'utf8');
+    const ed = readDoc(SOURCES.editions);
+    if (!/CK17A: 'consent-2026\.10\.28-v1', CK17B: 'consent-2026\.10\.28-v1'/.test(lc) || !/CK17A[^\n]*consent-2026\.10\.28-v1/.test(ed)) diffsIF.push('CK17A · CK17B 판이 판_관리와 다름');
+    // ⑤ 생성 파일 = 원본
+    const assets = await load(path.join(APP_DIR, 'scripts', 'gen-if2-assets.mjs'));
+    const same = (f, t) => fs.existsSync(f) && fs.readFileSync(f, 'utf8').replace(/\r\n/g, '\n') === t;
+    if (!same(assets.LIB_OUT, `${JSON.stringify(assets.buildLibrary(), null, 1)}\n`)) diffsIF.push('content/if2Library.json 이 ai/IF2 라이브러리와 다름 → node scripts/gen-if2-assets.mjs');
+    if (!same(assets.ART_OUT, `${JSON.stringify(assets.buildArt(), null, 1)}\n`)) diffsIF.push('assets/illustrations/if2art.json 이 디자인 원본과 다름');
+    if (!same(assets.SAFETY_OUT, assets.buildSafetyWords())) diffsIF.push('content/moneySafetyWords.ts 가 서버 거르기 사전과 다름');
+    if (!same(assets.ICON_OUT, assets.buildIcons())) diffsIF.push('if2IconPaths.ts 가 디자인 원본 아이콘과 다름');
+    if (!same(assets.CK17_OUT, assets.buildCk17())) diffsIF.push('content/ck17Content.ts 가 동의문구 4-17 과 다름 → node scripts/gen-if2-assets.mjs');
+    check('IF2', `기내 서비스 · 연애 기능 글 ${built.map.size}개(카피 21장 키 줄 ${rows21.length}) = 앱 사본 · 앱이 부르는 글 키 ${calls}곳이 모두 21장에 있고 · 사본 밖 글 0 · 느낌표 · 숫자 · 금지 낱말 · 상대 화면 별자리 · 일간 0 · 동의 시트 = 4-17 · 생성 파일 = 원본`, diffsIF.length === 0, diffsIF.join('\n') || `21장 ${rows21.length}줄`);
   }
 
   // R1 A⑦ T04 · K11: 오류 · 안내 문구 규칙(카피.md 1-1)과 v4 글 대조(카피.md 7장). 규칙 본문은 check-copy-rules.mjs

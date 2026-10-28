@@ -18,15 +18,16 @@ type Props = {
   range: boolean; // 구간 공개 항목
   last: boolean;
   onPress: () => void;
+  a11yLabel?: string; // IF2-F '같은 취미' 줄: 읽기 이름이 줄 이름과 다름(카피 21-17 PROFILE.sameHobby.a11y)
   testID?: string;
 };
 
-export function ToggleRow({ label, on, locked, range, last, onPress, testID }: Props) {
+export function ToggleRow({ label, on, locked, range, last, onPress, a11yLabel, testID }: Props) {
   const [pressed, setPressed] = useState(false);
   return (
     <Pressable
       accessibilityRole="switch"
-      accessibilityLabel={range ? `${label}, ${PROFILE_DRAFT.rangeNote}` : label}
+      accessibilityLabel={a11yLabel ?? (range ? `${label}, ${PROFILE_DRAFT.rangeNote}` : label)}
       accessibilityState={{ checked: on, disabled: locked }}
       accessibilityValue={{ text: on ? PROFILE_DRAFT.toggleOn : PROFILE_DRAFT.toggleOff }}
       aria-checked={on}

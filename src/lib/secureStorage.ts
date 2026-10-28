@@ -29,3 +29,4 @@ export const authStorage = chunkedStorage(secureStore); // Supabase 세션(lib/s
 export const appStateStorage = chunkedStorage(secureStore); // 설문 임시 저장(store/)
 export const securityStorage = chunkedStorage(secureStore); // 보안 설정: 상대 화면 캡처 차단(store/securityStore.ts, 팀장 결정 10-15 ⑥)
 export const avoidStorage = chunkedStorage(secureStore); // 12-5 피할 회사 · 학교 이름 원문(lib/avoidLocal, 보안 T126 · 3부-바)
+export const if2Storage = chunkedStorage(secureStore); // IF2-F 기내 서비스 · 연애 기능 나만 쓰는 글 9종(features/inflight/deviceNotes, 정책 PF-10 · 보안 IC-12)

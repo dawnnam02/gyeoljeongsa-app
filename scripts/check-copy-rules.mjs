@@ -13,7 +13,7 @@ import { restoreArchivedCopy } from './lib/legal-source.mjs'; // 15장 폐지 �
 
 const APP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const NOT_COPY = ['types.ts', 'fillIns.ts', 'contactWords.ts']; // 타입 · 채움 값 · 생성 낱말 목록(화면 글이 아님)
-const LEGAL = ['legalTerms.ts', 'legalPrivacy.ts', 'consentContent.ts'];
+const LEGAL = ['legalTerms.ts', 'legalPrivacy.ts', 'consentContent.ts', 'ck17Content.ts']; // IF2-F: 재미 정보 동의 시트 글(동의문구 4-17 생성)도 법무 게시본
 const V4_ROOTS = ['V4W01', 'FEATURED', 'MEET_FEEDBACK', 'SAFE_SHARE', 'CONTACT_HINT'];
 
 // 허용 목록(키 경로 → 이유). '예외' = 규칙상 맞는 글(키 이름만 걸림) · '고칠 것' = 주인(C① 문구)에게 넘긴 글 — 고치면 여기서 지운다

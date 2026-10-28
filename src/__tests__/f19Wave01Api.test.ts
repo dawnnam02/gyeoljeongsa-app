@@ -220,7 +220,7 @@ describe('조건 2 · 데모 백엔드: 스위치 · 강조 1명 · 피드백 �
     const live = FEATURE_KEYS.filter((k) => !isPendingKey(k));
     expect(live).toHaveLength(FEATURE_KEYS.length - FEATURE_KEYS.filter(isPendingKey).length); // F22: 키 목록(K19 2-5) — 팀장 판단 전 키만 응답에 없음(D-122 뒤 0개)
     expect(live.every((k) => plain.on[k] === demoDefault(k) && plain.mode[k] === 'demo')).toBe(true); // F22: 데모 처음값(review_required · prelaunch 만 꺼짐)
-    expect(FEATURE_KEYS.filter((k) => !plain.on[k])).toEqual(['review_required', 'prelaunch', 'v4_daily_recs', 'v4_likes', 'v4_shop', 'chat_push']); // V5(W10): 숨긴 v4 화면은 데모에서도 꺼짐(v4on 장면만 켜짐) · R-A: chat_push 는 데모도 꺼짐(토큰 등록 0)
+    expect(FEATURE_KEYS.filter((k) => !plain.on[k])).toEqual(['review_required', 'prelaunch', 'v4_daily_recs', 'v4_likes', 'v4_shop', 'chat_push', 'type_card_share', 'pair_card_ai']); // IF2-F: 바깥 공유 · AI판은 데모도 꺼짐(PF-91) // V5(W10): 숨긴 v4 화면은 데모에서도 꺼짐(v4on 장면만 켜짐) · R-A: chat_push 는 데모도 꺼짐(토큰 등록 0)
     const off = await load(userOf('v4off'));
     expect(FEATURE_KEYS.filter((k) => off.on[k])).toEqual(FEATURE_KEYS.filter(liveDefault)); // 구현된 기능(E)만
     expect(off.on.featured_pick || off.on.meet_feedback || off.on.safe_share).toBe(false);

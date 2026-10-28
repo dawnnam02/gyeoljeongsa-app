@@ -6,7 +6,7 @@
 //  저장: 바뀐 토글의 열만 서버로. 서버가 저장 즉시 상대 화면을 바꾼다 — 앱은 가리는 일을 하지 않는다. 저장하지 않고 탭을 떠나면 바뀐 토글은 버린다
 //  처음 한 번(07 확정 직후, ?first=1): 맨 위 안내 상자 + 저장 자리에 [확인했어요] → 바뀐 토글 저장 + 기록 → 09
 //  표시하지 않는 것: 진행 단계 · 내부 등급 · 점수
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Image, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -24,6 +24,7 @@ import { COMMON, PROFILE, PROFILE_DRAFT } from '@/content/copy';
 import { kstToday } from '@/lib/birthDate';
 import type { ProfileApi, ProfileData } from '@/lib/profileApi';
 import { profileApi } from '@/lib/services';
+import { tx } from '@/features/inflight/if2Text';
 import { usePhotoUrls } from '@/features/recs/usePhotoUrls';
 import { goBackOr, goForward } from '@/navigation/go';
 import { resolveDest } from '@/navigation/resolve';
@@ -46,7 +47,8 @@ import {
   type ToggleState,
 } from './profileLogic';
 
-export type ProfileDeps = { api: Pick<ProfileApi, 'load' | 'saveVisibility' | 'photoUrl' | 'ackReview'>; now: () => number };
+// IF2-F: if2 = '같은 취미' 줄(스위치 same_points · 처음 켜짐 · 누르면 바로 저장) · [짝에게 보이는 모습](스위치 profile_preview) — 없으면 지금 그대로
+export type ProfileDeps = { api: Pick<ProfileApi, 'load' | 'saveVisibility' | 'photoUrl' | 'ackReview'> & Partial<Pick<ProfileApi, 'saveSameHobby'>>; now: () => number; if2?: { isOn: (key: string) => boolean } };
 const defaultDeps: ProfileDeps = { api: profileApi, now: Date.now };
 
 type Note = 'verify' | 'checking' | 'retry' | null;
@@ -150,6 +152,19 @@ export function ProfileScreen({ deps = defaultDeps }: { deps?: ProfileDeps }) {
     }
     setData({ ...data, visibility: { ...data.visibility, ...Object.fromEntries(TOGGLE_DEFS.filter((d) => d.column in changes).map((d) => [d.key, draft?.[d.key] ?? d.initial])) } as ToggleState });
     return true;
+  };
+
+  // IF2-F '같은 취미'(D-224 · PF-48): 누르는 순간 바로 저장 — 실패하면 되돌리고 저장 실패 글(기존 08 글)
+  const onSameHobby = async () => {
+    if (!data || !api.saveSameHobby || busyRef.current) return;
+    const next = data.sameHobby === false;
+    setData({ ...data, sameHobby: next });
+    const r = await api.saveSameHobby(next);
+    if (!alive.current) return;
+    if (!r.ok) {
+      setData((d) => (d ? { ...d, sameHobby: !next } : d));
+      setMessage({ kind: 'error', text: r.reason === 'network' ? COMMON.offline : PROFILE.saveFailed });
+    }
   };
 
   const onSave = async () => {
@@ -267,6 +282,21 @@ export function ProfileScreen({ deps = defaultDeps }: { deps?: ProfileDeps }) {
           ))}
         </View>
 
+        {deps.if2?.isOn('same_points') && api.saveSameHobby ? (
+          <View style={styles.list} testID="profile-same-hobby">
+            <ToggleRow label={tx('PROFILE.sameHobby.name')} a11yLabel={tx('PROFILE.sameHobby.a11y')} on={data.sameHobby !== false} locked={false} range={false} last onPress={() => void onSameHobby()} testID="toggle-sameHobby" />
+            <AppText variant="caption" style={styles.hobbyNote} testID="profile-same-hobby-desc">
+              {tx('PROFILE.sameHobby.desc')}
+            </AppText>
+            {data.sameHobby === false ? (
+              <AppText variant="caption" style={styles.hobbyNote} testID="profile-same-hobby-off">
+                {tx('PROFILE.sameHobby.offNote')}
+              </AppText>
+            ) : null}
+          </View>
+        ) : null}
+        {deps.if2?.isOn('profile_preview') ? <TextButton label={tx('PREVIEW_ME.title')} align="start" onPress={() => router.push('/preview-me' as Href)} testID="profile-preview" /> : null}
+
         <View style={styles.titles}>
           <AppText variant="bodyBold" accessibilityRole="header">
             {PROFILE_DRAFT.photosTitle}
@@ -320,6 +350,7 @@ function PhotoCell({ photo, uri, onRetry }: { photo: PhotoView; uri: string | nu
 }
 
 const styles = StyleSheet.create({
+  hobbyNote: { paddingHorizontal: space.s16, paddingBottom: space.s8 },
   content: { paddingHorizontal: size.screenPadding, paddingTop: space.s20, paddingBottom: space.s24, gap: space.s20 },
   top: { flexDirection: 'row', alignItems: 'center', gap: space.s16 },
   photo: { width: layout.profilePhoto, height: layout.profilePhoto },

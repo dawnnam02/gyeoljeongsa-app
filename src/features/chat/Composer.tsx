@@ -3,7 +3,7 @@
 //  · 한 번에 1000자. 넘으면 칸 아래 이유(보내지 않음) — 조합이 끝난 뒤에만 잰다. 빈 글은 보내기 꺼짐
 //  · 사진 · 음성 단추는 기기가 할 수 있을 때만(chatMedia — iOS · Android 는 패키지 설치 전까지 없음)
 //  · 녹음 표시는 멈춘 점 하나 + 지난 시간 글(깜빡임 · 물결 0). 1분이 되면 멈추고 보낸다
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
@@ -26,10 +26,12 @@ type Props = {
   onStartVoice: () => Promise<boolean>; // 녹음을 시작했으면 true
   onStopVoice: (send: boolean) => void;
   now?: () => number;
+  inject?: { text: string; seq: number } | null; // IF2-F: 칩 · 꺼내는 말 · 미리 답 건네기 — 입력창에 넣기만(바로 보내지 않음 · 고쳐 씀)
+  side?: ReactNode; // IF2-F: 입력창 옆 [이야깃거리] 단추
   testID?: string;
 };
 
-export function Composer({ canPhoto, canVoice, onSendText, onPhoto, onStartVoice, onStopVoice, now = Date.now, testID = 'composer' }: Props) {
+export function Composer({ canPhoto, canVoice, onSendText, onPhoto, onStartVoice, onStopVoice, now = Date.now, inject = null, side, testID = 'composer' }: Props) {
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [recAt, setRecAt] = useState<number | null>(null);
@@ -38,6 +40,11 @@ export function Composer({ canPhoto, canVoice, onSendText, onPhoto, onStartVoice
   useEffect(() => {
     stopRef.current = onStopVoice;
   });
+  const [injected, setInjected] = useState(0); // 마지막으로 넣은 글 차례(같은 글을 두 번 넣지 않음)
+  if (inject && inject.seq !== injected) {
+    setInjected(inject.seq);
+    if (inject.text) setText(inject.text);
+  }
 
   // 녹음 시간: 0.5초마다 글만 바꾼다. 1분이 되면 멈추고 보낸다
   useEffect(() => {
@@ -127,6 +134,7 @@ export function Composer({ canPhoto, canVoice, onSendText, onPhoto, onStartVoice
             <ChatIcon name="mic" color={colors.sub} />
           </Pressable>
         ) : null}
+        {side}
         <View style={styles.field}>
           <TextField
             label={CHAT.composer.label}

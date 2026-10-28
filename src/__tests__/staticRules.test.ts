@@ -341,7 +341,7 @@ describe('F1: 01 온보딩 · 02 가입 · 03 동의 · 15 인증 실패', () =>
   test('법무 확정 문구를 화면 코드에 옮겨 적지 않았다: "[필수] ~" · "[선택] ~" 글은 src/content 의 생성 파일에만 있다', () => {
     const literal = /['"`]\[(필수|선택)\]/;
     const hits = appSources.filter((file) => literal.test(fs.readFileSync(file, 'utf8'))).map((file) => path.relative(SRC_DIR, file).split(path.sep).join('/'));
-    expect(hits).toEqual(['content/consentContent.ts']);
+    expect(hits).toEqual(['content/ck17Content.ts', 'content/consentContent.ts']); // IF2-F: 재미 정보 동의 시트 글도 동의문구 4-17 에서 생성(gen-if2-assets)
   });
 
   test('글 점검 · 법무 문서 옮기기 명령이 npm 스크립트로 있고 npm run check 에 글 점검이 든다', () => {

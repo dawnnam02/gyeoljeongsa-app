@@ -114,7 +114,7 @@ describe('12 설정 규칙', () => {
       '이용약관 · 개인정보 처리방침',
       '안전 안내',
       '오픈소스 라이선스',
-      '이미지 출처 고지',
+      '생성형 AI 고지',
       '사업자 정보',
     ]);
     expect(SETTINGS_ROWS.filter((r) => r.group === 'info').map((r) => r.key)).toEqual(['licenses', 'image-credit', 'business-info']); // 사업자 정보는 값이 모두 있을 때만 화면에 그린다(QP-A)

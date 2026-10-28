@@ -26,6 +26,8 @@ import { createDemoSettings, type DemoSettingsUser } from './settingsDemo';
 import { createDemoV4 } from './v4Demo';
 import { createDemoBoarding } from '@/demo/boardingDemo';
 import { createDemoLounge } from '@/demo/loungeDemo';
+import { createDemoInflight } from '@/demo/inflightDemo';
+import { demoShared } from '@/demo/inflightShared';
 
 export const DEMO_OTP_CODE = '123456';
 
@@ -188,6 +190,39 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
       return flags?.lounge === true;
     },
   });
+  // IF2-F(D-223): 기내 서비스 · 연애 기능(서버 0043 이름 · 모양). 탑승 · 공개는 탑승권 데모를 따라가고 스위치는 기능 스위치 데모 값(꺼지면 feature_off)
+  const flagsOf = async (u: { id: string; email: string }) => {
+    const r = await v4.rpc(u, 'get_feature_flags', {});
+    return ((r.data as { flags?: Record<string, boolean> } | null)?.flags ?? {}) as Readonly<Record<string, boolean>>;
+  };
+  const accountOf = (id: string) => [...accounts.values()].find((a) => a.id === id) ?? null;
+  const consentOn = (a: DemoAccount | null, code: string) => !!a?.consents.some((c) => c.item_code === code && c.agreed && c.revoked_at === null);
+  const inflight = createDemoInflight({
+    boarding,
+    flags: flagsOf,
+    account: (u) => {
+      const a = accountOf(u.id);
+      const vis = a?.visibility ?? {};
+      const age = a?.birthDate ? Math.max(0, Number(kstToday(now()).slice(0, 4)) - Number(a.birthDate.slice(0, 4)) - (kstToday(now()).slice(5) < a.birthDate.slice(5) ? 1 : 0)) : null;
+      // 짝이 10 에서 받는 값과 같은 판정(공개 범위 토글이 꺼진 칸 0) — 데모 설문 답(DEMO_ANSWERS)으로
+      const pick = (q: string, col: string) => (vis[col] === false ? {} : { [q]: DEMO_ANSWERS[q] });
+      const previewAnswers = {
+        A12: `${String(DEMO_ANSWERS.A12 ?? '').slice(0, 1)}OO`,
+        ...(age !== null ? { A01: age } : {}),
+        A03: DEMO_ANSWERS.A03,
+        ...pick('A06', 'a06_religion'),
+        ...pick('A07', 'a07_marital_history'),
+        ...pick('A08', 'a08_children'),
+        ...pick('C05', 'c05_income'),
+      };
+      return { birthDate: a?.birthDate ?? null, consentOn: (code: string) => consentOn(a, code), sameHobby: vis.same_hobby !== false, previewAnswers };
+    },
+  });
+  demoShared.setFlags((userId) => {
+    const a = accountOf(userId);
+    return a ? flagsOf({ id: a.id, email: a.email }) : Promise.resolve({});
+  });
+  demoShared.setSameHobby((userId) => accountOf(userId)?.visibility.same_hobby !== false);
   const accounts = new Map<string, DemoAccount>();
   const gates = new Map<string, Gate>();
   const rejects = new Map<string, Reject>();
@@ -604,7 +639,7 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
       if (account && this.table === 'visibility_settings') {
         if (account.email.startsWith('savefail')) return { data: null, error: { code: '', message: 'Failed to fetch' } }; // 인터넷 문제 장면
         const keys = Object.keys(values);
-        if (keys.length === 0 || keys.some((k) => !(k in DEMO_VISIBILITY_DEFAULTS) || typeof values[k] !== 'boolean')) return { data: null, error: { code: '42501', message: 'permission denied for column' } };
+        if (keys.length === 0 || keys.some((k) => (!(k in DEMO_VISIBILITY_DEFAULTS) && k !== 'same_hobby') || typeof values[k] !== 'boolean')) return { data: null, error: { code: '42501', message: 'permission denied for column' } };
         for (const k of keys) account.visibility[k] = values[k] as boolean;
         return { data: null, error: null };
       }
@@ -651,9 +686,9 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
         const item = String(r.item_code);
         const version = String(r.text_version);
         const agreed = r.agreed === true;
-        const bad = r.user_id !== account.id || !/^CK(1[0-6]|[1-9])$/.test(item) || !/^consent-\d{4}\.\d{2}\.\d{2}-v\d+$/.test(version) || String(r.app_version ?? '').length > 32 || (r.source != null && !CONSENT_SOURCES.has(String(r.source)));
+        const bad = r.user_id !== account.id || !/^CK(1[0-6]|[1-9]|17A|17B)$/.test(item) || !/^consent-\d{4}\.\d{2}\.\d{2}-v\d+$/.test(version) || String(r.app_version ?? '').length > 32 || (r.source != null && !CONSENT_SOURCES.has(String(r.source)));
         if (bad) return { data: null, error: { code: '23514', message: 'check violation' } };
-        if (!agreed && !/^CK(4|9|1[0-6])$/.test(item)) return { data: null, error: { code: '23514', message: 'check violation' } }; // 필수 칸은 동의한 기록만(0033: 선택 CK4 · CK9 · CK10 ~ CK16)
+        if (!agreed && !/^CK(4|9|1[0-6]|17A|17B)$/.test(item)) return { data: null, error: { code: '23514', message: 'check violation' } }; // 필수 칸은 동의한 기록만(0033: 선택 CK4 · CK9 · CK10 ~ CK16)
         const duplicate = agreed && [...account.consents, ...pending].some((c) => c.agreed && c.revoked_at === null && c.item_code === item && c.text_version === version);
         if (duplicate) return { data: null, error: { code: '23505', message: 'duplicate key value' } };
         pending.push({ item_code: item, agreed, text_version: version, revoked_at: null, source: r.source == null ? null : String(r.source) });
@@ -720,6 +755,11 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
       if (boarding.handles(name)) {
         const account = me();
         return account ? boarding.rpc({ id: account.id, email: account.email }, name, args) : Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
+      }
+      // IF2-F 기내 서비스(get_home_state · get_magazine · get_week_card · pick_week_card · pre_answer_questions · preview_my_profile · get_pair_card + 데모 줄 demo_inflight_scene)
+      if (inflight.handles(name)) {
+        const account = me();
+        return account ? inflight.rpc({ id: account.id, email: account.email }, name, args) : Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
       }
       // LG-F 탑승객 라운지(lounge_state · agree · take_seat · get_post · post · empathy · hide · report · pick · delete + 데모 줄 demo_lounge_scene)
       if (lounge.handles(name)) {

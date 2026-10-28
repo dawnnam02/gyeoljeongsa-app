@@ -81,10 +81,11 @@ type BubbleProps = {
   onRetry?: () => void;
   onDiscard?: () => void;
   failText?: string; // 못 보낸 이유(없으면 '보내지 못했어요.')
+  label?: string | null; // IF2-F 꼬리표 글 머리(엽서 · 이야깃거리 · 저는 이런 편이에요 · 작별 엽서 — 두 사람 같은 글)
   testID: string;
 };
 
-export function MessageBubble({ message: m, sendState = 'sent', mediaUri, voice, onPhoto, onRetry, onDiscard, failText, testID }: BubbleProps) {
+export function MessageBubble({ message: m, sendState = 'sent', mediaUri, voice, onPhoto, onRetry, onDiscard, failText, label, testID }: BubbleProps) {
   const mine = m.mine;
   if (m.kind === 'system') {
     const line = systemLine(m.body, mine);
@@ -136,6 +137,11 @@ export function MessageBubble({ message: m, sendState = 'sent', mediaUri, voice,
   return (
     <View style={[styles.line, mine ? styles.lineMine : styles.lineTheirs]} testID={testID}>
       <View style={[styles.stack, mine ? styles.stackMine : null]}>
+        {label ? (
+          <AppText variant="captionMedium" tone="accent" testID={`${testID}-tag`}>
+            {label}
+          </AppText>
+        ) : null}
         {body}
         {m.caution && !mine && sendState === 'sent' ? (
           <AppText variant="captionMedium" tone="accent" testID={`${testID}-caution`}>

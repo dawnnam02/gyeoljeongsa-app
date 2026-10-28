@@ -30,6 +30,10 @@ import { alpha, colors, size, space } from '@/theme/tokens';
 
 import { GroupLabel, LoadState, RowGroup, SubPage, SwitchRow } from './SettingsParts';
 import { useLoad } from './useLoad';
+import { CK17 } from '@/content/ck17Content';
+import { Ck17Sheet } from '@/features/inflight/If2Sheets';
+import type { Ck17Api, Ck17State } from '@/features/inflight/inflightService';
+import { tx } from '@/features/inflight/if2Text';
 
 const OPTIONAL: readonly OptionalCode[] = ['CK4', 'CK9'];
 const itemOf = (code: string) => CONSENT_ITEMS.find((i) => i.code === code) as ConsentItemContent;
@@ -42,7 +46,9 @@ const LATER = CONSENT_LATER_NAMES.map(({ code, name }) => ({ code, label: `${OPT
 const ON_HERE: ReadonlySet<LaterConsentCode> = new Set(['CK16']);
 const VIEW_ITEMS: readonly ConsentSheetContent[] = [...REQUIRED_ITEMS, ...CONSENT_LATER_ITEMS];
 
-export function ConsentManagePage({ api, boarded, onBack, onToast }: { api: Pick<SettingsApi, 'loadConsents' | 'setOptional'>; boarded?: () => Promise<boolean>; onBack: () => void; onToast: (text: string) => void }) {
+// IF2-F(D-223 · 동의문구 5-6 끝 ② · 4-17): ck17 = '재미 정보(별자리 · 사주)' 줄 안 두 칸(① 재미 계산 CK17A · ② 짝에게 보이기 CK17B).
+//  켜기 = 재미 정보 동의 시트(고지 전부) · 끄기 = 토글 한 번(거두면 일어나는 일을 칸 아래 글로 먼저 보임) · A 를 거두면 B 도(서버 0043 revoke_consent)
+export function ConsentManagePage({ api, boarded, onBack, onToast, ck17 }: { api: Pick<SettingsApi, 'loadConsents' | 'setOptional'>; boarded?: () => Promise<boolean>; onBack: () => void; onToast: (text: string) => void; ck17?: Ck17Api }) {
   const read = useCallback(() => api.loadConsents(), [api]);
   const { phase, data, setData, reload, alive } = useLoad<OptionalConsents>(read);
   const [onBoard, setOnBoard] = useState(false); // 판매 마감 전 · 이번 회차 탑승권이 있다(못 읽으면 없음 — 줄째 숨김)
@@ -63,6 +69,26 @@ export function ConsentManagePage({ api, boarded, onBack, onToast }: { api: Pick
   const [relAsk, setRelAsk] = useState(false); // CK4 켜기 = 종교 동의 카드(C5)
   const [relCheck, setRelCheck] = useState(false);
   const [relReason, setRelReason] = useState<string | null>(null);
+  const [fun, setFun] = useState<Ck17State | null>(null);
+  const [funSheet, setFunSheet] = useState(false);
+  useEffect(() => {
+    if (!ck17) return;
+    void ck17.load().then((r) => alive.current && r.ok && setFun(r.data));
+  }, [ck17, alive]);
+  const funOff = async (code: 'CK17A' | 'CK17B') => {
+    if (!ck17 || !fun || busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    setError(null);
+    const r = await ck17.revoke(code);
+    busyRef.current = false;
+    if (!alive.current) return;
+    setBusy(false);
+    if (r.ok) {
+      setFun(code === 'CK17A' ? { a: false, b: false } : { ...fun, b: false });
+      onToast(CONSENT_MANAGE.saved);
+    } else setError(r.reason === 'network' ? COMMON.offline : r.reason === 'session' ? COMMON.sessionLost : CONSENT_MANAGE.saveFailed);
+  };
 
   const apply = async (code: OptionalCode, next: boolean) => {
     if (busyRef.current) return;
@@ -128,8 +154,17 @@ export function ConsentManagePage({ api, boarded, onBack, onToast }: { api: Pick
             {LATER.map(({ code, label }, i) => {
               const locked = !data[code] && !ON_HERE.has(code);
               const note = locked ? CONSENT_MANAGE.askLater : code === 'CK15' && data[code] ? CONSENT_MANAGE.ck15OffBody : undefined; // 17-3: CK15 켜짐 아래 = 거두면 일어나는 일
-              return <SwitchRow key={code} label={label} note={note} on={data[code]} disabled={busy || locked} last={i === LATER.length - 1} onPress={() => onSwitch(code)} testID={`settings-consent-${code}`} />;
+              return <SwitchRow key={code} label={label} note={note} on={data[code]} disabled={busy || locked} last={i === LATER.length - 1 && !(ck17 && fun)} onPress={() => onSwitch(code)} testID={`settings-consent-${code}`} />;
             })}
+            {ck17 && fun ? (
+              <View testID="settings-consent-CK17">
+                <AppText variant="bodyMedium" style={styles.funName}>
+                  {`${OPTIONAL_TAG}${tx('FUN.ck17.name')}`}
+                </AppText>
+                <SwitchRow label={CK17.rowA} note={fun.a ? tx('FUN.ck17.withdrawNote') : undefined} on={fun.a} disabled={busy} onPress={() => (fun.a ? void funOff('CK17A') : setFunSheet(true))} testID="settings-consent-CK17A" />
+                <SwitchRow label={CK17.rowB} note={fun.b ? tx('FUN.ck17.withdrawPairNote') : undefined} on={fun.b} disabled={busy} last onPress={() => (fun.b ? void funOff('CK17B') : setFunSheet(true))} testID="settings-consent-CK17B" />
+              </View>
+            ) : null}
           </RowGroup>
           {error ? (
             <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" accessibilityLiveRegion="polite" testID="settings-consents-error">
@@ -207,6 +242,23 @@ export function ConsentManagePage({ api, boarded, onBack, onToast }: { api: Pick
         />
       </BottomSheet>
       <ConsentSummarySheet item={reading} onClose={() => setReading(null)} />
+      {ck17 ? (
+        <Ck17Sheet
+          visible={funSheet}
+          initial={fun ?? undefined}
+          onClose={() => setFunSheet(false)}
+          onSave={async (a, b) => {
+            const r = await ck17.record(a, b, 'settings');
+            if (r.ok) {
+              setFun({ a, b: a && b });
+              setFunSheet(false);
+              onToast(CONSENT_MANAGE.saved);
+            }
+            return r.ok;
+          }}
+          testID="settings-ck17-sheet"
+        />
+      ) : null}
     </SubPage>
   );
 }
@@ -218,4 +270,5 @@ const styles = StyleSheet.create({
   divider: { borderBottomWidth: 1, borderBottomColor: colors.line },
   pressed: { opacity: alpha.pressed },
   flex: { flex: 1, flexShrink: 1 },
+  funName: { paddingHorizontal: space.s16, paddingTop: space.s12 },
 });

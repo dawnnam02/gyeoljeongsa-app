@@ -111,6 +111,27 @@
 
     { "key": "meet_scene", "group": "D46", "id": "D46-A", "live": false },
 
-    { "key": "lounge", "group": "LG", "id": "LG-F", "live": false }
+    { "key": "lounge", "group": "LG", "id": "LG-F", "live": false },
+
+    { "key": "inflight_home", "group": "IF2", "id": "F-63", "live": false },
+    { "key": "inflight_mag", "group": "IF2", "id": "F-08", "live": false },
+    { "key": "inflight_tarot", "group": "IF2", "id": "F-09", "live": false },
+    { "key": "type_card", "group": "IF2", "id": "F-19", "live": false },
+    { "key": "type_card_share", "group": "IF2", "id": "F-19s", "live": false, "demo": false },
+    { "key": "profile_preview", "group": "IF2", "id": "F-56", "live": false },
+    { "key": "pre_answer", "group": "IF2", "id": "F-67", "live": false },
+    { "key": "postcard", "group": "IF2", "id": "F-25", "live": false },
+    { "key": "pair_card", "group": "IF2", "id": "F-24", "live": false },
+    { "key": "pair_card_ai", "group": "IF2", "id": "F-24a", "live": false, "demo": false },
+    { "key": "same_points", "group": "IF2", "id": "F-26", "live": false },
+    { "key": "values_talk", "group": "IF2", "id": "F-31", "live": false },
+    { "key": "opener_chips", "group": "IF2", "id": "F-23", "live": false },
+    { "key": "talk_depth", "group": "IF2", "id": "F-29", "live": false },
+    { "key": "my_manual", "group": "IF2", "id": "F-14", "live": false },
+    { "key": "together_q", "group": "IF2", "id": "F-30", "live": false },
+    { "key": "word_safety", "group": "IF2", "id": "F-39", "live": false },
+    { "key": "farewell", "group": "IF2", "id": "F-45", "live": false },
+    { "key": "meet_prep", "group": "IF2", "id": "F-37", "live": false },
+    { "key": "meet_memo", "group": "IF2", "id": "F-46", "live": false }
   ]
 }

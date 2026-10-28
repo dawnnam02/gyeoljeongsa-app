@@ -53,7 +53,7 @@ export const BOARDING = {
   },
   matched: {
     title: '이번 주에 만난 분이 있어요',
-    body: (name: string) => `${name}님과의 대화방이 열려 있어요.`,
+    body: '이번 주 대화방이 열려 있어요.', // 카피 21-18(IF2-F · D-223 · 정책 PF-08) — 홈에 상대 이름 0(inflight_home 이 꺼져 있어도)
     open: '만난 분 보기',
   },
   noMatch: {

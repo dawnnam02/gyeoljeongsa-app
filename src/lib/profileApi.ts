@@ -21,6 +21,7 @@ export type ProfileData = {
   verification: Verification;
   photos: PhotoView[];
   visibility: ToggleState; // 서버에 저장된 토글 9개
+  sameHobby?: boolean; // IF2-F(0043 · D-224): '같은 취미' 공개 줄 visibility_settings.same_hobby — 처음 켜짐(열이 없으면 켜짐)
   answers: Readonly<Record<string, unknown>>; // 토글 문항 9개의 값(잠금 판정용)
 };
 
@@ -75,6 +76,7 @@ export function createProfileApi(client: SupabaseClient) {
           verification: status === 'verified' ? 'verified' : status === 'pending' ? 'pending' : 'unverified',
           photos: photoViews((photos.data ?? []) as { id: string; slot: string; status: string; submitted_at?: string | null }[]),
           visibility: toggles,
+          sameHobby: vis.same_hobby !== false,
           answers: Object.fromEntries(TOGGLE_QUESTIONS.map((q) => [q, byId[q]])),
         },
       };
@@ -86,6 +88,13 @@ export function createProfileApi(client: SupabaseClient) {
       const { error } = await client.from('visibility_settings').update(changes as Record<string, boolean>);
       if (error) return fail(error, 'profile.save.fail');
       safeLog({ event: 'profile.save.ok', count: Object.keys(changes).length });
+      return { ok: true };
+    },
+
+    // IF2-F: '같은 취미' 줄은 누르는 순간 바로 저장(한 번에 끔 — 정책 PF-48 ⑦ · 끄면 궁합 카드 · 첫마디 실마리에서 바로 빠짐)
+    async saveSameHobby(on: boolean): Promise<SaveResult> {
+      const { error } = await client.from('visibility_settings').update({ same_hobby: on });
+      if (error) return fail(error, 'profile.hobby.fail');
       return { ok: true };
     },
 

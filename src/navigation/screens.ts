@@ -5,12 +5,12 @@ import type { Href } from 'expo-router';
 
 // V5(W6 · 청사진 v5 초안 6-1): 새 화면 T1 탑승권(T2 기다림은 T1 의 상태 — 같은 주소) · T3 공개 순간 · T5 크레딧. T4 채팅 목록(탭) · T4R 대화방(W5 · D-159)
 export const SCREEN_IDS = [
-  '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', 'T1', 'T3', 'T5', 'T4', 'T4R', '16G', 'T6',
+  '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', 'T1', 'T3', 'T5', 'T4', 'T4R', '16G', 'T6', 'IF-MAG', 'IF-TYPE', 'IF-PREVIEW',
 ] as const;
 export type ScreenId = (typeof SCREEN_IDS)[number];
 
 // 이 화면의 본문을 채우는 세부계획(팀장/세부계획.md 2장 Phase 3)
-export type FilledBy = 'F1' | 'F2' | 'F3' | 'F4' | 'F5' | 'F6' | 'F7' | 'F11' | 'W6' | 'W5' | 'R-A' | 'LG-F';
+export type FilledBy = 'F1' | 'F2' | 'F3' | 'F4' | 'F5' | 'F6' | 'F7' | 'F11' | 'W6' | 'W5' | 'R-A' | 'LG-F' | 'IF2-F';
 
 export type ScreenDef = {
   readonly id: ScreenId;
@@ -64,6 +64,10 @@ export const SCREENS: readonly ScreenDef[] = [
   { id: 'T4R', name: '대화방', route: '/chat/[id]', href: '/chat' as Href, tabBar: false, filledBy: 'W5', k2: '청사진 v5 초안 6-1 T4 방' },
   { id: '16G', name: '내 등급', route: '/grade', href: '/grade' as Href, tabBar: false, filledBy: 'R-A', k2: '화면_요구사항 v5 16-G · 12-1(D-200 ②)' },
   { id: 'T6', name: '탑승객 라운지', route: '/lounge', href: '/lounge' as Href, tabBar: false, filledBy: 'LG-F', k2: '화면_요구사항 T6 · 정책 L장(D-220) — 입구는 T4 목록 맨 위 라운지 줄' },
+  // IF2-F(D-223): 기내 서비스 화면 셋(나머지 IF 화면은 시트) — 탭 밖 · 새 탭 0
+  { id: 'IF-MAG', name: '기내지', route: '/magazine', href: '/magazine' as Href, tabBar: false, filledBy: 'IF2-F', k2: '화면_요구사항 IF-MAG · IF-CARD · 정책 PF-21 ~ PF-25' },
+  { id: 'IF-TYPE', name: '내 여행 타입', route: '/type-card', href: '/type-card' as Href, tabBar: false, filledBy: 'IF2-F', k2: '화면_요구사항 IF-TYPE · 정책 PF-31 ~ PF-33' },
+  { id: 'IF-PREVIEW', name: '짝에게 보이는 내 모습', route: '/preview-me', href: '/preview-me' as Href, tabBar: false, filledBy: 'IF2-F', k2: '화면_요구사항 IF-PREVIEW · 정책 PF-34' },
 ];
 
 export function screenById(id: ScreenId): ScreenDef {

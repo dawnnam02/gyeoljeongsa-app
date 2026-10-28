@@ -14,6 +14,8 @@
 //  · 내가 처음 글을 보내면 1.5초 뒤 상대가 한 번 답한다(실시간 흉내). 사진 = 데모 사진 파일 · 음성 = 길이만(소리 없음)
 //  · 나가기: 나간 사람은 방이 사라지고(목록에서 빠짐), 상대는 30일 읽기만(0031 · 팀장 결정)
 //  · 여기 사람은 가상이다(실제 사람 아님). 글은 해요체 · 느낌표 0
+import { createInflightChatDemo } from '@/demo/inflightChatDemo';
+import { demoShared } from '@/demo/inflightShared';
 import { demoPerson, kinOrder, mePhotoKey, myReligionOf, poolFor, type DemoPerson } from '@/demo/people';
 import { demoPhotoUri } from '@/demo/peoplePhotos';
 
@@ -43,6 +45,8 @@ const SCENE_NOW: Record<DemoChatScene, number> = {
 const BLOCKED_WORDS = ['송금', '계좌로', '입금해', '코인투자', '시발', '씨발', '병신'];
 const LINK = /https?:\/\/|www\./i;
 const REPLY = '네, 좋아요. 천천히 이야기 나눠요.';
+// IF2-F 안전 안내 카드(F-39) 데모: 내 글에 '데모안전'이 있으면 짝이 거르기에 안 걸리는 돈 · 투자 꼴 글로 답한다(받은 말풍선 아래 나에게만 카드)
+const MONEY_REPLY = '요즘 코인 이야기 많이 하던데 혹시 관심 있으세요?';
 
 export const sceneOfEmail = (email: string): DemoChatScene => {
   const l = (email.split('@')[0] ?? '').toLowerCase();
@@ -124,11 +128,13 @@ const lastOf = (s: RoomState): Room['last'] => {
 };
 
 export type DemoControls = { scene(): Promise<DemoChatScene>; next(): Promise<DemoChatScene>; peek(): Promise<unknown> };
+// IF2-F: 0043 대화방 칸 함수(opener_chips · talk_topics · send_chat_card · together_*)를 같은 모양으로 답하는 데모 창구
+export type DemoIf2Rpc = (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { code: string; message: string } | null }>;
 export const hasDemoControls = (api: ChatApi): api is ChatApi & { demo: DemoControls } => 'demo' in api;
 
 // note(3부-아 QP-10): 신고 · 차단을 데모 로그인 모의 서버(12 신고 내역 · 차단 목록)에도 알린다 — 실서버는 같은 표라 따로 할 일 0
 export type DemoSafetyNote = (partnerId: string, reason?: string) => Promise<void>;
-export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) => string | null; replyMs?: number; clock?: () => number; note?: DemoSafetyNote }): ChatApi & { demo: DemoControls } {
+export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) => string | null; replyMs?: number; clock?: () => number; note?: DemoSafetyNote }): ChatApi & { demo: DemoControls; if2Rpc: DemoIf2Rpc } {
   const photoUri = options.photoUri ?? demoPhotoUri;
   const clock = options.clock ?? Date.now;
   const replyMs = options.replyMs ?? 1_500;
@@ -169,6 +175,43 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
     r.messages.push(m);
     notify(r.room.id);
   };
+  // IF2-F 대화방 칸(데모): 방 · 글은 이 데모 채팅의 것을 쓴다
+  const anyRoom = (id: string): { s: State; r: RoomState } | null => {
+    for (const s of states.values()) {
+      const r = roomOf(s, id);
+      if (r) return { s, r };
+    }
+    return null;
+  };
+  const if2 = createInflightChatDemo({
+    userId: async () => (await me()).id,
+    room: (id) => {
+      const x = anyRoom(id);
+      if (!x) return null;
+      settle(x.s);
+      return { open: x.r.room.closedAt === null, openedAt: x.r.room.openedAt, messages: x.r.messages };
+    },
+    now: () => {
+      const s = states.values().next().value as State | undefined;
+      return s ? nowOf(s) : SCENE_NOW.fresh;
+    },
+    add: (id, m) => {
+      const x = anyRoom(id);
+      if (!x) return;
+      if (!m.mine) x.r.room.unread += 1;
+      push(x.r, { ...m, createdAt: nowOf(x.s) });
+    },
+    notify: (id) => notify(id),
+    leave: (id) => {
+      const x = anyRoom(id);
+      if (!x) return;
+      x.r.gone = true;
+      void me().then((u) => demoShared.markRoom(u.id, id, 'gone'));
+    },
+    blocked: (text) => BLOCKED_WORDS.some((w) => text.replace(/\s+/g, '').includes(w)),
+    newId: nextId,
+    replyMs,
+  });
 
   return {
     async listRooms() {
@@ -185,7 +228,7 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
     async listMessages(id) {
       const s = await stateOf();
       const r = roomOf(s, id);
-      return r ? { ok: true, data: r.messages.map((m) => ({ ...m })) } : unavailable;
+      return r ? { ok: true, data: r.messages.map((m) => if2.decorate({ ...m }, r.room.closedAt === null)) } : unavailable;
     },
     async send(id, out: Outgoing) {
       const s = await stateOf();
@@ -215,7 +258,7 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
         setTimeout(() => {
           if (r.gone || r.room.closedAt !== null) return;
           r.room.unread += 1;
-          push(r, msg(false, 'text', REPLY, nowOf(s)));
+          push(r, msg(false, 'text', out.kind === 'text' && out.body.includes('데모안전') ? MONEY_REPLY : REPLY, nowOf(s)));
         }, replyMs);
       }
       return { ok: true, data: { ...m } };
@@ -247,6 +290,7 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
       const r = roomOf(s, id);
       if (!r) return unavailable;
       r.gone = true; // 나간 사람은 방이 사라진다(상대는 partner_left 로 30일 읽기만)
+      demoShared.markRoom((await me()).id, id, 'gone'); // IF2-F: 홈 '이번 짝' · 궁합 카드도 바로 0(데모 서버가 같은 판정)
       return { ok: true, data: null };
     },
     async report(roomId, reasonCode) {
@@ -263,6 +307,7 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
       const r = roomOf(s, roomId);
       if (!r) return { ok: false, reason: 'unavailable' };
       r.gone = true; // 차단 뒤 서로 안 보임(방도 목록에서 빠짐)
+      demoShared.markRoom((await me()).id, roomId, 'gone'); // IF2-F: 홈 블록 · 궁합 카드 바로 0
       await options.note?.(r.room.partner.id).catch(() => undefined);
       return { ok: true };
     },
@@ -286,6 +331,11 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
     now() {
       const s = states.values().next().value as State | undefined;
       return s ? nowOf(s) : SCENE_NOW.fresh;
+    },
+    // IF2-F 데모 창구(ChatApi 밖): 0043 대화방 칸 함수
+    if2Rpc: async (name, args = {}) => {
+      await stateOf(); // 이 회원의 데모 방이 먼저 있게(목록을 읽기 전에 불러도)
+      return if2.handles(name) ? if2.rpc(name, args) : { data: null, error: { code: '42883', message: `function ${name} does not exist` } };
     },
     // 데모 전용(ChatApi 밖): 장면 읽기 · 바꾸기
     demo: {

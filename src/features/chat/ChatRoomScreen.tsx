@@ -38,7 +38,12 @@ import { chatApi, chatMedia, CHAT_LIST_HREF } from './chatService';
 import { Composer } from './Composer';
 import { MeetScene } from './MeetScene';
 import { useMeetScene, type MeetDeps } from './useMeetScene';
+import { FarewellSheet, HelloSendSheet, MoneySafetyCard, OpenerChips, tagLabel, TogetherCard, TopicsSheet, type ChatIf2Deps } from '@/features/inflight/ChatIf2';
+import { createDeviceNotes, deviceNotes, useDeviceNotes } from '@/features/inflight/deviceNotes';
+import { moneySafetyHit } from '@/features/inflight/inflightLogic';
+import { tx } from '@/features/inflight/if2Text';
 
+const NO_NOTES = createDeviceNotes(); // IF2 칸이 없는 방(시험 · 스위치 꺼짐): 메모리만
 export const POLL_MS = 15_000;
 const FAIL_TEXT: Partial<Record<SendFailure, string>> = {
   blocked: CHAT.send.blocked,
@@ -69,7 +74,9 @@ const asMessage = (p: Pending): Message => ({
   purged: false,
 });
 
-export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs = TOAST_MS, pollMs = POLL_MS, meet }: { id: string; api?: ChatApi; media?: ChatMedia; toastMs?: number; pollMs?: number; meet?: MeetDeps }) {
+// IF2-F(D-223): if2 = 대화방 칸(첫마디 실마리 · 이야깃거리 시트 · 꼬리표 글 · 같이 열어 보는 질문 · 안전 안내 카드 · 작별 엽서 — 정책 PF-51 ~ PF-59). 없으면 지금 그대로.
+//  draft = 홈 '꺼내는 말 가져가기'(입력창에 넣기만). 맨 위 순서(머리 · 남은 날 띠 · 기억 한 줄 · 방 열림 글)에는 아무것도 더하지 않는다(PF-58)
+export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs = TOAST_MS, pollMs = POLL_MS, meet, if2, draft }: { id: string; api?: ChatApi; media?: ChatMedia; toastMs?: number; pollMs?: number; meet?: MeetDeps; if2?: ChatIf2Deps; draft?: string }) {
   const api = givenApi ?? chatApi();
   const media = givenMedia ?? chatMedia();
   const router = useRouter();
@@ -79,7 +86,12 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
   const [pending, setPending] = useState<Pending[]>([]);
   const [urls, setUrls] = useState<Record<string, string | null>>({});
   const [seen, setSeen] = useState<Set<string> | null>(null); // 처음 불러온 글(움직이지 않음)
-  const [sheet, setSheet] = useState<'none' | 'menu' | 'extend' | 'leave' | 'safety'>('none');
+  const [sheet, setSheet] = useState<'none' | 'menu' | 'extend' | 'leave' | 'safety' | 'topics' | 'hello'>('none');
+  const [inject, setInject] = useState<{ text: string; seq: number } | null>(draft ? { text: draft, seq: 1 } : null);
+  const putText = (text: string) => setInject((cur) => ({ text, seq: (cur?.seq ?? 0) + 1 }));
+  const if2Store = if2?.notes ?? (if2 ? deviceNotes() : NO_NOTES); // IF2 칸이 없으면 기기 저장소를 건드리지 않는다
+  const if2Notes = useDeviceNotes(if2Store);
+  const if2On = (k: string) => !!if2 && if2.isOn(k);
   const [busy, setBusy] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -229,6 +241,8 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
     setToast(r.data.extended ? CHAT.extend.extendedToast : want ? CHAT.extend.wantNote : CHAT.extend.undoNote);
     await refresh();
   };
+  // 안전 안내 카드를 닫거나 신고하면 그 방은 다시 0(본 기록만 기기 — PF-56)
+  const markSafety = () => if2Store.set('wordSafety', [...if2Notes.wordSafety.filter((x) => x !== id), id].slice(-20));
   const leave = async () => {
     if (busy) return;
     setBusy(true);
@@ -256,6 +270,14 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
   };
 
   const title = room?.partner.name ?? '';
+  // IF2: 같이 열어 보는 질문의 답 두 글(together_a)은 카드 안에 펼친다 · 안전 안내 카드는 판정에 걸린 첫 받은 글 아래 한 번
+  const answersOf = (cardId: string) => {
+    const a = messages.filter((x) => x.tag === 'together_a' && x.ref === cardId);
+    return { mine: a.find((x) => x.mine)?.body ?? null, theirs: a.find((x) => !x.mine)?.body ?? null };
+  };
+  const safetyAt = if2On('word_safety') && open && !if2Notes.wordSafety.includes(id) ? (shown.find(({ m }) => !m.mine && m.kind === 'text' && !m.tag && moneySafetyHit(m.body))?.m.id ?? null) : null;
+  const wrote = shown.some(({ m }) => m.mine && m.kind !== 'system');
+  const farewellOn = !!if2 && if2On('farewell') && !!room && open;
   return (
     <View style={styles.flex}>
       <View style={styles.flex} accessibilityElementsHidden={covered} importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'}>
@@ -302,13 +324,17 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
                   {CHAT.room.startNote(room.partner.name)}
                 </AppText>
                 {shown.map(({ m, state, failure }, i) => {
+                  if (m.tag === 'together_a') return null; // 같이 열어 보는 질문 카드 안에 펼침
                   const prev = shown[i - 1]?.m;
                   const divider = !prev || dayKey(prev.createdAt) !== dayKey(m.createdAt);
                   const fresh = seen !== null && !seen.has(m.id) && state === 'sent';
                   // 2안 핵심 ③: 이 방의 첫 보낸 말풍선(처음 불러올 때 내 글이 없던 방)만 보낸 쪽에서 걷힘 420(위쪽 바탕 그라데이션이라 덮개 대신 역이동), 나머지 새 말풍선은 일상 240 · 6px
                   const firstMine = fresh && m.mine && shown.findIndex((x) => x.m.mine) === i;
-                  const bubble = (
+                  const bubble = m.tag === 'together_q' && if2 ? (
+                    <TogetherCard message={m} answers={answersOf(m.id)} roomOpen={open} deps={if2} onChanged={() => void refresh()} testID={`chat-together-${i}`} />
+                  ) : (
                     <MessageBubble
+                      label={m.tag ? tagLabel(m) : null}
                       message={m}
                       sendState={state}
                       mediaUri={state === 'sent' ? (m.mediaId ? (urls[m.mediaId] ?? null) : null) : pendingUri(m.id)}
@@ -340,12 +366,40 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
                       ) : (
                         bubble
                       )}
+                      {safetyAt === m.id ? (
+                        <MoneySafetyCard
+                          onReport={() => {
+                            markSafety();
+                            setSheet('safety');
+                          }}
+                          onClose={markSafety}
+                        />
+                      ) : null}
                     </View>
                   );
                 })}
               </ScrollView>
+              {open && if2 ? <OpenerChips roomId={id} roundNo={room.roundNo} wrote={wrote} deps={if2} onChip={putText} onPostcard={() => setSheet('hello')} /> : null}
               {open ? (
-                <Composer canPhoto={media.photo} canVoice={media.voice} onSendText={(text) => void sendOut({ clientId: newClientId(), kind: 'text', body: text })} onPhoto={() => void pickPhoto()} onStartVoice={startVoice} onStopVoice={(send) => void stopVoice(send)} testID="chat-composer" />
+                <Composer
+                  canPhoto={media.photo}
+                  canVoice={media.voice}
+                  onSendText={(text) => void sendOut({ clientId: newClientId(), kind: 'text', body: text })}
+                  onPhoto={() => void pickPhoto()}
+                  onStartVoice={startVoice}
+                  onStopVoice={(send) => void stopVoice(send)}
+                  inject={inject}
+                  side={
+                    if2On('talk_depth') ? (
+                      <Pressable accessibilityRole="button" accessibilityLabel={tx('TOPICS.entryA11y')} onPress={() => setSheet('topics')} effect="none" style={({ pressed }) => [styles.topicsBtn, pressed && styles.pressed]} testID="chat-topics">
+                        <AppText variant="captionMedium" tone="accent">
+                          {tx('TOPICS.entry')}
+                        </AppText>
+                      </Pressable>
+                    ) : undefined
+                  }
+                  testID="chat-composer"
+                />
               ) : (
                 <ClosedNotice title={CHAT.room.closedTitle} body={closedLine(room)} note={CHAT.room.closedMediaNote} testID="chat-room-closed" />
               )}
@@ -398,8 +452,39 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
             <Button label={CHAT.menu.cancel} variant="text" onPress={() => !busy && setSheet('none')} testID="chat-extend-cancel" />
           </BottomSheet>
 
+          {if2 && farewellOn ? (
+            <FarewellSheet
+              visible={sheet === 'leave'}
+              roomId={id}
+              deps={if2}
+              onClose={() => !busy && setSheet('none')}
+              onPlainLeave={() => void leave()}
+              busyPlain={busy}
+              plainError={dialogError}
+              onLeft={() => {
+                setSheet('none');
+                setNextToast(CHAT.leave.done);
+                back();
+              }}
+            />
+          ) : null}
+          {if2 && room ? (
+            <>
+              <TopicsSheet visible={sheet === 'topics'} roomId={id} deps={if2} onClose={() => setSheet('none')} onPlaced={() => void refresh()} onGive={putText} />
+              <HelloSendSheet
+                visible={sheet === 'hello'}
+                roomId={id}
+                deps={if2}
+                onClose={() => setSheet('none')}
+                onSent={() => {
+                  setSheet('none');
+                  void refresh();
+                }}
+              />
+            </>
+          ) : null}
           <ConfirmDialog
-            visible={sheet === 'leave'}
+            visible={sheet === 'leave' && !farewellOn}
             title={CHAT.leave.title}
             body={CHAT.leave.body}
             confirmLabel={CHAT.leave.confirm}
@@ -484,4 +569,5 @@ const styles = StyleSheet.create({
   viewerClose: { alignSelf: 'flex-end', minHeight: size.touchMin, minWidth: size.touchMin, justifyContent: 'center', alignItems: 'center', paddingHorizontal: size.screenPadding },
   viewerImg: { flex: 1, width: '100%' },
   cover: { backgroundColor: colors.bg },
+  topicsBtn: { minHeight: size.touchMin, minWidth: size.touchMin, justifyContent: 'center', alignItems: 'center', paddingHorizontal: space.s4 },
 });

@@ -4,11 +4,14 @@
 import type { ReactNode } from 'react';
 
 import { createBoardingApi, type BoardingApi } from './boardingApi';
+import type { InflightHomeDeps } from '@/features/inflight/InflightHome';
+
 import { createOpenedRounds, openedMemoryOnly, type OpenedMemory, type OpenedRounds } from './openedRounds';
 
 const OPENED_KEY = 'boarding.openedRounds.v1'; // 공개를 열어 본 회차 번호(도착 화면은 한 회차에 한 번, D-178)
 
-export type BoardingServices = { api: BoardingApi; newId: () => string; opened: OpenedRounds; demoBar?: (reload: () => void) => ReactNode };
+// IF2-F: inflightBase = 홈 새 구성 연결(스위치 읽기 isOn 은 라우트가 훅으로 더한다) · inflightBar = 데모 장면 줄(데모만)
+export type BoardingServices = { api: BoardingApi; newId: () => string; opened: OpenedRounds; demoBar?: (reload: () => void) => ReactNode; inflightBase: Omit<InflightHomeDeps, 'isOn'>; inflightBar?: (reload: () => void) => ReactNode };
 
 let made: BoardingServices | null = null;
 
@@ -33,11 +36,15 @@ export function boardingServices(): BoardingServices {
       };
     }
     const opened = createOpenedRounds(memory);
+    const { inflightServices } = require('@/features/inflight/inflightService') as typeof import('@/features/inflight/inflightService');
+    const s = inflightServices();
+    const inflightBase = { api: s.api, ck17: s.ck17, type: s.type };
     if (env.demoMode) {
       const { boardingDemoBar } = require('@/demo/boardingDemoBar') as typeof import('@/demo/boardingDemoBar');
-      made = { api, newId: () => newRequestId(), opened, demoBar: boardingDemoBar(supabase, opened) };
+      const { inflightDemoBar } = require('@/demo/inflightDemoBar') as typeof import('@/demo/inflightDemoBar');
+      made = { api, newId: () => newRequestId(), opened, demoBar: boardingDemoBar(supabase, opened), inflightBase, inflightBar: inflightDemoBar(supabase, opened) };
     } else {
-      made = { api, newId: () => newRequestId(), opened };
+      made = { api, newId: () => newRequestId(), opened, inflightBase };
     }
     /* eslint-enable @typescript-eslint/no-require-imports */
   }

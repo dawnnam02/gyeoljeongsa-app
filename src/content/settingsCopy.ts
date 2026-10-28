@@ -23,7 +23,7 @@ export const SETTINGS = {
     safety: '안전 안내', // [확정] N34 (copy.ts SAFETY_GUIDE.rowName 과 같은 글)
     infoGroup: '정보', // [확정] 카피.md 12 목록 '정보' 묶음
     licenses: '오픈소스 라이선스', // [법무] 5-6 · N29
-    imageCredit: '이미지 출처 고지', // [확정] 카피.md 12(B5) · N30 (줄 이름 · 상단바)
+    imageCredit: '생성형 AI 고지', // [확정] 카피.md 21-18(IF2-F · D-224 ② · 법무 동의문구 5-6 줄 이름) — 옛 '이미지 출처 고지'(카피 12 · N30)
     businessInfo: '사업자 정보', // [확정] 카피.md 12-Q 정보 묶음 새 줄 — 값 6개가 모두 있을 때만 보인다(content/businessInfo.ts)
   },
   verificationSoon: '준비 중', // [확정] 카피.md 12 "열리기 전에는 '준비 중'으로 표시" · Figma 12 오른쪽 글
@@ -219,7 +219,7 @@ export const LICENSES = {
 } as const;
 
 export const IMAGE_CREDIT = {
-  headerTitle: '이미지 출처 고지', // [확정] 카피.md 12(B5) · N30
+  headerTitle: '생성형 AI 고지', // [확정] 카피.md 21-18(IF2-F) — 둘째 문장(aiWriting)이 글까지 덮어 줄 이름을 넓힘
   body: '로고와 일부 그림은 생성형 AI로 만든 이미지를 다듬어 썼어요.', // [법무] 5-6 (L17 '아이콘' → '그림')
   aiWriting: '기내지 · 이번 주 타로 · 궁합 카드 · 첫마디 실마리 · 이야깃거리의 글은 생성형 AI로 미리 써 두었어요.', // [법무] 5-6 '생성형 AI 고지' 둘째 문장(IF2-L 10-28 · 사람이 다듬지 않는 판) · 카피 12
 } as const;

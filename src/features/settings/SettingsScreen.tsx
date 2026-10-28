@@ -39,6 +39,8 @@ import { copyToClipboard, readPushStatus, requestPushPermission, type PushStatus
 import { NotificationsPage } from './NotificationsPage';
 import { AvoidPage } from './AvoidPage';
 import { ConsentManagePage } from './ConsentManagePage';
+import { forgetInflightNotes } from '@/features/inflight/deviceNotes';
+import type { Ck17Api } from '@/features/inflight/inflightService';
 import { GradeSwitches } from './GradeSwitches';
 import { GroupLabel, NavRow, OutlineButton, RowGroup } from './SettingsParts';
 import { SETTINGS_ROWS, type RowDef, type SettingsPage } from './settingsLogic';
@@ -56,6 +58,7 @@ export type SettingsDeps = SupportDeps & {
   requestPush: () => Promise<PushStatus>; // 시스템 권한 창(서비스 알림을 켤 때, 안내 글을 먼저 보인 뒤)
   contact?: () => ContactPorts; // 12-5 지인 차단 기기 연결(주소록 · 해시, 3부-바). 없으면 지인 차단 줄은 '준비 중'
   boarded?: () => Promise<boolean>; // 3부-아: 판매 마감 전 · 이번 회차 탑승권이 있나(동의 관리 CK4 · CK15 끄기 확인창 한 줄). 없으면 그 줄 없음
+  ck17?: () => Ck17Api | null; // IF2-F: 동의 관리 '재미 정보' 줄(기내지 · 궁합 카드 스위치가 켜졌을 때만). 없거나 null 이면 줄 없음
 };
 
 
@@ -69,6 +72,7 @@ export function defaultSettingsDeps(): SettingsDeps {
     requestPush: requestPushPermission,
     contact: contactPorts, // 누를 때 처음 만든다(기기 모듈을 미리 읽지 않음)
     boarded: boardedNow,
+    ck17: ck17Now,
     copyText: copyToClipboard,
     openMail: async (email) => {
       try {
@@ -88,6 +92,17 @@ async function boardedNow(): Promise<boolean> {
   /* eslint-enable @typescript-eslint/no-require-imports */
   const r = await boardingServices().api.load();
   return r.ok && canCancel(r.state);
+}
+
+// IF2-F: 재미 정보 동의(CK17A · CK17B) 줄은 기내지 · 궁합 카드 스위치가 켜졌을 때만(스위치 처음값 꺼짐 — 실서버엔 줄 0)
+function ck17Now(): Ck17Api | null {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const { appFlagsStore } = require('@/hooks/useFeatureFlags') as typeof import('@/hooks/useFeatureFlags');
+  const { isOn } = require('@/lib/featureFlagsApi') as typeof import('@/lib/featureFlagsApi');
+  const { inflightServices } = require('@/features/inflight/inflightService') as typeof import('@/features/inflight/inflightService');
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  const f = appFlagsStore().get();
+  return isOn(f, 'inflight_mag') || isOn(f, 'pair_card') ? inflightServices().ck17 : null;
 }
 
 const openExternal = async (url: string) => {
@@ -177,6 +192,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
     resetGradeSettings(); // 다음 사람에게 이 사람의 구독 · 멈춤 표시가 남지 않게(F13)
     forgetMyFace(); // 다음에 로그인하는 사람에게 이 사람의 원형 사진이 남지 않게(F11)
     forgetMeetScenes(); // D46: 만남 장면을 본 방 기록(기기)도 지운다 — 같은 기기를 다른 계정이 쓸 때(K27 상황 21)
+    await forgetInflightNotes(); // IF2-F: 나만 쓰는 글 9종(엽서 · 미리 답 · 표시 · 메모 · 고른 짐 · 본 기록 · 띠 · 접힘)도 지운다(정책 PF-10 · IFF-03)
     const target = resolveDest('01');
     if (target.kind === 'href') {
       if (router.canDismiss()) router.dismissAll();
@@ -219,7 +235,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
       case 'security':
         return <SecurityPage onBack={toList} />;
       case 'consent-management':
-        return <ConsentManagePage api={deps.api} boarded={deps.boarded} onBack={toList} onToast={showToast} />;
+        return <ConsentManagePage api={deps.api} boarded={deps.boarded} onBack={toList} onToast={showToast} ck17={deps.ck17?.() ?? undefined} />;
       case 'blocked-list':
         return <BlockedListPage api={deps.api} onBack={toList} onToast={showToast} />;
       case 'report-history':

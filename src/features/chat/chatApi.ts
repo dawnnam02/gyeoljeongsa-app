@@ -39,6 +39,11 @@ export type Room = {
   last: LastMessage | null;
   unread: number;
 };
+// IF2-F(0043): 꼬리표 글 — 엽서 · 이야깃거리 · 같이 열어 보는 질문(+ 그 답) · 저는 이런 편이에요 · 작별 엽서. 보통 글은 tag 없음(0031 키 그대로)
+export type ChatTag = 'postcard' | 'topic' | 'together_q' | 'together_a' | 'about_me' | 'farewell';
+const CHAT_TAGS: readonly ChatTag[] = ['postcard', 'topic', 'together_q', 'together_a', 'about_me', 'farewell'];
+// 같이 열어 보는 질문 카드의 내 쪽 상태(0043 together_state) — 상대가 답했는지 · 눌렀는지는 없다(보안 S-6 · PF-55)
+export type TogetherState = { state: 'mine_needed' } | { state: 'waiting'; myAnswer: string; canWithdraw: boolean } | { state: 'opened' } | { state: 'withdrawn' } | { state: 'closed'; myAnswer: string | null };
 export type Message = {
   id: string;
   clientId: string | null;
@@ -50,6 +55,9 @@ export type Message = {
   caution: boolean;
   createdAt: number;
   purged: boolean;
+  tag?: ChatTag | null;
+  ref?: string | null;
+  together?: TogetherState | null;
 };
 // localUri = 보내는 동안 내 화면에 먼저 그릴 주소(메모리) · demoKey = 데모 사진 파일 키(데모 채팅만)
 export type OutgoingMedia =
@@ -139,7 +147,26 @@ export function parseMessage(raw: unknown): Message | null {
     caution: raw.caution === true,
     createdAt,
     purged: raw.purged === true,
+    ...tagged(raw),
   };
+}
+
+// 꼬리표 글만 tag · ref(+ 질문 카드면 내 쪽 상태). 모르는 꼬리표는 보통 글로
+function tagged(raw: Record<string, unknown>): Pick<Message, 'tag' | 'ref' | 'together'> {
+  const tag = CHAT_TAGS.includes(raw.tag as ChatTag) ? (raw.tag as ChatTag) : null;
+  if (!tag) return {};
+  const ref = typeof raw.ref === 'string' && /^[A-Za-z0-9_,:-]{1,80}$/.test(raw.ref) ? raw.ref : null;
+  const t = isRecord(raw.together) ? raw.together : null;
+  let together: TogetherState | null = null;
+  if (tag === 'together_q' && t) {
+    const mine = typeof t.my_answer === 'string' ? t.my_answer : null;
+    if (t.state === 'mine_needed') together = { state: 'mine_needed' };
+    else if (t.state === 'waiting') together = { state: 'waiting', myAnswer: mine ?? '', canWithdraw: t.can_withdraw === true };
+    else if (t.state === 'opened') together = { state: 'opened' };
+    else if (t.state === 'withdrawn') together = { state: 'withdrawn' };
+    else if (t.state === 'closed') together = { state: 'closed', myAnswer: mine };
+  }
+  return { tag, ref, together };
 }
 
 const roomsOf = (raw: unknown): unknown[] | null => (isRecord(raw) && raw.off === true ? [] : isRecord(raw) && Array.isArray(raw.rooms) ? raw.rooms : Array.isArray(raw) ? raw : raw === null ? [] : null);

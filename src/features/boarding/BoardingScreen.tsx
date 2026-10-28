@@ -40,8 +40,10 @@ import { afterCancel, arriveWhen, boardingView, canCancel, canUseCredit, contrac
 import { TicketCard } from './TicketCard';
 import { ArriveView } from './ArriveView';
 import { defaultOpenedRounds, useOpenedRounds, type OpenedRounds } from './openedRounds';
+import { InflightHome, useInflightHome, type InflightHomeDeps } from '@/features/inflight/InflightHome';
 
-export type BoardingDeps = { api: Pick<BoardingApi, 'load' | 'buy'> & Partial<Pick<BoardingApi, 'cancel' | 'ackContract'>>; newId: () => string; toastMs?: number; opened?: OpenedRounds; demoBar?: (reload: () => void) => ReactNode };
+// IF2-F(D-223): inflight = 홈 새 구성(스위치 inflight_home · 정책 PF-81 ~ PF-89). 없거나 꺼져 있으면 지금 T1 · T2 그대로
+export type BoardingDeps = { api: Pick<BoardingApi, 'load' | 'buy'> & Partial<Pick<BoardingApi, 'cancel' | 'ackContract'>>; newId: () => string; toastMs?: number; opened?: OpenedRounds; demoBar?: (reload: () => void) => ReactNode; inflight?: InflightHomeDeps; inflightBar?: (reload: () => void) => ReactNode };
 
 // 계약 설명 요약 블록에 실제로 그리는 줄(값이 빈 자리 글이 든 줄은 숨김). 확인 기록의 판(contractVersion)도 이 줄로 만든다
 const contractLines = (): { i: number; text: string }[] =>
@@ -75,9 +77,12 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   const openedStore = deps.opened ?? defaultOpenedRounds;
   const opened = useOpenedRounds(openedStore);
 
+  const inflight = useInflightHome(deps.inflight);
+  const reloadHome = inflight.reload;
   const reload = useCallback(() => {
     void deps.api.load().then(setLoad);
-  }, [deps.api]);
+    reloadHome(); // B1 먼저 · 홈 블록은 뒤(PF-86)
+  }, [deps.api, reloadHome]);
   useFocusEffect(
     useCallback(() => {
       reload();
@@ -91,6 +96,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   }, [toast, toastMs]);
 
   const state = load?.ok ? load.state : null;
+  const homeOn = inflight.on && !!deps.inflight;
   const view = state ? boardingView(state) : null;
   const scene = view ? SCENE_OF[view] : null;
   // 공개된 만난 분 회차 · 아직 이 기기에서 열어 보지 않았으면 도착 화면(못 찾음 회차는 도착 화면 없이 지금처럼)
@@ -196,7 +202,14 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
         <ScrollView contentContainerStyle={[styles.pad, styles.gap]} testID="boarding-scroll">
           {state.credits > 0 ? <TextButton label={BOARDING.creditsLink(state.credits)} align="start" onPress={() => router.push(hrefOf('/credits'))} testID="boarding-credits" /> : null}
           {scene ? <Illustration scene={scene} testID="boarding-art" /> : null}
-          <StatusCard state={state} view={view} moment={stamp > 0} onBuy={() => setSheet(true)} onOpen={(path) => router.push(path)} onCancel={deps.api.cancel ? () => setAskCancel(true) : undefined} cancelError={cancelError} />
+          {homeOn && inflight.home?.stage === 'matched' && view === 'matched' && state.round ? (
+            // 새 구성 · 공개 뒤 짝 있음: B1 = 다음 탑승 한 줄(짝 안내는 B2 — PF-41 · PF-83)
+            <AppText variant="body" testID="boarding-next">
+              {BOARDING.closed.body(whenText(nextSaleOpen(state.round.matchAt)))}
+            </AppText>
+          ) : (
+            <StatusCard state={state} view={view} moment={stamp > 0} onBuy={() => setSheet(true)} onOpen={(path) => router.push(path)} onCancel={deps.api.cancel ? () => setAskCancel(true) : undefined} cancelError={cancelError} />
+          )}
           <View>
             <TicketCard
               roundNo={state.round?.no ?? null}
@@ -206,8 +219,24 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
             />
             {stamp > 0 ? <InkTile key={stamp} size={logoTile.ticket} duration={scene2.ticket.stamp} style={styles.stamp} testID="boarding-stamp" /> : null}
           </View>
-          {view === 'boarded' || view === 'matched' || view === 'no_match' || view === 'before_sale' ? <Tasks state={state} onOpen={(path) => router.push(path)} onAvoid={() => openSettingsPage(router, 'avoid')} /> : null}
+          {homeOn && inflight.home && deps.inflight ? (
+            <InflightHome
+              deps={deps.inflight}
+              home={inflight.home}
+              boarding={state}
+              onToast={setToast}
+              nav={{
+                open: (href) => router.push(href),
+                chat: (roomId, draft) => router.push(hrefOf(`/chat/${encodeURIComponent(roomId)}${draft ? `?draft=${encodeURIComponent(draft)}` : ''}`)),
+                settings: (page) => openSettingsPage(router, page),
+                profileSameHobby: () => router.push(hrefOf('/profile?focus=sameHobby')),
+              }}
+            />
+          ) : view === 'boarded' || view === 'matched' || view === 'no_match' || view === 'before_sale' ? (
+            <Tasks state={state} onOpen={(path) => router.push(path)} onAvoid={() => openSettingsPage(router, 'avoid')} />
+          ) : null}
           {deps.demoBar ? deps.demoBar(reload) : null}
+          {homeOn && deps.inflightBar ? deps.inflightBar(reload) : null}
         </ScrollView>
       )}
       <BottomSheet visible={sheet} core onClose={() => (busy ? undefined : setSheet(false))} testID="boarding-sheet">
@@ -364,7 +393,7 @@ function StatusCard({ state, view, moment = false, onBuy, onOpen, onCancel, canc
     case 'matched':
       return card(
         BOARDING.matched.title,
-        state.result?.kind === 'matched' ? BOARDING.matched.body(state.result.partner.name) : null,
+        state.result?.kind === 'matched' ? BOARDING.matched.body : null,
         <Button label={BOARDING.matched.open} onPress={() => onOpen(hrefOf('/reveal'))} testID="boarding-open-reveal" />,
       );
     case 'no_match': {

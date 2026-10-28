@@ -80,6 +80,7 @@
     "check:bundle-audit": "node scripts/check-bundle-audit.mjs",
     "check": "npm run typecheck && npm run lint && npm test && npm run check:tokens && npm run check:copy",
     "gen:legal": "node scripts/gen-legal-content.mjs",
+    "gen:if2": "node scripts/gen-if2-copy.mjs && node scripts/gen-if2-assets.mjs",
     "gen:licenses": "node scripts/gen-licenses.mjs",
     "check:copy": "node scripts/check-copy.mjs && node scripts/check-grade-icon.mjs",
     "check:grade": "node scripts/check-grade-icon.mjs"

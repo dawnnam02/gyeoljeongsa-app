@@ -18,7 +18,7 @@ type Row = Record<string, unknown>;
 type DbError = { code: string; message: string };
 type DbResult<T> = { data: T | null; error: DbError | null };
 type Consent = { item_code: string; agreed: boolean; revoked_at: string | null };
-const OPTIONAL_ITEMS = new Set(['CK4', 'CK9', 'CK10', 'CK11', 'CK12', 'CK13', 'CK14', 'CK15', 'CK16']);
+const OPTIONAL_ITEMS = new Set(['CK4', 'CK9', 'CK10', 'CK11', 'CK12', 'CK13', 'CK14', 'CK15', 'CK16', 'CK17A', 'CK17B']); // IF2-F: 0043 revoke_consent 에 CK17A · CK17B
 
 export const DEMO_WITHDRAW_CODE = '123456'; // 데모 모드 인증번호(demoBackend 의 DEMO_OTP_CODE 와 같은 값)
 const VALID_MS = 180_000; // 3분
@@ -201,7 +201,8 @@ export function createDemoSettings(options: { now?: () => number; people?: (id: 
       let n = 0;
       const stamp = new Date(now()).toISOString();
       for (const c of user.consents) {
-        if (c.item_code === args.p_item && c.agreed && c.revoked_at === null) {
+        // 0043: CK17A 를 거두면 CK17B 도 철회로 기록(같은 트랜잭션)
+        if ((c.item_code === args.p_item || (args.p_item === 'CK17A' && c.item_code === 'CK17B')) && c.agreed && c.revoked_at === null) {
           c.revoked_at = stamp;
           n += 1;
         }

@@ -1,6 +1,7 @@
 // 채팅 화면이 쓰는 연결 하나. 데모 모드면 메모리 데모 채팅(chatDemo), 아니면 서버(chatApi, 0031 가정 이름).
 //  lib/services.ts(공용)는 고치지 않으려고 여기서 만든다 — 처음 쓸 때 한 번. 시험은 화면에 api · media 를 직접 넣는다
 import { env } from '@/config/env';
+import { createInflightApi, rpcOf, type InflightApi } from '@/features/inflight/inflightApi';
 import { supabase } from '@/lib/supabase';
 
 import { createChatApi, type ChatApi } from './chatApi';
@@ -28,6 +29,16 @@ export function chatApi(): ChatApi {
   const note = async (partner: string, reason?: string) => void (await supabase.rpc('demo_note_chat_safety', { p_partner: partner, ...(reason ? { p_reason: reason } : {}) }));
   if (!api) api = env.demoMode ? createDemoChatApi({ who, note }) : createChatApi(supabase);
   return api;
+}
+
+// IF2-F(0043): 대화방 칸(첫마디 실마리 · 이야깃거리 · 꼬리표 글 · 같이 열어 보기). 데모면 데모 채팅이 같은 모양으로 답한다(방 · 글이 데모 채팅 메모리에 있어서)
+let if2: InflightApi | null = null;
+export function inflightChatApi(): InflightApi {
+  if (!if2) {
+    const a = chatApi() as ChatApi & { if2Rpc?: Parameters<typeof createInflightApi>[0] };
+    if2 = createInflightApi(env.demoMode && a.if2Rpc ? a.if2Rpc : rpcOf(supabase));
+  }
+  return if2;
 }
 
 export function chatMedia(): ChatMedia {
