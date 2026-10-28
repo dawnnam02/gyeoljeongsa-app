@@ -25,6 +25,8 @@
 //        D46-A: 만남 장면 글(T4S MEET_SCENE · T4 CHAT.room.metAt — meetCopy.ts · chatCopy.ts)도 카피.md 16장 표 18줄과 같은가 · 16-3 쓰지 않을 낱말 0(같은 X 점검 안에서, 점검 수 그대로)
 //  3부-아(D-223): 카피.md 20장 '앱과 같은 커밋으로 바꿀 줄'(첫 칸 '<화면> 키' — 백틱 없음)은 같은 키의 옛 줄(07 · 9장 · 14-1 · 16장 · 14-5)보다 앞선다(SEC20).
 //        X 에서 20장 줄 · 12-Q 새 줄 4개 · 13-1 POL7 · POL14 를 앱 글과 한 글자씩 맞춘다. '(줄 없음)'은 앱에 그 키가 없어야 한다
+//  LG. 탑승객 라운지 글(LG-F · D-220, features/lounge/loungeCopy.ts LOUNGE)이 카피.md 19장 표(첫 칸 'T4 · T6 `LOUNGE.키`' — 19-1 ~ 19-10, 209줄)와 한 글자씩 같은가 ·
+//        앱 LOUNGE 의 글이 모두 19장에 있는가(카피 밖 글 0) · 화면 금지어 14(세부청사진 3장 · 정책 PL-22) · 창가 · 통로 · 가운데 · 느낌표 · 숫자 0(19장 말투)
 //  J. 06 AI 정리 중 · 07 내 성향의 글이 카피.md 06 · 07 · 화면_요구사항(N13 · N14)에 그대로 있는가 · 근거 문항 이름 · 직접 입력 태그 후보(F3)
 // 사용: node scripts/check-copy.mjs   (npm run check:copy)
 // 종료 코드: 0 통과 · 1 실패
@@ -898,6 +900,63 @@ try {
     for (const name of Object.values(meet.place)) if (['바다', '산', '달', '구름', '섬', '다리', '숲', '해', '들판'].includes(name)) diffsX.push(`16-3 등급 아이콘 낱말 단독: "${name}"`);
     if (rows16.length !== 18) diffsX.push(`카피 16장 만남 장면 표가 18줄이 아님(${rows16.length}줄)`);
     check('X', `v5 새 화면 글 ${rowsX.length}줄(14-5-1 · 14-5-2 · 14-6 · 14-7 · 16장 만남 장면 ${rows16.length}줄, 글 함수 ${funcs}개 포함)이 boardingCopy.ts · chatCopy.ts · settingsCopy.ts AVOID · meetCopy.ts 와 같다`, rowsX.length >= 180 && diffsX.length === 0, diffsX.join('\n') || `표 ${rowsX.length}줄`);
+  }
+
+  // ── LG. 탑승객 라운지(LG-F · 카피.md 19장 — 19-12 '앱 반영' 뒤 대조) ──
+  {
+    const lc = await load(path.join(APP_DIR, 'src', 'features', 'lounge', 'loungeCopy.ts'));
+    const L = lc.LOUNGE;
+    const from19 = copyText.search(/^## 19\. /m);
+    const sec19all = from19 >= 0 ? copyText.slice(from19) : '';
+    const end19 = sec19all.slice(3).search(/^## /m);
+    const sec19 = end19 >= 0 ? sec19all.slice(0, end19 + 3) : sec19all;
+    const rows19 = sec19
+      .split(/\r?\n/)
+      .filter((l) => /^\| T[46] `LOUNGE\./.test(l))
+      .map(cells)
+      .map((r) => [(/`LOUNGE\.([^`]+)`/.exec(r[0]) ?? [])[1], r[1]]);
+    const SLOT = '§';
+    const MARK = '\u0001';
+    const norm = (t) => t.replace(/\{[^{}]+\}/g, SLOT);
+    const pathOf = (key) => key.replace(/\[(\d+)\]/g, '.$1');
+    const resolve = (key) => pathOf(key).split('.').reduce((o, k) => (o == null ? undefined : o[k]), L);
+    const render = (v) => (typeof v === 'string' ? norm(v) : typeof v === 'function' ? String(v(...Array.from({ length: Math.max(1, v.length) }, () => MARK))).split(MARK).join(SLOT) : Array.isArray(v) && v.every((x) => typeof x === 'string') ? v.join(' / ') : null);
+    const diffsLG = [];
+    for (const [key, want] of rows19) {
+      const v = resolve(key);
+      if (want.startsWith('(')) {
+        if (v !== undefined) diffsLG.push(`LOUNGE.${key}: 카피는 설명 줄(새 글 없음)인데 앱에 글이 있음`);
+        continue;
+      }
+      const got = render(v);
+      if (got === null) diffsLG.push(`LOUNGE.${key}: 앱에 없음(또는 글이 아님)`);
+      else if (got !== norm(want)) diffsLG.push(`LOUNGE.${key}: 앱 "${got}" / 카피 "${want}"`);
+    }
+    // 앱 → 카피: LOUNGE 의 글(문자열 · 글 함수 · 글 배열)이 모두 19장 키로 있다(카피 밖 글 0)
+    const copyKeys = new Set(rows19.map(([k]) => pathOf(k)));
+    const leaves = [];
+    const walk = (o, at) => {
+      for (const [k, v] of Object.entries(o)) {
+        const p = at ? `${at}.${k}` : k;
+        if (typeof v === 'string' || typeof v === 'function') leaves.push([p, v]);
+        else if (Array.isArray(v)) {
+          if (copyKeys.has(`${p}.0`)) v.forEach((x, i) => leaves.push([`${p}.${i}`, x]));
+          else leaves.push([p, v]);
+        } else if (v && typeof v === 'object') walk(v, p);
+      }
+    };
+    walk(L, '');
+    for (const [p] of leaves) if (!copyKeys.has(p)) diffsLG.push(`LOUNGE.${p}: 카피 19장에 없는 글`);
+    // 말투 · 금지어(세부청사진 3장 · 정책 PL-22 · 19장 머리): 금지어 14 · 창가/통로/가운데 · 느낌표 · 숫자 0
+    const BANNED = ['익명', '랜덤', '무작위', '비밀', '아무도 몰라요', '흔적 없이', '완전히 지워져요', '누가 내 짝일까', '이상형 찾기', '미리 만나요', '명 접속', '인기 좌석', '안전 100%', '24시간 지켜요', '창가', '통로', '가운데'];
+    for (const [p, v] of leaves) {
+      const t = render(v) ?? '';
+      for (const w of BANNED) if (t.includes(w)) diffsLG.push(`LOUNGE.${p}: 금지어 '${w}'`);
+      if (/[!！]/.test(t)) diffsLG.push(`LOUNGE.${p}: 느낌표`);
+      if (/\d/.test(t)) diffsLG.push(`LOUNGE.${p}: 숫자`);
+    }
+    if (rows19.length !== 209) diffsLG.push(`카피 19장 표가 209줄이 아님(${rows19.length}줄)`);
+    check('LG', `탑승객 라운지 글 ${rows19.length}줄(카피 19-1 ~ 19-10)이 loungeCopy.ts LOUNGE 와 같고 · 앱 글 ${leaves.length}개가 모두 19장에 있고 · 금지어 14 · 창가/통로/가운데 · 느낌표 · 숫자 0`, rows19.length === 209 && diffsLG.length === 0, diffsLG.join('\n') || `표 ${rows19.length}줄`);
   }
 
   // R1 A⑦ T04 · K11: 오류 · 안내 문구 규칙(카피.md 1-1)과 v4 글 대조(카피.md 7장). 규칙 본문은 check-copy-rules.mjs

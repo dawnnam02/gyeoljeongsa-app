@@ -326,6 +326,14 @@ export function createDemoBoarding(options: DemoBoardingOptions = {}) {
       return p ? `demo-cand-${p.n}` : null;
     },
     sceneOf: (u: DemoBoardingUser) => stateOf(u).scene,
+    // LG-F 라운지: 이번 회차에 탄 사람인가(비행 중 in · 판매 마감 뒤 late · 공개 뒤 after · 탄 적 없음 none) — 탑승 취소 · 공개를 데모 라운지가 따라간다
+    flightOf: (u: DemoBoardingUser): 'in' | 'late' | 'after' | 'none' => {
+      const s = stateOf(u);
+      const r = roundOf(s);
+      if (!seatOf(s, r.no, ON_BOARD)) return 'none';
+      const now = nowOf(s);
+      return now >= r.match ? 'after' : now >= r.close ? 'late' : 'in';
+    },
     acksOf: (u: DemoBoardingUser) => stateOf(u).acks.map((a) => ({ ...a })), // 시험 · 점검용
   };
 }

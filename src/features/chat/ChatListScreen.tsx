@@ -3,6 +3,7 @@
 //  · 줄: 얼굴 원 · 이름 · 나이 · 지역 · 마지막 글 · 때 · 읽지 않은 수. 남은 기간은 방 안에서 날짜 글로만(목록에 카운트다운 0)
 //  · 불러오기: 0.3초 안은 빈 자리 → 뼈대(WaitState). 실패는 한 줄 + [다시 시도]. 화면에 들어올 때마다 다시 읽는다
 //  · 데모 모드: 맨 아래 '데모 · 장면' 줄(누를 때마다 열린 방 → 마지막 날 → 상대가 연장을 원함 → 닫힌 방 → 방 없음)
+//  · LG-F(D-220): 맨 위 '라운지 줄'(lounge 를 주면 — 라우트 (tabs)/chat). 목록을 먼저 그리고 줄은 나중 · 비행 중만 · 실패면 줄 0 · 구독 0. 공개 뒤엔 줄이 사라지고 짝 방이 맨 위
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -16,6 +17,8 @@ import { OfflineArt } from '@/components/StateArt';
 import { TabHeader } from '@/components/TabHeader';
 import { Toast } from '@/components/Toast';
 import { COMMON } from '@/content/copy';
+import { LoungeRow, useLoungeRow } from '@/features/lounge/LoungeRow';
+import { LOUNGE_HREF, type LoungeDeps } from '@/features/lounge/loungeService';
 import { usePhotoUrls } from '@/features/recs/usePhotoUrls';
 import { takeToast } from '@/lib/toastBus';
 import { SkeletonLines, TOAST_MS, WaitState } from '@/motion';
@@ -31,13 +34,15 @@ import { forgetMeetScenes } from './meetSeen';
 
 type Load = { kind: 'loading' } | { kind: 'failed'; reason: 'network' | 'server' } | { kind: 'ready'; rooms: Room[] };
 
-export function ChatListScreen({ api: given, onOpen, toastMs = TOAST_MS }: { api?: ChatApi; onOpen?: (id: string) => void; toastMs?: number }) {
+export function ChatListScreen({ api: given, onOpen, toastMs = TOAST_MS, lounge }: { api?: ChatApi; onOpen?: (id: string) => void; toastMs?: number; lounge?: LoungeDeps }) {
   const api = given ?? chatApi();
   const router = useRouter();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [scene, setScene] = useState<DemoChatScene | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const seq = useRef(0);
+  const loungeRow = useLoungeRow(lounge);
+  const loadLounge = loungeRow.load;
 
   const refresh = useCallback(async () => {
     const my = (seq.current += 1);
@@ -45,8 +50,9 @@ export function ChatListScreen({ api: given, onOpen, toastMs = TOAST_MS }: { api
     if (my !== seq.current) return;
     if (!r.ok) setLoad({ kind: 'failed', reason: r.reason });
     else setLoad({ kind: 'ready', rooms: r.data });
+    void loadLounge(); // 라운지 줄은 목록 뒤에(PL-02 · 화면 요구 T4)
     if (hasDemoControls(api)) setScene(await api.demo.scene());
-  }, [api]);
+  }, [api, loadLounge]);
 
   useFocusEffect(
     useCallback(() => {
@@ -76,6 +82,7 @@ export function ChatListScreen({ api: given, onOpen, toastMs = TOAST_MS }: { api
     <Screen enter="tab" testID="chat-list">
       <TabHeader title={CHAT.tabTitle} testID="chat-list-header" />
       <ScrollView contentContainerStyle={styles.body}>
+        {load.kind !== 'loading' && loungeRow.row ? <LoungeRow code={loungeRow.row.code} onPress={() => router.push(LOUNGE_HREF as Href)} /> : null}
         {load.kind === 'loading' ? (
           <WaitState waiting skeleton={<SkeletonLines count={4} />} note={<AppText variant="caption">{COMMON.loading}</AppText>} testID="chat-list-wait" />
         ) : null}

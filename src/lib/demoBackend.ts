@@ -25,6 +25,7 @@ import { demoLiteProgress } from './surveyLiteDemo';
 import { createDemoSettings, type DemoSettingsUser } from './settingsDemo';
 import { createDemoV4 } from './v4Demo';
 import { createDemoBoarding } from '@/demo/boardingDemo';
+import { createDemoLounge } from '@/demo/loungeDemo';
 
 export const DEMO_OTP_CODE = '123456';
 
@@ -178,6 +179,15 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
     },
   });
   const v4 = createDemoV4({ now }); // F22 · D-134: 기능 스위치(get_feature_flags)만 잇는다 — 강조 · 만남 뒤 피드백 응답은 F19 2단계 몫
+  // LG-F(D-220): 탑승객 라운지(서버 0042 이름 · 모양). 비행 중 = 탑승권 데모가 '탄 사람'(boarding.flightOf) · 스위치 lounge = 기능 스위치 데모 값(꺼지면 feature_off, 서버 require_feature 와 같음)
+  const lounge = createDemoLounge({
+    flight: (u) => boarding.flightOf(u),
+    switchOn: async (u) => {
+      const r = await v4.rpc(u, 'get_feature_flags', {});
+      const flags = (r.data as { flags?: Record<string, unknown> } | null)?.flags;
+      return flags?.lounge === true;
+    },
+  });
   const accounts = new Map<string, DemoAccount>();
   const gates = new Map<string, Gate>();
   const rejects = new Map<string, Reject>();
@@ -711,6 +721,11 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
         const account = me();
         return account ? boarding.rpc({ id: account.id, email: account.email }, name, args) : Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
       }
+      // LG-F 탑승객 라운지(lounge_state · agree · take_seat · get_post · post · empathy · hide · report · pick · delete + 데모 줄 demo_lounge_scene)
+      if (lounge.handles(name)) {
+        const account = me();
+        return account ? lounge.rpc({ id: account.id, email: account.email }, name, args) : Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
+      }
       if (name === 'get_feature_flags') {
         const account = me();
         return account ? v4.rpc({ id: account.id, email: account.email }, name, args) : Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
@@ -741,6 +756,10 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
       if (!handler) throw new Error(`데모 모드의 rpc('${name}') 은 F8 에서 구현해요`);
       return handler(args);
     },
+    // LG-F 실시간 흉내(라운지 비공개 채널만 — 데모는 서버 방송 대신 메모리 방송)
+    channel: (name: string) => lounge.channel(name),
+    removeChannel: (ch: unknown) => lounge.removeChannel(ch),
+    lounge,
     from(table: string): Query {
       if (!['account_status', 'profiles', 'consents', 'ai_results', 'visibility_settings', 'verifications', 'survey_answers', 'photos'].includes(table)) throw new Error(`데모 모드의 from('${table}') 은 F8 에서 구현해요`);
       return new Query(table);

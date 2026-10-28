@@ -44,6 +44,9 @@ export function createDemoClient(backend: DemoBackend = createDemoBackend()): Su
     from: (table: string) => backend.from(table),
     rpc: (name: string, args?: Record<string, unknown>) => backend.rpc(name, args),
     functions: { invoke: (name: string, options?: { body?: unknown }) => backend.invoke(name, options) },
+    // LG-F: 라운지 실시간(비공개 채널 흉내 — demo/loungeDemo). 서버 요청 0
+    channel: (name: string) => backend.channel(name), // 비공개 설정(config.private)은 데모가 늘 지킨다(내 객실 채널만)
+    removeChannel: (ch: unknown) => backend.removeChannel(ch),
     storage: { from: notYet('storage.from') },
   } as unknown as SupabaseClient;
 }
