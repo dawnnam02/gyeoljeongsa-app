@@ -122,6 +122,9 @@ export function ImageCreditPage({ onBack }: { onBack: () => void }) {
         <AppText variant="body" testID="settings-image-credit-body">
           {IMAGE_CREDIT.body}
         </AppText>
+        <AppText variant="body" testID="settings-image-credit-ai-writing">
+          {IMAGE_CREDIT.aiWriting}
+        </AppText>
       </Card>
     </SubPage>
   );

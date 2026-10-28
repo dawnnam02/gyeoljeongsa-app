@@ -423,6 +423,7 @@ describe('12 하위 화면', () => {
 
     await press(tree, 'settings-row-image-credit');
     expect(textOf(tree, 'settings-image-credit-body')).toBe(IMAGE_CREDIT.body);
+    expect(textOf(tree, 'settings-image-credit-ai-writing')).toBe(IMAGE_CREDIT.aiWriting); // 10-28 법무 5-6 생성형 AI 글 고지
   });
 });
 

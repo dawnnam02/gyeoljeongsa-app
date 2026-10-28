@@ -16,5 +16,9 @@ export const LATER_CONSENT_VERSIONS: Readonly<Record<LaterConsentCode, string>> 
   CK16: 'consent-2026.10.26-v2', // D-197: 4-16 글 v5('이어 드릴 때' · '짝을 고를 때') — 판_관리 2-1
 };
 
+// IF2-L(10-28 · D-223 · D-224): 재미 정보 동의 CK17A(재미 계산) · CK17B(짝에게 보이기) 첫 판 — 판_관리 2-1. 판 값만 둔다(팀장 10-28):
+//  화면 · 글(동의문구 4-17)은 IF2-F 몫이라 LaterConsentCode · CONSENT_LATER_ITEMS(gen:legal 4-11 ~ 4-16)에는 아직 넣지 않는다
+export const IF2_CONSENT_VERSIONS = { CK17A: 'consent-2026.10.28-v1', CK17B: 'consent-2026.10.28-v1' } as const;
+
 export const CK15_TEXT_VERSION = LATER_CONSENT_VERSIONS.CK15;
 export const CK16_TEXT_VERSION = LATER_CONSENT_VERSIONS.CK16;

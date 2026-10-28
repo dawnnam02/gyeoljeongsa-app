@@ -485,10 +485,10 @@ try {
   ];
   check('O', '신고 내역 상태 3개(R-D18-1) · 날짜 꼴(R-D18-2) · 빈 상태 2개 · 차단 해제 읽기 이름이 카피.md 12 · 정책 P5-11 과 같다', o6.length === 0, o6.join('\n'));
   const o7 = [
-    ...lacks('카피 12', copy12s, [['licenses.intro', st.LICENSES.intro], ['npmGroup', st.LICENSES.npmGroup], ['imageCredit.title', st.IMAGE_CREDIT.headerTitle], ['imageCredit.body', st.IMAGE_CREDIT.body]]),
-    ...lacks('동의문구 5-6', consentDocText, [['licenses.intro', st.LICENSES.intro], ['imageCredit.body', st.IMAGE_CREDIT.body]]),
+    ...lacks('카피 12', copy12s, [['licenses.intro', st.LICENSES.intro], ['npmGroup', st.LICENSES.npmGroup], ['imageCredit.title', st.IMAGE_CREDIT.headerTitle], ['imageCredit.body', st.IMAGE_CREDIT.body], ['imageCredit.aiWriting', st.IMAGE_CREDIT.aiWriting]]),
+    ...lacks('동의문구 5-6', consentDocText, [['licenses.intro', st.LICENSES.intro], ['imageCredit.body', st.IMAGE_CREDIT.body], ['imageCredit.aiWriting', st.IMAGE_CREDIT.aiWriting]]),
   ];
-  check('O', '정보 묶음(오픈소스 라이선스 안내 · npm 패키지 · 이미지 출처 고지 N30)이 카피.md 12 · 동의문구 5-6 과 같다', o7.length === 0, o7.join('\n'));
+  check('O', '정보 묶음(오픈소스 라이선스 안내 · npm 패키지 · 이미지 출처 고지 N30 · 생성형 AI 글 고지 10-28)이 카피.md 12 · 동의문구 5-6 과 같다', o7.length === 0, o7.join('\n'));
   const o8 = lacks('카피 12', copy12s, Object.entries(st.CONSENT_MANAGE).filter(([k]) => !['saveFailed', 'view'].includes(k)));
   check('O', '동의 관리(N25: 소제목 2 · 필수 칸 안내 · CK4 끄기 확인창 · 저장 토스트)가 카피.md 12 와 같다', o8.length === 0 && st.CONSENT_MANAGE.view === copy.CONSENT.more && st.CONSENT_MANAGE.saveFailed === copy.PROFILE.saveFailed, o8.join('\n'));
   const o9 = lacks('카피 12', copy12s, [['rowA11yHint', st.SETTINGS.rowA11yHint], ['switchOn', st.SETTINGS.switchOn], ['switchOff', st.SETTINGS.switchOff], ['copied', st.SUPPORT_ACTIONS.copied], ['verificationToast(N19)', st.SETTINGS.verificationToast], ['verificationSoon', st.SETTINGS.verificationSoon]]);

@@ -221,4 +221,5 @@ export const LICENSES = {
 export const IMAGE_CREDIT = {
   headerTitle: '이미지 출처 고지', // [확정] 카피.md 12(B5) · N30
   body: '로고와 일부 그림은 생성형 AI로 만든 이미지를 다듬어 썼어요.', // [법무] 5-6 (L17 '아이콘' → '그림')
+  aiWriting: '기내지 · 이번 주 타로 · 궁합 카드 · 첫마디 실마리 · 이야깃거리의 글은 생성형 AI로 미리 써 두었어요.', // [법무] 5-6 '생성형 AI 고지' 둘째 문장(IF2-L 10-28 · 사람이 다듬지 않는 판) · 카피 12
 } as const;
