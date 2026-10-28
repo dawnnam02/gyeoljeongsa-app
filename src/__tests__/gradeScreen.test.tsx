@@ -154,7 +154,7 @@ describe('조건 2 · 16-G1 내 등급 (0039 v5 — 모든 회원)', () => {
     for (const text of [GI.verifyTitle, '학교 인증', '직업 인증', '자산 인증']) expect(hasText(tree, text)).toBe(true);
     expect(textOf(tree, 'grade-verify-soon')).toBe('서류 인증은 준비 중이에요. 시작되면 여기에서 할 수 있어요.');
     expect(has(tree, 'grade-verify-go')).toBe(false);
-    for (const [id, label] of [['grade-link-access', '내 등급 알려 주세요'], ['grade-link-history', '등급 변화 기록'], ['grade-link-goal', '목표 정하기'], ['grade-link-how', '등급은 어떻게 정해지나요?'], ['grade-link-review', '설명 · 검토 요청']] as const) {
+    for (const [id, label] of [['grade-link-access', '내 등급 알려 주세요'], ['grade-link-history', '등급 변화 기록'], ['grade-link-goal', '아이콘이 바뀔 수 있는 일'], ['grade-link-how', '등급은 어떻게 정해지나요?'], ['grade-link-review', '설명 · 검토 요청']] as const) {
       expect(must(tree, id).props.label).toBe(label);
     }
     expect(textOf(tree, 'grade-limits')).toBe(GRADE16.limits);
@@ -297,15 +297,18 @@ describe('조건 2 · 16-G2 변화 기록 · 16-G3 목표 · 16-G4 해설 (W9 �
     expect(has(tree, 'history-empty-art')).toBe(true);
   });
 
-  test('G3: 목표 단계 고르기(숫자 칩)는 없고, 도움이 되는 일 체크 + NV53', async () => {
+  test('G3: 목표 단계 고르기(숫자 칩)는 없고, 아이콘이 바뀔 수 있는 일 + NV53 — 3부-아(QP-37): 목표 등급 말 0', async () => {
     const { tree } = await open('shopsub', 'grade-goal');
     expect(textOf(tree, 'goal-pick')).toBe(GI.goalHead);
     expect(has(tree, 'goal-optional')).toBe(false);
     expect([1, 2, 3, 4].some((n) => has(tree, `goal-choice-${n}`))).toBe(false);
     expect(has(tree, 'goal-tasks')).toBe(true);
     expect(hasText(tree, '서류 인증하기')).toBe(true);
-    expect(textOf(tree, 'goal-promise')).toBe('다 해도 목표 등급이 꼭 되는 건 아니에요. 같은 나이대 회원들과 함께 정해져요.');
-    expect(allTexts(tree).join(' ')).not.toMatch(/\d\s*등급/);
+    expect(textOf(tree, 'goal-pick')).toBe('이런 일을 하면 아이콘이 바뀔 수 있어요.');
+    expect(textOf(tree, 'goal-promise')).toBe('다 해도 아이콘이 꼭 바뀌는 건 아니에요. 같은 나이대 회원들과 함께 정해져요.');
+    expect(allTexts(tree).join(' ')).not.toMatch(/\d\s*등급|목표|도움이 되는/);
+    expect(GRADE16.goalTitle).toBe(GI.tasksTitle);
+    expect('goalPick' in GRADE16).toBe(false);
   });
 
   test('G4(모든 회원 무료, 비구독자도): GI12 · GI14 · 공통 한 줄 · ① ~ ⑤(③은 GI13) · GI15 — 격자 · 방향 · NV83 · NV84 없음', async () => {
@@ -321,6 +324,7 @@ describe('조건 2 · 16-G2 변화 기록 · 16-G3 목표 · 16-G4 해설 (W9 �
     expect(has(tree, 'how-few')).toBe(false);
     expect(textOf(tree, 'how-part-0')).toContain('설정에서 멈추지 않은 모든 회원의 등급을 계산해요.');
     expect(textOf(tree, 'how-part-2')).toBe(GI.howProcess);
+    expect(GI.howProcess.startsWith('계산 절차: 같은 나이대 회원 가운데 점수 위치로 아홉 단계를 정해요. 단계에 번호를 붙여 보여 드리지 않아요. ')).toBe(true); // 3부-아: 법무 C10 ③ 앞 두 문장
     expect(textOf(tree, 'how-part-4')).toContain('멈추면 내 등급이 지워지고 짝을 고르는 데도 더는 쓰이지 않아서, 다시 켜기 전까지 탑승권을 살 수 없어요.');
     expect(allTexts(tree).join(' ')).not.toMatch(/\d\s*등급|숫자가 작을수록|위 등급|내려갈/);
   });

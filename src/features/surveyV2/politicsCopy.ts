@@ -21,7 +21,7 @@ export const POL = {
   consentNote: CK15.note ?? '', // POL11 = 4-15 '덧붙이는 안내'
   consentCheck: CK15.label, // POL12 체크 칸 = 4-15 '체크 문구'(L17A: 앞에 [선택])
   consentDone: '별도 동의를 마쳤어요.', // POL13 이미 동의한 분
-  needConsent: '동의해야 답을 저장할 수 있어요.', // POL14 [다음] 막힘 이유
+  needConsent: '동의 칸을 눌러야 답을 저장할 수 있어요.', // POL14 [다음] 막힘 이유 — 카피 13-1(3부-아 · QP-07, CHAT.REL.needCheck 와 같은 꼴)
   needValue: '막대를 한 번 움직여 주세요.', // POL15 [다음] 막힘 이유
   later: '나중에', // POL16 보조 버튼(1:2 짝에서 한 줄로)
   reviewTitle: '정치 성향', // POL17 검토 줄

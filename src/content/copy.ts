@@ -116,7 +116,7 @@ export const TRAITS = {
   headerTitle: '내 성향',
   title: 'AI가 정리한 내 성향이에요',
   subtitle: 'AI가 만든 결과라서 틀릴 수 있어요. 맞지 않는 부분은 직접 고칠 수 있고, 고친 내용이 최종이에요.',
-  axisNote: '숫자가 높거나 낮다고 좋고 나쁜 건 아니에요.',
+  axisNote: '막대가 어느 쪽에 있든 좋고 나쁜 건 아니에요.', // 카피 20장(3부-아 · QP-33) — 숫자를 숨긴 뒤라 숫자 말 0
   tagsTitle: '나를 나타내는 말',
   summaryTitle: '요약',
   edit: '수정하기',
@@ -270,6 +270,7 @@ export const SUPPORT = {
   rowName: '고객센터',
   emailLabel: '문의 이메일 {고객센터 이메일}',
   hoursLabel: '운영 시간 {고객센터 운영 시간}',
+  contactPending: '고객센터 연락처는 준비하고 있어요. 그동안 불편한 일은 앱 안 신고로 알려 주세요.', // 카피 12-Q(3부-아 · QP-31) — {고객센터 이메일} 값이 비면 이메일 · 운영 시간 줄과 [복사] · [메일 앱 열기] 대신
 } as const;
 
 // 12 고객센터 › 아동 안전 문의(N35)

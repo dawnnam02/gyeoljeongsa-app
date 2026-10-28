@@ -411,6 +411,12 @@ export function warnings(a: V2Answers, schoolCourse: (key: string) => { course: 
 }
 
 // ── 답 글(검토 화면) ──────────────────────────────────────────────────────
+// 답 확인(검토)에 보이는 결과 글(3부-아 · 카피 20장 QP-35): 답하지 않은 칸(null · 보기 'decline')은 '답하지 않음' — 동의 카드 · 확인창 · 법무 글과 같은 말.
+//  고르는 보기(입말 '말하고 싶지 않아요')와 대화형 설문의 내 말 풍선은 answerText 그대로
+export function reviewAnswerText(q: QuestionDef, value: V2Value, schoolName: (key: string) => string | null): string {
+  return value === null || value === 'decline' ? SV2.common.declinedValue : answerText(q, value, schoolName);
+}
+
 export function answerText(q: QuestionDef, value: V2Value, schoolName: (key: string) => string | null): string {
   const c = QUESTION_COPY[q.id];
   const v: unknown = value;

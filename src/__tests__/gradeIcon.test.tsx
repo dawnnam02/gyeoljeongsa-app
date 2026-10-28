@@ -9,6 +9,8 @@ import { GI } from '@/features/grade/iconCopy';
 import { allTexts, has, mount, must, textOf } from './renderHelpers';
 
 const ORDER_WORDS = /\d\s*(?:등급|단계|번째)|일곱|아홉|단계|위 등급|아래 등급|높|낮|올리|내려|작을수록|순위|첫째|마지막/;
+// 3부-아(카피 20장 · 법무 동의문구 5-7 C10 ③ 원본): GI.howProcess 앞 두 문장만 '아홉 단계' · '단계'를 쓴다(번호를 보이지 않는다는 고지)
+const LEGAL_C10 = '같은 나이대 회원 가운데 점수 위치로 아홉 단계를 정해요. 단계에 번호를 붙여 보여 드리지 않아요.';
 
 describe('풍경 아이콘 9개', () => {
   test('키 9개 · 이름 9개 · 그림 9개가 모두 서로 다르다(같은 색 · 같은 굵기, 모양으로만 가름)', () => {
@@ -22,7 +24,7 @@ describe('풍경 아이콘 9개', () => {
     for (const k of GRADE_ICON_KEYS) expect(gradeIconName(k)).not.toMatch(ORDER_WORDS);
     for (const [key, v] of Object.entries(GI)) {
       const text = typeof v === 'function' ? (v as (...a: string[]) => string)('10월 14일', '바다') : v;
-      expect([key, text.replace('10월 14일', '')]).not.toEqual([key, expect.stringMatching(ORDER_WORDS)]);
+      expect([key, text.replace('10월 14일', '').replace(key === 'howProcess' ? LEGAL_C10 : '', '')]).not.toEqual([key, expect.stringMatching(ORDER_WORDS)]);
     }
   });
 

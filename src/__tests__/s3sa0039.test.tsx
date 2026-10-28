@@ -71,8 +71,8 @@ describe('reason_detail → T1 살 수 없음 사유(모르는 상세는 일반 
     const table: [unknown, string][] = [
       ['politics_missing', 'politics_missing'],
       ['grade_paused', 'paused'],
-      ['profile_missing', 'not_confirmed'],
-      ['grade_pending', 'not_confirmed'],
+      ['profile_missing', 'profile_missing'], // 3부-아: 카피 20장 글
+      ['grade_pending', 'grade_pending'], // 3부-아(QP-36): 카피 20장 글
       ['religion_missing', 'religion_missing'], // ① 카피 17-2 '종교 문항에 답하면…'
       ['weird_new_code', 'not_confirmed'],
       [null, 'not_confirmed'],

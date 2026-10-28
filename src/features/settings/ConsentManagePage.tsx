@@ -7,9 +7,11 @@
 //    · 켜기는 CK16 만(판 config/laterConsent.ts). CK11 ~ CK14 는 기능을 처음 쓸 때 · CK15 는 설문 정치 막대 앞에서 받으므로, 꺼져 있으면 '처음 쓸 때 따로 물어요.'(스위치 잠김)
 //  3부-사(법무 L22 2-2 · 카피 17-3): 켜짐 · 꺼짐은 서버 동의 기록 그대로(03 · 설문 카드 · 설정 어디서 받았든 — C1). CK4 켜짐이면 덧붙이는 안내 대신 ck4OnNote(M9) ·
 //    CK15 켜짐이면 아래 글 ck15OffBody(거두면 일어나는 일) · CK4 를 켤 때는 토글 한 번이 아니라 설문과 같은 종교 동의 카드를 거친다(C5 — 고지 전부 · 체크 · 같은 무게 버튼)
+//  3부-아(카피 12-Q): CK4 끄기 · CK15 거두기 확인창 본문 아래 한 줄(ck4OffBoarded · ck15OffBoarded)은 판매 마감 전 · 이번 회차 탑승권이 있을 때만(boarded — T2 [탑승 취소]와 같은 조건).
+//    동의 기록 상한(0041 too_many_consents → reason limit)이면 '다시 시도' 대신 고객센터 안내(tooMany)
 //  아래 "동의한 내용" 7줄: 필수 칸. 스위치 없이 '보기 ›'로 03 과 같은 요약 · 전문 시트. 철회는 탈퇴로 안내(N25 필수 칸 안내)
 //    + CK11 ~ CK16 6줄(4-11 ~ 4-16 요약 · 전문 보기, L17A · D-190)
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
@@ -40,9 +42,18 @@ const LATER = CONSENT_LATER_NAMES.map(({ code, name }) => ({ code, label: `${OPT
 const ON_HERE: ReadonlySet<LaterConsentCode> = new Set(['CK16']);
 const VIEW_ITEMS: readonly ConsentSheetContent[] = [...REQUIRED_ITEMS, ...CONSENT_LATER_ITEMS];
 
-export function ConsentManagePage({ api, onBack, onToast }: { api: Pick<SettingsApi, 'loadConsents' | 'setOptional'>; onBack: () => void; onToast: (text: string) => void }) {
+export function ConsentManagePage({ api, boarded, onBack, onToast }: { api: Pick<SettingsApi, 'loadConsents' | 'setOptional'>; boarded?: () => Promise<boolean>; onBack: () => void; onToast: (text: string) => void }) {
   const read = useCallback(() => api.loadConsents(), [api]);
   const { phase, data, setData, reload, alive } = useLoad<OptionalConsents>(read);
+  const [onBoard, setOnBoard] = useState(false); // 판매 마감 전 · 이번 회차 탑승권이 있다(못 읽으면 없음 — 줄째 숨김)
+  const checkBoarded = useCallback(() => {
+    if (!boarded) return;
+    boarded().then(
+      (on) => alive.current && setOnBoard(on),
+      () => undefined,
+    );
+  }, [boarded, alive]);
+  useEffect(checkBoarded, [checkBoarded]);
   const [error, setError] = useState<string | null>(null);
   const [askCk4Off, setAskCk4Off] = useState(false);
   const [askOff, setAskOff] = useState<LaterConsentCode | null>(null); // 03 밖 선택 동의 끄기 확인창
@@ -70,7 +81,7 @@ export function ConsentManagePage({ api, onBack, onToast }: { api: Pick<Settings
       onToast(CONSENT_MANAGE.saved);
       return;
     }
-    setError(result.reason === 'network' ? COMMON.offline : result.reason === 'session' ? COMMON.sessionLost : CONSENT_MANAGE.saveFailed);
+    setError(result.reason === 'network' ? COMMON.offline : result.reason === 'session' ? COMMON.sessionLost : result.reason === 'limit' ? CONSENT_MANAGE.tooMany : CONSENT_MANAGE.saveFailed);
   };
 
   const onSwitch = (code: OptionalCode) => {
@@ -78,6 +89,7 @@ export function ConsentManagePage({ api, onBack, onToast }: { api: Pick<Settings
     const next = !data[code];
     if (code === 'CK4' && !next) {
       setError(null);
+      checkBoarded();
       setAskCk4Off(true);
       return;
     }
@@ -92,6 +104,7 @@ export function ConsentManagePage({ api, onBack, onToast }: { api: Pick<Settings
       if (next && !ON_HERE.has(code)) return; // 판 · 글이 없는 칸은 여기서 켜지 않는다(스위치도 잠겨 있다)
       if (!next) {
         setError(null);
+        if (code === 'CK15') checkBoarded();
         setAskOff(code);
         return;
       }
@@ -153,6 +166,7 @@ export function ConsentManagePage({ api, onBack, onToast }: { api: Pick<Settings
         visible={askCk4Off}
         title={CONSENT_MANAGE.ck4OffTitle}
         body={CONSENT_MANAGE.ck4OffBody}
+        note={onBoard ? { text: CONSENT_MANAGE.ck4OffBoarded } : undefined}
         confirmLabel={CONSENT_MANAGE.ck4OffConfirm}
         cancelLabel={CONSENT_MANAGE.cancel}
         busy={busy}
@@ -165,6 +179,7 @@ export function ConsentManagePage({ api, onBack, onToast }: { api: Pick<Settings
         visible={askOff !== null}
         title={CONSENT_MANAGE.offTitle}
         body={askOff === 'CK15' ? CONSENT_MANAGE.ck15OffBody : CONSENT_MANAGE.offBody}
+        note={askOff === 'CK15' && onBoard ? { text: CONSENT_MANAGE.ck15OffBoarded } : undefined}
         confirmLabel={CONSENT_MANAGE.offConfirm}
         cancelLabel={CONSENT_MANAGE.cancel}
         busy={busy}

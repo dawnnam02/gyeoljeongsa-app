@@ -23,6 +23,8 @@
 //  X. v5 새 화면 글(탑승권 T1 · 공개 T3 · 크레딧 T5 · 채팅 T4 — boardingCopy.ts · chatCopy.ts)이 카피.md 14-5-1 · 14-5-2 표(첫 칸 'T1 `키`' 꼴)와 같은가(QP-A 2부-나, 팀장 결정)
 //        글 함수는 자리마다 표시 글자를 넣어 부르고, 카피의 {…} 자리와 같은 자리인지 본다. '(줄 없음)'은 앱에 그 키가 없어야 한다
 //        D46-A: 만남 장면 글(T4S MEET_SCENE · T4 CHAT.room.metAt — meetCopy.ts · chatCopy.ts)도 카피.md 16장 표 18줄과 같은가 · 16-3 쓰지 않을 낱말 0(같은 X 점검 안에서, 점검 수 그대로)
+//  3부-아(D-223): 카피.md 20장 '앱과 같은 커밋으로 바꿀 줄'(첫 칸 '<화면> 키' — 백틱 없음)은 같은 키의 옛 줄(07 · 9장 · 14-1 · 16장 · 14-5)보다 앞선다(SEC20).
+//        X 에서 20장 줄 · 12-Q 새 줄 4개 · 13-1 POL7 · POL14 를 앱 글과 한 글자씩 맞춘다. '(줄 없음)'은 앱에 그 키가 없어야 한다
 //  J. 06 AI 정리 중 · 07 내 성향의 글이 카피.md 06 · 07 · 화면_요구사항(N13 · N14)에 그대로 있는가 · 근거 문항 이름 · 직접 입력 태그 후보(F3)
 // 사용: node scripts/check-copy.mjs   (npm run check:copy)
 // 종료 코드: 0 통과 · 1 실패
@@ -190,6 +192,17 @@ try {
       .filter(([k, v]) => k && v && v !== '(줄 없음)'),
   );
   const sec12Q = copyText.slice(copyText.search(/^#### 12-Q /m), copyText.search(/^### 16 /m));
+  // 3부-아: 카피.md 20장 표 — 첫 칸에서 키(TRAITS · GI · GRADE16 · survey · BOARDING · AVOID)를 읽고 둘째 칸(새 글)과 짝짓는다. 한 칸에 키가 둘이면 같은 글
+  const from20 = copyText.search(/^## 20\. /m);
+  const sec20all = from20 >= 0 ? copyText.slice(from20) : '';
+  const end20 = sec20all.slice(3).search(/^## /m);
+  const sec20 = end20 >= 0 ? sec20all.slice(0, end20 + 3) : sec20all;
+  const SEC20 = new Map();
+  for (const l of sec20.split(/\r?\n/)) {
+    if (!l.startsWith('| ') || /^\|\s*-/.test(l)) continue;
+    const c = cells(l);
+    for (const m of c[0].matchAll(/\b((?:TRAITS|GI|GRADE16|survey|BOARDING|AVOID)\.[A-Za-z0-9_.[\]]+)/g)) SEC20.set(m[1], c[1]);
+  }
   const copy02 = copyText.slice(copyText.search(/^### 02 /m), copyText.search(/^### 03 /m));
   const copy02Rows = copy02.split('\n').filter((l) => l.startsWith('|')).map(cells);
   const copy02Cell = (kind, startsWith) => {
@@ -299,7 +312,7 @@ try {
     ['06 실패 본문', cell(copy06, '오류', '[AI 정리 실패] 본문'), copy.ANALYSIS.failBody],
     ['06 버튼', cell(copy06, '버튼', '[AI 정리 실패'), copy.ANALYSIS.retry],
     ['07 부제', cell(copy07, '부제', '맞지 않는'), copy.TRAITS.subtitle],
-    ['07 막대 아래 안내', cell(copy07, '안내', '[막대 아래]'), copy.TRAITS.axisNote],
+    ['07 막대 아래 안내', SEC20.get('TRAITS.axisNote') ?? cell(copy07, '안내', '[막대 아래]'), copy.TRAITS.axisNote], // 20장이 앞선다(3부-아 QP-33)
     ['07 칩 소제목', cell(copy07, '안내', '[소제목]'), copy.TRAITS.tagsTitle],
     ['07 수정 저장 실패', cell(copy07, '오류', '[수정 저장 실패]'), copy.TRAITS.saveFailed],
   ];
@@ -570,7 +583,7 @@ try {
   {
   const sc = await load(path.join(contentDir, 'shopCopy.ts'));
   const pc = await load(path.join(contentDir, 'productCopy.ts'));
-  const copy16all = `${stripCode(copySection(/^### 16 /m, /^## 4\. /m))}\n${stripCode(sec12Q)}\n${stripCode(sec14)}`; // QP-A: 12-Q(SETTINGS16 v5) · 14-1(GRADE16 v5)도 원본
+  const copy16all = `${stripCode(copySection(/^### 16 /m, /^## 4\. /m))}\n${stripCode(sec12Q)}\n${stripCode(sec14)}\n${stripCode(sec20)}`; // QP-A: 12-Q(SETTINGS16 v5) · 14-1(GRADE16 v5)도 원본 · 3부-아: 20장(GRADE16 goal 글)
   const copy16B = copySection(/^#### 16-B /m, /^#### 16-C /m);
   const copy16C = copySection(/^#### 16-C /m, /^#### 16-D /m);
   const strip2 = (t) => t.replace(/\*\*/g, '').replace(/`/g, '');
@@ -610,7 +623,6 @@ try {
       upTasks: undefined,
       verifyRows: undefined,
       links: undefined,
-      goalPick: undefined,
       goalOptional: undefined,
     }],
     ['BADGE16', { ...sc.BADGE16, chip: sc.BADGE16.chip('{n}'), a11y: sc.BADGE16.a11y('{n}'), bubbleTitle: sc.BADGE16.bubbleTitle('{n}'), detail: sc.BADGE16.detail('{n}') }],
@@ -627,7 +639,7 @@ try {
       G.upTasks.join(' / '),
       G.verifyRows.join(' / '),
       G.goalStates.join(' / '),
-      `${G.goalPick} / ${G.goalOptional}`,
+      G.goalOptional, // goalPick 은 카피 20장 '(줄 없음)'(3부-아)
       `${G.accessButtons.send} / ${G.accessButtons.cancel}`,
       ...G.links,
       ...Object.values(G.items),
@@ -769,9 +781,43 @@ try {
     const d172 = rows172.filter(([k, want]) => got(k) !== want).map(([k, want]) => `${k}: 앱 "${got(k)}" / 카피 17-2 "${want}"`);
     check('X', `T1 종교 사유(religion_missing 제목 · 본문 · 버튼 ${rows172.length}줄)가 카피.md 17-2 와 같다`, rows172.length === 3 && d172.length === 0, d172.join('\n'));
     const cell12 = (text) => copyText.split(/\r?\n/).some((l) => /^\| /.test(l) && cells(l).includes(text));
-    const newer12 = { 'CONSENT_MANAGE.ck4OnNote': st12.CONSENT_MANAGE?.ck4OnNote, 'WITHDRAW.rejoinNote': st12.WITHDRAW?.rejoinNote };
-    const miss12 = Object.entries(newer12).filter(([, t]) => !t || !cell12(t)).map(([k, t]) => `${k}: "${t}" 가 카피.md 12-Q 표 칸에 없음`);
-    check('X', '동의 관리 CK4 켜짐 줄(ck4OnNote · M9) · 탈퇴 확인창 다시 가입 줄(rejoinNote · M8)이 카피.md 12-Q 표 글과 같다', miss12.length === 0, miss12.join('\n'));
+    // 3부-아(12-Q 새 줄 4개): CK4 끄기 · CK15 거두기 확인창 탑승 줄 · 동의 기록 상한 · 고객센터 연락처 준비 중(CONSENT_LATER 키는 앱 CONSENT_MANAGE 안)
+    const newer12 = {
+      'CONSENT_MANAGE.ck4OnNote': st12.CONSENT_MANAGE?.ck4OnNote,
+      'WITHDRAW.rejoinNote': st12.WITHDRAW?.rejoinNote,
+      'CONSENT_MANAGE.ck4OffBoarded': st12.CONSENT_MANAGE?.ck4OffBoarded,
+      'CONSENT_LATER.ck15OffBoarded': st12.CONSENT_MANAGE?.ck15OffBoarded,
+      'CONSENT_MANAGE.tooMany': st12.CONSENT_MANAGE?.tooMany,
+      'SUPPORT.contactPending': copy.SUPPORT?.contactPending,
+    };
+    const cell12Q = (key, text) => sec12Q.split(/\r?\n/).some((l) => /^\| /.test(l) && cells(l).includes(text) && l.includes(`\`${key}\``));
+    const miss12 = Object.entries(newer12).filter(([k, t]) => !t || !cell12(t) || (!['CONSENT_MANAGE.ck4OnNote', 'WITHDRAW.rejoinNote'].includes(k) && !cell12Q(k, t))).map(([k, t]) => `${k}: "${t}" 가 카피.md 12-Q 표 칸에 없음`);
+    check('X', `동의 관리 · 탈퇴 · 고객센터 새 줄 ${Object.keys(newer12).length}개(ck4OnNote M9 · rejoinNote M8 · 3부-아 ck4OffBoarded · ck15OffBoarded · tooMany · contactPending)가 카피.md 12-Q 표 글과 같다`, miss12.length === 0, miss12.join('\n'));
+
+    // 3부-아(D-223): 카피.md 20장 줄(SEC20) = 앱 글 · '(줄 없음)' = 앱에 키 없음 · 13-1 POL7 · POL14 = politicsCopy.ts(별칭 @/ 때문에 글에서 읽음)
+    const gi = (await load(path.join(APP_DIR, 'src', 'features', 'grade', 'iconCopy.ts'))).GI;
+    const sv2 = (await load(path.join(APP_DIR, 'src', 'features', 'surveyV2', 'copy.ts'))).SV2;
+    const sc20 = await load(path.join(contentDir, 'shopCopy.ts'));
+    const roots20 = { TRAITS: copy.TRAITS, GI: gi, GRADE16: sc20.GRADE16, survey: { common: sv2.common }, BOARDING: bc.BOARDING, AVOID: st12.AVOID };
+    const at = (key) => key.replace(/\[(\d+)\]/g, '.$1').split('.').reduce((o, k) => (o == null ? undefined : o[k]), roots20);
+    const SLOT20 = '\u0001';
+    const d20 = [];
+    for (const [key, want] of SEC20) {
+      const v = at(key);
+      if (want === '(줄 없음)') {
+        if (v !== undefined) d20.push(`${key}: 카피 20장 '(줄 없음)'인데 앱에 글이 있음`);
+        continue;
+      }
+      const got = typeof v === 'function' ? String(v(...Array.from({ length: Math.max(1, v.length) }, () => SLOT20))) : v;
+      if (typeof got !== 'string' || got.split(SLOT20).join('§') !== want.replace(/\{[^{}]+\}/g, '§')) d20.push(`${key}: 앱 "${got}" / 카피 20장 "${want}"`);
+    }
+    const polSrc20 = fs.readFileSync(path.join(APP_DIR, 'src', 'features', 'surveyV2', 'politicsCopy.ts'), 'utf8');
+    const pol20 = copyText.split(/\r?\n/).filter((l) => /^\| `POL\.(unset|needConsent)` \(POL(7|14)\)/.test(l)).map(cells).map((r) => [(/`POL\.([^`]+)`/.exec(r[0]) ?? [])[1], r[1]]);
+    for (const [k, want] of pol20) {
+      const app = new RegExp(`^\\s{2}${k}: '([^']*)'`, 'm').exec(polSrc20)?.[1];
+      if (app !== want) d20.push(`POL.${k}: 앱 "${app}" / 카피 13-1 "${want}"`);
+    }
+    check('X', `카피.md 20장 줄 ${SEC20.size}개(07 · 16-G3 · 16-G4 · 04 · 08 · T1 · 12-5, '(줄 없음)' 포함) · 13-1 POL7 · POL14 ${pol20.length}줄이 앱 글과 같다`, SEC20.size >= 15 && pol20.length === 2 && d20.length === 0, d20.join('\n') || `20장 ${SEC20.size}줄`);
   }
 
   // ── X. v5 새 화면 글(카피.md 14-5, 검수 QP-07 · 마케팅 QPM 3차) ──

@@ -70,6 +70,7 @@ export function AvoidPage({ api, onBack, onToast, contact }: { api: Api; onBack:
   const [sheet, setSheet] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const busy = useRef(false);
+  const [adding, setAdding] = useState(false); // [더하기] 점 셋(읽기 이름 AVOID.saving — 카피 20장 · D45 '저장 중 줄')
 
   const failText = (reason: string) => (reason === 'network' ? COMMON.offline : AVOID.saveFailed);
 
@@ -96,8 +97,12 @@ export function AvoidPage({ api, onBack, onToast, contact }: { api: Api; onBack:
   const addCompany = async () => {
     const name = company.trim();
     // 기호 · (주) 만 다른 이름은 서버에서 한 곳(0037 org_hash) — 이미 있는 줄로 본다. 기호뿐인 이름은 서버가 받지 않는다
-    if (!data || !orgKey(name) || data.companies.length >= AVOID_MAX || data.companies.some((c) => orgKey(c) === orgKey(name))) return;
-    if (await saveOrgs({ ...data, companies: [...data.companies, name] }, () => api.setAvoidCompany(name, true))) setCompany('');
+    if (!data || busy.current || !orgKey(name) || data.companies.length >= AVOID_MAX || data.companies.some((c) => orgKey(c) === orgKey(name))) return;
+    setAdding(true);
+    const saved = await saveOrgs({ ...data, companies: [...data.companies, name] }, () => api.setAvoidCompany(name, true));
+    if (!alive.current) return;
+    setAdding(false);
+    if (saved) setCompany('');
   };
   const removeCompany = (name: string) => data && void saveOrgs({ ...data, companies: data.companies.filter((c) => c !== name) }, () => api.setAvoidCompany(name, false));
   const addSchool = async (key: string, name: string) => {
@@ -198,7 +203,7 @@ export function AvoidPage({ api, onBack, onToast, contact }: { api: Api; onBack:
                   <View style={styles.flex}>
                     <TextField value={company} onChangeText={setCompany} placeholder={AVOID.companyPlaceholder} label={AVOID.companyTitle} returnKeyType="done" onSubmitEditing={() => void addCompany()} testID="settings-avoid-company-input" />
                   </View>
-                  <Button label={AVOID.add} variant="secondary" inline disabled={company.trim() === ''} onPress={() => void addCompany()} testID="settings-avoid-company-add" />
+                  <Button label={AVOID.add} variant="secondary" inline disabled={company.trim() === ''} loading={adding} loadingLabel={AVOID.saving} onPress={() => void addCompany()} testID="settings-avoid-company-add" />
                 </View>
               )}
 

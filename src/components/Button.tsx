@@ -31,6 +31,7 @@ type Props = {
   disabled?: boolean;
   dimmed?: boolean;
   loading?: boolean;
+  loadingLabel?: string; // 점 셋 동안의 읽기 이름(없으면 COMMON.loading) — 12-5 [더하기] '저장하는 중'(카피 20장 AVOID.saving)
   inline?: boolean;
   testID?: string;
 };
@@ -55,7 +56,7 @@ function keyboardFocus(event: unknown, pointerAt: number): boolean {
   return Date.now() - pointerAt > POINTER_FOCUS_MS;
 }
 
-export function Button({ label, onPress, variant = 'primary', disabled = false, dimmed = false, loading = false, inline = false, testID }: Props) {
+export function Button({ label, onPress, variant = 'primary', disabled = false, dimmed = false, loading = false, loadingLabel, inline = false, testID }: Props) {
   const [pressed, setPressed] = useState(false);
   const [focused, setFocused] = useState(false);
   const pointerAt = useRef(0);
@@ -72,7 +73,7 @@ export function Button({ label, onPress, variant = 'primary', disabled = false, 
     <View style={[styles.wrap, inline && styles.inlineWrap]}>
       {focused ? <View pointerEvents="none" style={styles.focus} testID={testID ? `${testID}-focus` : undefined} /> : null}
       <Pressable
-        accessibilityLabel={loading ? COMMON.loading : label}
+        accessibilityLabel={loading ? (loadingLabel ?? COMMON.loading) : label}
         accessibilityState={{ disabled: inert || dimmed, busy: loading }}
         aria-disabled={inert || dimmed}
         aria-busy={loading}

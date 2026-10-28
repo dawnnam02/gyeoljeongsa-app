@@ -55,7 +55,7 @@ export type SurveyChatApi = {
   analyze(sessionId: number): Promise<Result<'done' | 'waiting'>>;
   summary(): Promise<Result<Summary>>;
   edit(edit: { summary?: string | null; facts?: Readonly<Record<string, string | null>> }): Promise<Result<true>>;
-  agreeCk16(): Promise<Result<true>>;
+  agreeCk16(): Promise<{ ok: true; data: true } | { ok: false; reason: ChatFailure | 'limit' }>; // limit = 0041 동의 기록 상한(화면은 CONSENT_MANAGE.tooMany)
 };
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -208,7 +208,7 @@ export function createSurveyChatApi(client: SupabaseClient, appVersion = 'app', 
         { user_id: userId, item_code: CHAT_SERVER.consentCode as ConsentCode /* CK16 은 생성 코드 목록 밖(법무 판 생기면 합친다) */, agreed: true, text_version: CHAT_SERVER.consentVersion, app_version: appVersion, source: 'feature_sheet' }, // 0041: CK16 = 기능 시트
       ]);
       safeLog({ event: 'ck16_consent', status: saved.ok ? 'ok' : saved.reason });
-      return saved.ok ? { ok: true, data: true } : { ok: false, reason: saved.reason === 'limit' ? 'server' : saved.reason };
+      return saved.ok ? { ok: true, data: true } : { ok: false, reason: saved.reason };
     },
   };
 }

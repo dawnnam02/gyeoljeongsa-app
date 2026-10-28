@@ -44,19 +44,25 @@ export function SupportPage({ deps, contact = SUPPORT_CONTACT, onBack, onToast }
   return (
     <SubPage title={SUPPORT.rowName} onBack={onBack} testID="settings-support">
       {/* QP-04: 값(FILL_INS)이 빈 줄은 그리지 않는다 — 자리 글 '{고객센터 이메일}' 을 화면에 보이지 않음. 이메일이 없으면 [복사] · [메일 앱 열기]도 없다 */}
-      {email || contact.hours ? (
+      {email ? (
         <Card style={styles.card} testID="settings-support-card">
-          {email ? (
-            <AppText variant="body" testID="settings-support-email">
-              {fillContact(SUPPORT.emailLabel, contact)}
-            </AppText>
-          ) : null}
-          {email && contact.hours ? <View style={styles.line} /> : null}
+          <AppText variant="body" testID="settings-support-email">
+            {fillContact(SUPPORT.emailLabel, contact)}
+          </AppText>
+          {contact.hours ? <View style={styles.line} /> : null}
           {contact.hours ? (
             <AppText variant="body" testID="settings-support-hours">
               {fillContact(SUPPORT.hoursLabel, contact)}
             </AppText>
           ) : null}
+        </Card>
+      ) : null}
+      {/* 3부-아(카피 12-Q SUPPORT.contactPending · QP-31): 이메일 값이 비면 이메일 · 운영 시간 줄과 버튼 대신 한 줄. 값이 들어오면 줄째 없음 */}
+      {!email ? (
+        <Card style={styles.card}>
+          <AppText variant="body" testID="settings-support-pending">
+            {SUPPORT.contactPending}
+          </AppText>
         </Card>
       ) : null}
       {email ? (

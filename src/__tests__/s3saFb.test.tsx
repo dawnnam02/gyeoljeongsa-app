@@ -4,12 +4,13 @@
 //  FB-014 데모 장면마다 방이 열린 주를 달리해 장소 차례가 보인다
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 
+import { AVOID } from '@/content/settingsCopy';
 import { createDemoBoarding } from '@/demo/boardingDemo';
 import { createBoardingApi } from '@/features/boarding/boardingApi';
+import { BOARDING } from '@/features/boarding/boardingCopy';
 import { BoardingScreen } from '@/features/boarding/BoardingScreen';
 import { createDemoChatApi, DEMO_CHAT_SCENES, sceneOfEmail } from '@/features/chat/chatDemo';
 import { meetPlaceName } from '@/features/chat/meetLogic';
-import { PRELAUNCH } from '@/features/prelaunch/prelaunchCopy';
 import { openSettingsPage, takeSettingsPage } from '@/features/settings/settingsIntent';
 import { SettingsScreen, type SettingsDeps } from '@/features/settings/SettingsScreen';
 import { createDemoBackend, DEMO_OTP_CODE } from '@/lib/demoBackend';
@@ -78,13 +79,14 @@ describe('FB-014 데모 장면마다 열린 주 → 장소 차례', () => {
 });
 
 describe('FB-015 아는 분 피하기 입구 셋', () => {
-  test('T2 할 일에 아는 분 피하기(사전 오픈 할 일과 같은 글) → 설정 탭으로 가며 12-5 쪽을 남긴다', async () => {
+  test('T2 할 일에 아는 분 피하기(3부-아: 카피 20장 BOARDING.tasks.avoid — 이름 = AVOID.title) → 설정 탭으로 가며 12-5 쪽을 남긴다', async () => {
     const client = await signIn('boardon-fb15@email.com');
     const tree = await mount(<BoardingScreen deps={{ api: createBoardingApi(client), newId: () => 'r', toastMs: 10 }} />);
     shown.push(tree);
     await flush();
     expect(has(tree, 'boarding-task-avoid')).toBe(true);
-    expect(must(tree, 'boarding-task-avoid').props.accessibilityLabel).toBe(`${PRELAUNCH.tasks.avoid.name}, ${PRELAUNCH.tasks.avoid.line}`);
+    expect(must(tree, 'boarding-task-avoid').props.accessibilityLabel).toBe('아는 분 피하기, 피하고 싶은 회사와 학교를 넣어 둘 수 있어요.');
+    expect(BOARDING.tasks.avoid.name).toBe(AVOID.title);
     await press(tree, 'boarding-task-avoid');
     expect(mockRouter.navigate).toHaveBeenCalledWith('/settings');
     expect(takeSettingsPage()).toBe('avoid');

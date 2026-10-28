@@ -93,16 +93,19 @@ export const CONSENT_MANAGE = {
   ck4OffTitle: '종교 정보 동의를 끌까요?', // [확정] 카피.md 12(B5) · N25
   ck4OffBody: "입력한 종교 정보가 지워지고 '답하지 않음'으로 바뀌어요. 종교는 꼭 맞아야 하는 조건이라, 다시 답하기 전까지 탑승권을 살 수 없어요.", // [확정] 카피.md 12-Q CONSENT_MANAGE.ck4OffBody v5
   ck4OffConfirm: '끄기', // [확정] 카피.md 12(B5) · N25
+  ck4OffBoarded: '판매 마감 전에 끄면, 이미 탄 이번 회차는 짝을 정하지 않고 크레딧 1장으로 돌려드려요.', // [확정] 12-Q CONSENT_MANAGE.ck4OffBoarded(3부-아) — 판매 마감 전 · 이번 회차 탑승권이 있을 때만 ck4OffBody 아래
   ck4OnNote: '끄면 종교 답을 바로 지워요. 다시 동의하고 답하기 전까지는 탑승권을 살 수 없어요.', // [확정] 카피.md 12-Q CONSENT_MANAGE.ck4OnNote(M-CK4 · 17-3) — CK4 켜짐일 때 덧붙이는 안내 대신 이 줄(M9)
   cancel: '취소', // [확정] 카피.md 12(B5) · N25
   saved: '저장했어요.', // [확정] 카피.md 12(B5) · N10
   saveFailed: '저장하지 못했어요. 다시 시도해 주세요.', // [확정] 08 저장 실패와 같은 글
+  tooMany: '동의 기록이 가득 차서 저장하지 못했어요. 설정의 고객센터로 알려 주시면 도와 드릴게요.', // [확정] 12-Q CONSENT_MANAGE.tooMany(3부-아 · 0041 too_many_consents) — 설문 동의 카드(CK4 · CK15 · CK16)에서도 이 글
   // 03 밖 선택 동의 CK11 ~ CK16 줄(동의문구 5-6 ② · 1-1, L17A). 줄 이름은 1-1 표 이름(consentContent.ts CONSENT_LATER_NAMES), '보기 ›' 글은 4-11 ~ 4-16(CONSENT_LATER_ITEMS)을 그대로 쓴다.
   // 옛 CONSENT_LATER [제안 L17A] 5줄 — 카피.md 12-Q 에서 확정(QPM 2장 #1 ~ #5)돼 여기로 옮겼다(check:copy O 가 본다)
   askLater: '처음 쓸 때 따로 물어요.', // [확정] 12-Q CONSENT_LATER.askLater — 그 기능 · 문항에서 받는 칸(CK11 ~ CK15)이 꺼져 있을 때(스위치 잠김)
   offTitle: '동의를 거둘까요?', // [확정] 12-Q CONSENT_LATER.offTitle
   offBody: '거두면 그때부터 모으지 않고, 이미 모은 정보도 바로 지워요.', // [확정] 12-Q CONSENT_LATER.offBody — CK11 ~ CK14 · CK16
   ck15OffBody: '거두면 정치 성향 답을 바로 지워요. 다시 동의하고 답하기 전까지는 탑승권을 살 수 없어요.', // [확정] 12-Q CONSENT_LATER.ck15OffBody
+  ck15OffBoarded: '판매 마감 전에 거두면, 이미 탄 이번 회차는 짝을 정하지 않고 크레딧 1장으로 돌려드려요.', // [확정] 12-Q CONSENT_LATER.ck15OffBoarded(3부-아) — ck4OffBoarded 와 같은 조건
   offConfirm: '거두기', // [확정] 12-Q CONSENT_LATER.offConfirm(취소는 cancel)
 } as const;
 
@@ -118,6 +121,7 @@ export const AVOID = {
   remove: '지우기', // [확정] 14-7
   full: '5곳까지 넣을 수 있어요. 하나를 지우면 더 넣을 수 있어요.', // [확정] 14-7
   saveFailed: '저장하지 못했어요. 다시 시도해 주세요.', // [확정] 14-7
+  saving: '저장하는 중', // 카피 20장(3부-아 · D45) — [더하기] 점 셋 동안의 읽기 이름
   contactTitle: '지인 차단', // [확정] 14-7 — CK11 시트(동의문구 4-11) · 주소록 비교는 서버 함수(0037) · 주소록 모듈이 들어온 뒤
   shareEmail: '내 이메일을 다른 분의 지인 비교에 쓰기', // [확정] 12-Q AVOID.shareEmail(D-201, 처음 켜짐)
   shareEmailNote: '다른 분이 주소록으로 아는 사람을 피할 때, 내 이메일을 되돌릴 수 없게 바꾼 값이 비교에 쓰여요. 끄면 내 연락처를 가진 분과 이어질 수 있어요.', // [확정] 12-Q

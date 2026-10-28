@@ -46,7 +46,7 @@ function failOf(error: unknown): PoliticsFailure {
 
 export type PoliticsApi = {
   load: () => Promise<PoliticsResult<PoliticsState>>;
-  agree: () => Promise<PoliticsResult<true>>;
+  agree: () => Promise<{ ok: true; data: true } | { ok: false; reason: PoliticsFailure | 'limit' }>; // limit = 0041 동의 기록 상한(화면은 CONSENT_MANAGE.tooMany)
   save: (position: number) => Promise<PoliticsResult<number>>;
 };
 
@@ -68,7 +68,7 @@ export function createPoliticsApi(client: SupabaseClient, appVersion = 'dev', op
         { user_id: userId, item_code: POL_SERVER.consentCode as ConsentCode /* CK15 는 생성 코드 목록 밖(법무 판 생기면 합친다) */, agreed: true, text_version: POL_SERVER.consentVersion, app_version: appVersion, source: 'survey_card' }, // 0041 받은 곳
       ]);
       safeLog({ event: 'politics_consent', status: saved.ok ? 'ok' : saved.reason });
-      return saved.ok ? { ok: true, data: true } : { ok: false, reason: saved.reason === 'limit' ? 'server' : saved.reason };
+      return saved.ok ? { ok: true, data: true } : { ok: false, reason: saved.reason };
     },
     async save(position) {
       const p = clampPos(position);

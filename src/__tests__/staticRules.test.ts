@@ -79,6 +79,7 @@ const GRADE_ALLOWED_FILES = [
   'features/recs/RecommendationsScreen.tsx', // 09 등급 배지(gradeNo)
   'features/recs/CandidateScreen.tsx', // 10 상대 등급
   'features/boarding/boardingApi.ts', // 3부-바: 서버 크레딧 장부 사유 코드 grade_gap(0030) → T5 글 키 gap 한 줄(글 '짝을 찾지 못해 돌려받음') — 등급 값 · 화면 글 아님
+  'features/boarding/boardingCopy.ts', // 3부-아: T1 사유 글 키 grade_pending(카피 20장 BOARDING.ineligible.grade_pending · 0039 reason_detail 이름) — 등급 값 아님
 ];
 const GRADE_ALLOWED_DIRS = ['features/shop/', 'features/grade/'];
 const rel = (file: string) => path.relative(SRC_DIR, file).split(path.sep).join('/');

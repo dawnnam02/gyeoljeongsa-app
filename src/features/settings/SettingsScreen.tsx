@@ -55,6 +55,7 @@ export type SettingsDeps = SupportDeps & {
   pushStatus: () => Promise<PushStatus>; // 지금 푸시 권한(묻지 않음)
   requestPush: () => Promise<PushStatus>; // 시스템 권한 창(서비스 알림을 켤 때, 안내 글을 먼저 보인 뒤)
   contact?: () => ContactPorts; // 12-5 지인 차단 기기 연결(주소록 · 해시, 3부-바). 없으면 지인 차단 줄은 '준비 중'
+  boarded?: () => Promise<boolean>; // 3부-아: 판매 마감 전 · 이번 회차 탑승권이 있나(동의 관리 CK4 · CK15 끄기 확인창 한 줄). 없으면 그 줄 없음
 };
 
 
@@ -67,6 +68,7 @@ export function defaultSettingsDeps(): SettingsDeps {
     pushStatus: readPushStatus,
     requestPush: requestPushPermission,
     contact: contactPorts, // 누를 때 처음 만든다(기기 모듈을 미리 읽지 않음)
+    boarded: boardedNow,
     copyText: copyToClipboard,
     openMail: async (email) => {
       try {
@@ -76,6 +78,16 @@ export function defaultSettingsDeps(): SettingsDeps {
       }
     },
   };
+}
+
+// 이번 회차 탑승권 · 판매 마감 전(T2 [탑승 취소]가 보이는 조건 canCancel 과 같음). 탑승권 화면과 같은 서버 연결을 쓰고, 누를 때 처음 만든다
+async function boardedNow(): Promise<boolean> {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const { boardingServices } = require('@/features/boarding/boardingServices') as typeof import('@/features/boarding/boardingServices');
+  const { canCancel } = require('@/features/boarding/boardingLogic') as typeof import('@/features/boarding/boardingLogic');
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  const r = await boardingServices().api.load();
+  return r.ok && canCancel(r.state);
 }
 
 const openExternal = async (url: string) => {
@@ -207,7 +219,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
       case 'security':
         return <SecurityPage onBack={toList} />;
       case 'consent-management':
-        return <ConsentManagePage api={deps.api} onBack={toList} onToast={showToast} />;
+        return <ConsentManagePage api={deps.api} boarded={deps.boarded} onBack={toList} onToast={showToast} />;
       case 'blocked-list':
         return <BlockedListPage api={deps.api} onBack={toList} onToast={showToast} />;
       case 'report-history':

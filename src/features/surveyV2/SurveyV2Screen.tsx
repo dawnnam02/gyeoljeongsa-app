@@ -21,6 +21,7 @@ import { BottomCTA, CtaPair, Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextButton } from '@/components/TextButton';
 import { Toast } from '@/components/Toast';
+import { CONSENT_MANAGE } from '@/content/settingsCopy';
 import { schoolIndex } from '@/data/schools/schoolSearch';
 import { ConsentSummarySheet } from '@/features/consent/ConsentSummarySheet';
 import { RelCard } from '@/features/surveyChat/ChatInput';
@@ -38,7 +39,7 @@ import type { LocalDraft, Stage } from './localDraft';
 import {
   AI_BOX_IDS,
   answersOf,
-  answerText,
+  reviewAnswerText,
   APPEAL,
   blockMessage,
   check,
@@ -397,9 +398,11 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
       leavePolitics();
       return;
     }
+    let limit = false; // 0041 동의 기록 상한
     const ok = await run(async () => {
       if (!p.serverConsent) {
         const agreed = await politics.agree();
+        limit = !agreed.ok && agreed.reason === 'limit';
         if (!agreed.ok) return false;
         if (alive.current) setPol((x) => ({ ...x, serverConsent: true, checked: false }));
       }
@@ -410,7 +413,7 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
     });
     if (!alive.current) return;
     if (!ok) {
-      setSaveError(SV2.saveFailed);
+      setSaveError(limit ? CONSENT_MANAGE.tooMany : SV2.saveFailed);
       return;
     }
     leavePolitics();
@@ -638,10 +641,15 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
       setRelReason(REL.needCheck);
       return;
     }
-    const ok = await run(async () => (await religion.record(true)).ok);
+    let limit = false;
+    const ok = await run(async () => {
+      const r = await religion.record(true);
+      limit = !r.ok && r.reason === 'limit';
+      return r.ok;
+    });
     if (!alive.current) return;
     if (!ok) {
-      setSaveError(SV2.saveFailed);
+      setSaveError(limit ? CONSENT_MANAGE.tooMany : SV2.saveFailed);
       return;
     }
     setSaveError(null);
@@ -651,10 +659,15 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
   };
   const declineReligion = async () => {
     if (!religion || busyRef.current) return;
-    const ok = await run(async () => (await religion.record(false)).ok);
+    let limit = false;
+    const ok = await run(async () => {
+      const r = await religion.record(false);
+      limit = !r.ok && r.reason === 'limit';
+      return r.ok;
+    });
     if (!alive.current) return;
     if (!ok) {
-      setSaveError(SV2.saveFailed);
+      setSaveError(limit ? CONSENT_MANAGE.tooMany : SV2.saveFailed);
       return;
     }
     setSaveError(null);
@@ -672,7 +685,7 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
       name: SECTION_COPY[key].name,
       edit: visible.find((q) => q.section === key)?.id ?? FLOW[0].id,
       skipped: false,
-      rows: visible.filter((q) => q.section === key && q.id in answers).map((q) => ({ id: q.id, question: copyOf(q.id)?.q ?? q.id, answer: answerText(q, answers[q.id], name) })),
+      rows: visible.filter((q) => q.section === key && q.id in answers).map((q) => ({ id: q.id, question: copyOf(q.id)?.q ?? q.id, answer: reviewAnswerText(q, answers[q.id], name) })),
     }));
     const cards = (key: 'story' | 'appeal'): ReviewSection => {
       const qs = key === 'story' ? STORY : APPEAL;

@@ -29,7 +29,6 @@ import { TextButton } from '@/components/TextButton';
 import { Toast } from '@/components/Toast';
 import { fillText } from '@/content/fillLegal';
 import { TermsArticleSheet } from '@/features/consent/TermsArticleSheet';
-import { PRELAUNCH } from '@/features/prelaunch/prelaunchCopy';
 import { openSettingsPage } from '@/features/settings/settingsIntent';
 import { haptic, InkTile, logoTile, MaskLine, scene2, SkeletonCard, SkeletonPulse, TOAST_MS, Wipe } from '@/motion';
 import { colors, size, space } from '@/theme/tokens';
@@ -57,6 +56,8 @@ const SURVEY_HREF: Href = { pathname: '/survey/[step]', params: { step: '01' } }
 // 3부-아(검수 QP-32): T1 살 수 없음 [설문으로]는 남은 그 문항으로 바로(설문 v2 한 문항 쪽 — 마치면 T1 로 돌아옴)
 const POLITICS_HREF: Href = { pathname: '/survey/[step]', params: { step: 'v2', notice: 'politics' } };
 const RELIGION_HREF: Href = { pathname: '/survey/[step]', params: { step: 'v2', notice: 'religion' } };
+// 3부-아(카피 20장): 성별 · 지역 답이 비면 설문 v2 의 빠진 문항으로(05 와 같은 missing 입구)
+const PROFILE_HREF: Href = { pathname: '/survey/[step]', params: { step: 'v2', notice: 'missing' } };
 
 export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   const router = useRouter();
@@ -377,19 +378,19 @@ function StatusCard({ state, view, moment = false, onBuy, onOpen, onCancel, canc
     case 'ineligible': {
       const k = state.ineligible ?? 'not_confirmed';
       const c = BOARDING.ineligible[k];
-      const href: Href | null = k === 'politics_missing' ? POLITICS_HREF : k === 'religion_missing' ? RELIGION_HREF : k === 'paused' ? hrefOf('/settings') : null;
+      const href: Href | null = k === 'politics_missing' ? POLITICS_HREF : k === 'religion_missing' ? RELIGION_HREF : k === 'profile_missing' ? PROFILE_HREF : k === 'paused' ? hrefOf('/settings') : null;
       return card(c.title, c.body, c.action && href ? <Button label={c.action} variant="secondary" onPress={() => onOpen(href)} testID="boarding-ineligible-action" /> : undefined);
     }
   }
 }
 
 // 기다리는 동안 할 일(화면_요구사항 T2): 프로필 · 설문 다듬기 · 아는 분 피하기(12-5 — 3부-사 FB-015, 설정 안 쪽을 바로 엶) · 지난 대화.
-//  아는 분 피하기 줄 글은 사전 오픈 단계표 할 일과 같은 글(PRELAUNCH.tasks.avoid — 탑승권 쪽 전용 카피 키는 팀장 넘김)
+//  아는 분 피하기 줄 글은 BOARDING.tasks.avoid(카피 20장 · 3부-아 — 이름은 12-5 AVOID.title 과 같은 말)
 function Tasks({ state, onOpen, onAvoid }: { state: BoardingState; onOpen: (href: Href) => void; onAvoid: () => void }) {
   const rows: { key: string; name: string; line: string; go: () => void }[] = [
     { key: 'profile', ...BOARDING.tasks.profile, go: () => onOpen(hrefOf('/profile')) },
     { key: 'survey', ...BOARDING.tasks.survey, go: () => onOpen(SURVEY_HREF) },
-    { key: 'avoid', ...PRELAUNCH.tasks.avoid, go: onAvoid },
+    { key: 'avoid', ...BOARDING.tasks.avoid, go: onAvoid },
   ];
   const chat = state.past.find((p) => p.chatId);
   if (chat?.chatId) rows.push({ key: 'chats', name: BOARDING.tasks.chats.name, line: BOARDING.tasks.chats.line(state.past.length), go: () => onOpen(hrefOf(`/chat/${chat.chatId}`)) });

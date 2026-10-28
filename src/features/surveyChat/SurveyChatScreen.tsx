@@ -24,6 +24,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextButton } from '@/components/TextButton';
 import { TextField } from '@/components/TextField';
 import { Toast } from '@/components/Toast';
+import { CONSENT_MANAGE } from '@/content/settingsCopy';
 import { schoolIndex } from '@/data/schools/schoolSearch';
 import { ConsentSummarySheet } from '@/features/consent/ConsentSummarySheet';
 import { LaterConsentLink } from '@/features/consent/LaterConsentLink';
@@ -517,9 +518,11 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
       return;
     }
     const p = pol;
+    let limit = false;
     const ok = await run(async () => {
       if (!p.serverConsent) {
         const agreed = await politics.agree();
+        limit = !agreed.ok && agreed.reason === 'limit';
         if (!agreed.ok) return false;
       }
       const r = await politics.save(p.value ?? 50);
@@ -528,7 +531,7 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
       return true;
     });
     if (!alive.current) return;
-    if (!ok) setSaveError(t('CHAT.SAVE.failed'));
+    if (!ok) setSaveError(limit ? CONSENT_MANAGE.tooMany : t('CHAT.SAVE.failed'));
     else {
       setSaveError(null);
       setReason(null);
@@ -542,10 +545,15 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
       setReason(REL.needCheck);
       return;
     }
-    const ok = await run(async () => (await religion.record(true)).ok);
+    let limit = false; // 0041 동의 기록 상한 — 카피 12-Q tooMany
+    const ok = await run(async () => {
+      const r = await religion.record(true);
+      limit = !r.ok && r.reason === 'limit';
+      return r.ok;
+    });
     if (!alive.current) return;
     if (!ok) {
-      setSaveError(t('CHAT.SAVE.failed'));
+      setSaveError(limit ? CONSENT_MANAGE.tooMany : t('CHAT.SAVE.failed'));
       return;
     }
     setSaveError(null);
@@ -558,10 +566,15 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
   const declineReligion = async () => {
     if (!religion || busyRef.current) return;
     const next = { ...committed, [RELIGION_ID]: { kind: 'choice', code: 'decline' } as Draft };
-    const ok = await run(async () => (await religion.record(false)).ok && (await persist(next, publicOn)));
+    let limit = false;
+    const ok = await run(async () => {
+      const r = await religion.record(false);
+      limit = !r.ok && r.reason === 'limit';
+      return r.ok && (await persist(next, publicOn));
+    });
     if (!alive.current) return;
     if (!ok) {
-      setSaveError(t('CHAT.SAVE.failed'));
+      setSaveError(limit ? CONSENT_MANAGE.tooMany : t('CHAT.SAVE.failed'));
       return;
     }
     setSaveError(null);
@@ -606,10 +619,15 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
     const s = session;
     if (!s || busyRef.current) return;
     if (agree) {
-      const ok = await run(async () => (await chat.agreeCk16()).ok);
+      let limit = false;
+      const ok = await run(async () => {
+        const r = await chat.agreeCk16();
+        limit = !r.ok && r.reason === 'limit';
+        return r.ok;
+      });
       if (!alive.current) return;
       if (!ok) {
-        setSaveError(t('CHAT.SAVE.failed'));
+        setSaveError(limit ? CONSENT_MANAGE.tooMany : t('CHAT.SAVE.failed'));
         return;
       }
       setCk16(true);

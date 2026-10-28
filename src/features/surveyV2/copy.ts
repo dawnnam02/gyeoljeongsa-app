@@ -35,7 +35,8 @@ export const SV2 = {
 
   common: {
     any: '상관없어요',
-    decline: '말하고 싶지 않아요',
+    decline: '말하고 싶지 않아요', // 고르는 보기(입말)
+    declinedValue: '답하지 않음', // survey.common.declinedValue — 카피 20장(3부-아 · QP-35): 답 확인(검토)에 보이는 결과 말. 동의 카드 · 확인창 · 법무 글과 같은 말
     unknown: '잘 몰라요',
     declineHint: '답하면 등급이 오를 수 있어요.',
     skip: '건너뛰기',
