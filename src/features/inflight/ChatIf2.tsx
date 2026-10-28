@@ -252,7 +252,7 @@ function TopicsBody({ roomId, deps, onClose, onPlaced, onGive, testID = 'if2-top
               <AppText variant="caption">{tx('OPEN_TOGETHER.guide')}</AppText>
               <AppText variant="bodyBold">{tx('OPEN_TOGETHER.pick')}</AppText>
               {today.questions.map((id, i) => (
-                <Pressable key={id} accessibilityRole="radio" accessibilityState={{ checked: q === id }} accessibilityLabel={questionText(id) ?? ''} onPress={() => setQ(id)} effect="none" style={({ pressed }) => [styles.pick, q === id && styles.pickOn, pressed && styles.pressed]} testID={`${testID}-together-q-${i}`}>
+                <Pressable key={id} accessibilityRole="radio" accessibilityState={{ checked: q === id }} aria-checked={q === id} accessibilityLabel={questionText(id) ?? ''} onPress={() => setQ(id)} effect="none" style={({ pressed }) => [styles.pick, q === id && styles.pickOn, pressed && styles.pressed]} testID={`${testID}-together-q-${i}`}>
                   <AppText variant="body">{questionText(id)}</AppText>
                 </Pressable>
               ))}
@@ -280,8 +280,9 @@ function TopicsBody({ roomId, deps, onClose, onPlaced, onGive, testID = 'if2-top
                     return (
                       <Pressable
                         key={l}
-                        accessibilityRole="radio"
+                        accessibilityRole="checkbox"
                         accessibilityState={{ checked: on, disabled: full }}
+                        aria-checked={on}
                         accessibilityLabel={l}
                         disabled={full}
                         onPress={() => setPicks((p) => (on ? Object.fromEntries(Object.entries(p).filter(([k]) => k !== c)) : { ...p, [c]: i }))}
@@ -511,13 +512,10 @@ function FarewellBody({ roomId, deps, onClose, onPlainLeave, onLeft, busyPlain, 
               {plainError}
             </AppText>
           ) : null}
-          <View style={styles.pair}>
-            <View style={if2Styles.flex}>
-              <Button label={tx('FAREWELL.sheet.withCard')} variant="secondary" onPress={() => setStep('pick')} testID={`${testID}-with-card`} />
-            </View>
-            <View style={if2Styles.flex}>
-              <Button label={tx('FAREWELL.sheet.plain')} variant="secondary" loading={busyPlain} onPress={onPlainLeave} testID={`${testID}-plain`} />
-            </View>
+          {/* 두 단추 같은 크기(IFF-07) — 좁은 폭에서 한쪽 글이 두 줄로 접혀 높이가 달라지지 않게 위아래로 쌓는다 */}
+          <View style={styles.stack}>
+            <Button label={tx('FAREWELL.sheet.withCard')} variant="secondary" onPress={() => setStep('pick')} testID={`${testID}-with-card`} />
+            <Button label={tx('FAREWELL.sheet.plain')} variant="secondary" loading={busyPlain} onPress={onPlainLeave} testID={`${testID}-plain`} />
           </View>
           <Button label={CHAT.leave.cancel} variant="text" onPress={onClose} testID={`${testID}-cancel`} />
         </>
@@ -531,6 +529,7 @@ function FarewellBody({ roomId, deps, onClose, onPlainLeave, onLeft, busyPlain, 
               key={l}
               accessibilityRole="radio"
               accessibilityState={{ checked: pick === i }}
+              aria-checked={pick === i}
               accessibilityLabel={tx('FAREWELL.a11y.line', { 글: l })}
               onPress={() => {
                 setPick(i);
@@ -579,6 +578,7 @@ const styles = StyleSheet.create({
   chips: { gap: space.s4, paddingHorizontal: space.s12, paddingTop: space.s8, backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.line },
   chipRow: { gap: space.s8, paddingVertical: space.s4 },
   pair: { flexDirection: 'row', gap: space.s8 },
+  stack: { gap: space.s8 },
   sheetScroll: { maxHeight: size.touchMin * 11 },
   pick: { minHeight: size.touchMin, justifyContent: 'center', paddingHorizontal: space.s16, paddingVertical: space.s12, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg },
   pickOn: { borderColor: colors.accent, backgroundColor: colors.accentSoft },

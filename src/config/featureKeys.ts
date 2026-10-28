@@ -25,8 +25,13 @@ export const demoDefault = (key: FeatureKey): boolean => {
 // V5(D-152 · W10): 티켓 매칭 전환으로 숨기는 v4 화면 스위치. 꺼져 있으면 그 탭 · 라우트 · 들어가는 버튼이 없다(코드 · 시험은 그대로)
 export const V5_HIDE_KEYS = { dailyRecs: 'v4_daily_recs', likes: 'v4_likes', shop: 'v4_shop' } as const;
 const V5_KEYS: readonly string[] = Object.values(V5_HIDE_KEYS);
-// 데모 장면: 이메일 앞부분에 v4on 이 있으면 숨긴 v4 화면 스위치를 켠다(예전 화면 웹 점검 web-f4 ~ f24 가 쓴다). 그 밖은 데모 처음값
+// IF2-F(D-223): 기내 서비스 · 연애 기능 스위치(그룹 IF2)
+const IF2_KEYS: readonly string[] = FEATURE_KEY_LIST.filter((k) => k.group === 'IF2').map((k) => k.key);
+// 데모 장면: 이메일 앞부분에 v4on 이 있으면 숨긴 v4 화면 스위치를 켠다(예전 화면 웹 점검 web-f4 ~ f24 가 쓴다).
+//  if2off 가 있으면 IF2 스위치를 끈다(live 처음값과 같은 지금 T1 · T2 · T4 — 새 홈 전 화면을 보는 웹 점검 web-w6 이 쓴다). 그 밖은 데모 처음값
 export const demoSceneDefault = (key: FeatureKey, email: string | null | undefined): boolean => {
-  if (V5_KEYS.includes(key) && (email ?? '').split('@')[0].toLowerCase().includes('v4on')) return true;
+  const local = (email ?? '').split('@')[0].toLowerCase();
+  if (V5_KEYS.includes(key) && local.includes('v4on')) return true;
+  if (IF2_KEYS.includes(key) && local.includes('if2off')) return false;
   return demoDefault(key);
 };

@@ -7,6 +7,7 @@
 //  5 찾지 못함 → '완벽한 사람을 찾지 못했어요' + 크레딧 → T5(잔액 1장 · 내역 · 스토어 환불 한 줄) · 좌석 모두 참 · 판매 전 · 정치 문항 빈칸
 //  6 동작 줄이기: 공개 순간에 이동(transform) 0
 //  7 사전 오픈 → 탑승권: 확정 전에는 탑승권 탭에 대기 화면(첫 매칭 '12월 23일 수요일 오후 6시') → 확정 장면이면 탑승권(판매 전)
+//  (IF2-F 10-28) 1 ~ 6 가입 이메일 w6plainif2off = 기내 서비스 스위치(그룹 IF2)를 끈 데모 장면 — 지금 T1 · T2(새 홈 전, live 처음값과 같은 모습)를 본다. 새 홈은 web-if2
 //  8 폭(SHOT_WIDTH, 기본 390) 가로 넘침 0 · 글자 13 이상 · 터치 48 이상 · 콘솔 오류 0 · 바깥 요청 0
 //  캡처: 확인/스크린샷/[SHOT_SUBDIR 기본 W6_<폭>]/W6_*.png
 // 사용: node scripts/web-w6.mjs [번들 폴더]   SHOT_WIDTH=360 node scripts/web-w6.mjs [번들 폴더]
@@ -100,7 +101,7 @@ async function signUp(email, until) {
 let exitCode = 0;
 try {
   // ═══ 1. 탭 바 ═══
-  check('1', '가입을 마치면 탑승권 탭으로 온다(09 하루 세 분은 숨김)', await signUp('w6plain@email.com', `location.pathname === '/boarding' && !!${visQ('boarding-status-on_sale')}`), await path0());
+  check('1', '가입을 마치면 탑승권 탭으로 온다(09 하루 세 분은 숨김)', await signUp('w6plainif2off@email.com', `location.pathname === '/boarding' && !!${visQ('boarding-status-on_sale')}`), await path0());
   await sleep(800);
   const tabs = await tabLabels();
   check('1', `탭 바 첫 칸 '탑승권' · 추천 · 호감 · 상점 칸 없음 · 설정 있음`, tabs[0] === '탑승권' && !tabs.includes('추천') && !tabs.includes('호감') && !tabs.includes('상점') && tabs.includes('설정'), tabs.join(' · '));

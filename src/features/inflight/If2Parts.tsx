@@ -88,7 +88,7 @@ export function HomeCell({ icon, name, line, onPress, testID }: { icon: If2IconN
 // 기기에만 남는 표시 단추('이야기 나눴어요' · '챙겼어요') — 켜짐은 상태 속성 · 개수 0
 export function MarkButton({ label, a11y, on, onPress, testID }: { label: string; a11y: string; on: boolean; onPress: () => void; testID: string }) {
   return (
-    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={a11y} onPress={onPress} effect="scale" style={({ pressed }) => [styles.mark, on && styles.markOn, pressed && styles.pressed]} testID={testID}>
+    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: on }} aria-checked={on} accessibilityLabel={a11y} onPress={onPress} effect="scale" style={({ pressed }) => [styles.mark, on && styles.markOn, pressed && styles.pressed]} testID={testID}>
       <AppText variant="captionMedium" tone={on ? 'accent' : 'sub'}>
         {label}
       </AppText>

@@ -267,7 +267,7 @@ function FoldBlock({ rows, open, onToggle, onRow, boarding, testID }: { rows: Fo
     r === 'profile' ? BOARDING.tasks.profile.line : r === 'survey' ? BOARDING.tasks.survey.line : r === 'avoid' ? BOARDING.tasks.avoid.line : r === 'chats' ? BOARDING.tasks.chats.line(boarding.past.length) : r === 'memo' ? tx('MEET_MEMO.home.lineWritten') : r === 'type' ? tx('TYPE_CARD.home.open') : tx('PREVIEW_ME.home.line');
   return (
     <View style={styles.fold} testID={testID}>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={open ? tx('HOME.fold.a11yClose') : tx('HOME.fold.a11yOpen')} onPress={onToggle} effect="none" style={({ pressed }) => [styles.foldRow, pressed && styles.pressed]} testID={`${testID}-toggle`}>
+      <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} aria-expanded={open} accessibilityLabel={open ? tx('HOME.fold.a11yClose') : tx('HOME.fold.a11yOpen')} onPress={onToggle} effect="none" style={({ pressed }) => [styles.foldRow, pressed && styles.pressed]} testID={`${testID}-toggle`}>
         <Icon name="settings" size={22} color={colors.sub} />
         <AppText variant="bodyMedium" style={if2Styles.flex}>
           {tx('HOME.fold.title')}

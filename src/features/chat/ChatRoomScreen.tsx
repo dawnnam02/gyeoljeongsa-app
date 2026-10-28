@@ -379,7 +379,8 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
                   );
                 })}
               </ScrollView>
-              {open && if2 ? <OpenerChips roomId={id} roundNo={room.roundNo} wrote={wrote} deps={if2} onChip={putText} onPostcard={() => setSheet('hello')} /> : null}
+              {/* 첫마디 실마리는 만남 장면(D46)이 덮여 있는 동안 0 — 장면이 끝난 뒤 입력창 위에 */}
+              {open && if2 && !meetView.scene ? <OpenerChips roomId={id} roundNo={room.roundNo} wrote={wrote} deps={if2} onChip={putText} onPostcard={() => setSheet('hello')} /> : null}
               {open ? (
                 <Composer
                   canPhoto={media.photo}

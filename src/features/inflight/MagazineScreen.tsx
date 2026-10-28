@@ -240,7 +240,8 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
   return (
     <Screen edges={['top']} testID="screen-mag">
       {head}
-      <View style={if2Styles.flex} onLayout={onLayout}>
+      {/* key: 불러오는 중 칸(같은 자리 View)을 이어 쓰지 않고 새로 붙인다 — 웹(react-native-web)은 처음 붙을 때 onLayout 이 없으면 크기 관찰을 하지 않아 쪽 폭이 0 으로 남는다 */}
+      <View key="mag-pages" style={if2Styles.flex} onLayout={onLayout}>
         <ScrollView ref={pager} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={onScrollEnd} scrollEventThrottle={16} testID="mag-pager">
           {MAG_PAGES.map((p) => (
             <ScrollView key={p} style={width > 0 ? { width } : styles.hidden} contentContainerStyle={styles.pagePad} accessibilityElementsHidden={MAG_PAGES[page] !== p} importantForAccessibility={MAG_PAGES[page] === p ? 'auto' : 'no-hide-descendants'}>

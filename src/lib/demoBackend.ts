@@ -754,7 +754,10 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
       // V5 W6 탑승권(서버 확정 이름 get_ticket_state · get_weekly_match · hold_ticket_seat · release_ticket_hold · demo_buy_ticket · board_with_credit · list_ticket_history · cancel_ticket_seat · ack_ticket_contract + 데모 줄 demo_boarding_scene)
       if (boarding.handles(name)) {
         const account = me();
-        return account ? boarding.rpc({ id: account.id, email: account.email }, name, args) : Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
+        if (!account) return Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
+        const u = { id: account.id, email: account.email };
+        inflight.sceneOf(u); // IF2 데모 이메일 장면(if2inflight …)이 탑승권 장면도 정하므로, 탑승권을 처음 읽기 전에 먼저 정해 둔다(홈 위 탑승권 칸과 아래 블록이 같은 장면)
+        return boarding.rpc(u, name, args);
       }
       // IF2-F 기내 서비스(get_home_state · get_magazine · get_week_card · pick_week_card · pre_answer_questions · preview_my_profile · get_pair_card + 데모 줄 demo_inflight_scene)
       if (inflight.handles(name)) {

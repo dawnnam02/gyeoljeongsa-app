@@ -43,7 +43,7 @@ export function Ck17Sheet(props: Ck17Props) {
 }
 function CheckRow({ on, label, why, note, disabled, onPress, testID }: { on: boolean; label: string; why: string; note?: string; disabled?: boolean; onPress: () => void; testID: string }) {
   return (
-    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: on, disabled: !!disabled }} accessibilityLabel={label} disabled={disabled} onPress={onPress} effect="none" style={({ pressed }) => [styles.checkRow, disabled && styles.dim, pressed && styles.pressed]} testID={testID}>
+    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: on, disabled: !!disabled }} aria-checked={on} accessibilityLabel={label} disabled={disabled} onPress={onPress} effect="none" style={({ pressed }) => [styles.checkRow, disabled && styles.dim, pressed && styles.pressed]} testID={testID}>
       <CheckBox checked={on} />
       <View style={if2Styles.flex}>
         <AppText variant="body">{label}</AppText>
@@ -157,6 +157,7 @@ function HelloWriteBody({ round, writable, onClose, onToast, notes = deviceNotes
               key={l}
               accessibilityRole="radio"
               accessibilityState={{ checked: line === i, disabled: !writable }}
+              aria-checked={line === i}
               accessibilityLabel={tx('HELLO_POSTCARD.a11y.line', { 문장: l })}
               disabled={!writable}
               onPress={() => setLine(i)}

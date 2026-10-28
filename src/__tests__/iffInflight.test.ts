@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { demoDefault, FEATURE_KEY_LIST, FEATURE_KEYS } from '@/config/featureKeys';
+import { demoDefault, demoSceneDefault, FEATURE_KEY_LIST, FEATURE_KEYS } from '@/config/featureKeys';
 import { MONEY_SAFETY_DICT_VERSION, MONEY_SAFETY_WORDS } from '@/content/moneySafetyWords';
 import lib from '@/content/if2Library.json';
 import { createDemoBoarding } from '@/demo/boardingDemo';
@@ -422,6 +422,15 @@ describe('IFF-16 같은 취미(D-224 · 정책 PF-48 · PF-49)', () => {
 });
 
 describe('데모 모의 서버 = 0043 응답 모양(같은 파서로 읽힘)', () => {
+  test('데모 장면 if2off: IF2 스위치 20개만 꺼짐(live 처음값과 같은 지금 T1 · T2 · T4 — web-w6) · 다른 스위치 · 다른 이메일은 데모 처음값', () => {
+    const if2 = FEATURE_KEY_LIST.filter((k) => k.group === 'IF2').map((k) => k.key);
+    expect(if2).toHaveLength(20);
+    for (const k of if2) {
+      expect(demoSceneDefault(k, 'w6plainif2off@email.com')).toBe(false);
+      expect(demoSceneDefault(k, 'w6plain@email.com')).toBe(demoDefault(k));
+    }
+    for (const k of FEATURE_KEYS.filter((x) => !if2.includes(x))) expect(demoSceneDefault(k, 'w6plainif2off@email.com')).toBe(demoSceneDefault(k, 'w6plain@email.com'));
+  });
   test('기내지: 발행 · 발행 전 · 닫힘 · CK17A 꺼짐이면 하늘과 결 0 · 문구 id 가 라이브러리에 있음', async () => {
     const r = rig('mag@email.com');
     await r.scene('inflight');

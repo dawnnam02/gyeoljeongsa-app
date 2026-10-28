@@ -76,6 +76,7 @@
     "check:f18": "node scripts/web-f18.mjs",
     "check:f20": "node scripts/web-f20.mjs",
     "check:lounge": "node scripts/web-lounge.mjs",
+    "check:if2": "node scripts/web-if2.mjs",
     "gen:schools": "node scripts/gen-schools.mjs",
     "check:bundle-audit": "node scripts/check-bundle-audit.mjs",
     "check": "npm run typecheck && npm run lint && npm test && npm run check:tokens && npm run check:copy",
