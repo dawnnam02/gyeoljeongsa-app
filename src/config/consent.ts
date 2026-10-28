@@ -48,7 +48,7 @@ export const CONSENT_TEXT_FINGERPRINTS: Readonly<Record<ConsentCode, string>> = 
 };
 // 약관 · 처리방침: 표식 구간과 작업 표시를 걸러낸 글의 지문
 export const LEGAL_DOC_FINGERPRINTS = {
-  terms: "16c99122a34b",
-  privacy: "2f44bac25fba",
+  terms: "3401d1970afa",
+  privacy: "6fead106379c",
 } as const;
 // <fingerprints:end>

@@ -461,3 +461,16 @@
 | check:copy | W 에 17장 REL 16줄 대조 + 느낌표 · 등급 · 점수 0(예외 CHAT.REL.use '등급 계산에는 쓰지 않아요.') · X' 에 17-2 religion_missing 3줄 · 12-Q ck4OnNote · rejoinNote |
 | 웹 점검 | f7(CK4 켜기 = 카드) · v6f · f20 · ime · surveyV2Driver(손님은 CK4 가 없어 카드 → 동의) 고침. v6f 기대 키 F07 · f20 '그 외' 글 · F07 자동 값(옛 기대값)도 같이 |
 | 시험 | 새 `s3saReligion.test.tsx` 9(카드 모양 · 동의 · 거절 → T1 · CK4 있으면 카드 0 · 고치기로 다시 · 설정 끔 → 탑승 0 · 건너뛴 계정 · 동의 관리 표시 · 설문 v2 카드). 고친 기대값: b0BoardGate(동의는 정치 · 종교 API 로 · CK4 없이 종교 값 저장 거부) · 설문 시험 3묶음(rig 에 CK4 미리) · surveyV2Model · surveyV2Demo · consentScreen(법무 CK4 덧붙이는 안내 v2) · settingsScreen(CK4 켜짐 줄 · 켜기 카드) · settingsGrade(탈퇴 rejoinNote) · s3sa0039 |
+
+# 3부-아 (D-223, 10-28 ~) — 상태 저장(멈춰도 이어감)
+
+- 기준: 팀장 지시(3부-아) · backend `R_변경기록.md` 9-4(0041 consents.source · too_many_consents) · 검수 `QP_결함목록.md` QP-09 · 10 · 32 · 35 · 36 · 37
+- 차례: ① gen:legal → ② source · 상한 → ③ 검수 결함 → ④ 등급 숫자 글 확인 → (카피 도착 뒤) 카피 묶음. 묶음마다 커밋 · 푸시 0
+
+| 단계 | 상태 |
+|---|---|
+| ① gen:legal --fingerprints(법무 약관 제9조의2 ③ · 제14조의2 ⑦ · 처리방침 9-4 · R40 · R28 · 5-4 · R44) | 끝 — 약관 지문 3401d1970afa · 처리방침 6fead106379c · 동의 판 13개 그대로 · check:copy 103/0 · 법무 시험 42/42 |
+| ② consents.source · too_many_consents | 진행 |
+| ③ 검수 결함 | 대기 |
+| ④ '9단계 중 n등급' 확인 | 대기 |
+| 카피 묶음(마케팅 대기) | 대기 |
