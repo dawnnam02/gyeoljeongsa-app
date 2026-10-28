@@ -42,7 +42,7 @@
 | 팀장 신호 '21장 끝'(작업 중) | 반영 — 초안 대신 카피.md 21장이 원본(gen-if2-copy 가 21장을 읽음 · 371 글 + 끌어 쓰는 자리 1 = 372) · 21-18 세 줄 같은 커밋 · 21장 표시 '앱 반영 전' → '앱 반영'(두 줄, 표시 꼴만) · check:copy 새 그룹 IF2 |
 | 묶음 1 앱 코드(스위치 · 응답 읽기 · 데모 · 홈 · 화면 · 시트 · 대화방 칸 · 설정 · 08 · 글 · 생성기) | 끝 — ee231e0 |
 | 묶음 2 시험(IFF-01 ~ 16 · 데모 = fun_calc · 화면) | 끝 — 23576ed |
-| 묶음 3 웹 점검 web-if2 · 웹에서 찾은 결함 고침 · 바닥선 · 이 기록 | 끝 — 4장 |
+| 묶음 3 웹 점검 web-if2 · 웹에서 찾은 결함 고침 · 바닥선 · 이 기록 | 끝 — bd83aa0(확인 4장) |
 | 푸시 | 0(팀장) |
 
 ## 2. 데모 장면 이름 목록(데모 모드에서만 · 스토어 빌드 0)
@@ -98,7 +98,7 @@
 |---|---|---|
 | 1 ee231e0(65) | 생성기 2(`scripts/gen-if2-copy.mjs` · `gen-if2-assets.mjs`) · 생성 파일 6(`if2CopyData.ts` · `if2Library.json` · `if2art.json` · `moneySafetyWords.ts` · `if2IconPaths.ts` · `ck17Content.ts`) · 데모 6(`demo/funCalc` · `inflightDemo` · `inflightChatDemo` · `inflightShared` · `inflightDemoBar` · `typeDemo`) · 화면 · 부품 · 로직 13(`features/inflight/*`) · 라우트 3(`magazine` · `type-card` · `preview-me`) · `theme/if2Look.ts` | 스위치 `featureKeys.json`(그룹 IF2 20) · 탑승권 홈(BoardingScreen · boardingServices · boardingCopy 21-18) · 대화방(chatApi · ChatParts · Composer · ChatRoomScreen · chatDemo · chatService · 라우트) · 08(ProfileScreen · ToggleRow · profileApi · 라우트) · 12(ConsentManagePage · SettingsScreen · settingsCopy 21-18) · 데모 서버(demoBackend · settingsDemo) · secureStorage(if2Storage) · 화면 목록(screens · flow) · check-copy(그룹 IF2 · 21-18) · check-copy-rules · 시험 6(키 수 · 라우트 · 고지 이름 · 법무 원문 파일 · 데모 꺼짐 키) |
 | 2 23576ed(2) | `__tests__/iffInflight.test.ts`(34) · `__tests__/iffInflightUi.test.tsx`(22) | — |
-| 3 (이 커밋) | `scripts/web-if2.mjs` · npm `check:if2` | 웹에서 찾은 결함 5(4-2) · `featureKeys.ts`(if2off 장면) + 시험 1 · `web-w6.mjs`(가입 이메일 if2off) · 이 기록 |
+| 3 bd83aa0(13) | `scripts/web-if2.mjs` · npm `check:if2` | 웹에서 찾은 결함 5(4-2) · `featureKeys.ts`(if2off 장면) + 시험 1 · `web-w6.mjs`(가입 이메일 if2off) · 이 기록 |
 
 ## 4. 확인
 
