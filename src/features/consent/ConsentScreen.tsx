@@ -59,7 +59,10 @@ export type ConsentDeps = {
 const defaultDeps: ConsentDeps = {
   userId: () => authApi.userId(),
   loadActive: () => loadActiveConsents(supabase),
-  record: (rows) => recordConsents(supabase, rows),
+  record: async (rows) => {
+    const r = await recordConsents(supabase, rows);
+    return r.ok ? r : { ok: false, reason: r.reason === 'limit' ? 'server' : r.reason };
+  },
   signOut: () => authApi.signOut(),
 };
 
@@ -150,7 +153,7 @@ export function ConsentScreen({ deps: injected }: { deps?: ConsentDeps }) {
       router.replace({ pathname: '/sign-in', params: { reason: 'session' } }); // 로그인이 풀렸다(분기 ⑦)
       return;
     }
-    const rows = buildConsentRows({ userId, shown, checked, required: REQUIRED_SET, appVersion: APP_VERSION });
+    const rows = buildConsentRows({ userId, shown, checked, required: REQUIRED_SET, appVersion: APP_VERSION, source: 'signup' });
     const result = await deps.record(rows);
     if (!alive.current) return;
     if (!result.ok) {

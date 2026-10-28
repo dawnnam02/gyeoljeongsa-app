@@ -470,7 +470,7 @@
 | 단계 | 상태 |
 |---|---|
 | ① gen:legal --fingerprints(법무 약관 제9조의2 ③ · 제14조의2 ⑦ · 처리방침 9-4 · R40 · R28 · 5-4 · R44) | 끝 — 약관 지문 3401d1970afa · 처리방침 6fead106379c · 동의 판 13개 그대로 · check:copy 103/0 · 법무 시험 42/42 |
-| ② consents.source · too_many_consents | 진행 |
-| ③ 검수 결함 | 대기 |
+| ② consents.source · too_many_consents | 끝(커밋 ②) — consentApi source 한 칸(03 signup · 정치 · 종교 카드 survey_card · CK16 · 지인 차단 시트 CK11 feature_sheet · 동의 관리 · 알림 settings) · 54000 too_many_consents → reason 'limit'(동의 관리 글은 카피 묶음 tooMany) · 데모 서버 4값 검사 · 같은 오류 꼴 · 시험 s3aConsentSource 2 |
+| ③ 검수 결함 | 진행 |
 | ④ '9단계 중 n등급' 확인 | 대기 |
 | 카피 묶음(마케팅 대기) | 대기 |

@@ -50,7 +50,7 @@ export async function contactHashes(emails: readonly string[], sha256: Sha256Hex
 async function ensureConsent(api: ContactSyncDeps['api']): Promise<boolean> {
   const c = await api.loadConsents();
   if (c.ok && c.data.CK11) return true;
-  const saved = await api.setOptional('CK11', true);
+  const saved = await api.setOptional('CK11', true, 'feature_sheet'); // 0041 받은 곳: 지인 차단 시트
   return saved.ok;
 }
 

@@ -9,7 +9,7 @@ import { CONSENT_TEXT_VERSIONS } from '@/config/consent';
 import { loadActiveConsents, recordConsents } from '@/lib/consentApi';
 import { safeLog } from '@/lib/log';
 
-export type ReligionFailure = 'network' | 'server';
+export type ReligionFailure = 'network' | 'server' | 'limit';
 export type ReligionApi = {
   load: () => Promise<{ ok: true; on: boolean } | { ok: false; reason: ReligionFailure }>; // on = 유효한 CK4 가 있다(카드 없이 A06)
   record: (agreed: boolean) => Promise<{ ok: true } | { ok: false; reason: ReligionFailure }>;
@@ -27,7 +27,7 @@ export function createReligionApi(client: SupabaseClient, appVersion = 'dev', op
       const { data } = await client.auth.getSession();
       const userId = data.session?.user?.id ?? opts.guestUserId;
       if (!userId) return { ok: false, reason: 'server' };
-      const saved = await recordConsents(client, [{ user_id: userId, item_code: 'CK4', agreed, text_version: CONSENT_TEXT_VERSIONS.CK4, app_version: appVersion }]);
+      const saved = await recordConsents(client, [{ user_id: userId, item_code: 'CK4', agreed, text_version: CONSENT_TEXT_VERSIONS.CK4, app_version: appVersion, source: 'survey_card' }]); // 0041 받은 곳
       safeLog({ event: 'religion_consent', status: saved.ok ? (agreed ? 'agreed' : 'declined') : saved.reason });
       return saved;
     },

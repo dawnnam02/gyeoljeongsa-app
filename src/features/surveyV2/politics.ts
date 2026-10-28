@@ -65,10 +65,10 @@ export function createPoliticsApi(client: SupabaseClient, appVersion = 'dev', op
       const userId = data.session?.user?.id ?? opts.guestUserId;
       if (!userId) return { ok: false, reason: 'server' };
       const saved = await recordConsents(client, [
-        { user_id: userId, item_code: POL_SERVER.consentCode as ConsentCode /* CK15 는 생성 코드 목록 밖(법무 판 생기면 합친다) */, agreed: true, text_version: POL_SERVER.consentVersion, app_version: appVersion },
+        { user_id: userId, item_code: POL_SERVER.consentCode as ConsentCode /* CK15 는 생성 코드 목록 밖(법무 판 생기면 합친다) */, agreed: true, text_version: POL_SERVER.consentVersion, app_version: appVersion, source: 'survey_card' }, // 0041 받은 곳
       ]);
       safeLog({ event: 'politics_consent', status: saved.ok ? 'ok' : saved.reason });
-      return saved.ok ? { ok: true, data: true } : { ok: false, reason: saved.reason };
+      return saved.ok ? { ok: true, data: true } : { ok: false, reason: saved.reason === 'limit' ? 'server' : saved.reason };
     },
     async save(position) {
       const p = clampPos(position);

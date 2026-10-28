@@ -205,10 +205,10 @@ export function createSurveyChatApi(client: SupabaseClient, appVersion = 'app', 
       const userId = data.session?.user?.id ?? opts.guestUserId;
       if (!userId) return { ok: false, reason: 'server' };
       const saved = await recordConsents(client, [
-        { user_id: userId, item_code: CHAT_SERVER.consentCode as ConsentCode /* CK16 은 생성 코드 목록 밖(법무 판 생기면 합친다) */, agreed: true, text_version: CHAT_SERVER.consentVersion, app_version: appVersion },
+        { user_id: userId, item_code: CHAT_SERVER.consentCode as ConsentCode /* CK16 은 생성 코드 목록 밖(법무 판 생기면 합친다) */, agreed: true, text_version: CHAT_SERVER.consentVersion, app_version: appVersion, source: 'feature_sheet' }, // 0041: CK16 = 기능 시트
       ]);
       safeLog({ event: 'ck16_consent', status: saved.ok ? 'ok' : saved.reason });
-      return saved.ok ? { ok: true, data: true } : { ok: false, reason: saved.reason };
+      return saved.ok ? { ok: true, data: true } : { ok: false, reason: saved.reason === 'limit' ? 'server' : saved.reason };
     },
   };
 }

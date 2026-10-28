@@ -15,7 +15,7 @@ import { LATER_CONSENT_VERSIONS } from '@/config/laterConsent';
 import { LATER_CONSENT_CODES, type ConsentCode, type LaterConsentCode } from '@/content/types';
 
 import { memoryAvoidStore, orgKey, type AvoidLocal, type AvoidSchool, type AvoidStore } from './avoidLocal';
-import { loadActiveConsents, recordConsents } from './consentApi';
+import { loadActiveConsents, recordConsents, type ConsentSource } from './consentApi';
 import { safeLog } from './log';
 import { readDbFailure, readFunctionFailure } from './serverError';
 
@@ -202,7 +202,8 @@ export function createSettingsApi(client: SupabaseClient, appVersion = 'dev', av
     },
 
     // 선택 동의 켜기(동의 기록 더하기) · 끄기(철회 기록, CK4 면 서버가 종교 3문항을 '답하지 않음'으로)
-    async setOptional(code: OptionalCode, on: boolean): Promise<Outcome<SettingsFailure | 'session'>> {
+    //  3부-아(0041): 받은 곳 source — 동의 관리 · 알림 화면은 settings, 지인 차단 시트(CK11)는 feature_sheet. 줄 60개 상한이면 'limit'(고객센터 안내 글)
+    async setOptional(code: OptionalCode, on: boolean, source: ConsentSource = 'settings'): Promise<Outcome<SettingsFailure | 'session' | 'limit'>> {
       if (!on) {
         const { error } = await client.rpc('revoke_consent', { p_item: code });
         if (!error) return { ok: true };
@@ -214,7 +215,7 @@ export function createSettingsApi(client: SupabaseClient, appVersion = 'dev', av
       const { data } = await client.auth.getSession();
       const userId = data.session?.user?.id;
       if (!userId) return { ok: false, reason: 'session' };
-      const saved = await recordConsents(client, [{ user_id: userId, item_code: code as ConsentCode /* CK11 ~ CK16 은 생성 코드 목록 밖(config/laterConsent.ts) */, agreed: true, text_version: version, app_version: appVersion }]);
+      const saved = await recordConsents(client, [{ user_id: userId, item_code: code as ConsentCode /* CK11 ~ CK16 은 생성 코드 목록 밖(config/laterConsent.ts) */, agreed: true, text_version: version, app_version: appVersion, source }]);
       if (!saved.ok) safeLog({ event: 'settings.consent.agree.fail', code: saved.reason });
       return saved;
     },

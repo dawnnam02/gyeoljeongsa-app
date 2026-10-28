@@ -39,7 +39,8 @@ const WRONG_LIMIT = 5;
 const UNDERAGE_LIMIT = 3;
 const UNDERAGE_WINDOW_MS = 30 * DAY_MS;
 
-type DemoConsent = { item_code: string; agreed: boolean; text_version: string; revoked_at: string | null };
+type DemoConsent = { item_code: string; agreed: boolean; text_version: string; revoked_at: string | null; source?: string | null };
+const CONSENT_SOURCES = new Set(['signup', 'survey_card', 'feature_sheet', 'settings']); // 0041 consents.source check
 type DemoAiCase = {
   id: string;
   createdAt: number;
@@ -640,14 +641,15 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
         const item = String(r.item_code);
         const version = String(r.text_version);
         const agreed = r.agreed === true;
-        const bad = r.user_id !== account.id || !/^CK(1[0-6]|[1-9])$/.test(item) || !/^consent-\d{4}\.\d{2}\.\d{2}-v\d+$/.test(version) || String(r.app_version ?? '').length > 32;
+        const bad = r.user_id !== account.id || !/^CK(1[0-6]|[1-9])$/.test(item) || !/^consent-\d{4}\.\d{2}\.\d{2}-v\d+$/.test(version) || String(r.app_version ?? '').length > 32 || (r.source != null && !CONSENT_SOURCES.has(String(r.source)));
         if (bad) return { data: null, error: { code: '23514', message: 'check violation' } };
         if (!agreed && !/^CK(4|9|1[0-6])$/.test(item)) return { data: null, error: { code: '23514', message: 'check violation' } }; // 필수 칸은 동의한 기록만(0033: 선택 CK4 · CK9 · CK10 ~ CK16)
         const duplicate = agreed && [...account.consents, ...pending].some((c) => c.agreed && c.revoked_at === null && c.item_code === item && c.text_version === version);
         if (duplicate) return { data: null, error: { code: '23505', message: 'duplicate key value' } };
-        pending.push({ item_code: item, agreed, text_version: version, revoked_at: null });
+        pending.push({ item_code: item, agreed, text_version: version, revoked_at: null, source: r.source == null ? null : String(r.source) });
       }
-      if (account.consents.length + pending.length > 60) return { data: null, error: { code: 'P0001', message: 'consent_limit' } }; // 사용자당 60줄까지
+      // 사용자당 60줄까지(0004) — 0041 안내 사유: too_many_consents · 54000 · DETAIL consent_rows_full · HINT support
+      if (account.consents.length + pending.length > 60) return { data: null, error: { code: '54000', message: 'too_many_consents', details: 'consent_rows_full', hint: 'support' } as DbError };
       account.consents.push(...pending); // 한 요청 = 전부 또는 하나도 아님
       return { data: null, error: null };
     }
