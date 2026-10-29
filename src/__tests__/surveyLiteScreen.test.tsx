@@ -366,6 +366,26 @@ describe('05 사진 3장 · 마치기', () => {
     expect(mockRouter.replace).toHaveBeenCalledWith('/analysis');
   });
 
+  test('3부-자(0044): 대화형 내 성향을 마친 분은 제출 뒤 AI 정리(start) 없이 확정 → 08(06 · 07 건너뜀) · 확정이 안 되면 지금처럼 start → 06', async () => {
+    const yes = photosSetup();
+    yes.deps.interviewConfirm = jest.fn(async () => true);
+    const tree = await show(<PhotosLiteScreen deps={yes.deps} />);
+    for (const slot of ['face', 'full', 'free']) await tap(tree, `photoslite-slot-${slot}`);
+    await tap(tree, 'photoslite-finish');
+    expect(yes.order).toEqual(['submit']); // 스타일을 안 골랐으면 저장 없이 제출까지만
+    expect(yes.api.startAi).not.toHaveBeenCalled();
+    expect(mockRouter.replace).toHaveBeenCalledWith({ pathname: '/profile', params: { first: '1' } });
+    expect(mockRouter.replace).not.toHaveBeenCalledWith('/analysis');
+    mockRouter.replace.mockClear();
+    const no = photosSetup();
+    no.deps.interviewConfirm = jest.fn(async () => false);
+    const tree2 = await show(<PhotosLiteScreen deps={no.deps} />);
+    for (const slot of ['face', 'full', 'free']) await tap(tree2, `photoslite-slot-${slot}`);
+    await tap(tree2, 'photoslite-finish');
+    expect(no.order).toEqual(['submit', 'start']);
+    expect(mockRouter.replace).toHaveBeenCalledWith('/analysis');
+  });
+
   test('스타일은 필수가 아니다: 비우고 마치면 저장 없이 제출 → start', async () => {
     const s = photosSetup({ start: () => new Promise(() => undefined) }); // start 는 처리 끝까지 응답하지 않는다
     const tree = await show(<PhotosLiteScreen deps={s.deps} />);

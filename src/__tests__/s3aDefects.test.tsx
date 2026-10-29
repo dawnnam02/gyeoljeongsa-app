@@ -84,7 +84,8 @@ describe('QP-09 대화형 설문 ‘내 성향’을 마친 분은 07 을 다시
     const tree = await mount(<TraitsScreen deps={d} />);
     shown.push(tree);
     await wait(30);
-    expect(confirm).toHaveBeenCalledWith('r1');
+    expect(confirm).toHaveBeenCalledWith(null); // 3부-자(0044): 서버가 인터뷰 정리로 확정 — 건 id 를 주지 않는다
+    expect(confirm).toHaveBeenCalledTimes(1);
     expect(mockRouter.replace.mock.calls.concat(mockRouter.push.mock.calls).flat()).toContainEqual({ pathname: '/profile', params: { first: '1' } });
     expect(has(tree, 'traits-confirm')).toBe(false);
   });

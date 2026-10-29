@@ -9,6 +9,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { createSurveyV2DemoClient, createDemoV2Memory, DEMO_V2_GUEST, type DemoV2Memory } from './surveyV2Backend';
+import { demoShared } from './inflightShared';
 import { DEMO_ANALYSIS, DEMO_SCRIPTS, type ScriptTurn } from './surveyChatScripts';
 
 type Row = Record<string, unknown>;
@@ -37,6 +38,8 @@ export type DemoChatOptions = {
 };
 
 const shared = createDemoChatMemory();
+// 3부-자(0044): 모의 confirm_profile(null)이 '가장 늦은 세션 정리가 done 인가'를 읽는다(공유 메모리 한정)
+demoShared.setInterviewDone((userId) => shared.users.get(userId)?.sessions.at(-1)?.analysis === 'done');
 
 // base: 데모 로그인을 가진 클라이언트. auth.getSession 만 빌린다
 export function createSurveyChatDemoClient(base: Pick<SupabaseClient, 'auth'>, options: DemoChatOptions = {}): SupabaseClient {

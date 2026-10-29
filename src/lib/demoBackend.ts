@@ -546,6 +546,21 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
     async confirm_profile(args) {
       const account = me();
       if (!account) return { data: null, error: { code: '42501', message: 'forbidden' } };
+      if (args.p_result_id === null || args.p_result_id === undefined) {
+        // 0044 confirm_profile(null): 대화형 설문 정리가 done 이면 06 · 07 없이 확정. 서버는 분석 5축을 확정 성향 한 줄(ai_results)로 남긴다 — 데모는 확정된 AI 건 한 줄
+        if (!demoShared.interviewDone(account.id)) return { data: null, error: { code: 'P0001', message: 'ai_not_ready' } };
+        const t = now();
+        let line = account.aiCases.find((c) => c.id.startsWith('demo-interview-'));
+        if (!line) {
+          seq += 1;
+          line = { id: `demo-interview-${seq}`, createdAt: t, scenario: 'ok', retryCount: 0, runStartedAt: t - DAY_MS, source: 'ai', edited: null, manualDone: false, confirmedAt: null };
+          account.aiCases.push(line);
+        }
+        for (const other of account.aiCases) if (other !== line) other.confirmedAt = null;
+        line.confirmedAt = t;
+        account.active = true;
+        return { data: { ok: true }, error: null };
+      }
       const target = account.aiCases.find((c) => c.id === args.p_result_id);
       if (!target) return { data: null, error: { code: 'P0001', message: 'not_found' } };
       if (aiStatusOf(target) !== 'ok') return { data: null, error: { code: 'P0001', message: 'ai_not_ready' } };

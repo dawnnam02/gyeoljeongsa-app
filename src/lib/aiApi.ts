@@ -148,8 +148,8 @@ export function createAiApi(client: SupabaseClient) {
       return { ok: true };
     },
 
-    // [이대로 확정]
-    async confirm(resultId: string): Promise<ConfirmOutcome> {
+    // [이대로 확정]. resultId null = 대화형 설문 '내 성향'을 마친 분(서버 0044: 인터뷰 정리 done 이면 그 결과로 확정 · 06 · 07 건너뜀)
+    async confirm(resultId: string | null): Promise<ConfirmOutcome> {
       const { error } = await client.rpc('confirm_profile', { p_result_id: resultId });
       if (!error) return { ok: true };
       const f = readDbFailure(error);

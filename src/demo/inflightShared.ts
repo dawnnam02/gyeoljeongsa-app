@@ -9,6 +9,7 @@ type RoomMark = 'open' | 'gone';
 const rooms = new Map<string, RoomMark>(); // `${회원}|${방}` → 데모 채팅에서 나감 · 차단이면 gone
 let sameHobbyOf: (userId: string) => boolean = () => true;
 let flagsOf: (userId: string) => Promise<Readonly<Record<string, boolean>>> = async () => ({});
+let interviewDoneOf: (userId: string) => boolean = () => false; // 3부-자: 대화형 설문 정리가 끝났나(데모 대화형 모의 서버가 등록 — 모의 confirm_profile(null)이 본다, 서버 0044 와 같은 조건)
 
 export const demoShared = {
   markRoom(userId: string, roomId: string, mark: RoomMark) {
@@ -26,6 +27,10 @@ export const demoShared = {
     flagsOf = fn;
   },
   flags: (userId: string) => flagsOf(userId),
+  setInterviewDone(fn: (userId: string) => boolean) {
+    interviewDoneOf = fn;
+  },
+  interviewDone: (userId: string): boolean => interviewDoneOf(userId),
 };
 
 // 데모 짝의 같은 취미(0043 same_points 결과 꼴): 내 E11 [독서 · 여행 · 산책] ∩ 짝 [독서 · 여행 · 요리] — 독서는 그 권역에 흔해 코드 그대로,

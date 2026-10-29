@@ -24,13 +24,17 @@ import { Icon } from '@/components/Icon';
 import { LITE_COMMON, PHOTOS_LITE, SURVEY_LITE, SURVEY_LITE_DRAFT } from '@/content/surveyLiteCopy';
 import type { RunOutcome } from '@/lib/aiApi';
 import { kstToday } from '@/lib/birthDate';
+import { aiApi } from '@/lib/services';
 import { DEMO_LITE_IMAGES } from '@/lib/surveyLiteDemo';
 import { PHOTO_SLOTS, type JpegFile, type LiteAnswers, type LoadOutcome, type PhotoSlot, type SurveyLiteApi, type UploadFailCode } from '@/lib/surveyLiteApi';
 import { goBackOr, goForward } from '@/navigation/go';
+import { useSignupStore } from '@/store';
 import { layout } from '@/theme/layout';
 import { PHOTO_ICONS } from '@/theme/photoIcons';
 import { colors, radius, size, space } from '@/theme/tokens';
 
+import { confirmFromInterview, interviewDone } from '../ai/interviewConfirm';
+import { manualOfferStore } from '../ai/manualOffer';
 import { QuestionInput } from '../surveyLite/inputs';
 import { surveyLiteApi } from '../surveyLite/liteDeps';
 import { checkDraft, draftFromValue, firstMissingPage, LITE_PAGES, questionOf, visibilityLine, type Draft } from '../surveyLite/liteModel';
@@ -44,9 +48,17 @@ export type PhotosLiteDeps = {
   now: () => number;
   startGraceMs: number;
   surveyMissing?: (answers: LiteAnswers) => Promise<string | null>; // F20: 설문 빈 문항 검사(없으면 임시 설문 답으로 본다)
+  interviewConfirm?: () => Promise<boolean>; // 3부-자(0044): 대화형 '내 성향'을 마쳤으면 confirm_profile(null) 로 확정 — true 면 06 · 07 을 건너뛰고 08 로(없으면 늘 AI 정리 길)
 };
 export const START_GRACE_MS = 1500;
-const defaultDeps = (): PhotosLiteDeps => ({ api: surveyLiteApi(), picker: defaultPicker(), now: Date.now, startGraceMs: START_GRACE_MS, surveyMissing: photosSurveyMissing });
+// 대화형 설문을 마친 분은 서버가 인터뷰 정리로 확정한다(confirm_profile(null)) — AI 정리(ai-profile) 호출 없이 08 로. 안 되면 지금 길
+const interviewConfirm = async (): Promise<boolean> => {
+  if (!(await confirmFromInterview(aiApi.confirm, interviewDone))) return false;
+  useSignupStore.getState().setStage('traits-confirmed');
+  manualOfferStore.clear();
+  return true;
+};
+const defaultDeps = (): PhotosLiteDeps => ({ api: surveyLiteApi(), picker: defaultPicker(), now: Date.now, startGraceMs: START_GRACE_MS, surveyMissing: photosSurveyMissing, interviewConfirm });
 
 type SlotView = { readonly photoId: string | null; readonly preview: string | null; readonly working: boolean; readonly error: string | null };
 const EMPTY_SLOT: SlotView = { photoId: null, preview: null, working: false, error: null };
@@ -254,6 +266,14 @@ export function PhotosLiteScreen({ deps: given, onMissing, mode = 'normal' }: Pr
     }
     const submitted = await api.submit();
     if (!submitted.ok) return stop(SURVEY_LITE.saveFailed);
+    // 3부-자(0044): 대화형 '내 성향'을 마친 분은 AI 정리(06) · 확인(07) 없이 서버가 인터뷰 정리로 확정 → 08(처음 한 번). 확정이 안 되면 아래 AI 정리 길 그대로
+    if (deps.interviewConfirm && (await deps.interviewConfirm())) {
+      if (!alive.current) return;
+      busyRef.current = false;
+      setBusy(false);
+      goForward(router, { pathname: '/profile', params: { first: '1' } });
+      return;
+    }
     // AI 처리 시작(앱은 설문 본문을 보내지 않는다). 처리 끝까지 기다리지 않고 06 이 상태를 읽는다
     let timer: ReturnType<typeof setTimeout> | null = null;
     const grace = new Promise<'waiting'>((resolve) => {
