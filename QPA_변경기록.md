@@ -474,3 +474,32 @@
 | ③ 검수 결함 | 끝(커밋 ③) — QP-10 데모 채팅 신고 · 차단 → 설정 신고 내역 · 차단 목록(demo_note_chat_safety, 실서버는 0031 이 같은 표) · QP-09 대화형 설문 요약이 done 이면 07 다시 확인 없이 확정 → 08(실패 · 미완료는 지금처럼 07) · QP-32 T1 [설문으로] → 설문 v2 한 문항 입구(notice politics · religion) — 그 문항만 하고 T1 로 · 시험 s3aDefects 6 · serverFlow source 칸 맞춤 |
 | ④ '9단계 중 n등급' 확인 | 끝 — v5 화면에 안 나옴(후보 등급 카드는 from=reveal 에서 가림 · 09 는 v4_daily_recs 꺼짐) → 그대로 · 1.1 정리 목록 |
 | 카피 묶음(마케팅 '3부-아 카피 끝') | 끝(커밋 카피) — 20장: TRAITS.axisNote · GI.howProcess(법무 C10 ③ 앞 두 문장) · goalTitle · links[1] · goalHead · goalPromise · goalPick 지움 · survey.common.declinedValue(답 확인 결과만) · T1 profile_missing · grade_pending · BOARDING.tasks.avoid · AVOID.saving([더하기] 점 셋 읽기 이름) / 13-1 POL.needConsent / 12-Q ck4OffBoarded · ck15OffBoarded(판매 마감 전 · 이번 회차 탑승권 있을 때만) · tooMany(동의 관리 · 설문 CK4 · CK15 · CK16 카드) · SUPPORT.contactPending · check:copy 20장 대조(SEC20 · X 새 1항) 104/0 · 시험 s3aCopy 10 · 카피.md 원본은 손대지 않음(옛 줄 교체 · '반영' 표시는 마케팅) · 데모 회사 이름은 앱에 없음(D45 시안 · 테스트웹) |
+
+# 3부-자 (D-223 후속 · 10-28 ~) — 라운지 · 연애 기능 검수 결함 묶음 · 상태 저장(멈춰도 이어감)
+
+- 기준: 팀장 지시(3부-자) · 검수 `QP_결함목록.md` QP-39 ~ 49 · `LG_검수표.md` 7장 · `IF2_검수표.md` · backend `R_변경기록.md` 12장(0044 앱 넘김) · 카피 19-13 · 21장 · 기획 정책 PF-08 · 16 · 21 · 22 · 23 · 31 · 33 · 화면 B1 · IF-MAG · 04 · 07 · T4 · `ai/IF2/문구_라이브러리.json`(travel_types 12 · pack_quiz 7 · trip_places 12) · `계산명세.md` 10-1 · 10-2 · 팀장 점검일지 416
+- 지킨 선: backend · 법무 · 다른 직원 파일 수정 0(카피.md 는 19-13 이 정한 '앱 커밋에서 19-2 표로 옮김'만) · 실서버 · 유료 · AI 호출 · live · 스위치 켜기 0 · 푸시 0(팀장) · `npm audit fix --force` 0 · 카피 · 법무 줄은 '카피 도착' 뒤
+
+## 3부-자 세부청사진(착수 전)
+
+| # | 할 일 | 통과 조건(측정) |
+|---|---|---|
+| 1 | 법무 도착(QP-47): gen:legal --fingerprints · 12 생성형 AI 고지 둘째 문장 = 법무 5-6 | 처리방침 지문만 바뀜 · 동의 판 그대로 · '이번 주 타로' 앱 0(grep) · 법무 시험 통과 |
+| 2 | 라운지 QP-39 · 같은 꼴 전수: accessibilityState(checked · selected · expanded) 옆에 aria 같은 값 | 스캔 0곳 · 웹 공감 aria-pressed · 신고 사유 aria-checked |
+| 3 | 라운지 QP-40: 위기 카드 [닫기] 48 × 48 | 웹 터치 48 이상 |
+| 4 | 카피 19-13 `LOUNGE.row.lineRulesChanged`: 줄 intro + has_seat → 새 한 줄 · 첫 입장 시트 맨 위 `intro.rulesChanged`(있음 — 확인) · 카피.md 19-13 줄을 19-2 표로 · check:copy LG 210 | check:copy 0 · 시험 |
+| 5 | 0044 넘김: 줄 = `get_lounge_row_state`(intro 면 has_seat 를 lounge_state 로 한 번 더) · 숨긴 좌석 = `get_lounge_my_hidden` · [다시 보기] = `lounge_hide(post, false)` · 실시간 `closed` → 화면 닫힘 · 글 비움 · 구독 끊기 · 데모 모의 서버 같은 이름 · 모양 | 시험(응답 키 · 구독 끊김) · web-lounge |
+| 6 | 07 · 대화형 설문 끝(chatDone) → `confirm_profile(null)` → 08(06 · 07 건너뜀 · 실패면 지금처럼) · 데모 같은 길 | 시험 |
+| 7 | 연애 기능 QP-43(안 탄 분 기내지 notBoarded — 탑승권 상태로 가림) · QP-46(동의 시트 저절로 0) · QP-48(흐린 칸 글 = sub 토큰 · 대비 4.5+) · QP-49(궁합 ① '{같은 점}' 줄마다 · 두 줄까지) · QP-44(B1 탑승권 표 회차 번호 0 — 정책 PF-08) | 시험 · web-if2 |
+| 8 | 여행 타입 12 · 짐 싸기 7 · 여행지 12 = 라이브러리 원본(생성기) · 데모 타입 = 계산명세 10-1(fun_calc travel_type 같은 값) · 짐 싸기는 기기에만 · 노선 두 역 · 기내지 ⑤ 여행지 글 | gen --check · 시험(타입 경계 · 노선) · 웹 |
+| 9 | onLayout 폭 0 꼴(불러오는 중 칸 뒤 같은 자리 View 에 onLayout) 다른 화면 전수 · 고침 | 목록 · 웹 |
+| 10 | node-forge: 메이저 아닌 해법(overrides 등) — 시험 다 통과할 때만 | npm audit 줄어듦 · jest · 웹 |
+| 11 | (카피 도착 뒤) 강퇴 · 나감 [돌아가기] → T4 · `FUN.ck17.link` '동의하고 보기' → IF-CK17 · 07 · 04 끝 [내 여행 타입 보기] · 그 밖 마케팅 3부-자 줄 | check:copy 0 · 웹 |
+| 12 | 바닥선: tsc · jest · check:copy · tokens · 웹 전부(f1 · f3 · f7 · w6 · d46 · lounge · if2 3폭) · check_sec2(F-05s만 + LG-a 보안 몫) | 숫자 |
+
+## 3부-자 진행
+
+| 단계 | 상태 |
+|---|---|
+| 청사진 | 끝 |
+| 1 법무(QP-47) | 끝(커밋 1) — gen:legal --fingerprints 처리방침 지문만 바뀜(6fead106379c 쪽 → 7dec841d9b78 판 · 동의 판 13개 그대로) · IMAGE_CREDIT.aiWriting '이번 주 카드' · '이번 주 타로' 앱 0(grep) · 법무 시험(legalContent · legalGen · consentLogic jest) 39/39 |
