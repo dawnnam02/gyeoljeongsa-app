@@ -10,7 +10,7 @@ import { createLoungeApi, LOUNGE_MAX_POSTS, LOUNGE_OFF, parsePost, parseState, p
 import { LOUNGE } from '@/features/lounge/loungeCopy';
 import { LOUNGE_ICON_PATHS } from '@/features/lounge/LoungeIcon';
 import { colors } from '@/theme/tokens';
-import { balanceResultText, captainText, hideSeatPosts, mergePost, quoteLine, removePost, rowLineOf, sendErrorText, tripName } from '@/features/lounge/loungeLogic';
+import { balanceResultText, captainText, hideSeatPosts, mergePost, quoteLine, removePost, rowKeyOf, rowLineText, sendErrorText, tripName } from '@/features/lounge/loungeLogic';
 
 import { testOutside } from './helpers/outsideDocs';
 
@@ -234,17 +234,43 @@ describe('LG-F 데모 모의 서버 = 0042 응답 모양 · 같은 파서로 읽
 });
 
 describe('LG-F 화면 규칙(loungeLogic)', () => {
-  test('T4 줄 글(19-2): 비행 중 상태만 · none · closed · left · 꺼짐 · 실패 = 줄 0', () => {
-    expect(rowLineOf('intro')).toBe(LOUNGE.row.lineFirst);
-    expect(rowLineOf('stub')).toBe(LOUNGE.row.lineFirst);
-    expect(rowLineOf('open')).toBe(LOUNGE.row.lineSeated);
-    expect(rowLineOf('empty_room')).toBe(LOUNGE.row.lineSeated);
-    expect(rowLineOf('paused')).toBe(LOUNGE.row.lineSeated);
-    expect(rowLineOf('lights_out')).toBe(LOUNGE.row.lineLightsOut);
-    expect(rowLineOf('landing')).toBe(LOUNGE.row.lineLanding);
-    expect(rowLineOf('captain_only')).toBe(LOUNGE.row.lineCaptainOnly);
-    expect(rowLineOf('kicked')).toBe(LOUNGE.row.lineKicked);
-    for (const c of ['none', 'closed', 'left', 'off', 'failed'] as const) expect(rowLineOf(c)).toBeNull();
+  test('T4 줄 글(19-2 · 0044 get_lounge_row_state): 서버 줄 키 → 글 · 상태는 lounge_state 와 같음 · none · closed · left = 줄 0 · intro + 좌석 있음 = 약속 바뀜 줄(QP-42)', async () => {
+    const cases: [string, string, string | null][] = [
+      ['loungefirst', 'intro', 'first'],
+      ['loungerules', 'intro', 'first'],
+      ['loungeon', 'open', 'seated'],
+      ['loungemorning', 'open', 'seated'],
+      ['loungeempty', 'empty_room', 'seated'],
+      ['loungepaused', 'paused', 'seated'],
+      ['loungedark', 'lights_out', 'lightsOut'],
+      ['loungeland', 'landing', 'landing'],
+      ['loungecaptain', 'captain_only', 'captainOnly'],
+      ['loungekicked', 'kicked', 'kicked'],
+      ['loungeclosed', 'closed', null],
+      ['loungeleft', 'left', null],
+    ];
+    for (const [email, state, line] of cases) {
+      const { api, raw } = demoRig(`${email}@email.com`);
+      const row = await api.rowState();
+      expect([email, row]).toEqual([email, { ok: true, data: { code: state, line } }]);
+      const full = await api.state();
+      expect([email, full.ok && full.data.code]).toEqual([email, state]); // 줄 응답 = 상태 판정과 같은 값
+      expect(Object.keys((await raw('get_lounge_row_state')).data as object).sort()).toEqual(['line', 'state']); // 글 · 좌석 · 채널 · 개수 0
+    }
+    const none = demoRig('nobody@email.com', { flight: 'none' });
+    expect(await none.api.rowState()).toEqual({ ok: true, data: { code: 'none', line: null } });
+    expect(rowLineText('first')).toBe(LOUNGE.row.lineFirst);
+    expect(rowLineText('seated')).toBe(LOUNGE.row.lineSeated);
+    expect(rowLineText('lightsOut')).toBe(LOUNGE.row.lineLightsOut);
+    expect(rowLineText('landing')).toBe(LOUNGE.row.lineLanding);
+    expect(rowLineText('captainOnly')).toBe(LOUNGE.row.lineCaptainOnly);
+    expect(rowLineText('kicked')).toBe(LOUNGE.row.lineKicked);
+    expect(rowLineText('rulesChanged')).toBe(LOUNGE.row.lineRulesChanged);
+    expect(rowKeyOf('first', 'intro', true)).toBe('rulesChanged'); // 약속 판이 바뀐 회차 · 좌석은 그대로
+    expect(rowKeyOf('first', 'intro', false)).toBe('first');
+    expect(rowKeyOf('first', 'stub', true)).toBe('first');
+    expect(LOUNGE.row.lineRulesChanged).not.toMatch(/좌석이 정해/); // 좌석 번호 0 · '좌석이 정해져요' 0
+    expect(LOUNGE.row.lineRulesChanged).not.toMatch(/\d|[!！]/);
   });
 
   test('보내기 실패 글(19-8 · 19-11): code 마다 한 줄 · 거르기는 연락처 → 링크 → 금전 → 욕설 차례 첫 하나 · 숫자 0', () => {

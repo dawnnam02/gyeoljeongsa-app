@@ -10,6 +10,9 @@
 //   lounge_pick(p_post, p_side a | b)       → {ok, side} / pick_closed · lights_out · closed
 //   lounge_delete(p_post)                   → {ok} / not_found
 //   get_lounge_report_note(p_post)          → {ok, no_pair} / not_found — 0043 덧붙임: 신고 직후 신고자에게만, 그 신고가 이번 회차 짝 제외 쌍이 됐나(lounge_report 응답은 {ok:true} 그대로)
+//   0044(3부-자): get_lounge_row_state()    → {state, line} — T4 줄 전용(글 · 좌석 · 채널 0). state = lounge_state 와 같은 값 · line = first · seated · lightsOut · landing · captainOnly · kicked · null(줄 0)
+//                 get_lounge_my_hidden()    → {ok:true, seats:[{seat, post}]} / {ok:false, code} — 내가 숨긴 좌석(post = 되돌리기 lounge_hide(post, false)에 쓰는 그 좌석 글 id 하나 · 회원 id 0)
+//                 실시간 closed             → 수 18:00 공개 뒤 객실 채널에 한 번, 내용 {id:null, seat:null, body:null, at} — 화면을 닫고 구독을 끊는다(5분 다시 읽기는 안전망)
 //   오류: 스위치 꺼짐 feature_off(42501) · 로그인 아님 forbidden → 앱은 'off'(줄 0 · T6 → T4 목록)
 //   실시간: 비공개 채널 channel(`lounge:<객실 uuid>`) · 서버 방송만 — 이벤트 post {id, seat, body, at}(seat null = 기장, body 'captain.<키>') · gone {id, …}
 //  · 앱은 아는 키만 읽는다. 실시간 내용은 id · seat · body · at 넷만(LGF-02 · 보안 LC-05) · 회원 id 를 읽는 곳 0
@@ -65,6 +68,12 @@ export type LoungeState = {
   hasSeat: boolean;
 };
 
+// 0044 줄 전용 응답: 상태 + 줄 키(서버가 lounge_state 와 같은 판정으로 고름). intro + 좌석 있음(약속 판이 바뀐 회차)은 lounge_state 의 has_seat 를 한 번 더 읽어 앱이 rulesChanged 로 가름
+export type RowLine = 'first' | 'seated' | 'lightsOut' | 'landing' | 'captainOnly' | 'kicked';
+const ROW_LINES: readonly RowLine[] = ['first', 'seated', 'lightsOut', 'landing', 'captainOnly', 'kicked'];
+export type LoungeRowResult = { code: LoungeStateCode; line: RowLine | null };
+export type HiddenSeat = { seat: string; post: string };
+
 // 실시간 이벤트 내용 — 넷만 읽는다(LGF-02)
 export type LoungeEvent = { id: string; seat: string | null; body: string | null; at: number | null };
 
@@ -73,7 +82,7 @@ export type LoungeResult<T> = { ok: true; data: T } | LoungeFail;
 // 앱이 따로 다루는 실패: off(스위치 꺼짐 · 로그인 아님) · network(인터넷) · server(그 밖) — 나머지는 서버 code 그대로
 export const LOUNGE_OFF = 'off';
 
-export type LoungeHandlers = { onPost: (e: LoungeEvent) => void; onGone: (e: LoungeEvent) => void };
+export type LoungeHandlers = { onPost: (e: LoungeEvent) => void; onGone: (e: LoungeEvent) => void; onClosed?: () => void }; // closed = 0044: 수 18:00 공개 뒤 한 번(내용은 읽지 않는다)
 
 export type LoungeApi = {
   state(): Promise<LoungeResult<LoungeState>>;
@@ -87,6 +96,8 @@ export type LoungeApi = {
   pick(id: string, side: BalanceSide): Promise<LoungeResult<{ side: BalanceSide }>>;
   remove(id: string): Promise<LoungeResult<null>>;
   reportNote(id: string): Promise<LoungeResult<{ noPair: boolean }>>; // 0043 get_lounge_report_note
+  rowState(): Promise<LoungeResult<LoungeRowResult>>; // 0044 get_lounge_row_state — T4 줄 전용
+  myHidden(): Promise<LoungeResult<{ seats: HiddenSeat[] }>>; // 0044 get_lounge_my_hidden — 숨긴 좌석 시트를 다시 들어와도 채움
   subscribe(channel: string, handlers: LoungeHandlers): () => void; // 끊는 함수를 돌려준다
 };
 
@@ -180,6 +191,21 @@ export function parseState(raw: unknown): LoungeState | null {
   };
 }
 
+export function parseRow(raw: unknown): LoungeRowResult | null {
+  if (!isRecord(raw)) return null;
+  const code = LOUNGE_STATE_CODES.includes(raw.state as LoungeStateCode) ? (raw.state as LoungeStateCode) : null;
+  if (!code) return null;
+  const line = ROW_LINES.includes(raw.line as RowLine) ? (raw.line as RowLine) : null; // 모르는 값 · null = 줄 0
+  return { code, line };
+}
+
+export function parseHidden(raw: unknown): HiddenSeat | null {
+  if (!isRecord(raw)) return null;
+  const seat = seatOf(raw.seat);
+  const post = idOf(raw.post);
+  return seat && post ? { seat, post } : null;
+}
+
 // 최근 200개까지만(정책 PL-14 — 더 불러오기 0)
 export const LOUNGE_MAX_POSTS = 200;
 
@@ -237,6 +263,8 @@ export function createLoungeApi(client: SupabaseClient): LoungeApi {
     pick: (id, side) => run('lounge_pick', { p_post: id, p_side: side }, (d) => (sideOf(d.side) ? { side: d.side as BalanceSide } : BAD)),
     remove: (id) => run('lounge_delete', { p_post: id }, (d) => (d.ok === true ? null : BAD)),
     reportNote: (id) => run('get_lounge_report_note', { p_post: id }, (d) => (typeof d.no_pair === 'boolean' ? { noPair: d.no_pair } : BAD)),
+    rowState: () => run('get_lounge_row_state', {}, (d) => parseRow(d) ?? BAD),
+    myHidden: () => run('get_lounge_my_hidden', {}, (d) => ({ seats: Array.isArray(d.seats) ? d.seats.map(parseHidden).filter((x): x is HiddenSeat => x !== null) : [] })),
     subscribe(channel, handlers) {
       if (!CHANNEL.test(channel)) return () => undefined;
       const rt = client as unknown as RealtimeClient;
@@ -252,6 +280,9 @@ export function createLoungeApi(client: SupabaseClient): LoungeApi {
           .on('broadcast', { event: 'gone' }, (msg) => {
             const e = pickEvent(msg);
             if (e && !closed) handlers.onGone(e);
+          })
+          .on('broadcast', { event: 'closed' }, () => {
+            if (!closed) handlers.onClosed?.(); // 0044: 내용({id:null …})은 읽지 않는다 — 닫혔다는 사실만
           });
         const joined = ch;
         // 비공개 채널은 로그인 토큰으로 들어간다 — 토큰을 실시간 연결에 먼저 건 뒤 구독

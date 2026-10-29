@@ -1,30 +1,31 @@
 // 라운지 화면 규칙(렌더 없는 셈 — 시험이 바로 부른다). 근거: 정책 L장 · 화면 요구 T4 '라운지 줄' · T6 셈표 · 카피 19-11(서버 응답 ↔ 글 키).
-import type { BalanceSide, CaptainPost, LoungePost, LoungeQuote, LoungeStateCode, MemberPost } from './loungeApi';
+import type { BalanceSide, CaptainPost, LoungePost, LoungeQuote, LoungeStateCode, MemberPost, RowLine } from './loungeApi';
 import { LOUNGE_MAX_POSTS, byTime } from './loungeApi';
 import { LOUNGE } from './loungeCopy';
 
 // ── T4 라운지 줄(19-2 · 19-11) — 좌석 · 인원 · 미리보기 · 새 글 점 · 숫자 0. null = 줄 없음
-export function rowLineOf(code: LoungeStateCode | 'off' | 'failed'): string | null {
-  switch (code) {
-    case 'intro':
-    case 'stub':
+// 0044(3부-자): 줄 글은 서버 get_lounge_row_state 의 line 키가 고른다. intro 인데 좌석이 이미 있으면(약속 판이 바뀐 회차 · QP-42) 앱이 rulesChanged 로 바꾼다
+export type RowKey = RowLine | 'rulesChanged';
+export function rowLineText(key: RowKey): string {
+  switch (key) {
+    case 'first':
       return LOUNGE.row.lineFirst;
-    case 'open':
-    case 'empty_room':
-    case 'paused':
+    case 'seated':
       return LOUNGE.row.lineSeated;
-    case 'lights_out':
+    case 'lightsOut':
       return LOUNGE.row.lineLightsOut;
     case 'landing':
       return LOUNGE.row.lineLanding;
-    case 'captain_only':
+    case 'captainOnly':
       return LOUNGE.row.lineCaptainOnly;
     case 'kicked':
       return LOUNGE.row.lineKicked;
     default:
-      return null; // none · closed · left · 꺼짐 · 불러오기 실패 — 줄째 없음(오류 글 0)
+      return LOUNGE.row.lineRulesChanged;
   }
 }
+// intro 인데 좌석이 이미 있으면(약속 판이 바뀐 회차) 줄 글이 '좌석이 정해져요'가 아니라 rulesChanged(카피 19-2 · QP-42)
+export const rowKeyOf = (line: RowLine, code: LoungeStateCode, hasSeat: boolean): RowKey => (code === 'intro' && hasSeat ? 'rulesChanged' : line);
 
 // ── T6 에서 할 수 있는 것(서버 0042 판정과 같은 갈래 — 서버가 최종)
 const SEATED: readonly LoungeStateCode[] = ['open', 'empty_room', 'paused', 'lights_out', 'landing'];

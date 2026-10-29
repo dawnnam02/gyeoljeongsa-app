@@ -4,7 +4,8 @@
 //  · 객실: 최근 200개(더 불러오기 0) · 기장 점선 쪽지 · [나도 답하기] · 공감 하나(글쓴이에게만 '공감받았어요' · 개수 0) · 인용 답장 · 이 좌석 숨기기(나에게만) · 신고(사유 5) · 내 글 지우기
 //  · 소등 · 착륙 준비: 쓰기 · 공감 · 인용 · 고르기 0, 읽기 · 신고 · 숨김은 됨(PL-13 · PL-30). 닫힘 · 강퇴 · 나감: 글 0 · 실시간 끊음 · 화면 비움(LGF-10)
 //  · 실시간: T6 를 보고 있을 때만 객실 채널 하나 구독(화면을 떠나거나 앱이 뒤로 가면 끊음) · 받은 이벤트는 id · seat · body · at 넷만 읽고 그 글 하나만 다시 읽기(lounge_get_post)
-//  · 기기 저장 0(글 · 좌석 · 숨긴 좌석 · 위기 안내 닫음은 이 화면 메모리에만) · 로그는 이벤트 이름 · 코드만
+//  · 기기 저장 0(글 · 좌석 · 위기 안내 닫음은 이 화면 메모리에만 · 숨긴 좌석은 서버 get_lounge_my_hidden 이 채움 — 0044) · 로그는 이벤트 이름 · 코드만
+//  · 3부-자: 수 18:00 공개 뒤 실시간 closed 가 오면 화면을 닫고 글을 비우고 구독을 끊는다 · 강퇴 · 나감은 [돌아가기] → T4 목록
 //  · 스위치 lounge 꺼짐 · 탑승 아님으로 이 주소에 오면 T4 목록으로(PL-35)
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -32,7 +33,7 @@ import { loungeLook } from '@/theme/loungeLook';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 
 import { LOUNGE_OFF, LOUNGE_REASONS, type CaptainPost, type LoungeEvent, type LoungePost, type LoungeReason, type LoungeState, type MemberPost } from './loungeApi';
-import { LOUNGE } from './loungeCopy';
+import { LOUNGE, LOUNGE_BACK_TO_LIST } from './loungeCopy';
 import { LoungeIcon } from './LoungeIcon';
 import {
   balanceHasResult,
@@ -94,6 +95,7 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
   const [note, setNote] = useState('');
   const [pairNote, setPairNote] = useState(false); // 신고가 이번 회차 짝 제외 쌍이 됐나(0043 get_lounge_report_note — 신고자에게만)
   const alive = useRef(true);
+  const hiddenLoaded = useRef(false); // 숨긴 좌석을 서버에서 한 번 읽었나(객실에 처음 닿을 때 · 시트를 열 때)
   const shown = useRef(false); // 한 번이라도 라운지를 그렸나(처음부터 none 이면 목록으로)
   const [initialIds, setInitialIds] = useState<Set<string> | null>(null); // 처음 불러온 글(움직이지 않음)
   const [hiddenPostIds, setHiddenPostIds] = useState<Set<string>>(new Set()); // 숨긴 좌석의 글 id(인용 상자 '숨긴 좌석의 글이에요')
@@ -118,7 +120,18 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
     setSheet('none');
     setConfirm('none');
     setTarget(null);
+    setNewBelow(false);
+    hiddenLoaded.current = false;
   }, []);
+
+  // 0044 get_lounge_my_hidden: 내가 숨긴 좌석(좌석 + 되돌리기용 글 id). 다시 들어와도 시트가 채워지고 [다시 보기]가 된다. 못 읽으면 이 화면에서 숨긴 것만
+  const loadHidden = useCallback(async () => {
+    const r = await deps.api.myHidden();
+    if (!alive.current || !r.ok) return;
+    hiddenLoaded.current = true;
+    setHidden(new Map(r.data.seats.map((x) => [x.seat, x.post] as const)));
+    setHiddenPostIds((cur) => new Set([...cur, ...r.data.seats.map((x) => x.post)]));
+  }, [deps]);
 
   const reload = useCallback(async () => {
     const on = await deps.switchOn().catch(() => false);
@@ -146,7 +159,8 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
     if (!hasRoom(r.data.code, r.data.seat) && r.data.code !== 'intro' && r.data.code !== 'stub' && r.data.code !== 'captain_only') clearLocal();
     if (r.data.posts.length > 0) setInitialIds((cur) => cur ?? new Set(r.data.posts.map((p) => p.id)));
     setView({ kind: 'ready', st: r.data });
-  }, [deps, toList, clearLocal]);
+    if (hasRoom(r.data.code, r.data.seat) && !hiddenLoaded.current) void loadHidden();
+  }, [deps, toList, clearLocal, loadHidden]);
 
   useEffect(() => {
     alive.current = true;
@@ -186,6 +200,7 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
   // ── 실시간(T6 를 보고 있을 때만 · 객실 채널 하나)
   const onPost = useRef<(e: LoungeEvent) => void>(() => undefined);
   const onGone = useRef<(e: LoungeEvent) => void>(() => undefined);
+  const onClosed = useRef<() => void>(() => undefined);
   // 받은 이벤트 처리(그릴 때 바꾸지 않게 효과 안에서 최신 값으로 갈아 끼운다)
   useEffect(() => {
     onPost.current = (e) => {
@@ -203,12 +218,19 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
       });
     };
     onGone.current = (e) => patchPosts((list) => removePost(list, e.id));
+    // 0044 closed(수 18:00 공개 뒤 한 번): 화면을 닫힘으로 · 글 · 메모리 비움 · 구독 끊김(객실 상태가 아니라 channel 이 null). 서버 상태는 한 번 다시 읽어 맞춘다
+    onClosed.current = () => {
+      clearLocal();
+      setInitialIds(null);
+      setView((cur) => (cur.kind === 'ready' ? { kind: 'ready', st: { ...cur.st, code: 'closed', posts: [], captain: [], channel: null } } : cur));
+      void reload();
+    };
   });
 
   const channel = st && hasRoom(st.code, st.seat) ? st.channel : null;
   useEffect(() => {
     if (!focused || !active || !channel) return undefined;
-    return deps.api.subscribe(channel, { onPost: (e) => onPost.current(e), onGone: (e) => onGone.current(e) });
+    return deps.api.subscribe(channel, { onPost: (e) => onPost.current(e), onGone: (e) => onGone.current(e), onClosed: () => onClosed.current() });
   }, [focused, active, channel, deps]);
 
   // 착륙 준비(17:30 ~ 18:00): 닫힘을 알려고 5분마다 한 번(카운트다운 · 남은 시간 글 0)
@@ -547,9 +569,17 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
         </ScrollView>
       );
     } else if (s.code === 'left' || s.code === 'none') {
+      // 나감(탑승 취소 · 정지 · 탈퇴)은 [돌아가기] → T4 목록(기획 T6 이동표 · 검수 결정 10-28). 탑승 기록이 없는 none 은 지금처럼 [탑승권으로]
+      const left = s.code === 'left';
       body = (
         <ScrollView contentContainerStyle={styles.endBody}>
-          <EndView icon="seat" title={s.code === 'left' ? LOUNGE.left.title : null} body={LOUNGE.left.body} button={{ label: LOUNGE.closed.back, onPress: () => router.replace(LOUNGE_BOARDING_HREF as Href) }} testID={s.code === 'left' ? 'lounge-left' : 'lounge-none'} />
+          <EndView
+            icon="seat"
+            title={left ? LOUNGE.left.title : null}
+            body={LOUNGE.left.body}
+            button={left ? { label: LOUNGE_BACK_TO_LIST, onPress: toList } : { label: LOUNGE.closed.back, onPress: () => router.replace(LOUNGE_BOARDING_HREF as Href) }}
+            testID={left ? 'lounge-left' : 'lounge-none'}
+          />
           {demoLine}
         </ScrollView>
       );
@@ -557,7 +587,7 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
       body = (
         <View style={styles.flex}>
           <ScrollView contentContainerStyle={styles.endBody}>
-            <EndView icon="hide_seat" title={LOUNGE.kicked.title} body={LOUNGE.kicked.body} testID="lounge-kicked" />
+            <EndView icon="hide_seat" title={LOUNGE.kicked.title} body={LOUNGE.kicked.body} button={{ label: LOUNGE_BACK_TO_LIST, onPress: toList }} testID="lounge-kicked" />
             {demoLine}
           </ScrollView>
           <ComposerLine icon={null} text={LOUNGE.composer.stopped} testID="lounge-composer-line" />
@@ -734,7 +764,15 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
       <BottomSheet visible={sheet === 'menu'} onClose={() => setSheet('none')} testID="lounge-menu">
         <MenuRow label={LOUNGE.menu.info} onPress={() => setSheet('info')} testID="lounge-menu-info" />
         <MenuRow label={LOUNGE.menu.promise} onPress={() => setSheet('promise')} testID="lounge-menu-promise" />
-        <MenuRow label={LOUNGE.menu.hidden} icon={<LoungeIcon name="hide_seat" color={colors.text} />} onPress={() => setSheet('hidden')} testID="lounge-menu-hidden" />
+        <MenuRow
+          label={LOUNGE.menu.hidden}
+          icon={<LoungeIcon name="hide_seat" color={colors.text} />}
+          onPress={() => {
+            setSheet('hidden');
+            void loadHidden(); // 0044: 다시 들어와도 숨긴 좌석이 채워진다
+          }}
+          testID="lounge-menu-hidden"
+        />
         <Button label={LOUNGE.menu.close} variant="secondary" onPress={() => setSheet('none')} testID="lounge-menu-close" />
       </BottomSheet>
       <BottomSheet visible={sheet === 'info'} onClose={() => setSheet('none')} testID="lounge-info">
@@ -875,7 +913,7 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
             </AppText>
             {LOUNGE_REASONS.map((code) => (
               <View key={code}>
-                <Pressable accessibilityRole="radio" accessibilityState={{ checked: reason === code }} accessibilityLabel={REASON_TEXT[code]} onPress={() => setReason(code)} effect="none" style={({ pressed }) => [styles.reason, pressed && styles.pressed]} testID={`lounge-report-${code}`}>
+                <Pressable accessibilityRole="radio" accessibilityState={{ checked: reason === code }} aria-checked={reason === code} accessibilityLabel={REASON_TEXT[code]} onPress={() => setReason(code)} effect="none" style={({ pressed }) => [styles.reason, pressed && styles.pressed]} testID={`lounge-report-${code}`}>
                   <Radio checked={reason === code} />
                   <AppText variant="body" style={styles.flex}>
                     {REASON_TEXT[code]}

@@ -15,6 +15,7 @@ import { Pressable } from '@/components/Pressable';
 import { TextButton } from '@/components/TextButton';
 import { A11Y } from '@/content/copy';
 import { clockText } from '@/features/chat/chatLogic';
+import { ariaPressed } from '@/lib/webAria';
 import { Rise } from '@/motion';
 import { withAlpha } from '@/theme/color';
 import { layout } from '@/theme/layout';
@@ -155,7 +156,7 @@ function QuoteBox({ seat, text, onMine, testID }: { seat: string | null; text: s
 
 function Pill({ label, a11y, icon, selected = false, onPress, testID }: { label?: string; a11y: string; icon: ReactNode; selected?: boolean; onPress: () => void; testID: string }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={a11y} accessibilityState={label ? { selected } : undefined} onPress={onPress} effect="none" style={({ pressed }) => [styles.pillTouch, pressed && styles.pressed]} testID={testID}>
+    <Pressable accessibilityRole="button" accessibilityLabel={a11y} accessibilityState={label ? { selected } : undefined} {...(label ? ariaPressed(selected) : {})} onPress={onPress} effect="none" style={({ pressed }) => [styles.pillTouch, pressed && styles.pressed]} testID={testID}>
       <View style={[styles.pill, selected && styles.pillOn]}>
         {icon}
         {label ? (
@@ -228,7 +229,7 @@ export function CaptainNoteCard({ kind, captainKey, trip, post, fresh = false, c
                   </AppText>
                 </Pressable>
               ) : (
-                <View key={side} style={[styles.option, mine && styles.optionMine]} accessible accessibilityLabel={LOUNGE.a11y.balanceOption(label)} accessibilityState={{ selected: mine }} testID={`${testID}-opt-${side}`}>
+                <View key={side} style={[styles.option, mine && styles.optionMine]} accessible accessibilityLabel={LOUNGE.a11y.balanceOption(label)} accessibilityState={{ selected: mine }} aria-selected={mine} testID={`${testID}-opt-${side}`}>
                   <AppText variant="bodyMedium" tone={mine ? 'accent' : 'text'} style={styles.center}>
                     {label}
                   </AppText>

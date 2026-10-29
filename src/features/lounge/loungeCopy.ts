@@ -4,6 +4,9 @@
 //  · 화면에 그리지 않는 줄도 원본과 같게 둔다: report.pairNote(0042 lounge_report 가 쌍 여부를 돌려주지 않음 — 19-7 메모) · error.seatCall(서버 code 없음) · captain.b13 · b14(예비)
 //  · 위기 안내 기관 · 번호(LOUNGE_CRISIS_LINE)는 카피가 아니라 법무 값(법무/LG_라운지_메모.md 9장 — 2차 확인, 켜기 전 공식 누리집 원문 대조)
 
+// 강퇴 · 나감 화면의 [돌아가기](→ T4 목록). 기획 화면 요구 T6 셈표 14 · 15 · 이동표의 버튼 이름 — 카피.md 19장에 이 줄이 아직 없어 LOUNGE 밖에 둔다(check:copy LG 가 읽지 않음). 마케팅 확인 대기
+export const LOUNGE_BACK_TO_LIST = '돌아가기';
+
 export const LOUNGE = {
   // 19-1 이름
   header: {
@@ -24,6 +27,7 @@ export const LOUNGE = {
     lineLanding: '착륙을 준비하고 있어요.',
     lineCaptainOnly: '이번 회차는 기장 안내로 함께해요.',
     lineKicked: '이번 회차 라운지는 이용할 수 없어요.',
+    lineRulesChanged: '라운지 약속이 바뀌었어요. 들어가서 바뀐 약속을 확인해 주세요.',
     a11y: (line: string) => `탑승객 라운지, ${line}`,
   },
   // 19-3 첫 입장 안내 · 입장권을 뜯은 뒤

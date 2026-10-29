@@ -2,6 +2,7 @@
 //  앱은 실서버와 같은 파서(features/lounge/loungeApi)로 읽는다. 메모리에만 있고 서버 요청 0 · 기기 저장 0.
 //   lounge_state · lounge_agree · lounge_take_seat · lounge_get_post · lounge_post · lounge_empathy · lounge_hide · lounge_report · lounge_pick · lounge_delete
 //   + 0043 get_lounge_report_note(p_post) → {ok, no_pair}(신고자에게만 — 사유 RP4 · RP6 · RP7 · 수 17:30 전 · 회차당 3쌍까지면 짝 제외 쌍)
+//   + 0044(3부-자) get_lounge_row_state() → {state, line}(T4 줄 전용 · 판정은 lounge_state 와 같음) · get_lounge_my_hidden() → {ok, seats:[{seat, post}]} · 실시간 closed(수 18:00 공개 뒤 객실 채널에 한 번 · 내용 {id:null, seat:null, body:null, at})
 //   + 데모 전용 demo_lounge_scene({ p_scene }) — T6 아래 데모 줄이 장면을 바꾼다(null 이면 다음 장면)
 //  · 실시간: 비공개 채널 lounge:<객실 uuid> 흉내(channel · removeChannel) — 서버 방송처럼 내용은 {id, seat, body, at} 넷만, 이벤트 post · gone
 //  · 가상 탑승객 20좌석(실제 사람 아님) · 1회차(12-23 수 18:00 공개, 판매 12-17 목 00:00 ~ 12-23 17:30) · 여행지 trip_no 1(경주)
@@ -181,7 +182,7 @@ export function createDemoLounge(options: { flight?: (u: DemoLoungeUser) => Loun
     channels.delete(ch as DemoChannel);
     return Promise.resolve('ok');
   };
-  const broadcast = (event: 'post' | 'gone', payload: { id: string; seat: string | null; body: string | null; at: string | null }) => {
+  const broadcast = (event: 'post' | 'gone' | 'closed', payload: { id: string | null; seat: string | null; body: string | null; at: string | null }) => {
     for (const ch of [...channels]) if (ch.joined && ch.name === CHANNEL) ch.listeners.filter((l) => l.event === event).forEach((l) => l.cb({ type: 'broadcast', event, payload: { id: payload.id, seat: payload.seat, body: payload.body, at: payload.at } }));
   };
 
@@ -448,10 +449,28 @@ export function createDemoLounge(options: { flight?: (u: DemoLoungeUser) => Loun
       const r = [...s.reports].reverse().find((x) => x.post === args.p_post);
       return r ? ok({ ok: true, no_pair: r.pair }) : code('not_found');
     },
+    // 0044 줄 전용 응답: 판정은 lounge_state 와 같고 글 · 좌석 · 채널은 내보내지 않는다. line 은 서버 키(first · seated · lightsOut · landing · captainOnly · kicked · null)
+    get_lounge_row_state: (u, s) => {
+      const r = handlers.lounge_state(u, s, {}).data as Row;
+      const state = String(r.state);
+      const LINE: Record<string, string> = { intro: 'first', stub: 'first', open: 'seated', empty_room: 'seated', paused: 'seated', lights_out: 'lightsOut', landing: 'landing', captain_only: 'captainOnly', kicked: 'kicked' };
+      return ok({ state, line: LINE[state] ?? null });
+    },
+    // 0044 내가 숨긴 좌석: 좌석 이름 차례 · post = 되돌리기(lounge_hide(post, false))에 쓰는 그 좌석의 가장 늦은 글 id 하나(지운 글이어도 됨) · 회원 id 0
+    get_lounge_my_hidden: (u, s) => {
+      const st = me(u, s);
+      if (st !== 'ok') return code(st);
+      const seats = [...s.hides].sort().flatMap((seat) => {
+        const latest = s.posts.filter((p) => p.seat === seat).sort((a, b) => b.at - a.at)[0];
+        return latest ? [{ seat, post: latest.id }] : [];
+      });
+      return ok({ ok: true, seats });
+    },
     demo_lounge_scene: (u, s, args) => {
       if (args.p_peek === true) return ok({ ok: true, scene: s.scene });
       const want = LOUNGE_SCENES.includes(args.p_scene as LoungeScene) ? (args.p_scene as LoungeScene) : LOUNGE_SCENES[(LOUNGE_SCENES.indexOf(s.scene) + 1) % LOUNGE_SCENES.length];
       override.set(u.id, want);
+      if (want === 'closed' && s.seat) broadcast('closed', { id: null, seat: null, body: null, at: iso(ROUND.match) }); // 서버 lounge_close_tick 흉내: 공개 시각 뒤 객실 채널에 한 번
       seed(u, want);
       return ok({ ok: true, scene: want });
     },

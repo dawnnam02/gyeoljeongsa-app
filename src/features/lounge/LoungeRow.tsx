@@ -16,12 +16,13 @@ import { colors, radius, size, space } from '@/theme/tokens';
 import type { LoungeStateCode } from './loungeApi';
 import { LOUNGE } from './loungeCopy';
 import { LoungeIcon } from './LoungeIcon';
-import { rowLineOf } from './loungeLogic';
+import { rowKeyOf, rowLineText, type RowKey } from './loungeLogic';
 import type { LoungeDeps } from './loungeService';
 
-export type LoungeRowState = { code: LoungeStateCode } | null;
+export type LoungeRowState = { code: LoungeStateCode; key: RowKey } | null;
 
-// 줄 상태 읽기: 스위치 → lounge_state 한 번. 꺼짐 · 실패 · 줄 없는 상태는 null
+// 줄 상태 읽기(0044): 스위치 → get_lounge_row_state 한 번(줄 전용 응답 — 글 · 좌석 · 채널 0). 서버가 줄 0(line null)이면 · 꺼짐 · 실패면 null.
+//  intro 면 lounge_state 의 has_seat 를 한 번 더 읽어, 좌석이 이미 있으면(약속 판이 바뀐 회차) 줄 글을 rulesChanged 로(QP-42 · 카피 19-2)
 export function useLoungeRow(deps: LoungeDeps | undefined) {
   const [row, setRow] = useState<LoungeRowState>(null);
   const seq = useRef(0);
@@ -34,17 +35,26 @@ export function useLoungeRow(deps: LoungeDeps | undefined) {
       setRow(null);
       return;
     }
-    const r = await deps.api.state();
+    const r = await deps.api.rowState();
     if (my !== seq.current) return;
-    setRow(r.ok && rowLineOf(r.data.code) !== null ? { code: r.data.code } : null);
+    if (!r.ok || r.data.line === null) {
+      setRow(null);
+      return;
+    }
+    let hasSeat = false;
+    if (r.data.code === 'intro') {
+      const s = await deps.api.state();
+      if (my !== seq.current) return;
+      hasSeat = s.ok && s.data.hasSeat; // 못 읽으면 지금 줄 그대로(좌석이 정해져요)
+    }
+    setRow({ code: r.data.code, key: rowKeyOf(r.data.line, r.data.code, hasSeat) });
   }, [deps]);
   return { row, load };
 }
 
-export function LoungeRow({ code, onPress, testID = 'lounge-row' }: { code: LoungeStateCode; onPress: () => void; testID?: string }) {
-  const line = rowLineOf(code);
-  if (!line) return null;
-  const before = code === 'intro' || code === 'stub'; // 첫 입장 전: 쪽지 칸에 빈 좌석
+export function LoungeRow({ code, rowKey, onPress, testID = 'lounge-row' }: { code: LoungeStateCode; rowKey: RowKey; onPress: () => void; testID?: string }) {
+  const line = rowLineText(rowKey);
+  const before = (code === 'intro' || code === 'stub') && rowKey !== 'rulesChanged'; // 첫 입장 전: 쪽지 칸에 빈 좌석(약속만 바뀐 회차는 좌석이 이미 있어 ›)
   const captainOnly = code === 'captain_only';
   return (
     <Fade visible duration={loungeLook.fade}>

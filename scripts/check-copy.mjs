@@ -25,7 +25,7 @@
 //        D46-A: 만남 장면 글(T4S MEET_SCENE · T4 CHAT.room.metAt — meetCopy.ts · chatCopy.ts)도 카피.md 16장 표 18줄과 같은가 · 16-3 쓰지 않을 낱말 0(같은 X 점검 안에서, 점검 수 그대로)
 //  3부-아(D-223): 카피.md 20장 '앱과 같은 커밋으로 바꿀 줄'(첫 칸 '<화면> 키' — 백틱 없음)은 같은 키의 옛 줄(07 · 9장 · 14-1 · 16장 · 14-5)보다 앞선다(SEC20).
 //        X 에서 20장 줄 · 12-Q 새 줄 4개 · 13-1 POL7 · POL14 를 앱 글과 한 글자씩 맞춘다. '(줄 없음)'은 앱에 그 키가 없어야 한다
-//  LG. 탑승객 라운지 글(LG-F · D-220, features/lounge/loungeCopy.ts LOUNGE)이 카피.md 19장 표(첫 칸 'T4 · T6 `LOUNGE.키`' — 19-1 ~ 19-10, 209줄)와 한 글자씩 같은가 ·
+//  LG. 탑승객 라운지 글(LG-F · D-220, features/lounge/loungeCopy.ts LOUNGE)이 카피.md 19장 표(첫 칸 'T4 · T6 `LOUNGE.키`' — 19-1 ~ 19-10, 210줄)와 한 글자씩 같은가 ·
 //        앱 LOUNGE 의 글이 모두 19장에 있는가(카피 밖 글 0) · 화면 금지어 14(세부청사진 3장 · 정책 PL-22) · 창가 · 통로 · 가운데 · 느낌표 · 숫자 0(19장 말투)
 //  IF2. 기내 서비스 · 연애 기능 글(IF2-F · D-223, features/inflight/if2CopyData.ts — gen-if2-copy)이 카피.md 21장 표와 한 글자씩 같은가 · 앱이 부르는 글 키가 모두 21장에 있는가 ·
 //        사본 밖 글 0 · 느낌표 · 숫자 · PF-18 금지 낱말 · 상대 화면 별자리 이름 · 일간 0 · 재미 정보 동의 시트 = 동의문구 4-17 · 생성 파일(라이브러리 · 그림 · 안전 낱말 · 아이콘) = 원본.
@@ -969,8 +969,8 @@ try {
       if (/[!！]/.test(t)) diffsLG.push(`LOUNGE.${p}: 느낌표`);
       if (/\d/.test(t)) diffsLG.push(`LOUNGE.${p}: 숫자`);
     }
-    if (rows19.length !== 209) diffsLG.push(`카피 19장 표가 209줄이 아님(${rows19.length}줄)`);
-    check('LG', `탑승객 라운지 글 ${rows19.length}줄(카피 19-1 ~ 19-10)이 loungeCopy.ts LOUNGE 와 같고 · 앱 글 ${leaves.length}개가 모두 19장에 있고 · 금지어 14 · 창가/통로/가운데 · 느낌표 · 숫자 0`, rows19.length === 209 && diffsLG.length === 0, diffsLG.join('\n') || `표 ${rows19.length}줄`);
+    if (rows19.length !== 210) diffsLG.push(`카피 19장 표가 210줄이 아님(${rows19.length}줄)`);
+    check('LG', `탑승객 라운지 글 ${rows19.length}줄(카피 19-1 ~ 19-10)이 loungeCopy.ts LOUNGE 와 같고 · 앱 글 ${leaves.length}개가 모두 19장에 있고 · 금지어 14 · 창가/통로/가운데 · 느낌표 · 숫자 0`, rows19.length === 210 && diffsLG.length === 0, diffsLG.join('\n') || `표 ${rows19.length}줄`);
   }
 
   // ── IF2. 기내 서비스 · 연애 기능(IF2-F · D-223 — 카피.md 21장 '앱 반영' 뒤 대조) ──

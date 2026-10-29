@@ -82,7 +82,7 @@ export function ChatListScreen({ api: given, onOpen, toastMs = TOAST_MS, lounge 
     <Screen enter="tab" testID="chat-list">
       <TabHeader title={CHAT.tabTitle} testID="chat-list-header" />
       <ScrollView contentContainerStyle={styles.body}>
-        {load.kind !== 'loading' && loungeRow.row ? <LoungeRow code={loungeRow.row.code} onPress={() => router.push(LOUNGE_HREF as Href)} /> : null}
+        {load.kind !== 'loading' && loungeRow.row ? <LoungeRow code={loungeRow.row.code} rowKey={loungeRow.row.key} onPress={() => router.push(LOUNGE_HREF as Href)} /> : null}
         {load.kind === 'loading' ? (
           <WaitState waiting skeleton={<SkeletonLines count={4} />} note={<AppText variant="caption">{COMMON.loading}</AppText>} testID="chat-list-wait" />
         ) : null}

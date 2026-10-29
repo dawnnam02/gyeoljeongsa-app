@@ -25,7 +25,7 @@ export function GradeChip({ n, open = false, onPress, testID = 'grade-chip' }: {
   const no = asGradeNo(n);
   if (no === null) return null;
   return (
-    <Pressable accessibilityLabel={GI.partnerA11y} accessibilityState={{ expanded: open }} onPress={onPress} effect="none" testID={testID} style={styles.touch}>
+    <Pressable accessibilityLabel={GI.partnerA11y} accessibilityState={{ expanded: open }} aria-expanded={open} onPress={onPress} effect="none" testID={testID} style={styles.touch}>
       <View style={styles.chip}>
         <GradeIcon icon={iconOf(undefined, no)} size={layout.tierBadgeCard} testID={`${testID}-image`} />
       </View>
