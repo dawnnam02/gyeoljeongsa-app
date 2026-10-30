@@ -1,6 +1,7 @@
 // 기내 서비스 · 연애 기능 1.0 이 서버와 주고받는 일(IF2-F · D-223). 서버 = backend/migrations/0043_inflight.sql(앱 함수 · 응답 모양 = backend/R_변경기록.md 11-4) — 이름 · 인자 · 키를 그대로 맞췄다.
 //   get_home_state()                       → {stage, blocks, hobby_notice?, pocket?{cells}, status?{head, cells, writable}, pair?{room_id, cells}, me?{cells}, reflect_ok?}
-//   get_magazine()                         → {state none | not_yet | issued, issue_date, trip_no, week_element, column, ck17a, sky{sign, cusp, zodiac} | null, grain{stem, saju, relation} | null}
+//   get_magazine()                         → {state none | not_yet | issued, issue_date, trip_no, week_element, column, ck17a, sky{signs[달력 순 한두 개], zodiacs[같은 차례 주간 글 id]} | null, grain{stem, saju, relation} | null}
+//        0046(3부-차): 경계 날(시작일 −1 · 0 · +1, 해마다 36일)은 순서 없는 한 쌍을 달력 순으로 — 대표 · 이웃 구분 키 sign · cusp · zodiac 은 응답에 없다
 //   get_week_card() · pick_week_card(p_slot) → {state none | face_down | revealed(slot, card) | not_ready} · {ok, slot, card} | {ok:false, code already_picked(slot, card) | invalid_slot | none | not_ready}
 //   pre_answer_questions()                 → {state none | open | landing | not_ready, questions[20 id]}
 //   preview_my_profile()                   → {profile(짝이 get_candidate_profile 로 받는 값 그대로), ck17b, same_hobby}
@@ -102,7 +103,7 @@ export type Magazine =
       weekElement: string | null;
       column: string | null;
       ck17a: boolean;
-      sky: { sign: string; cusp: string | null; zodiac: string } | null;
+      sky: { signs: string[]; zodiacs: string[] } | null;
       grain: { stem: number; saju: string; relation: string } | null;
     };
 
@@ -110,7 +111,10 @@ export function parseMagazine(raw: unknown): Magazine | null {
   if (!isRecord(raw)) return null;
   if (raw.state === 'none' || raw.state === 'not_yet') return { state: raw.state };
   if (raw.state !== 'issued') return null;
-  const sky = isRecord(raw.sky) && str(raw.sky.sign) && str(raw.sky.zodiac) ? { sign: str(raw.sky.sign) as string, cusp: str(raw.sky.cusp), zodiac: str(raw.sky.zodiac) as string } : null;
+  const skyRaw = isRecord(raw.sky) ? raw.sky : null;
+  const signs = skyRaw ? strs(skyRaw.signs).slice(0, 2) : [];
+  const zodiacs = skyRaw ? strs(skyRaw.zodiacs).slice(0, 2) : [];
+  const sky = signs.length >= 1 && zodiacs.length === signs.length ? { signs, zodiacs } : null; // 별자리와 글이 같은 수·차례일 때만(옛 sign · cusp · zodiac 모양은 읽지 않는다)
   const g = isRecord(raw.grain) ? raw.grain : null;
   const grain = g && int(g.stem) !== null && str(g.saju) && str(g.relation) ? { stem: int(g.stem) as number, saju: str(g.saju) as string, relation: str(g.relation) as string } : null;
   return { state: 'issued', issueDate: str(raw.issue_date), tripNo: int(raw.trip_no), weekElement: str(raw.week_element), column: str(raw.column), ck17a: raw.ck17a === true, sky, grain };
@@ -183,11 +187,11 @@ export function createInflightApi(call: RpcCall): InflightApi {
     if (f.network) return { ok: false, code: 'network' };
     const head = String(error.message ?? '').split(':')[0].trim();
     if (f.code === '42501' || head === 'feature_off' || head === 'forbidden') return { ok: false, code: IF2_OFF };
+    if (head === 'rate_limited') return { ok: false, code: 'rate_limited' }; // send_chat_card(작별 포함)는 상한 · 1분 · 하루가 DB 오류 rate_limited(P0001) — JSON 코드와 같은 이름으로
     return { ok: false, code: 'server' };
   };
   // 응답 안 {ok:false, code} 를 그대로(서버 코드)
   const inner = (data: unknown): If2Fail | null =>
-    if (head === 'rate_limited') return { ok: false, code: 'rate_limited' }; // send_chat_card(작별 포함)는 상한 · 1분 · 하루가 DB 오류 rate_limited(P0001) — JSON 코드와 같은 이름으로
     isRecord(data) && data.ok === false ? { ok: false, code: str(data.code) ?? 'server', ...(Array.isArray(data.codes) ? { codes: strs(data.codes) } : {}) } : null;
   async function read<T>(fn: string, args: Record<string, unknown>, parse: (d: unknown) => T | null, event: string): Promise<If2Result<T>> {
     const { data, error } = await rpc(fn, args);
@@ -198,11 +202,11 @@ export function createInflightApi(call: RpcCall): InflightApi {
     return v === null ? { ok: false, code: 'server' } : { ok: true, data: v };
   }
   const messageOf = (data: unknown): Message | null => (isRecord(data) ? parseMessage(data.message) : null);
+  const helpOf = (data: unknown): { help?: true } => (isRecord(data) && data.help === true ? { help: true } : {}); // 위기 표시 한 칸(보내기 응답에만 · 없으면 0)
 
   return {
     home: () => read('get_home_state', {}, parseHomeState, 'if2.home.fail'),
     magazine: () => read('get_magazine', {}, parseMagazine, 'if2.mag.fail'),
-  const helpOf = (data: unknown): { help?: true } => (isRecord(data) && data.help === true ? { help: true } : {}); // 위기 표시 한 칸(보내기 응답에만 · 없으면 0)
     weekCard: () => read('get_week_card', {}, parseWeekCard, 'if2.card.fail'),
     async pickWeekCard(slot) {
       const { data, error } = await rpc('pick_week_card', { p_slot: slot });

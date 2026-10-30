@@ -14,6 +14,7 @@ import { Pressable } from '@/components/Pressable';
 import { Screen } from '@/components/Screen';
 import { TextButton } from '@/components/TextButton';
 import { Toast } from '@/components/Toast';
+import { SIGN_CUSP } from '@/content/if3Copy';
 import type { BoardingState } from '@/features/boarding/boardingApi';
 import { BOARDING } from '@/features/boarding/boardingCopy';
 import { Rise, TOAST_MS } from '@/motion';
@@ -155,10 +156,25 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
                 <AppText variant="bodyBold">{tx('MAGAZINE.page.sky')}</AppText>
                 <AppText variant="caption">{tx('MAGAZINE.page.skySub')}</AppText>
                 <Art xml={artXml('constellation')} width="100%" height={styles.small.height} />
-                <AppText variant="captionMedium" tone="accent" testID="mag-sign">
-                  {signName(issued.sky.sign) ?? ''}
-                </AppText>
-                <AppText variant="body">{zodiacText(issued.sky.zodiac) ?? ''}</AppText>
+                {issued.sky.signs.length === 2 ? (
+                  // 경계 날(3부-차 · 22-10): 순서 없는 한 쌍 — 한 줄 + 사실 한 문장, 두 별자리의 글은 같은 크기 · 같은 무게로 나란히(대표 · 또는 0)
+                  <View style={if2Styles.gapSmall} testID="mag-cusp">
+                    <AppText variant="captionMedium" tone="accent" testID="mag-cusp-pair">
+                      {SIGN_CUSP.pair(signName(issued.sky.signs[0]) ?? '', signName(issued.sky.signs[1]) ?? '')}
+                    </AppText>
+                    <AppText variant="caption" testID="mag-cusp-why">
+                      {SIGN_CUSP.why}
+                    </AppText>
+                  </View>
+                ) : null}
+                {issued.sky.signs.map((code, i) => (
+                  <View key={code} style={if2Styles.gapSmall} testID={`mag-sky-${i}`}>
+                    <AppText variant="captionMedium" tone="accent" testID={`mag-sign-${i}`}>
+                      {signName(code) ?? ''}
+                    </AppText>
+                    <AppText variant="body">{zodiacText(issued.sky?.zodiacs[i] ?? '') ?? ''}</AppText>
+                  </View>
+                ))}
                 <View style={if2Styles.section}>
                   <AppText variant="bodyBold">{tx('MAGAZINE.page.grain')}</AppText>
                   <AppText variant="caption">{tx('MAGAZINE.page.grainSub')}</AppText>

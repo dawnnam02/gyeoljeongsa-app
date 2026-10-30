@@ -61,12 +61,12 @@ afterEach(async () => {
   for (const k of Object.keys(mockParams)) delete mockParams[k];
 });
 
-function rig(email: string, over: Record<string, boolean> = {}) {
+function rig(email: string, over: Record<string, boolean> = {}, birth = '1997-03-12') {
   const user = { id: `u-${email.split('@')[0]}`, email };
   const consents = new Set(['CK17A', 'CK17B']);
   const flags = async () => flagsAll(over);
   const boarding = createDemoBoarding();
-  const demo = createDemoInflight({ boarding, flags, account: () => ({ birthDate: '1997-03-12', consentOn: (c) => consents.has(c), sameHobby: true, previewAnswers: { A12: '이OO', A01: 29, A03: { sido: '서울', sigungu: '마포구' }, A06: '무교' } }) });
+  const demo = createDemoInflight({ boarding, flags, account: () => ({ birthDate: birth, consentOn: (c) => consents.has(c), sameHobby: true, previewAnswers: { A12: '이OO', A01: 29, A03: { sido: '서울', sigungu: '마포구' }, A06: '무교' } }) });
   demoShared.setFlags(flags);
   demoShared.setSameHobby(() => true);
   const calls: string[] = [];
@@ -224,6 +224,34 @@ describe('IFF-10 · IFF-12 기내지 · 이번 주 카드', () => {
     expect(say(tree, 'mag-ai-note')).toBe(tx('MAGAZINE.back.aiNote'));
     expect(say(tree, 'mag-love-footer')).toBe(tx('MAGAZINE.love.footer'));
     expect(say(tree, 'mag-sky-footer')).toBe(tx('FUN.footer'));
+  });
+  test('① 쪽 별자리: 평소엔 한 자리 · 경계 날(해마다 36일)엔 한 줄 + 사실 한 문장 + 두 별자리 글 같은 크기로 나란히(순서 · 우열 · 숫자 0) — 3부-차 22-10', async () => {
+    const plain = rig('mc1@email.com');
+    await plain.scene('inflight');
+    const t1 = keep(await mount(<MagazineScreen deps={{ api: plain.api, ck17: plain.ck17 }} />));
+    await wait();
+    await press(t1, 'mag-next'); // 표지 → ① 하늘과 결
+    expect(has(t1, 'mag-cusp')).toBe(false); // 경계가 아니면 이 줄은 칸째 없다
+    expect(ids(t1, /^mag-sign-\d$/)).toEqual(['mag-sign-0']);
+    expect(textOf(t1, 'mag-sign-0')).toBe('물고기자리');
+    // 1997-03-21(양자리 시작일) — 03-20 · 21 · 22 가 모두 같은 쌍 [물고기, 양]
+    for (const birth of ['1997-03-20', '1997-03-21', '1997-03-22']) {
+      const r = rig(`mc${birth}@email.com`, {}, birth);
+      await r.scene('inflight');
+      const t = keep(await mount(<MagazineScreen deps={{ api: r.api, ck17: r.ck17 }} />));
+      await wait();
+      await press(t, 'mag-next');
+      expect(textOf(t, 'mag-cusp-pair')).toBe('물고기자리와 양자리 사이에 태어났어요.');
+      expect(textOf(t, 'mag-cusp-why')).toBe('해마다 경계가 하루쯤 달라서 두 별자리를 함께 보여 드려요.');
+      expect(ids(t, /^mag-sign-\d$/)).toEqual(['mag-sign-0', 'mag-sign-1']);
+      expect([textOf(t, 'mag-sign-0'), textOf(t, 'mag-sign-1')]).toEqual(['물고기자리', '양자리']);
+      // 두 별자리의 글은 같은 크기 · 같은 무게(대표 · 또는 · 전날 · 당일 말 0)
+      const blocks = [0, 1].map((i) => must(t, `mag-sky-${i}`));
+      expect(blocks[0].children.length).toBe(blocks[1].children.length);
+      const texts = allTexts(t).join(' ');
+      expect(texts).not.toMatch(/대표|또는|전날|당일|관례|36|24/);
+      expect(texts.match(/\d/g)).toBeNull();
+    }
   });
   test('이번 주 카드: 뒤집힌 세 장 → 하나를 누르면 그 장만 · 다시 뽑기 단추 0 · 다시 열면 같은 장', async () => {
     const r = rig('m2@email.com');

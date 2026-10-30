@@ -173,7 +173,9 @@ export function createDemoInflight(o: DemoInflightOptions) {
     if (ck && acct.birthDate) {
       const sg = sunSign(acct.birthDate);
       const stem = dayStem(acct.birthDate);
-      sky = { sign: sg.sign, cusp: sg.cusp, zodiac: `zw-${sg.sign}-t${String(((no - 1) % 13) + 1).padStart(2, '0')}-v${Math.floor((no - 1) / 13) % 4}` };
+      // 0046: sky = {signs: 달력 순 한두 개, zodiacs: 같은 차례 주간 글 id} — 대표 · 이웃 · 시작 전날 여부가 드러나지 않는다(R46)
+      const zw = (code: string) => `zw-${code}-t${String(((no - 1) % 13) + 1).padStart(2, '0')}-v${Math.floor((no - 1) / 13) % 4}`;
+      sky = { signs: sg.signs, zodiacs: sg.signs.map(zw) };
       grain = { stem, saju: `sw-${stem}-${week}-v${(Math.floor((no - 1) / 10) % 1) + 1}`, relation: rel5Week(stemElement(stem), week) };
     }
     return ok({ state: 'issued', issue_date: ROUND.issue, trip_no: ((ROUND.no - 1) % 12) + 1, week_element: week, column: `col-${String(((no - 1) % 12) + 1).padStart(2, '0')}`, ck17a: ck, sky, grain });

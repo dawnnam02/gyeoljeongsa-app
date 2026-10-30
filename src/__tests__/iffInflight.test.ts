@@ -99,14 +99,34 @@ describe('계산 = ai/IF2/fun_calc.py · check_calc.py 시험값(데모 모의 �
     }
     expect([0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(F.stemElement)).toEqual(['wood', 'wood', 'fire', 'fire', 'earth', 'earth', 'metal', 'metal', 'water', 'water']);
   });
-  test('C4 별자리 경계 12곳 · 2/29 물고기 · 경계 표시 24일', () => {
+  test('C4 별자리 경계 12곳 · 2/29 물고기 · 경계 표시 36일(시작일 −1 · 0 · +1 — 3부-차 G-08) · 세 날 모두 같은 쌍 · 달력 순', () => {
     for (const [code, m, d] of F.SIGN_TABLE) {
       expect(F.sunSign(`2001-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`).sign).toBe(code);
     }
     expect(F.sunSign('1996-02-29').sign).toBe('pisces');
+    expect(F.sunSign('1996-02-29').signs).toEqual(['pisces']);
     let cusp = 0;
-    for (let t = Date.UTC(2000, 0, 1); t < Date.UTC(2001, 0, 1); t += 86_400_000) if (F.sunSign(new Date(t).toISOString().slice(0, 10)).cusp) cusp += 1;
-    expect(cusp).toBe(24);
+    for (let t = Date.UTC(2000, 0, 1); t < Date.UTC(2001, 0, 1); t += 86_400_000) if (F.sunSign(new Date(t).toISOString().slice(0, 10)).signs.length === 2) cusp += 1;
+    expect(cusp).toBe(36);
+    // 경계 12곳 × 3일: 같은 두 자리 {앞 자리, 새 자리}를 달력 순(SIGN_TABLE 번호)으로 — 어느 쪽이 대표인지 쌍에서 알 수 없다
+    const names = F.SIGN_TABLE.map((s) => s[0]);
+    const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
+    const expected = [
+      ['aquarius', 'capricorn'], ['aquarius', 'pisces'], ['pisces', 'aries'], ['aries', 'taurus'], ['taurus', 'gemini'], ['gemini', 'cancer'],
+      ['cancer', 'leo'], ['leo', 'virgo'], ['virgo', 'libra'], ['libra', 'scorpio'], ['scorpio', 'sagittarius'], ['sagittarius', 'capricorn'],
+    ];
+    F.SIGN_TABLE.forEach(([code, m, d], i) => {
+      const start = Date.UTC(2000, m - 1, d);
+      const pair = [-1, 0, 1].map((k) => F.sunSign(iso(start + k * 86_400_000)).signs);
+      const want = [names[(i + 11) % 12], code].sort((a, b) => names.indexOf(a) - names.indexOf(b));
+      expect(pair).toEqual([want, want, want]);
+      expect(want).toEqual(expected[i]);
+      // 관례 대표(저장 값)는 그대로: 시작 전날 = 앞 자리 · 시작일 · +1일 = 새 자리
+      expect([-1, 0, 1].map((k) => F.sunSign(iso(start + k * 86_400_000)).sign)).toEqual([names[(i + 11) % 12], code, code]);
+      // 경계에서 이틀 떨어진 날은 한 자리
+      expect(F.sunSign(iso(start - 2 * 86_400_000)).signs).toHaveLength(1);
+      expect(F.sunSign(iso(start + 2 * 86_400_000)).signs).toHaveLength(1);
+    });
   });
   test('C5 그 주 기운: 2027-05-06 흙 · 05-13 불 · 목요일 아니면 거절 · 10주 주기', () => {
     expect(F.weekElement('2027-05-06')).toBe('earth');
@@ -438,8 +458,12 @@ describe('데모 모의 서버 = 0043 응답 모양(같은 파서로 읽힘)', (
     expect(m.ok && m.data.state).toBe('issued');
     if (m.ok && m.data.state === 'issued') {
       const d = m.data;
-      expect(d.sky?.zodiac).toMatch(/^zw-[a-z]+-t01-v0$/);
-      expect(lib.zodiac.some((z) => z.id === d.sky?.zodiac)).toBe(true);
+      expect(d.sky?.signs).toHaveLength(1); // 1997-03-12 는 경계 날이 아니다
+      expect(d.sky?.zodiacs.length).toBe(d.sky?.signs.length);
+      for (const z of d.sky?.zodiacs ?? []) {
+        expect(z).toMatch(/^zw-[a-z]+-t01-v0$/);
+        expect(lib.zodiac.some((x) => x.id === z)).toBe(true);
+      }
       expect(lib.sajuWeek.some((z) => z.id === d.grain?.saju)).toBe(true);
       expect(lib.column.some((c) => c.id === d.column)).toBe(true);
       expect(d.tripNo).toBe(1);
@@ -454,6 +478,43 @@ describe('데모 모의 서버 = 0043 응답 모양(같은 파서로 읽힘)', (
     await r.scene('inflight');
     const off = await r.api.magazine();
     expect(off.ok && off.data.state === 'issued' && off.data.sky === null && off.data.grain === null && off.data.ck17a === false).toBe(true);
+  });
+  test('기내지 경계 날(0046 sky): {signs: 달력 순 두 개, zodiacs: 같은 차례} · 대표 · 이웃 구분 키(sign · cusp · zodiac) 없음 · 세 날 모두 같은 응답', async () => {
+    const mags: unknown[] = [];
+    const lengths = [1, 2, 2, 2, 1]; // 양자리 시작 03-21 → 03-20 · 21 · 22 가 경계(−1 · 0 · +1)
+    for (const [bi, birth] of ['1997-03-19', '1997-03-20', '1997-03-21', '1997-03-22', '1997-03-23'].entries()) {
+      const r = rig(`cusp${birth}@email.com`, { birth });
+      await r.scene('inflight');
+      const raw = await r.client.rpc('get_magazine');
+      const sky = (raw.data as { sky: Record<string, unknown> | null }).sky;
+      mags.push(sky);
+      expect(Object.keys(sky ?? {}).sort()).toEqual(['signs', 'zodiacs']); // sign · cusp · zodiac 키 0
+      const m = await r.api.magazine();
+      expect(m.ok && m.data.state === 'issued' ? m.data.sky?.signs.length : null).toBe(lengths[bi]);
+    }
+    // 03-20 · 21 · 22 는 같은 쌍 [pisces, aries] · 같은 주간 글(두 별자리 순서까지 같음) — 03-19 · 23 은 한 자리(03-19 물고기 · 03-23 양)
+    expect(mags[1]).toEqual(mags[2]);
+    expect(mags[2]).toEqual(mags[3]);
+    expect((mags[1] as { signs: string[] }).signs).toEqual(['pisces', 'aries']);
+    const z = (mags[1] as { zodiacs: string[] }).zodiacs;
+    expect(z.map((id) => id.split('-')[1])).toEqual(['pisces', 'aries']);
+    expect(z.every((id) => lib.zodiac.some((x) => x.id === id))).toBe(true);
+    expect((mags[0] as { signs: string[] }).signs).toEqual(['pisces']);
+    expect((mags[4] as { signs: string[] }).signs).toEqual(['aries']);
+  });
+  test('기내지 파서: 옛 모양(sign · cusp · zodiac)은 읽지 않고 별자리와 글이 같은 수 · 차례일 때만 sky', async () => {
+    const { parseMagazine } = jest.requireActual<typeof import('@/features/inflight/inflightApi')>('@/features/inflight/inflightApi');
+    const base = { state: 'issued', issue_date: '2027-05-06', trip_no: 1, week_element: 'earth', column: 'col-01', ck17a: true, grain: null };
+    const sky = (v: unknown) => {
+      const m = parseMagazine({ ...base, sky: v });
+      return m && m.state === 'issued' ? m.sky : 'x';
+    };
+    expect(sky({ signs: ['pisces'], zodiacs: ['zw-pisces-t01-v0'] })).toEqual({ signs: ['pisces'], zodiacs: ['zw-pisces-t01-v0'] });
+    expect(sky({ signs: ['pisces', 'aries'], zodiacs: ['zw-pisces-t01-v0', 'zw-aries-t01-v0'] })).toEqual({ signs: ['pisces', 'aries'], zodiacs: ['zw-pisces-t01-v0', 'zw-aries-t01-v0'] });
+    expect(sky({ sign: 'pisces', cusp: 'aries', zodiac: 'zw-pisces-t01-v0' })).toBeNull();
+    expect(sky({ signs: ['pisces', 'aries'], zodiacs: ['zw-pisces-t01-v0'] })).toBeNull();
+    expect(sky({ signs: [], zodiacs: [] })).toBeNull();
+    expect(sky(null)).toBeNull();
   });
   test('미리 답해 두는 질문 20(깊이마다 5) · 착륙 준비면 landing · 미리보기 응답 · 이야깃거리 그날 10장 · 같이 열어 보기 하루 1장', async () => {
     const r = rig('pre@email.com');

@@ -138,20 +138,24 @@ const ymd = (iso: string): [number, number, number] => {
   return [Number(m[1]), Number(m[2]), Number(m[3])];
 };
 
-export function sunSign(birthIso: string): { sign: string; cusp: string | null } {
+// 3부-차(AI G-08 경계 고침 · 0046 fun_sign_cusp): 경계는 시작일 −1 · 0 · +1 (경계마다 3일, 해마다 36일). 세 날 모두 같은 두 자리 {앞 자리, 새 자리}.
+//  · sign = 관례 대표(저장 값 — 궁합 카드 원소 계산에만 씀) · signs = 화면에 나가는 별자리 — 경계 날은 순서 없는 한 쌍을 달력 순(SIGN_TABLE 번호)으로, 경계가 아니면 하나.
+//    어느 쪽이 대표인지 · 전날인지 당일인지는 응답에서 알 수 없다(보안 IC3-17 · 정책 PG-81)
+export function sunSign(birthIso: string): { sign: string; signs: string[] } {
   const [, mo, d] = ymd(birthIso);
   let idx = SIGN_TABLE.length - 1;
   SIGN_TABLE.forEach((s, i) => {
     if (mo > s[1] || (mo === s[1] && d >= s[2])) idx = i;
   });
   const ref = Date.UTC(2000, mo - 1, d);
-  let cusp: string | null = null;
+  let other: number | null = null;
   SIGN_TABLE.forEach((s, i) => {
     const start = Date.UTC(2000, s[1] - 1, s[2]);
-    if (ref === start) cusp = SIGN_TABLE[(i + SIGN_TABLE.length - 1) % SIGN_TABLE.length][0];
-    else if (ref === start - 86_400_000) cusp = s[0];
+    if (ref === start || ref === start + 86_400_000) other = (i + SIGN_TABLE.length - 1) % SIGN_TABLE.length; // 시작일 · +1일 → 앞 자리
+    else if (ref === start - 86_400_000) other = i; // 시작 전날 → 그 자리
   });
-  return { sign: SIGN_TABLE[idx][0], cusp };
+  const pair = other === null ? [idx] : [idx, other as number].sort((a, b) => a - b);
+  return { sign: SIGN_TABLE[idx][0], signs: pair.map((i) => SIGN_TABLE[i][0]) };
 }
 
 // ── 일주 · 일간 · 그 주 기운 ────────────────────────────────────────────
