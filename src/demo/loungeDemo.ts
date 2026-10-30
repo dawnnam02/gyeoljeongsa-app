@@ -57,7 +57,7 @@ const SCENE_NOW: Readonly<Record<LoungeScene, number>> = {
   left: at('2026-12-20T21:00:00+09:00'),
   rules: at('2026-12-20T21:00:00+09:00'),
 };
-export const LOUNGE_RULES_NOW = 'lounge-rules-2026.10.27-v1'; // 판_관리 lounge-rules-YYYY.MM.DD-vN (PL-03a — CK 코드와 따로)
+export const LOUNGE_RULES_NOW = 'lounge-rules-2026.10.30-v1'; // 판_관리 lounge-rules-YYYY.MM.DD-vN (PL-03a — CK 코드와 따로)
 const RULES_OLD = 'lounge-rules-2026.10.20-v1';
 const LIMIT = { bodyMax: 200, perMin: 5, perDay: 60, balanceMin: 10, evenPp: 10, slightPp: 30 }; // lounge_const 처음값
 const HELP_WORDS = ['죽고 싶', '자살', '자해', '사라지고 싶', '살기 싫']; // 위기 낱말 흉내(실서버 lounge_help_terms 17개는 법무 확인)

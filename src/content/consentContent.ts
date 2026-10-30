@@ -1,6 +1,6 @@
 // 자동 생성 파일 — 직접 고치지 않는다. 글자는 법무 문서에서 그대로 뽑았다.
 // 원본: 법무/동의문구.md (1장 · 1-1 · 3장 · 4장 · 4-11 ~ 4-16 · 5-1 · 5-2)
-// 표식 구간 34곳(skip 28 · skip-section 6 · skip-line 0) · 지운 표시 14곳
+// 표식 구간 34곳(skip 28 · skip-section 6 · skip-line 0) · 지운 표시 15곳
 // 다시 만들기: npm run gen:legal   (원본이 바뀌면 npm run check:copy 가 이 파일이 낡았다고 알려 준다)
 import type { ConsentItemContent, LaterConsentCode, LaterConsentContent } from './types';
 

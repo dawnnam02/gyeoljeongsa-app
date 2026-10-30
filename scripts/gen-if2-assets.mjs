@@ -220,7 +220,7 @@ export function buildCk17(file = CONSENT_DOC) {
   for (const [k, v] of Object.entries(out)) if (v === null || v === '' || (Array.isArray(v) && v.length === 0)) throw new Error(`동의문구 4-17 에서 ${k} 를 읽지 못했어요`);
   return [
     '// 생성 파일 — 손으로 고치지 않는다. 다시 만들기: node scripts/gen-if2-assets.mjs (IF2-F · 재미 정보 동의 시트 IF-CK17)',
-    '// 원본: 법무/동의문구.md 4-17 화면 문구 · 전문(글자 그대로). 판 = config/laterConsent IF2_CONSENT_VERSIONS(consent-2026.10.28-v1)',
+    '// 원본: 법무/동의문구.md 4-17 화면 문구 · 전문(글자 그대로). 판 = config/laterConsent IF2_CONSENT_VERSIONS(CK17A consent-2026.10.30-v1 · CK17B consent-2026.10.28-v2)',
     '// rowA · rowB = 12 동의 관리 줄 안 두 칸 이름(4-17 전문 (가) · (나) 머리 — 동의문구 5-6 끝 ②)',
     '',
     `export const CK17 = ${JSON.stringify(out, null, 2)} as const;`,

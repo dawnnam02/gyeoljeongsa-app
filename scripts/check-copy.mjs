@@ -977,7 +977,7 @@ try {
   //  ① 앱 글 사본(if2CopyData.ts — gen-if2-copy)이 카피.md 21장 표와 한 글자씩 같다(21장 키 376 = 글 375 + 끌어 쓰는 자리 1) · 기획 가안 키 0
   //  ② 카피 밖 글 0: 앱이 부르는 tx · txList 키가 모두 21장에 있고, 기내 서비스 화면 파일에 사본 밖 한글 글이 없다(만남 계획 공유 바로가기 = 카피 v4 SAFE_SHARE.entry)
   //  ③ 말투 · 금지어: 느낌표 · 숫자({…} 빼고) 0 · 정책 PF-18 · 법무 4-2 금지 낱말 0 · 앱 안 '운세' · '타로' 0 · 상대에게 보이는 글(궁합 카드 · 칩 · 대화방 칸)에 별자리 이름 · 일간 · 일주 · 띠 0
-  //  ④ 재미 정보 동의 시트 글(content/ck17Content.ts — gen-if2-assets 가 동의문구 4-17 에서 옮김)이 원본과 같다 · 판 = 판_관리(consent-2026.10.28-v1)
+  //  ④ 재미 정보 동의 시트 글(content/ck17Content.ts — gen-if2-assets 가 동의문구 4-17 에서 옮김)이 원본과 같다 · 판 = 판_관리(CK17A consent-2026.10.30-v1 · CK17B consent-2026.10.28-v2)
   //  ⑤ 생성 파일(라이브러리 · 그림 · 안전 낱말 · 아이콘)이 원본(ai/IF2 · 디자인 원본 · migrations)과 같다
   {
     const diffsIF = [];
@@ -1058,7 +1058,7 @@ try {
     // ④ 재미 정보 동의 시트 = 동의문구 4-17
     const lc = fs.readFileSync(path.join(APP_DIR, 'src', 'config', 'laterConsent.ts'), 'utf8');
     const ed = readDoc(SOURCES.editions);
-    if (!/CK17A: 'consent-2026\.10\.28-v1', CK17B: 'consent-2026\.10\.28-v1'/.test(lc) || !/CK17A[^\n]*consent-2026\.10\.28-v1/.test(ed)) diffsIF.push('CK17A · CK17B 판이 판_관리와 다름');
+    if (!/CK17A: 'consent-2026\.10\.30-v1', CK17B: 'consent-2026\.10\.28-v2'/.test(lc) || !/consent\.CK17A \| consent-2026\.10\.30-v1/.test(ed) || !/consent\.CK17B \| consent-2026\.10\.28-v2/.test(ed)) diffsIF.push('CK17A · CK17B 판이 판_관리와 다름');
     // ⑤ 생성 파일 = 원본
     const assets = await load(path.join(APP_DIR, 'scripts', 'gen-if2-assets.mjs'));
     const same = (f, t) => fs.existsSync(f) && fs.readFileSync(f, 'utf8').replace(/\r\n/g, '\n') === t;
