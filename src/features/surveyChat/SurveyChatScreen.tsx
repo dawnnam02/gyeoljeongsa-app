@@ -34,7 +34,8 @@ import { answersOf, blockMessage, check, draftFromValue, emptyDraft, FLOW, isPas
 import { emptyPol, polBlock, type PolDraft } from '@/features/surveyV2/PoliticsStage';
 import { schoolLabel } from '@/features/surveyV2/SchoolInput';
 import type { V2Value } from '@/features/surveyV2/types';
-import { TYPE_ENTRY_HREF, TYPE_ENTRY_LABEL } from '@/features/ai/typeEntry';
+import { TYPE_ENTRY_HREF } from '@/features/ai/typeEntry';
+import { tx } from '@/features/inflight/if2Text';
 import { Rise, TOAST_MS, useReduceMotion } from '@/motion';
 import { illustration } from '@/theme/illustrations';
 import { layout } from '@/theme/layout';
@@ -1232,7 +1233,7 @@ export function SurveyChatScreen({ deps: given, onDone, typeOn = false }: Props)
           {stage === 'done' && typeOn ? (
             // 끝 화면: [내 여행 타입 보기] 입구 + [다음] 같은 크기 — 안 눌러도 [다음]으로 05, 저절로 넘어가는 화면 0(정책 PF-33)
             <CtaPair
-              secondary={<Button label={TYPE_ENTRY_LABEL} variant="secondary" onPress={() => router.push(TYPE_ENTRY_HREF as Href)} testID="chat-type-entry" />}
+              secondary={<Button label={tx('TYPE_CARD.entry.open')} variant="secondary" onPress={() => router.push(TYPE_ENTRY_HREF as Href)} testID="chat-type-entry" />}
               primary={<Button label={t('CHAT.SUMMARY.next')} onPress={review} testID="chat-review" />}
             />
           ) : stage === 'wrap' || stage === 'done' || stage === 'paused' ? (

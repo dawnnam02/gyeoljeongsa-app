@@ -61,10 +61,19 @@ export function sameLines(items: readonly HobbyItem[]): string[] {
 export const compatText = (id: string): string | null => compat.get(id)?.text ?? null;
 
 // 첫마디 실마리 칩 글: ct-..(같은 취미 소재 틀, {v} = 취미 이름 — 코드일 때만) · ch-..(첫 인사 칩)
+//  · 같은 취미가 갈래(group)면 이름 글이 없어(3부-자 QP-49: 문장으로 바뀜) 소재 틀({v})에 못 넣는다 → 3부-차(카피 21-23): 갈래마다 완결 문장 둘
+//    FIRST_HINT.groupChip.<move · out · home>.<a · b> — 서버가 준 ct- 번호가 홀수면 a, 짝수면 b(다시 뽑으면 바뀜). 칩이 셋에서 둘로 줄던 것이 다시 셋
+const CHIP_GROUPS = ['move', 'out', 'home'] as const;
 export function chipText(id: string, hobby: HobbyItem | null): string | null {
   if (id.startsWith('ch-')) return chips.get(id)?.text ?? null;
+  if (hobby && 'group' in hobby) {
+    const group = CHIP_GROUPS.find((g) => g === hobby.group);
+    const no = Number(/^ct-(\d+)$/.exec(id)?.[1]);
+    if (!group || !Number.isInteger(no)) return null;
+    return tx(`FIRST_HINT.groupChip.${group}.${no % 2 === 1 ? 'a' : 'b'}`);
+  }
   const tpl = compat.get(id)?.text;
-  const name = hobby ? hobbyName(hobby) : null; // 갈래(group)는 이름 글이 없어(3부-자 QP-49: 문장으로 바뀜) 소재 틀({v})에 못 넣는다 → 그 칩은 건너뜀
+  const name = hobby ? hobbyName(hobby) : null;
   return tpl && name ? fill(tpl, { v: name }) : null;
 }
 

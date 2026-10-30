@@ -12,8 +12,10 @@
 //     loungekicked 이용 멈춤(강퇴)   loungeleft 나감(탑승 취소)   loungerules 약속이 바뀜(좌석은 그대로)
 //  · 데모의 '지금' = 장면마다 정해 둔 시각 + 연 뒤 흐른 시간. 내가 처음 글을 쓰면 1.5초 뒤 가상 탑승객 한 분이 인용해서 답한다(실시간 흉내)
 //  · 거르기(0016 + R42 'lounge' 칸): 연락처 · 링크 · 금전 · 욕설 4종 막음, 위기 낱말은 보내고 쓴 사람에게만 help. 글에 '데모실패'가 있으면 처음 한 번 인터넷 실패
+import { demoHelpHit } from './crisisWords';
+
 type Row = Record<string, unknown>;
-type DbResult = { data: unknown; error: { code: string; message: string } | null };
+type DbResult ={ data: unknown; error: { code: string; message: string } | null };
 export type DemoLoungeUser = { id: string; email: string };
 export type LoungeFlight = 'in' | 'late' | 'after' | 'none';
 
@@ -60,7 +62,6 @@ const SCENE_NOW: Readonly<Record<LoungeScene, number>> = {
 export const LOUNGE_RULES_NOW = 'lounge-rules-2026.10.30-v1'; // 판_관리 lounge-rules-YYYY.MM.DD-vN (PL-03a — CK 코드와 따로)
 const RULES_OLD = 'lounge-rules-2026.10.20-v1';
 const LIMIT = { bodyMax: 200, perMin: 5, perDay: 60, balanceMin: 10, evenPp: 10, slightPp: 30 }; // lounge_const 처음값
-const HELP_WORDS = ['죽고 싶', '자살', '자해', '사라지고 싶', '살기 싫']; // 위기 낱말 흉내(실서버 lounge_help_terms 17개는 법무 확인)
 const MONEY_WORDS = ['송금', '계좌', '입금해', '빌려줄', '빌려 줄', '보내줄 수'];
 const ABUSE_WORDS = ['시발', '씨발', '병신', '개새끼', '꺼져'];
 const CONTACT = /(\d{2,3}[- .]?\d{3,4}[- .]?\d{4})|카톡|카카오톡|오픈채팅|인스타|텔레그램|라인 아이디/;
@@ -290,7 +291,7 @@ export function createDemoLounge(options: { flight?: (u: DemoLoungeUser) => Loun
       quote = !q || q.deleted ? { id: p.quoteId, state: 'deleted' } : !visibleSeat(s, q.seat) ? { id: q.id, state: 'hidden' } : { id: q.id, seat: q.seat, body: q.body };
     }
     const base: Row = { id: p.id, seat: p.seat, kind: p.kind, body: p.body, at: iso(p.at), mine, tag: p.kind === 'answer' ? 'answer' : null, quote };
-    return mine ? { ...base, received: p.empathyFrom.size > 0, help: HELP_WORDS.some((w) => p.body.includes(w)) } : { ...base, empathized: s.seat !== null && p.empathyFrom.has(s.seat) };
+    return mine ? { ...base, received: p.empathyFrom.size > 0, help: demoHelpHit(p.body) } : { ...base, empathized: s.seat !== null && p.empathyFrom.has(s.seat) };
   };
   const shownPosts = (s: State) => s.posts.filter((p) => !p.deleted && p.at <= nowOf(s) && visibleSeat(s, p.seat)).slice(-200);
 
@@ -379,7 +380,7 @@ export function createDemoLounge(options: { flight?: (u: DemoLoungeUser) => Loun
           broadcast('post', { id: r.id, seat: r.seat, body: r.body, at: iso(r.at) });
         }, replyMs);
       }
-      return ok({ ok: true, post: postJson(s, p), help: HELP_WORDS.some((w) => body.includes(w)) });
+      return ok({ ok: true, post: postJson(s, p), help: demoHelpHit(body) });
     },
     lounge_empathy: (u, s, args) => {
       const st = me(u, s);

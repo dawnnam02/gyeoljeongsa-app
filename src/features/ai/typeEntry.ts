@@ -2,5 +2,4 @@
 //  · 스위치 type_card 가 켜졌을 때만 보인다 · 누르면 IF-TYPE(짐을 안 쌌으면 짐 싸기부터) · 안 눌러도 [다음]으로 다음 화면 · 저절로 넘어가는 화면 0
 //  · 권유 말 · 숫자 0 — 두 버튼은 같은 크기
 export const TYPE_ENTRY_HREF = '/type-card';
-// 버튼 이름 = 기획 화면 요구 04 · 07 의 [내 여행 타입 보기]. 카피.md 에 이 줄이 아직 없어(21장 TYPE_CARD.home.open '엽서 보기'는 홈 칸 이름) 코드 상수로 둔다 — 마케팅이 줄을 만들면 그 키로 바꾼다
-export const TYPE_ENTRY_LABEL = '내 여행 타입 보기';
+// 버튼 이름 [내 여행 타입 보기] = 카피 21-5 `TYPE_CARD.entry.open`(3부-차에서 코드 상수를 키로 바꿈 — 화면은 tx('TYPE_CARD.entry.open'))

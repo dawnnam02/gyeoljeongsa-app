@@ -22,6 +22,7 @@ import { BUSINESS_INFO, businessLinks, businessRows, reportNoLine, type Business
 import { SETTINGS } from '@/content/settingsCopy';
 import { forgetMeetScenes } from '@/features/chat/meetSeen';
 import { LegalReader } from '@/features/consent/LegalReader';
+import { resetCrisisCards } from '@/features/safety/crisisBudget';
 import { contactPorts, type ContactPorts } from '@/lib/contactsServices';
 import type { GradeApi } from '@/lib/gradeApi';
 import type { SettingsApi } from '@/lib/settingsApi';
@@ -192,6 +193,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
     resetGradeSettings(); // 다음 사람에게 이 사람의 구독 · 멈춤 표시가 남지 않게(F13)
     forgetMyFace(); // 다음에 로그인하는 사람에게 이 사람의 원형 사진이 남지 않게(F11)
     forgetMeetScenes(); // D46: 만남 장면을 본 방 기록(기기)도 지운다 — 같은 기기를 다른 계정이 쓸 때(K27 상황 21)
+    resetCrisisCards(); // 3부-차: 위기 도움 카드 하루 3번 셈(화면 메모리)도 비운다 — 다음 계정에 넘어가지 않게
     await forgetInflightNotes(); // IF2-F: 나만 쓰는 글 9종(엽서 · 미리 답 · 표시 · 메모 · 고른 짐 · 본 기록 · 띠 · 접힘)도 지운다(정책 PF-10 · IFF-03)
     const target = resolveDest('01');
     if (target.kind === 'href') {

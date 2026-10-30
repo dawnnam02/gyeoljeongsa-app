@@ -32,7 +32,8 @@ import { colors, size, space } from '@/theme/tokens';
 import type { AiRow, TraitKey, Traits, TraitsView } from '@/types/ai';
 
 import { EvidenceList } from './EvidenceList';
-import { TYPE_ENTRY_HREF, TYPE_ENTRY_LABEL } from './typeEntry';
+import { tx } from '@/features/inflight/if2Text';
+import { TYPE_ENTRY_HREF } from './typeEntry';
 import { confirmFromInterview, interviewDone } from './interviewConfirm';
 import { manualOfferStore } from './manualOffer';
 import { TagEditor, TagList, TagPicker } from './TagEditor';
@@ -422,7 +423,7 @@ export function TraitsScreen({ deps = defaultDeps, typeOn = false }: { deps?: Tr
           {finished ? (
             <>
               <View style={styles.half}>
-                <Button label={TYPE_ENTRY_LABEL} variant="secondary" onPress={() => router.push(TYPE_ENTRY_HREF as Href)} testID="traits-type-entry" />
+                <Button label={tx('TYPE_CARD.entry.open')} variant="secondary" onPress={() => router.push(TYPE_ENTRY_HREF as Href)} testID="traits-type-entry" />
               </View>
               <View style={styles.half}>
                 <Button label={SV2.common.next} onPress={toNext} testID="traits-next" />

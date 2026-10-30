@@ -8,11 +8,11 @@ import { createDemoLounge, DEMO_LOUNGE_MY_SEAT, type LoungeFlight } from '@/demo
 import { createDemoChatApi } from '@/features/chat/chatDemo';
 import { ChatListScreen } from '@/features/chat/ChatListScreen';
 import { createLoungeApi, type LoungeApi } from '@/features/lounge/loungeApi';
-import { LOUNGE, LOUNGE_CRISIS_LINE } from '@/features/lounge/loungeCopy';
+import { LOUNGE } from '@/features/lounge/loungeCopy';
 import { LoungeScreen } from '@/features/lounge/LoungeScreen';
 import { memberA11y } from '@/features/lounge/loungeLogic';
 import type { LoungeDeps } from '@/features/lounge/loungeService';
-import { COMMON, REPORT_SHEET } from '@/content/copy';
+import { COMMON, CRISIS_LINE, crisisNote, REPORT_SHEET, SAFETY } from '@/content/copy';
 import { reduceMotionStore } from '@/lib/reduceMotion';
 import { colors } from '@/theme/tokens';
 
@@ -61,7 +61,7 @@ const SEAT_RE = /^1[1-9][A-F]$/;
 const CLOCK_RE = /^(오전|오후) \d{1,2}:\d{2}$/;
 // 화면 글에서 회원 글 본문 · 좌석 꼬리표 · 때를 빼면 숫자가 없다(인원 · 순위 · 공감 수 · 객실 번호 0 — LGF-04)
 const screenNumbers = (tree: ReactTestRenderer, bodies: string[]) =>
-  allTexts(tree).filter((t) => !bodies.some((b) => t.includes(b)) && !SEAT_RE.test(t) && !CLOCK_RE.test(t) && !/^내 좌석 1[1-9][A-F]$/.test(t) && !t.startsWith('데모 ·') && !t.includes(LOUNGE_CRISIS_LINE.phone) && /\d/.test(t) && !/^1[1-9][A-F] · /.test(t));
+  allTexts(tree).filter((t) => !bodies.some((b) => t.includes(b)) && !SEAT_RE.test(t) && !CLOCK_RE.test(t) && !/^내 좌석 1[1-9][A-F]$/.test(t) && !t.startsWith('데모 ·') && !t.includes(CRISIS_LINE.phone) && t !== SAFETY.emergency && /\d/.test(t) && !/^1[1-9][A-F] · /.test(t));
 
 beforeEach(() => {
   mockRouter.push.mockClear();
@@ -141,7 +141,8 @@ describe('LG-F T6 첫 입장(LGF-05 · PL-03a · PL-04)', () => {
     expect(allTexts(tree)).toContain(LOUNGE.intro.agreeEnter);
     expect(allTexts(tree)).not.toContain('들어가기');
     expect(tree.root.findAll((n) => n.props.accessibilityRole === 'checkbox')).toHaveLength(0);
-    for (let i = 0; i < 3; i += 1) expect(textOf(tree, `lounge-intro-promise-${i}`)).toBe(LOUNGE.intro.promise[i]);
+    expect(LOUNGE.intro.promise).toHaveLength(4); // 3부-차: 약관 제9조의4 ⑥ 1 ~ 5호를 담은 네 줄
+    for (let i = 0; i < 4; i += 1) expect(textOf(tree, `lounge-intro-promise-${i}`)).toBe(LOUNGE.intro.promise[i]);
     expect(demo.joinedCount()).toBe(0); // 좌석 전: 구독 0
     await press(tree, 'lounge-intro-agree');
     await wait();
@@ -327,7 +328,8 @@ describe('LG-F T6 객실(open) — LGF-04 · 07 · 08 · 11 · 12 · 13 · 15 ·
     st = await api.state();
     posts = st.ok ? st.data.posts : [];
     const helpIdx = posts.findIndex((p) => p.kind !== 'captain' && p.body === '요즘 사라지고 싶다는 생각이 들어요');
-    expect(textOf(tree, `lounge-post-${helpIdx}-crisis-text`)).toBe(LOUNGE.crisis.note(LOUNGE_CRISIS_LINE.agency, LOUNGE_CRISIS_LINE.phone));
+    expect(textOf(tree, `lounge-post-${helpIdx}-crisis-text`)).toBe(crisisNote()); // 공용 CRISIS.note(상담전화 109)
+    expect(textOf(tree, `lounge-post-${helpIdx}-crisis-emergency`)).toBe(SAFETY.emergency); // 둘째 줄 112 · 119
     expect(ids(tree, /-crisis$/)).toHaveLength(1);
     await press(tree, `lounge-post-${helpIdx}-crisis-close`);
     expect(ids(tree, /-crisis$/)).toHaveLength(0);

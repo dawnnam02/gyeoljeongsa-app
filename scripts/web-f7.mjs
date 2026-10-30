@@ -213,7 +213,7 @@ try {
   await note('F7_12c_고객센터_360x740.png');
   await back('support');
   await openRow('safety', `!!window.__q('settings-safety-lines')`);
-  check('G', '안전 안내: 제목 + 7줄(N34)', (await inner('settings-safety-title')) === SAFETY_GUIDE.title && (await has(SAFETY_GUIDE.lines[5])) && (await has(SAFETY_GUIDE.minorNote)), '');
+  check('G', '안전 안내: 제목 + 맨 위 두 줄(112 · 119 먼저 / 상담전화 109 — 3부-차) + 7줄(N34)', (await inner('settings-safety-title')) === SAFETY_GUIDE.title && (await inner('settings-safety-emergency')) === SAFETY_GUIDE.emergency && (await inner('settings-safety-crisis')) === SAFETY_GUIDE.crisis && (await has(SAFETY_GUIDE.lines[5])) && (await has(SAFETY_GUIDE.minorNote)), '');
   await measure('12 안전 안내');
   await note('F7_12f_안전안내_360x740.png');
   await back('safety');

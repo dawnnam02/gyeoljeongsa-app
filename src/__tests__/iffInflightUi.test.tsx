@@ -333,7 +333,8 @@ describe('대화방 칸(IFF-05 · IFF-06 · IFF-07 · IFF-09)', () => {
   }
   test('첫마디 실마리: 입력창 위 칩 3(같은 취미 소재) · 누르면 입력창에 들어감(바로 보내지 않음) · 내 첫 글 뒤 사라짐 · 맨 위 순서에 더한 것 0', async () => {
     const { tree, chat, id } = await room('c1@email.com');
-    expect(ids(tree, /^if2-chips-\d$/)).toHaveLength(2); // 서버 칩 3 가운데 갈래(group) 소재 칩 하나는 이름 글이 없어 그리지 않는다(3부-자 QP-49 — 갈래는 문장 하나, 소재 틀 {v}에 못 넣음)
+    expect(ids(tree, /^if2-chips-\d$/)).toHaveLength(3); // 서버 칩 3 — 갈래(group) 소재 칩은 이름 글 대신 갈래 문장 둘 가운데 하나(ct- 번호 홀수 a · 짝수 b, 3부-차 카피 21-23 FIRST_HINT.groupChip)
+    expect(allTexts(tree).filter((t) => /^(저도 )?(몸을 움직이는|밖에서 보내는|집에서 보내는)/.test(t))).not.toHaveLength(0);
     const first = (must(tree, 'if2-chips-0').props.label as string) ?? '';
     await press(tree, 'if2-chips-0');
     expect(must(tree, 'chat-composer-input').props.value).toBe(first);

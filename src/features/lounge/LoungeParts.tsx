@@ -12,9 +12,9 @@ import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Icon, type IconName } from '@/components/Icon';
 import { Pressable } from '@/components/Pressable';
-import { TextButton } from '@/components/TextButton';
 import { A11Y } from '@/content/copy';
 import { clockText } from '@/features/chat/chatLogic';
+import { CrisisCard } from '@/features/safety/CrisisCard';
 import { ariaPressed } from '@/lib/webAria';
 import { Rise } from '@/motion';
 import { withAlpha } from '@/theme/color';
@@ -23,7 +23,7 @@ import { loungeLook } from '@/theme/loungeLook';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 
 import type { CaptainKind, CaptainPost, MemberPost } from './loungeApi';
-import { LOUNGE, LOUNGE_CRISIS_LINE } from './loungeCopy';
+import { LOUNGE } from './loungeCopy';
 import { LoungeIcon, type LoungeIconName } from './LoungeIcon';
 import { captainKindLabel, captainText, memberA11y, quoteLine, SEAT_COLS, SEAT_ROWS, seatPosition } from './loungeLogic';
 
@@ -80,7 +80,7 @@ type BubbleProps = {
   fresh: boolean;
   showEmpathy: boolean; // [공감] 단추(소등 · 착륙 준비 · 남의 글 아님이면 0)
   showReceived: boolean; // '공감받았어요'(내 글 · 소등 · 착륙 준비 중 0)
-  showHelp: boolean; // 위기 안내(내 글 · 닫기 전)
+  showHelp: boolean; // 위기 도움 카드(방금 보낸 내 글 한 장 · 닫기 전 — 화면이 정한다. 목록에서 불러온 글 아래에는 0)
   hiddenSeatOf: (quoteId: string) => boolean;
   onEmpathy: () => void;
   onMenu: () => void;
@@ -126,7 +126,7 @@ export function MemberBubble({ post: p, fresh, showEmpathy, showReceived, showHe
             {LOUNGE.empathy.received}
           </AppText>
         ) : null}
-        {mine && p.help && showHelp ? <CrisisCard onClose={onCloseHelp} testID={`${testID}-crisis`} /> : null}
+        {mine && showHelp ? <CrisisCard onClose={onCloseHelp} testID={`${testID}-crisis`} /> : null}
       </View>
     </View>
   );
@@ -166,18 +166,6 @@ function Pill({ label, a11y, icon, selected = false, onPress, testID }: { label?
         ) : null}
       </View>
     </Pressable>
-  );
-}
-
-// ── 위기 도움 카드(쓴 본인에게만 · 닫기 · 저장 0 — LGF-16)
-export function CrisisCard({ onClose, testID }: { onClose: () => void; testID: string }) {
-  return (
-    <View style={styles.crisis} accessibilityLiveRegion="polite" testID={testID}>
-      <AppText variant="small" testID={`${testID}-text`}>
-        {LOUNGE.crisis.note(LOUNGE_CRISIS_LINE.agency, LOUNGE_CRISIS_LINE.phone)}
-      </AppText>
-      <TextButton label={LOUNGE.crisis.close} variant="captionMedium" align="start" onPress={onClose} testID={`${testID}-close`} />
-    </View>
   );
 }
 
@@ -458,7 +446,6 @@ const styles = StyleSheet.create({
   pillTouch: { minHeight: loungeLook.touch, minWidth: loungeLook.touch, alignItems: 'center', justifyContent: 'center' },
   pill: { minHeight: loungeLook.pillHeight, flexDirection: 'row', alignItems: 'center', gap: space.s4, paddingHorizontal: space.s8, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg },
   pillOn: { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft },
-  crisis: { backgroundColor: colors.accentSoft, borderRadius: radius.md, padding: space.s12, gap: space.s4, maxWidth: layout.bubbleMaxWidth },
   captainWrap: { alignItems: 'center', paddingHorizontal: size.screenPadding },
   captain: { width: '100%', maxWidth: loungeLook.captainMaxWidth, backgroundColor: colors.bg, borderWidth: loungeLook.dash, borderStyle: 'dashed', borderColor: colors.sub, borderRadius: radius.md, padding: space.s16, gap: space.s12 },
   captainText: { gap: space.s4 },

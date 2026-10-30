@@ -25,8 +25,10 @@
 //        D46-A: 만남 장면 글(T4S MEET_SCENE · T4 CHAT.room.metAt — meetCopy.ts · chatCopy.ts)도 카피.md 16장 표 18줄과 같은가 · 16-3 쓰지 않을 낱말 0(같은 X 점검 안에서, 점검 수 그대로)
 //  3부-아(D-223): 카피.md 20장 '앱과 같은 커밋으로 바꿀 줄'(첫 칸 '<화면> 키' — 백틱 없음)은 같은 키의 옛 줄(07 · 9장 · 14-1 · 16장 · 14-5)보다 앞선다(SEC20).
 //        X 에서 20장 줄 · 12-Q 새 줄 4개 · 13-1 POL7 · POL14 를 앱 글과 한 글자씩 맞춘다. '(줄 없음)'은 앱에 그 키가 없어야 한다
-//  LG. 탑승객 라운지 글(LG-F · D-220, features/lounge/loungeCopy.ts LOUNGE)이 카피.md 19장 표(첫 칸 'T4 · T6 `LOUNGE.키`' — 19-1 ~ 19-10, 210줄)와 한 글자씩 같은가 ·
+//  LG. 탑승객 라운지 글(LG-F · D-220, features/lounge/loungeCopy.ts LOUNGE)이 카피.md 19장 표(첫 칸 'T4 · T6 `LOUNGE.키`' — 19-1 ~ 19-10, 211줄)와 한 글자씩 같은가 ·
 //        앱 LOUNGE 의 글이 모두 19장에 있는가(카피 밖 글 0) · 화면 금지어 14(세부청사진 3장 · 정책 PL-22) · 창가 · 통로 · 가운데 · 느낌표 · 숫자 0(19장 말투)
+//  IF3. 재미 기능 2 글(content/if3Copy.ts)이 카피.md 22장 표와 같은가 — 3부-차는 22-10 SIGN_CUSP 두 줄만(경계 날 한 줄) · 우열 · 순서 말 0 · 기내지 ① 쪽에서만 쓰임
+//  CR. 위기 도움 카드 공용 글(3부-차, content/copy.ts CRISIS · SAFETY.emergency)이 카피.md 19-14 표 3줄과 한 글자씩 같은가 · 둘째 줄 = 카피 12 · 되풀이 말 · 신고 · 상대 · 라운지 말 · 겁주기 · 느낌표 · 숫자 0
 //  IF2. 기내 서비스 · 연애 기능 글(IF2-F · D-223, features/inflight/if2CopyData.ts — gen-if2-copy)이 카피.md 21장 표와 한 글자씩 같은가 · 앱이 부르는 글 키가 모두 21장에 있는가 ·
 //        사본 밖 글 0 · 느낌표 · 숫자 · PF-18 금지 낱말 · 상대 화면 별자리 이름 · 일간 0 · 재미 정보 동의 시트 = 동의문구 4-17 · 생성 파일(라이브러리 · 그림 · 안전 낱말 · 아이콘) = 원본.
 //        21-18(BOARDING.matched.body · SETTINGS.rows.imageCredit · IMAGE_CREDIT.headerTitle)은 X · O 가 14-5-1 · 12 옛 줄 대신 읽는다(SEC2118)
@@ -969,12 +971,95 @@ try {
       if (/[!！]/.test(t)) diffsLG.push(`LOUNGE.${p}: 느낌표`);
       if (/\d/.test(t)) diffsLG.push(`LOUNGE.${p}: 숫자`);
     }
-    if (rows19.length !== 210) diffsLG.push(`카피 19장 표가 210줄이 아님(${rows19.length}줄)`);
-    check('LG', `탑승객 라운지 글 ${rows19.length}줄(카피 19-1 ~ 19-10)이 loungeCopy.ts LOUNGE 와 같고 · 앱 글 ${leaves.length}개가 모두 19장에 있고 · 금지어 14 · 창가/통로/가운데 · 느낌표 · 숫자 0`, rows19.length === 210 && diffsLG.length === 0, diffsLG.join('\n') || `표 ${rows19.length}줄`);
+    if (rows19.length !== 211) diffsLG.push(`카피 19장 표가 211줄이 아님(${rows19.length}줄)`);
+    check('LG', `탑승객 라운지 글 ${rows19.length}줄(카피 19-1 ~ 19-10)이 loungeCopy.ts LOUNGE 와 같고 · 앱 글 ${leaves.length}개가 모두 19장에 있고 · 금지어 14 · 창가/통로/가운데 · 느낌표 · 숫자 0`, rows19.length === 211 && diffsLG.length === 0, diffsLG.join('\n') || `표 ${rows19.length}줄`);
+  }
+
+  // ── CR. 위기 도움 카드 공용 글(3부-차 · 카피.md 19-14 — 라운지 · 대화방 · 12 안전 안내가 같이 쓴다) ──
+  //  copy.ts CRISIS(note · close · a11y)가 19-14 표(첫 칸 'T4 · T6 · 12 `CRISIS.키`')와 한 글자씩 같다 · 번호 자리 {상담 기관}({상담 번호}) = 상수 CRISIS_LINE(자살예방 상담전화 109) ·
+  //  둘째 줄 SAFETY.emergency = 카피 12 NFK07-01 확정 글 · 12 안전 안내 맨 위 두 줄(SAFETY_GUIDE.emergency · .crisis)은 위 M 이 카피 12 에서 찾는다 ·
+  //  말투(정책 P4-33 ~ 35): 되풀이 말('또' · '다시' · '이미' · '이번에도' · '오늘' · '번째' · '횟수' · '더 이상') · 신고 · 상대 · 운영 · 알림 · 라운지 말(객실 · 좌석 · 탑승객) · 겁주기 · 1577-0199 · 문자 구절 · 느낌표 · 숫자 0
+  {
+    const cp = await load(path.join(APP_DIR, 'src', 'content', 'copy.ts'));
+    const from1914 = copyText.search(/^### 19-14\. /m);
+    const rest1914 = from1914 >= 0 ? copyText.slice(from1914 + 5) : '';
+    const sec1914 = from1914 >= 0 ? copyText.slice(from1914, from1914 + 5 + (rest1914.search(/^#{1,3} /m) >= 0 ? rest1914.search(/^#{1,3} /m) : rest1914.length)) : '';
+    const rowsCR = sec1914
+      .split(/\r?\n/)
+      .filter((l) => /^\| T4 · T6 · 12 `CRISIS\./.test(l))
+      .map(cells)
+      .map((r) => [(/`CRISIS\.([^`]+)`/.exec(r[0]) ?? [])[1], r[1]]);
+    const SLOT = '§';
+    const MARK = '\u0001';
+    const normCR = (t) => t.replace(/\{[^{}]+\}/g, SLOT);
+    const renderCR = (v) => (typeof v === 'string' ? normCR(v) : typeof v === 'function' ? String(v(...Array.from({ length: Math.max(1, v.length) }, () => MARK))).split(MARK).join(SLOT) : null);
+    const diffsCR = [];
+    for (const [key, want] of rowsCR) {
+      const got = renderCR(cp.CRISIS[key]);
+      if (got === null) diffsCR.push(`CRISIS.${key}: 앱에 없음`);
+      else if (got !== normCR(want)) diffsCR.push(`CRISIS.${key}: 앱 "${got}" / 카피 "${want}"`);
+    }
+    for (const key of Object.keys(cp.CRISIS)) if (!rowsCR.some(([k]) => k === key)) diffsCR.push(`CRISIS.${key}: 카피 19-14 에 없는 글`);
+    if (rowsCR.length !== 3) diffsCR.push(`카피 19-14 표가 3줄이 아님(${rowsCR.length}줄)`);
+    if (!(sec1914.includes(cp.CRISIS_LINE.agency) && sec1914.includes(cp.CRISIS_LINE.phone))) diffsCR.push('19-14 가 기관 · 번호(CRISIS_LINE)를 적지 않음');
+    if (!copyText.includes(`${cp.SAFETY.emergency} | \`SAFETY.emergency\``)) diffsCR.push('SAFETY.emergency 가 카피 12 NFK07-01 확정 글과 다름');
+    const BANNED_CR = ['익명', '비밀', '바로 연결', '언제든', '지켜보고', '24시간', '안전 100%', '또', '다시', '이미', '이번에도', '오늘', '번째', '횟수', '더 이상', '신고', '상대', '운영', '알림', '객실', '좌석', '탑승객', '라운지', '1577', '1366', '1393', '문자로도'];
+    for (const [key, v] of Object.entries(cp.CRISIS)) {
+      const t = renderCR(v) ?? '';
+      for (const w of BANNED_CR) if (t.includes(w)) diffsCR.push(`CRISIS.${key}: 금지 낱말 '${w}'`);
+      if (/[!！]/.test(t)) diffsCR.push(`CRISIS.${key}: 느낌표`);
+      if (/\d/.test(t)) diffsCR.push(`CRISIS.${key}: 숫자`);
+    }
+    for (const [name, t] of [['SAFETY.emergency', cp.SAFETY.emergency], ['crisisNote()', cp.crisisNote()]]) {
+      for (const w of BANNED_CR) if (t.includes(w)) diffsCR.push(`${name}: 금지 낱말 '${w}'`);
+      if (/[!！]/.test(t)) diffsCR.push(`${name}: 느낌표`);
+    }
+    check('CR', `위기 도움 카드 공용 글 ${rowsCR.length}줄(카피 19-14)이 copy.ts CRISIS 와 같고 · 둘째 줄 SAFETY.emergency = 카피 12 · 되풀이 말 · 신고 · 상대 · 라운지 말 · 겁주기 · 느낌표 · 숫자 0`, rowsCR.length === 3 && diffsCR.length === 0, diffsCR.join('\n') || `표 ${rowsCR.length}줄`);
+  }
+
+  // ── IF3. 재미 기능 2(카피.md 22장 · content/if3Copy.ts) — 3부-차는 22-10 `SIGN_CUSP` 두 줄(1.0 별자리 경계 한 줄)만 대조한다. IF3-F 가 나머지 키를 붙일 때 이 그룹을 22장 전체로 넓힌다 ──
+  //  · 22-10 표(첫 칸 'IF-MAG① `SIGN_CUSP.키`')와 한 글자씩 같다 — pair 는 이름 자리({별자리 이름}{과/와})를 자리 표지로 맞춘다
+  //  · 말투: 느낌표 · 숫자('36일' 따위) · 우열 · 순서 말('대표' · '또는' · '전날' · '당일' · '관례') · 확률 말 0
+  //  · 이 글은 기내지 ① 쪽(나만 보는 화면)에서만 쓴다 — 상대에게 보이는 화면 파일이 부르면 실패(정책 PG-81 · 보안 IC3-17)
+  {
+    const i3 = await load(path.join(APP_DIR, 'src', 'content', 'if3Copy.ts'));
+    const from2210 = copyText.search(/^### 22-10\. /m);
+    const rest2210 = from2210 >= 0 ? copyText.slice(from2210 + 5) : '';
+    const next2210 = rest2210.search(/^#{1,3} /m);
+    const sec2210 = from2210 >= 0 ? copyText.slice(from2210, from2210 + 5 + (next2210 >= 0 ? next2210 : rest2210.length)) : '';
+    const rows2210 = sec2210
+      .split(/\r?\n/)
+      .filter((l) => /^\| IF-MAG① `SIGN_CUSP\./.test(l))
+      .map(cells)
+      .map((r) => [(/`SIGN_CUSP\.([^`]+)`/.exec(r[0]) ?? [])[1], r[1]]);
+    const want2210 = Object.fromEntries(rows2210);
+    const diffsIF3 = [];
+    const slots = (t) => t.replace(/\{별자리 이름\}(\{과\/와\})?/g, '§');
+    const appPair = i3.SIGN_CUSP.pair('\u0001', '\u0002').replace(/[\u0001\u0002](과|와)?/g, '§');
+    if (slots(want2210.pair ?? '') !== appPair) diffsIF3.push(`SIGN_CUSP.pair: 앱 "${appPair}" / 카피 "${slots(want2210.pair ?? '')}"`);
+    if ((want2210.why ?? '') !== i3.SIGN_CUSP.why) diffsIF3.push(`SIGN_CUSP.why: 앱 "${i3.SIGN_CUSP.why}" / 카피 "${want2210.why ?? ''}"`);
+    if (rows2210.length !== 2) diffsIF3.push(`카피 22-10 SIGN_CUSP 표가 2줄이 아님(${rows2210.length}줄)`);
+    for (const key of Object.keys(i3.SIGN_CUSP)) if (!(key in want2210)) diffsIF3.push(`SIGN_CUSP.${key}: 카피 22-10 에 없는 글`);
+    for (const [key, t] of [['pair', appPair], ['why', i3.SIGN_CUSP.why]]) {
+      if (/[!！]/.test(t)) diffsIF3.push(`SIGN_CUSP.${key}: 느낌표`);
+      if (/\d/.test(t)) diffsIF3.push(`SIGN_CUSP.${key}: 숫자`);
+      for (const w of ['대표', '또는', '전날', '당일', '관례', '확률', '운세', '정확']) if (t.includes(w)) diffsIF3.push(`SIGN_CUSP.${key}: 금지 낱말 '${w}'`);
+    }
+    const users = [];
+    const walk3 = (dir) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const f = path.join(dir, e.name);
+        if (e.isDirectory()) walk3(f);
+        else if (/\.(ts|tsx)$/.test(e.name) && !f.includes(`${path.sep}__tests__${path.sep}`) && /content\/if3Copy/.test(fs.readFileSync(f, 'utf8'))) users.push(path.relative(path.join(APP_DIR, 'src'), f).split(path.sep).join('/'));
+      }
+    };
+    walk3(path.join(APP_DIR, 'src'));
+    for (const f of users) if (f !== 'features/inflight/MagazineScreen.tsx') diffsIF3.push(`${f}: 22장 글(if3Copy)을 기내지 밖에서 부름(나만 보는 화면 밖)`);
+    check('IF3', `재미 기능 2 글 ${rows2210.length}줄(카피 22-10 SIGN_CUSP — 경계 날 한 줄)이 if3Copy.ts 와 같고 · 느낌표 · 숫자 · 우열 · 순서 말 0 · 기내지 ① 쪽에서만 쓴다`, rows2210.length === 2 && diffsIF3.length === 0, diffsIF3.join('\n') || `표 ${rows2210.length}줄`);
   }
 
   // ── IF2. 기내 서비스 · 연애 기능(IF2-F · D-223 — 카피.md 21장 '앱 반영' 뒤 대조) ──
-  //  ① 앱 글 사본(if2CopyData.ts — gen-if2-copy)이 카피.md 21장 표와 한 글자씩 같다(21장 키 376 = 글 375 + 끌어 쓰는 자리 1) · 기획 가안 키 0
+  //  ① 앱 글 사본(if2CopyData.ts — gen-if2-copy)이 카피.md 21장 표와 한 글자씩 같다(21장 키 383 = 글 382 + 끌어 쓰는 자리 1) · 기획 가안 키 0
   //  ② 카피 밖 글 0: 앱이 부르는 tx · txList 키가 모두 21장에 있고, 기내 서비스 화면 파일에 사본 밖 한글 글이 없다(만남 계획 공유 바로가기 = 카피 v4 SAFE_SHARE.entry)
   //  ③ 말투 · 금지어: 느낌표 · 숫자({…} 빼고) 0 · 정책 PF-18 · 법무 4-2 금지 낱말 0 · 앱 안 '운세' · '타로' 0 · 상대에게 보이는 글(궁합 카드 · 칩 · 대화방 칸)에 별자리 이름 · 일간 · 일주 · 띠 0
   //  ④ 재미 정보 동의 시트 글(content/ck17Content.ts — gen-if2-assets 가 동의문구 4-17 에서 옮김)이 원본과 같다 · 판 = 판_관리(CK17A consent-2026.10.30-v1 · CK17B consent-2026.10.28-v2)
@@ -990,7 +1075,7 @@ try {
     if (built.dup.length) diffsIF.push(`21장에 같은 키가 다른 글로 두 번: ${built.dup.join(', ')}`);
     const sec21 = gen.chapter21(copyText) ?? '';
     const rows21 = sec21.split(/\r?\n/).filter((l) => /^\| [^|`]*`[A-Z_]+\./.test(l));
-    if (rows21.length !== 376) diffsIF.push(`카피 21장 키 줄이 376이 아님(${rows21.length})`);
+    if (rows21.length !== 383) diffsIF.push(`카피 21장 키 줄이 383이 아님(${rows21.length})`);
     if (!/\*\*앱 반영\*\*/.test(sec21) || /\*\*앱 반영 전\*\*/.test(sec21)) diffsIF.push("카피 21장 표시가 '앱 반영'이 아님");
     // ② 앱이 부르는 키
     const keys = new Set(built.map.keys());

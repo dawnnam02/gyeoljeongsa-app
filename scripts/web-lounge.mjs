@@ -126,7 +126,7 @@ try {
   await tap('lounge-row');
   check('2', '/lounge 첫 입장 안내', await b.waitFor(`location.pathname === '/lounge' && !!${visQ('lounge-intro')}`, 10000), await b.evaluate('location.pathname'));
   check('2', "동의 버튼 하나 '약속을 지키고 들어갈게요' + [나중에] · 체크 칸 0", (await visText('lounge-intro-agree')) === '약속을 지키고 들어갈게요' && (await visText('lounge-intro-later')) === '나중에' && (await b.evaluate(`document.querySelectorAll('[role=checkbox],input[type=checkbox]').length`)) === 0, '');
-  check('2', '짝 안내 한 줄 · 약속 세 줄', (await visText('lounge-intro-pair')).startsWith('이번 주에 이어질 분이 있다면') && (await vis('lounge-intro-promise-2')), '');
+  check('2', '짝 안내 한 줄 · 약속 네 줄(약관 제9조의4 ⑥ 1 ~ 5호 · 3부-차)', (await visText('lounge-intro-pair')).startsWith('이번 주에 이어질 분이 있다면') && (await vis('lounge-intro-promise-3')) && !(await vis('lounge-intro-promise-4')), '');
   await measure('첫 입장 안내');
   await words('첫 입장 안내');
   await b.shot(`LG_첫입장_${width}.png`);
@@ -176,6 +176,9 @@ try {
   const crisisClose = await b.waitFor(`[...document.querySelectorAll('[data-testid$="-crisis-close"]')].some((e) => window.__visible(e))`, 6000);
   const crisisSize = await b.evaluate(`(() => { const el = [...document.querySelectorAll('[data-testid$="-crisis-close"]')].find((e) => window.__visible(e)); if (!el) return null; const r = el.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) }; })()`);
   check('3', '위기 도움 카드 [닫기]: 터치 48 × 48 이상(QP-40)', crisisClose && crisisSize !== null && crisisSize.w >= 48 && crisisSize.h >= 48, JSON.stringify(crisisSize));
+  // 3부-차: 줄 둘(공용 CRISIS.note 109 + SAFETY.emergency 112 · 119) — 대화방 · 12 안전 안내와 같은 글
+  const crisisLines = await b.evaluate(`[...document.querySelectorAll('[data-testid$="-crisis-text"],[data-testid$="-crisis-emergency"]')].filter((e) => window.__visible(e)).map((e) => e.innerText.trim())`);
+  check('3', '위기 도움 카드 줄 둘: 상담전화 109 + 112 · 119 먼저(공용 글)', crisisLines.length === 2 && crisisLines[0].includes('자살예방 상담전화(109)') && crisisLines[1] === '위급한 상황이면 112나 119에 먼저 연락해 주세요.', JSON.stringify(crisisLines));
   await b.shot(`LG_위기안내_${width}.png`);
   const crisisCloseId = await b.evaluate(`(() => { const el = [...document.querySelectorAll('[data-testid$="-crisis-close"]')].find((e) => window.__visible(e)); return el ? el.getAttribute('data-testid') : null; })()`);
   if (crisisCloseId) await tap(crisisCloseId);

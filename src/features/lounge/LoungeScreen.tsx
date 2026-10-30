@@ -26,6 +26,7 @@ import { TextField } from '@/components/TextField';
 import { COMMON, REPORT_SHEET } from '@/content/copy';
 import { BOARDING } from '@/features/boarding/boardingCopy';
 import { TermsArticleSheet, termsArticle } from '@/features/consent/TermsArticleSheet';
+import { takeCrisisCard } from '@/features/safety/crisisBudget';
 import { Radio } from '@/features/safety/Radio';
 import { curve, haptic, SkeletonLines, TOAST_MS, useReduceMotion, WaitState } from '@/motion';
 import { layout } from '@/theme/layout';
@@ -33,7 +34,7 @@ import { loungeLook } from '@/theme/loungeLook';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 
 import { LOUNGE_OFF, LOUNGE_REASONS, type CaptainPost, type LoungeEvent, type LoungePost, type LoungeReason, type LoungeState, type MemberPost } from './loungeApi';
-import { LOUNGE, LOUNGE_BACK_TO_LIST } from './loungeCopy';
+import { LOUNGE } from './loungeCopy';
 import { LoungeIcon } from './LoungeIcon';
 import {
   balanceHasResult,
@@ -86,7 +87,7 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
   const [rulesChanged, setRulesChanged] = useState(false);
   const [assigned, setAssigned] = useState(false);
   const [hidden, setHidden] = useState<Map<string, string>>(new Map()); // 내가 숨긴 좌석 → 그 좌석 글 id 하나(되돌리기용 · 메모리만)
-  const [helpClosed, setHelpClosed] = useState<Set<string>>(new Set());
+  const [crisisPost, setCrisisPost] = useState<string | null>(null); // 위기 도움 카드가 붙은 내 글 id — 방금 보낸 글 한 장만(화면 메모리 · 다시 열면 0 · 하루 3번, 3부-차 정책 P4-33 · 34)
   const [newBelow, setNewBelow] = useState(false);
   const [focused, setFocused] = useState(false);
   const [active, setActive] = useState(AppState.currentState !== 'background' && AppState.currentState !== 'inactive');
@@ -115,7 +116,7 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
     setMode({ kind: 'none' });
     setSendError(null);
     setHidden(new Map());
-    setHelpClosed(new Set());
+    setCrisisPost(null);
     setHiddenPostIds(new Set());
     setSheet('none');
     setConfirm('none');
@@ -316,6 +317,8 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
       if (p) {
         patchPosts((list) => mergePost(list, p));
         atBottom.current = true;
+        // 위기 도움 카드는 '보낸 직후 응답'에서만, 하루 3번까지(라운지 · 대화방 합쳐). 글 목록을 다시 불러올 때 오는 표시는 쓰지 않는다
+        if (r.data.help && takeCrisisCard()) setCrisisPost(p.id);
       }
       return;
     }
@@ -576,8 +579,8 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
           <EndView
             icon="seat"
             title={left ? LOUNGE.left.title : null}
-            body={LOUNGE.left.body}
-            button={left ? { label: LOUNGE_BACK_TO_LIST, onPress: toList } : { label: LOUNGE.closed.back, onPress: () => router.replace(LOUNGE_BOARDING_HREF as Href) }}
+            body={left ? LOUNGE.left.body : LOUNGE.none.body}
+            button={left ? { label: LOUNGE.backToList, onPress: toList } : { label: LOUNGE.closed.back, onPress: () => router.replace(LOUNGE_BOARDING_HREF as Href) }}
             testID={left ? 'lounge-left' : 'lounge-none'}
           />
           {demoLine}
@@ -587,7 +590,7 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
       body = (
         <View style={styles.flex}>
           <ScrollView contentContainerStyle={styles.endBody}>
-            <EndView icon="hide_seat" title={LOUNGE.kicked.title} body={LOUNGE.kicked.body} button={{ label: LOUNGE_BACK_TO_LIST, onPress: toList }} testID="lounge-kicked" />
+            <EndView icon="hide_seat" title={LOUNGE.kicked.title} body={LOUNGE.kicked.body} button={{ label: LOUNGE.backToList, onPress: toList }} testID="lounge-kicked" />
             {demoLine}
           </ScrollView>
           <ComposerLine icon={null} text={LOUNGE.composer.stopped} testID="lounge-composer-line" />
@@ -650,11 +653,11 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
                   fresh={fresh(p.id)}
                   showEmpathy={empathyOn && !p.mine}
                   showReceived={empathyOn}
-                  showHelp={!helpClosed.has(p.id)}
+                  showHelp={crisisPost === p.id}
                   hiddenSeatOf={hiddenSeatOf}
                   onEmpathy={() => void empathize(p)}
                   onMenu={() => openMenuFor(p)}
-                  onCloseHelp={() => setHelpClosed((cur) => new Set(cur).add(p.id))}
+                  onCloseHelp={() => setCrisisPost(null)}
                   testID={`lounge-post-${i}`}
                 />
               ),

@@ -102,6 +102,15 @@ export function SafetyGuidePage({ onBack }: { onBack: () => void }) {
       <AppText variant="title" accessibilityRole="header" testID="settings-safety-title">
         {SAFETY_GUIDE.title}
       </AppText>
+      {/* 맨 위 두 줄(3부-차 · 카피 12): 늘 보이는 정적 안내 — 카드가 안 뜨는 때에도 도움 길이 남는 곳(정책 13장 #67). 판정 0 · 단추 0 */}
+      <Card testID="settings-safety-top">
+        <AppText variant="body" testID="settings-safety-emergency">
+          {SAFETY_GUIDE.emergency}
+        </AppText>
+        <AppText variant="body" style={styles.topLine} testID="settings-safety-crisis">
+          {SAFETY_GUIDE.crisis}
+        </AppText>
+      </Card>
       <RowGroup testID="settings-safety-lines">
         {lines.map((line, i) => (
           <View key={line} style={[styles.guideLine, i < lines.length - 1 && styles.divider]}>
@@ -159,5 +168,6 @@ const styles = StyleSheet.create({
   buttons: { flexDirection: 'row', gap: space.s12 },
   half: { flex: 1 },
   guideLine: { paddingHorizontal: space.s16, paddingVertical: space.s16 },
+  topLine: { marginTop: space.s8 },
   divider: { borderBottomWidth: 1, borderBottomColor: colors.line },
 });

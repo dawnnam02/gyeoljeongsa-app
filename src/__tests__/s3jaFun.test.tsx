@@ -16,7 +16,7 @@ import type { BoardingState } from '@/features/boarding/boardingApi';
 import { BOARDING } from '@/features/boarding/boardingCopy';
 import { TicketCard } from '@/features/boarding/TicketCard';
 import { TraitsScreen, type TraitsDeps } from '@/features/ai/TraitsScreen';
-import { TYPE_ENTRY_HREF, TYPE_ENTRY_LABEL } from '@/features/ai/typeEntry';
+import { TYPE_ENTRY_HREF } from '@/features/ai/typeEntry';
 import { createDeviceNotes } from '@/features/inflight/deviceNotes';
 import { HomeCell } from '@/features/inflight/If2Parts';
 import { Ck17Sheet } from '@/features/inflight/If2Sheets';
@@ -458,7 +458,7 @@ describe('07 확정 끝 [내 여행 타입 보기] 입구(정책 PF-33) — 안 
     await wait();
     expect(nav()).toEqual([]); // 저절로 넘어가지 않는다
     expect(has(tree, 'traits-confirm')).toBe(false);
-    expect(must(tree, 'traits-type-entry').props.label).toBe(TYPE_ENTRY_LABEL);
+    expect(must(tree, 'traits-type-entry').props.label).toBe(tx('TYPE_CARD.entry.open'));
     expect(must(tree, 'traits-type-entry').props.variant).toBe('secondary');
     expect(must(tree, 'traits-next').props.label).toBe('다음');
     await wait(200);
@@ -478,9 +478,9 @@ describe('07 확정 끝 [내 여행 타입 보기] 입구(정책 PF-33) — 안 
     expect(has(tree, 'traits-type-entry')).toBe(false);
   });
 
-  test('입구 글은 코드 상수 한 곳(카피.md 에 줄 없음 — 마케팅 확인 대기) · 권유 말 · 숫자 0', () => {
-    expect(TYPE_ENTRY_LABEL).toBe('내 여행 타입 보기');
+  test('입구 글은 카피 21-5 TYPE_CARD.entry.open 키(코드 상수가 아님 — 3부-차 반영) · 권유 말 · 숫자 0', () => {
+    expect(tx('TYPE_CARD.entry.open')).toBe('내 여행 타입 보기');
     expect(TYPE_ENTRY_HREF).toBe('/type-card');
-    expect(TYPE_ENTRY_LABEL).not.toMatch(/\d|[!！]|꼭|지금/);
+    expect(tx('TYPE_CARD.entry.open')).not.toMatch(/\d|[!！]|꼭|지금/);
   });
 });

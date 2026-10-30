@@ -11,7 +11,7 @@ import { createDemoLounge, type LoungeFlight } from '@/demo/loungeDemo';
 import { createDemoChatApi } from '@/features/chat/chatDemo';
 import { ChatListScreen } from '@/features/chat/ChatListScreen';
 import { createLoungeApi, type LoungeApi } from '@/features/lounge/loungeApi';
-import { LOUNGE, LOUNGE_BACK_TO_LIST } from '@/features/lounge/loungeCopy';
+import { LOUNGE } from '@/features/lounge/loungeCopy';
 import { LoungeScreen } from '@/features/lounge/LoungeScreen';
 import type { LoungeDeps } from '@/features/lounge/loungeService';
 import { reduceMotionStore } from '@/lib/reduceMotion';
@@ -165,7 +165,7 @@ describe('강퇴 · 나감 [돌아가기] → T4 목록(기획 T6 이동표 · �
   test('강퇴(kicked): 한 줄 + [돌아가기] → /chat · 입력 줄은 이번 회차에는 쓸 수 없어요 그대로', async () => {
     const { tree } = await open('loungekicked@email.com');
     expect(textOf(tree, 'lounge-kicked-title')).toBe(LOUNGE.kicked.title);
-    expect(allTexts(tree)).toContain(LOUNGE_BACK_TO_LIST);
+    expect(allTexts(tree)).toContain(LOUNGE.backToList);
     expect(textOf(tree, 'lounge-composer-line-text')).toBe(LOUNGE.composer.stopped);
     await press(tree, 'lounge-kicked-button');
     expect(mockRouter.replace).toHaveBeenCalledWith('/chat');

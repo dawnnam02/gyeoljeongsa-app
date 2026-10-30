@@ -218,7 +218,19 @@ export const SAFETY = {
   line: '만나기 전에 개인정보와 금전 요구에 주의하고, 불편하면 바로 신고해 주세요.',
   // 법무 L5: 신고 사유 아래(10 · 11) · 안전 안내 화면 · 아동 안전 문의가 같은 문장을 쓴다
   minorNote: SAFETY_MINOR,
+  // 카피 12 NFK07-01 '12 안전 안내 맨 위' 확정 글(3부-차 · 10-30). 위기 도움 카드 둘째 줄과 12 안전 안내 맨 위가 같은 상수를 부른다
+  emergency: '위급한 상황이면 112나 119에 먼저 연락해 주세요.',
 } as const;
+
+// 위기 도움 카드(라운지 · 대화방 · 12 공용 — 카피 19-14, 정책 P4-29 ~ 36). 기관 · 번호는 법무 값(자살예방 상담전화 109 — 법무 LG 15-2 공식 대조 10-29, 켜는 달 재확인 한 번)이라 글과 따로 한 곳에 둔다
+export const CRISIS_LINE = { agency: '자살예방 상담전화', phone: '109' } as const;
+export const CRISIS = {
+  note: (agency: string, phone: string) => `혹시 많이 힘들다면 혼자 견디지 않아도 돼요. ${agency}(${phone})에서 이야기를 들어 줘요.`,
+  close: '닫기',
+  a11y: (body: string) => `도움 안내, ${body}`,
+} as const;
+/** 카드 · 12 안전 안내 맨 위가 보이는 첫째 줄(기관 · 번호를 채운 글) */
+export const crisisNote = (): string => CRISIS.note(CRISIS_LINE.agency, CRISIS_LINE.phone);
 
 // 신고 · 차단 시트(N33). 10 상단 '신고 · 차단'과 11 행의 ⋯ 가 같은 시트를 연다
 export const REPORT_SHEET = {
@@ -254,6 +266,9 @@ export const REPORT_SHEET = {
 export const SAFETY_GUIDE = {
   rowName: '안전 안내',
   title: '만나기 전에 확인해 주세요',
+  // 맨 위 두 줄(3부-차 · 카피 12): 급할 때 112 · 119 먼저, 힘든 마음이면 상담전화 109 — 늘 보이는 정적 안내(판정 0 · 단추 0)
+  emergency: SAFETY.emergency,
+  crisis: crisisNote(),
   lines: [
     '처음 만날 때는 사람이 많은 공개된 장소를 골라요.',
     '만나는 날짜와 장소는 가족이나 친구에게 알려 두세요.',

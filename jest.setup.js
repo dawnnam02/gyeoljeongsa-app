@@ -6,6 +6,9 @@ jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
 // F21: 시트 끌어 닫기(react-native-gesture-handler)의 시험용 준비(패키지가 주는 것)
 require('react-native-gesture-handler/jestSetup');
+// 3부-차: 위기 도움 카드 하루 3번 셈은 화면 메모리(모듈 변수)라 시험마다 비운다
+const { resetCrisisCards } = require('@/features/safety/crisisBudget');
+beforeEach(() => resetCrisisCards());
 // V5(W10 · D-152): 숨긴 v4 화면 스위치는 서버(get_feature_flags)를 읽는다. 예전 화면 시험(09 · 10 · 11 · 12 · 16)은 켜진 상태 그대로 돌고,
 //  숨김 자체는 v5Hide.test 가 jest.requireActual 로 진짜 동작을 본다
 jest.mock('@/navigation/v5Hide', () => {

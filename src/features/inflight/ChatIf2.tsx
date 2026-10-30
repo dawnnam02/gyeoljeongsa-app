@@ -47,7 +47,7 @@ export function OpenerChips({ roomId, roundNo, wrote, deps, onChip, onPostcard, 
   }, [deps.api, on, roomId, wrote]);
   const chips = on && !wrote ? loaded : []; // 내 첫 글 뒤 · 스위치 꺼짐이면 칩 0
   const card = deps.isOn('postcard') && notes.postcard && roundNo !== null && notes.postcard.round === roundNo ? notes.postcard : null;
-  const texts = chips.map((c) => chipText(c.id, c.hobby)).filter((t): t is string => !!t);
+  const texts = [...new Set(chips.map((c) => chipText(c.id, c.hobby)).filter((t): t is string => !!t))]; // 갈래 칩은 번호 홀짝으로 고르니 같은 글이 겹치면 한 번만
   if (wrote || (!card && texts.length === 0)) return null;
   return (
     <View style={styles.chips} accessibilityLabel={tx('FIRST_HINT.label')} testID={testID}>
