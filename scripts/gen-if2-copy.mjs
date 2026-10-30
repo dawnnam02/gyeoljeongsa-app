@@ -26,9 +26,9 @@ export const PENDING = {
   'TYPE_CARD.quiz.picksNote': ['고른 짐은 엽서 그림에만 들어가요. 타입은 성향 정리 결과로 정해져요.', '기획 PF-31 · 화면 6장'],
   'PREVIEW_ME.ck17Note': ['짝과 둘 다 동의하면 궁합 카드에 별자리 · 사주 이야기가 보여요.', '기획 PF-34(법무 안)'],
   'PREVIEW_ME.hobbyNote': ['짝과 같은 취미가 있으면 그 취미 이름이 궁합 카드에 보여요.', '기획 PF-34(기획 제안)'],
-  'PAIR_CARD.hobbyGroup.move': ['몸을 움직이는 일', '기획 PF-49 · 화면 6장'],
-  'PAIR_CARD.hobbyGroup.out': ['밖에서 즐기는 일', '기획 PF-49 · 화면 6장'],
-  'PAIR_CARD.hobbyGroup.home': ['집에서 즐기는 일', '기획 PF-49 · 화면 6장'],
+  'PAIR_CARD.hobbyGroup.move': ['몸을 움직이는 일을 좋아해요', '기획 PF-49 · 화면 6장 · 카피 21-22 문장'],
+  'PAIR_CARD.hobbyGroup.out': ['밖에서 보내는 시간을 좋아해요', '기획 PF-49 · 화면 6장 · 카피 21-22 문장'],
+  'PAIR_CARD.hobbyGroup.home': ['집에서 보내는 시간을 좋아해요', '기획 PF-49 · 화면 6장 · 카피 21-22 문장'],
   'PAIR_CARD.talkLink': ['꼭 나눌 이야기 보기', '화면 6장'],
 };
 

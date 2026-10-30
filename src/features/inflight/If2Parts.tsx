@@ -29,7 +29,7 @@ export function If2Icon({ name, size: s = if2Look.cellIcon, color = colors.text,
   );
 }
 
-type ArtKey = Exclude<keyof typeof art, '원본' | 'tarot'>;
+type ArtKey = Exclude<keyof typeof art, '원본' | 'tarot' | 'types' | 'items'>; // 타입 소재 · 짐 소품 묶음(types · items)은 코드로 꺼낸다(TypeCardScreen)
 export const artXml = (key: ArtKey): string => art[key];
 export const tarotXml = (no: number): string => art.tarot[no] ?? art.tarotBack;
 
@@ -66,16 +66,18 @@ export function HomeBlock({ title, cellNames, children, testID }: { title: strin
 // 블록 안 칸 하나(소품 + 이름 한 줄 + 한 줄) — 한 포커스 '칸 이름, 한 줄'(HOME.cellA11y). 누르면 화면 · 시트
 export function HomeCell({ icon, name, line, onPress, testID }: { icon: If2IconName; name: string; line: string; onPress?: () => void; testID: string }) {
   return (
+    // QP-48(대비 4.5+): 아직 열 수 없는 칸(발행 전 기내지 …)을 투명도로 흐리지 않는다 — 글 · 그림을 sub 색으로(Pressable 의 자동 흐림도 끔)
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={tx('HOME.cellA11y', { '칸 이름': name, '한 줄': line })}
       disabled={!onPress}
+      offLook="own"
       onPress={onPress}
       effect="scale"
       style={({ pressed }) => [styles.cell, pressed && styles.pressed]}
       testID={testID}>
-      <If2Icon name={icon} color={colors.accent} />
-      <AppText variant="bodyMedium" numberOfLines={2} testID={`${testID}-name`}>
+      <If2Icon name={icon} color={onPress ? colors.accent : colors.sub} />
+      <AppText variant="bodyMedium" tone={onPress ? 'text' : 'sub'} numberOfLines={2} testID={`${testID}-name`}>
         {name}
       </AppText>
       <AppText variant="caption" numberOfLines={3} testID={`${testID}-line`}>

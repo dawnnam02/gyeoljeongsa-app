@@ -31,6 +31,20 @@ export function tx(key: If2Key, vals?: Readonly<Record<string, string>>): string
   return fill(IF2_COPY[key], vals);
 }
 
+// 같은 이름 자리가 글 안에 여럿일 때(앞 {취미}에 첫째 값, 뒤 {취미}에 둘째 값 …): 이름마다 값 목록을 차례로 채운다.
+//  '{취미}{과/와} {취미}{을/를} 좋아해요' + 취미: ['독서·공부', '여행'] → '독서·공부와 여행을 좋아해요'. 값이 모자라면 마지막 값을 다시 쓴다
+export function txSeq(key: If2Key, vals: Readonly<Record<string, readonly string[]>>): string {
+  const used: Record<string, number> = {};
+  return IF2_COPY[key].replace(/\{([^{}/]+)\}(\{(?:을\/를|이\/가|은\/는|과\/와|으로\/로|이에요\/예요)\})?/g, (whole, name: string, pair?: string) => {
+    const list = vals[name];
+    if (!list || list.length === 0) return whole;
+    const i = used[name] ?? 0;
+    used[name] = i + 1;
+    const v = list[Math.min(i, list.length - 1)];
+    return pair ? v + josa(v, pair.slice(1, -1)) : v;
+  });
+}
+
 export function txList(base: string): string[] {
   const out: string[] = [];
   const table = IF2_COPY as Readonly<Record<string, string>>;

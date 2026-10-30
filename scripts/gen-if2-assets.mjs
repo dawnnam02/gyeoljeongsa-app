@@ -2,6 +2,7 @@
 //  ① src/content/if2Library.json — AI직원 0원 문구 라이브러리(ai/IF2/문구_라이브러리.json)에서 1.0 화면이 쓰는 묶음만
 //     별자리 · 사주 일간 · 그 주 기운 · 타로 22 · 연애 이야기 · 질문 60 · 궁합 0원 틀 · 첫 인사 칩. 둘 중 하나(balance)는 F-68 1.1이라 뺀다.
 //     일간 글자(codes.stems[].char)는 앱에 가져오지 않는다(보안 S-4 · 기획 PF-14 — 화면에 일간 글자 0)
+//     3부-자: 내 여행 타입 12(이름 · 앞면 한 줄 · 설명 세 줄 · 노선 두 역과 까닭 · 대화 팁) · 짐 싸기 7문항 · 이번 여행지 12(기내지 ⑤ 쪽)도 같은 원본에서
 //  ② assets/illustrations/if2art.json — 디자인 원본(디자인/IF2_기내서비스/원본/) 그림 SVG 글. 색은 에셋 안에만(check:tokens B)
 //     타로 앞면 22 + 뒷면 · 주머니 소품 · 짐 가방 · 타입 엽서 앞 · 소인 · 우표 · 표지 · 여행지 · 오행 결 다섯 · 별자리 점선 · 노선도 · 도장 · 짐표 · 로고 타일
 // 사용: node scripts/gen-if2-assets.mjs          → 두 파일을 다시 쓴다
@@ -41,6 +42,10 @@ export function buildLibrary(src = LIB_SRC) {
       topic: d.compat.topic.map((x) => pick(x, ['id', 'text'])),
     },
     chips: d.chips.map((x) => pick(x, ['id', 'text'])),
+    // 3부-자(QP-43 ~ 49 묶음 · 계산명세 10-1 · 10-2): 열두 타입 · 짐 싸기 일곱 문항 · 열두 여행지. 소재 설명(motif)은 디자인 힌트라 앱에 안 가져온다
+    travelTypes: d.travel_types.map((x) => pick(x, ['id', 'code', 'energy', 'plan', 'style', 'name', 'line', 'desc', 'routes', 'tip'])),
+    packQuiz: d.pack_quiz.map((x) => pick(x, ['id', 'q', 'options'])),
+    tripPlaces: d.trip_places.map((x) => pick(x, ['id', 'trip_no', 'name', 'body', 'together'])),
   };
 }
 
@@ -75,10 +80,30 @@ const svgOf = (file) =>
     .replace(/\s*class="[^"]*"/, '')
     .trim();
 
+// 3부-자: 타입 소재 12 · 짐 소품 21(디자인/IF2_기내서비스/타입소재/ — 96 × 96 칸, 색은 토큰 일곱뿐, 엽서 앞면 종이 위에만). 코드 = 라이브러리 travel_types[].code · pack_quiz[].options[].item
+//  타입 코드와 짐 코드가 둘 다 film_camera 라 한 표에 섞지 않고 types · items 로 나눈다(디자인 목록.md 1장)
+const TYPE_ART_DIR = path.join(root, '디자인', 'IF2_기내서비스', '타입소재');
+const typeSvg = (name) =>
+  fs
+    .readFileSync(path.join(TYPE_ART_DIR, name), 'utf8')
+    .replace(/\r\n/g, '\n')
+    .replace(/<\?xml[^>]*\?>\s*/, '')
+    .trim();
+
 export function buildArt() {
-  const out = { 원본: '디자인/IF2_기내서비스/원본 (IF2-D)' };
+  const out = { 원본: '디자인/IF2_기내서비스/원본 (IF2-D) · 타입소재 (3부-자)' };
   for (const [k, f] of Object.entries(ART_FILES)) out[k] = svgOf(f);
   out.tarot = Array.from({ length: 22 }, (_, i) => svgOf(`tarot/tarot_${String(i).padStart(2, '0')}.svg`));
+  // 엽서 앞면 바탕: 시안 type_front_train.svg 의 하늘 띠 넷 + 흰 테두리만(그림은 빼고) — 타입 소재 · 짐 소품이 이 위에 놓인다(디자인 목록.md 1장)
+  const front = out.typeFront;
+  const sky = [...front.matchAll(/<rect x="0" y="[\d.]+" width="320" height="[\d.]+" fill="#[0-9A-Fa-f]{6}"\/>/g)].map((m) => m[0]);
+  const border = /<rect x="9" y="9" width="302" height="182"[^>]*\/>/.exec(front)?.[0];
+  if (sky.length !== 4 || !border) throw new Error('엽서 앞면 시안에서 하늘 띠 · 테두리를 읽지 못했어요');
+  out.typeSky = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200">${sky.join('')}${border}</svg>`;
+  const lib = JSON.parse(fs.readFileSync(LIB_SRC, 'utf8'));
+  out.types = Object.fromEntries(lib.travel_types.map((t) => [t.code, typeSvg(`type_${t.code}.svg`)]));
+  const items = [...new Set(lib.pack_quiz.flatMap((q) => q.options.map((o) => o.item)))];
+  out.items = Object.fromEntries(items.map((c) => [c, typeSvg(`item_${c}.svg`)]));
   return out;
 }
 

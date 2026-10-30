@@ -1,6 +1,7 @@
 // IF-MAG 기내지(F-08 · F-02) + IF-CARD 이번 주 카드(F-09) — 정책 PF-21 ~ PF-25 · 화면_요구사항 IF-MAG · IF-CARD · 카피 21-3 · 21-4.
 //  · 그 회차 탑승객만 · 목 09:00 ~ 수 18:00 · 표지 + 6쪽을 가로로 넘김(끝 쪽 뒤 넘김 0) · 쪽 이름만(쪽 번호 · 진행 점 0) · 머리 대신 [닫기] · 푸시 0
-//  · ① 하늘과 결 = CK17A 켠 분만(아니면 안내 한 줄 · 그 쪽을 처음 볼 때만 동의 시트 · 되풀이 0) · ② 이번 주 카드 = 세 장 가운데 한 장(서버가 고른 자리를 먼저 저장 — 다시 뽑기 0)
+//  · ① 하늘과 결 = CK17A 켠 분만(아니면 안내 한 줄 + [동의하고 보기] — 누를 때만 동의 시트 · 쪽에 닿아도 저절로 안 뜸 · 되풀이 0, 3부-자 QP-46) · ② 이번 주 카드 = 세 장 가운데 한 장(서버가 고른 자리를 먼저 저장 — 다시 뽑기 0)
+//  · 서버 get_magazine 은 이번 회차에 안 탄 분도 탄 뒤 닫힌 분도 똑같이 none 이라, 앱이 탑승권 상태로 가른다(3부-자 QP-43): 판매 중 · 마감 뒤 공개 전인데 탑승권이 없으면 notBoarded, 그 밖은 closed
 //  · 쪽마다 끝줄(① ② ④ ⑤ 재미 끝줄 · ③ 연애 이야기 끝줄 · ⑥ AI 작성 알림 — PF-04 · PF-20) · 글은 IF2 글 + AI 라이브러리(id) · AI 호출 0
 //  · 내 별자리 이름은 나만 보는 기내지에서만(PF-14) · 일간 글자 · 큰 한자 · 부적 꼴 0
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
@@ -13,22 +14,21 @@ import { Pressable } from '@/components/Pressable';
 import { Screen } from '@/components/Screen';
 import { TextButton } from '@/components/TextButton';
 import { Toast } from '@/components/Toast';
+import type { BoardingState } from '@/features/boarding/boardingApi';
 import { BOARDING } from '@/features/boarding/boardingCopy';
-import { openSettingsPage } from '@/features/settings/settingsIntent';
 import { Rise, TOAST_MS } from '@/motion';
 import { if2Look } from '@/theme/if2Look';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 
 import type { InflightApi, Magazine, PreQuestions, WeekCard } from './inflightApi';
-import { columnOf, element5Name, questionText, sajuText, signName, stemIntro, tarotOf, zodiacText } from './if2Library';
-import { MAG_PAGES, tripOf, type MagPage } from './inflightLogic';
+import { columnOf, element5Name, questionText, sajuText, signName, stemIntro, tarotOf, tripPlaceOf, zodiacText } from './if2Library';
+import { MAG_PAGES, magazineNoneKind, tripOf, type MagPage } from './inflightLogic';
 import { Art, artXml, Footnote, if2Styles, tarotXml } from './If2Parts';
 import { Ck17Sheet, PreAnswerSheet } from './If2Sheets';
 import { tx } from './if2Text';
 import type { Ck17Api } from './inflightService';
 
-export type MagazineDeps = { api: Pick<InflightApi, 'magazine' | 'weekCard' | 'pickWeekCard' | 'preQuestions'>; ck17: Ck17Api; preOn?: boolean };
-const asked = new Set<string>(); // ① 쪽 동의 시트를 이번 실행에 띄운 호(되풀이 0 — 기기 저장 0)
+export type MagazineDeps = { api: Pick<InflightApi, 'magazine' | 'weekCard' | 'pickWeekCard' | 'preQuestions'>; ck17: Ck17Api; preOn?: boolean; boarding?: () => Promise<BoardingState | null> };
 const GRAIN: Readonly<Record<string, 'grainWood' | 'grainFire' | 'grainEarth' | 'grainMetal' | 'grainWater'>> = { wood: 'grainWood', fire: 'grainFire', earth: 'grainEarth', metal: 'grainMetal', water: 'grainWater' };
 const pageName = (p: MagPage) =>
   p === 'cover' ? tx('MAGAZINE.cover.issue') : p === 'skyGrain' ? tx('MAGAZINE.page.skyGrain') : p === 'card' ? tx('MAGAZINE.page.card') : p === 'love' ? tx('MAGAZINE.page.love') : p === 'question' ? tx('MAGAZINE.page.question') : p === 'place' ? tx('MAGAZINE.page.place') : tx('MAGAZINE.page.back');
@@ -36,7 +36,8 @@ const pageName = (p: MagPage) =>
 export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
   const router = useRouter();
   const params = useLocalSearchParams<{ page?: string; round?: string }>();
-  const [mag, setMag] = useState<Magazine | 'loading' | 'failed'>('loading');
+  const [mag, setMag] = useState<Magazine | 'loading' | 'failed' | 'off'>('loading');
+  const [boarded, setBoarded] = useState<BoardingState | null>(null); // none 일 때만 읽는다(탑승권 상태로 notBoarded · closed 가름)
   const [card, setCard] = useState<WeekCard | null>(null);
   const [pre, setPre] = useState<PreQuestions | null>(null);
   const [page, setPage] = useState(0);
@@ -47,11 +48,15 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
   const startPage = params.page === 'card' ? MAG_PAGES.indexOf('card') : 0;
   const round = Number(params.round ?? '0') || 0;
 
+  const boardingOf = deps.boarding;
   const fetchAll = useCallback(() => {
-    void deps.api.magazine().then((r) => setMag(r.ok ? r.data : r.code === 'off' ? { state: 'none' } : 'failed'));
+    void deps.api.magazine().then((r) => {
+      setMag(r.ok ? r.data : r.code === 'off' ? 'off' : 'failed');
+      if (r.ok && r.data.state === 'none' && boardingOf) void boardingOf().then(setBoarded, () => setBoarded(null));
+    });
     void deps.api.weekCard().then((r) => setCard(r.ok ? r.data : null));
     if (deps.preOn) void deps.api.preQuestions().then((r) => setPre(r.ok ? r.data : null));
-  }, [deps.api, deps.preOn]);
+  }, [deps.api, deps.preOn, boardingOf]);
   useEffect(fetchAll, [fetchAll]);
   const load = () => {
     setMag('loading');
@@ -65,13 +70,8 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
 
   const issued = typeof mag === 'object' && mag.state === 'issued' ? mag : null;
   const trip = issued ? (tripOf(issued.tripNo) ?? '') : '';
-  // ① 하늘과 결 쪽을 처음 볼 때만 동의 시트(CK17A 꺼짐 · 되풀이 0) — 쪽을 옮기는 순간에 판단
-  const arrive = (next: number) => {
-    setPage(next);
-    if (!issued || issued.ck17a || MAG_PAGES[next] !== 'skyGrain' || !issued.issueDate || asked.has(issued.issueDate)) return;
-    asked.add(issued.issueDate);
-    setSheet('ck17');
-  };
+  // 쪽을 넘길 뿐 — 동의 시트는 쪽에 닿아도 저절로 띄우지 않는다. ① 쪽의 [동의하고 보기]를 누를 때만(정책 PF-16 · PF-23, QP-46)
+  const arrive = (next: number) => setPage(next);
   const goTo = (n: number) => {
     const next = Math.max(0, Math.min(MAG_PAGES.length - 1, n));
     arrive(next);
@@ -109,7 +109,7 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
     return (
       <Screen edges={['top']} testID="screen-mag">
         {head}
-        <View style={styles.center} testID={`mag-${mag === 'loading' ? 'loading' : mag === 'failed' ? 'failed' : (m?.state ?? 'none')}`}>
+        <View style={styles.center} testID={`mag-${mag === 'loading' ? 'loading' : mag === 'failed' ? 'failed' : mag === 'off' ? 'none' : (m?.state ?? 'none')}`}>
           {mag === 'loading' ? <AppText variant="caption">{tx('MAGAZINE.cover.issue')}</AppText> : null}
           {mag === 'failed' ? (
             <>
@@ -120,9 +120,11 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
             </>
           ) : null}
           {m?.state === 'not_yet' ? <AppText variant="body">{tx('MAGAZINE.notYet')}</AppText> : null}
-          {m?.state === 'none' ? (
+          {m?.state === 'none' || mag === 'off' ? (
             <>
-              <AppText variant="body">{tx('MAGAZINE.closed')}</AppText>
+              <AppText variant="body" testID="mag-none-text">
+                {mag !== 'off' && magazineNoneKind(boarded) === 'notBoarded' ? tx('MAGAZINE.notBoarded') : tx('MAGAZINE.closed')}
+              </AppText>
               <Button label={tx('MAGAZINE.toHome')} variant="secondary" inline onPress={() => router.replace('/boarding' as Href)} testID="mag-home" />
             </>
           ) : null}
@@ -171,7 +173,7 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
             ) : (
               <View style={if2Styles.gapSmall} testID="mag-ck17-off">
                 <AppText variant="body">{tx('FUN.ck17.offBody')}</AppText>
-                <TextButton label={tx('FUN.ck17.link')} align="start" onPress={() => openSettingsPage(router, 'consent-management')} testID="mag-ck17-link" />
+                <Button label={tx('FUN.ck17.agreeView')} variant="secondary" inline onPress={() => setSheet('ck17')} testID="mag-ck17-agree" />
               </View>
             )}
             <Footnote text={tx('FUN.footer')} testID="mag-sky-footer" />
@@ -213,15 +215,27 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
             <Footnote text={tx('FUN.footer')} />
           </View>
         );
-      case 'place':
+      case 'place': {
+        const place = tripPlaceOf(issued.tripNo); // 3부-자(계산명세 10-2): 여행지 글 한 편 + 둘이 하기 좋은 일 한 줄 — 모든 회원 같은 글, 라이브러리 값 그대로(머리 글 0 · 새 키 0)
         return (
           <View style={styles.page} testID="mag-place">
             <AppText variant="title">{tx('MAGAZINE.page.place')}</AppText>
             <AppText variant="caption">{tx('MAGAZINE.page.placeSub', { 여행지: trip })}</AppText>
             <Art xml={artXml('place')} width="100%" height={styles.art.height} />
+            {place ? (
+              <>
+                <AppText variant="body" testID="mag-place-body">
+                  {place.body}
+                </AppText>
+                <AppText variant="body" testID="mag-place-together">
+                  {place.together}
+                </AppText>
+              </>
+            ) : null}
             <Footnote text={tx('FUN.footer')} />
           </View>
         );
+      }
       default:
         return (
           <View style={[styles.page, styles.back]} testID="mag-back">

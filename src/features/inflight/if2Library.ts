@@ -6,7 +6,7 @@ import lib from '@/content/if2Library.json';
 import { QUESTION_COPY } from '@/features/surveyV2/questionCopy';
 
 import type { HobbyItem, TalkDepth } from './inflightApi';
-import { fill, tx } from './if2Text';
+import { fill, tx, txSeq } from './if2Text';
 
 type Lib = typeof lib;
 export type TarotCard = Lib['tarot'][number];
@@ -34,32 +34,66 @@ export const DEPTH_OF_NO: Readonly<Record<string, TalkDepth>> = { '1': 'light', 
 export const depthOfQuestion = (id: string): TalkDepth | null => DEPTH_OF_NO[(/^q-(\d)-/.exec(id) ?? [])[1] ?? ''] ?? null;
 export const questionsOfDepth = (d: TalkDepth): string[] => lib.questions.filter((q) => DEPTH_OF_NO[String(q.depth)] === d).map((q) => q.id);
 
-// 같은 취미 한 줄의 이름(PF-49): 코드 = E11 보기 글 · 갈래 = 마케팅 갈래 이름
+// 같은 취미 이름(PF-49): 코드 = E11 보기 글(조사는 앱이 받침으로) · 갈래는 이름이 아니라 문장 하나(hobbyGroupLine)
 export function hobbyName(h: HobbyItem): string | null {
-  if ('code' in h) return QUESTION_COPY.E11?.opt?.[h.code] ?? null;
-  if (h.group === 'move') return tx('PAIR_CARD.hobbyGroup.move');
-  if (h.group === 'out') return tx('PAIR_CARD.hobbyGroup.out');
-  if (h.group === 'home') return tx('PAIR_CARD.hobbyGroup.home');
+  return 'code' in h ? (QUESTION_COPY.E11?.opt?.[h.code] ?? null) : null;
+}
+export function hobbyGroupLine(group: string): string | null {
+  if (group === 'move') return tx('PAIR_CARD.hobbyGroup.move');
+  if (group === 'out') return tx('PAIR_CARD.hobbyGroup.out');
+  if (group === 'home') return tx('PAIR_CARD.hobbyGroup.home');
   return null;
 }
 
-// 궁합 카드 ① '두 분 다' 줄(0원 틀 cc-hobby-1 · 2): 같은 취미 이름만 · 두 줄까지(서버가 최대 2개)
-export function sameLine(items: readonly HobbyItem[]): string | null {
-  const names = items.map(hobbyName).filter((n): n is string => !!n);
-  if (names.length >= 2) return fill(compat.get('cc-hobby-2')?.text ?? '', { v1: names[0], v2: names[1] });
-  if (names.length === 1) return fill(compat.get('cc-hobby-1')?.text ?? '', { v: names[0] });
-  return null;
+// 궁합 카드 ① '두 분 다' 줄(3부-자 QP-49 · 카피 21-9): 머리 '두 분 다'를 줄에서 되풀이하지 않는다 — '…을 좋아해요' 틀.
+//  코드 하나 = same.one · 코드 둘 = same.two(이름 차례) · 갈래 = 문장 하나(코드 줄과 따로 한 줄). 서버가 최대 2개 → 두 줄까지. 같은 값이 없으면 줄 0(① 칸째 숨김)
+export function sameLines(items: readonly HobbyItem[]): string[] {
+  const codes = items.map(hobbyName).filter((n): n is string => !!n);
+  const groups = items.flatMap((h) => ('group' in h ? [hobbyGroupLine(h.group)] : [])).filter((n): n is string => !!n);
+  const out: string[] = [];
+  if (codes.length >= 2) out.push(txSeq('PAIR_CARD.same.two', { 취미: [codes[0], codes[1]] }));
+  else if (codes.length === 1) out.push(tx('PAIR_CARD.same.one', { 취미: codes[0] }));
+  out.push(...groups);
+  return out.slice(0, 2);
 }
 
 // 관계 문장(cs-… 사주 · cst-… 별자리 원소) — 별자리 이름 · 일간 글자 0(라이브러리 글이 원소 · 오행 관계 문장뿐)
 export const compatText = (id: string): string | null => compat.get(id)?.text ?? null;
 
-// 첫마디 실마리 칩 글: ct-..(같은 취미 소재 틀, {v} = 취미 이름) · ch-..(첫 인사 칩)
+// 첫마디 실마리 칩 글: ct-..(같은 취미 소재 틀, {v} = 취미 이름 — 코드일 때만) · ch-..(첫 인사 칩)
 export function chipText(id: string, hobby: HobbyItem | null): string | null {
   if (id.startsWith('ch-')) return chips.get(id)?.text ?? null;
   const tpl = compat.get(id)?.text;
-  const name = hobby ? hobbyName(hobby) : null;
+  const name = hobby ? hobbyName(hobby) : null; // 갈래(group)는 이름 글이 없어(3부-자 QP-49: 문장으로 바뀜) 소재 틀({v})에 못 넣는다 → 그 칩은 건너뜀
   return tpl && name ? fill(tpl, { v: name }) : null;
 }
+
+// ── 내 여행 타입 12 · 짐 싸기 7 · 이번 여행지 12(3부-자 — 라이브러리 원본 그대로) ──────────────────────────────
+//  타입 id 'tt-01' ~ 'tt-12'(계산명세 10-1 차례). 앞면 한 줄(line) · 설명 세 줄(desc) · 노선 두 역(routes[].to = 타입 id, why = 역 까닭) · 대화 팁(tip — 1.0 화면에 안 그림)
+export type TravelTypeLib = Lib['travelTypes'][number];
+const travelTypes = byId(lib.travelTypes);
+export const travelTypeOf = (id: string | null): TravelTypeLib | null => (id ? (travelTypes.get(id) ?? null) : null);
+export const TRAVEL_TYPE_IDS: readonly string[] = lib.travelTypes.map((t) => t.id);
+
+// 짐 싸기 7문항(보기 3) — 고른 짐 코드는 기기에만(deviceNotes typeBag), 엽서 앞면 소품 그림에만 들어간다(정책 PF-31)
+export type PackQuestion = Lib['packQuiz'][number];
+export const PACK_QUIZ: readonly PackQuestion[] = lib.packQuiz;
+export const PACK_COUNT = lib.packQuiz.length;
+export const packItemLabel = (item: string): string | null => {
+  for (const q of lib.packQuiz) {
+    const o = q.options.find((x) => x.item === item);
+    if (o) return o.label;
+  }
+  return null;
+};
+// 저장된 고른 짐을 문항 차례의 코드로 바로잡는다(모르는 코드 · 다른 문항의 코드는 버림). 일곱 문항을 다 마쳤을 때만 '짐을 쌌다'
+export function packedItems(bag: readonly string[]): (string | null)[] {
+  return lib.packQuiz.map((q) => q.options.find((o) => bag.includes(o.item))?.item ?? null);
+}
+export const isPacked = (bag: readonly string[]): boolean => packedItems(bag).every((x) => x !== null);
+
+// 기내지 ⑤ 이번 여행지: 서버 trip_no(1 ~ 12) → 여행지 글 한 편 + 둘이 하기 좋은 일 한 줄(계산명세 10-2 · 모든 회원 같은 글)
+export type TripPlace = Lib['tripPlaces'][number];
+export const tripPlaceOf = (tripNo: number | null): TripPlace | null => (tripNo === null ? null : (lib.tripPlaces.find((p) => p.trip_no === tripNo) ?? null));
 
 export const LIBRARY_EDITION = lib['판'];

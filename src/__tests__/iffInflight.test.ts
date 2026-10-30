@@ -17,7 +17,7 @@ import { createDemoChatApi } from '@/features/chat/chatDemo';
 import { parseMessage } from '@/features/chat/chatApi';
 import { createDeviceNotes, memoryNoteStorage, NOTE_KEYS } from '@/features/inflight/deviceNotes';
 import { createInflightApi, parseHomeState, parsePairCard, rpcOf, type HomeState } from '@/features/inflight/inflightApi';
-import { chipText, compatText, hobbyName, sameLine } from '@/features/inflight/if2Library';
+import { chipText, compatText, hobbyName, sameLines } from '@/features/inflight/if2Library';
 import { foldRows, homeBlocks, moneySafetyHit } from '@/features/inflight/inflightLogic';
 import { IF2_COPY } from '@/features/inflight/if2CopyData';
 import { fill, josa, tx } from '@/features/inflight/if2Text';
@@ -394,9 +394,9 @@ describe('IFF-09 안전 안내 카드 판정(보안 IC-20 · 정책 PF-56)', () 
 describe('IFF-16 같은 취미(D-224 · 정책 PF-48 · PF-49)', () => {
   test('취미 이름은 서버가 준 코드 · 갈래만 그린다(앱 갈래 계산 · k 문턱 0) · 두 줄까지', () => {
     expect(hobbyName({ code: 'reading' })).toBe('독서·공부');
-    expect(hobbyName({ group: 'out' })).toBe(tx('PAIR_CARD.hobbyGroup.out'));
-    expect(sameLine([{ code: 'reading' }, { group: 'out' }])).toBe('두 분 다 독서·공부와 밖에서 즐기는 일을 즐겨요.');
-    expect(sameLine([])).toBeNull();
+    expect(hobbyName({ group: 'out' })).toBeNull(); // 갈래는 이름이 아니라 문장 하나(3부-자 QP-49) — 소재 틀에 넣지 않는다
+    expect(sameLines([{ code: 'reading' }, { group: 'out' }])).toEqual(['독서·공부를 좋아해요', tx('PAIR_CARD.hobbyGroup.out')]); // 머리 '두 분 다'는 줄에서 되풀이하지 않는다
+    expect(sameLines([])).toEqual([]);
     for (const f of INFLIGHT_FILES) expect(`${f}: ${/hobby_k|hobbyGroupOf|n_code|n_grp/.test(strip(read(f)))}`).toBe(`${f}: false`);
   });
   test('데모: 내가 같은 취미를 끄면 궁합 카드 ① · 첫마디 실마리 두 곳에서 바로 빠짐(같은 목록)', async () => {

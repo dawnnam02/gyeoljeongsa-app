@@ -59,6 +59,12 @@ export const magPrev = (p: MagPage): MagPage | null => MAG_PAGES[MAG_PAGES.index
 
 export const tripOf = (tripNo: number | null): string | null => tripName(tripNo);
 
+// 서버 get_magazine 은 '이번 회차에 안 탄 분'과 '탄 뒤 닫힌 분'이 같은 none 이라 앱이 탑승권 상태로 가른다(3부-자 QP-43 · 정책 PF-21):
+//  판매 중 · 마감 뒤 공개 전(on_sale · closed)인데 탑승권(자리)이 없으면 notBoarded, 그 밖(공개 뒤 · 탑승 취소 · 상태를 못 읽음)은 closed
+export function magazineNoneKind(b: { phase: string; ticket: unknown } | null): 'notBoarded' | 'closed' {
+  return b !== null && b.ticket === null && (b.phase === 'on_sale' || b.phase === 'closed') ? 'notBoarded' : 'closed';
+}
+
 // ── 대화 깊이(PF-52) — 서버가 그날 열린 깊이를 준다. 앱은 이름 차례만 ─────────
 export const DEPTH_ORDER: readonly TalkDepth[] = ['light', 'taste', 'life', 'values'];
 

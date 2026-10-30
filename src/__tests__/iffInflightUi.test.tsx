@@ -78,14 +78,14 @@ function rig(email: string, over: Record<string, boolean> = {}) {
   const scene = (p_scene: string) => demo.rpc(user, 'demo_inflight_scene', { p_scene });
   return { user, api, boardingApi, client, calls, ck17, notes, scene, consents, isOn: (k: string) => flagsAll(over)[k] === true };
 }
-async function home(email: string, sc: string, over: Record<string, boolean> = {}) {
+async function home(email: string, sc: string, over: Record<string, boolean> = {}, typeId: string | null = null) {
   const r = rig(email, over);
   await r.scene(sc);
   const b = await r.boardingApi.load();
   const h = await r.api.home();
   if (!b.ok || !h.ok) throw new Error('불러오지 못함');
   const nav = { open: jest.fn(), chat: jest.fn(), settings: jest.fn(), profileSameHobby: jest.fn() };
-  const tree = keep(await mount(<InflightHome deps={{ api: r.api, ck17: r.ck17, type: { mine: async () => null }, isOn: r.isOn, notes: r.notes }} home={h.data} boarding={b.state as BoardingState} nav={nav} onToast={() => undefined} />));
+  const tree = keep(await mount(<InflightHome deps={{ api: r.api, ck17: r.ck17, type: { mine: async () => typeId }, isOn: r.isOn, notes: r.notes }} home={h.data} boarding={b.state as BoardingState} nav={nav} onToast={() => undefined} />));
   await wait();
   return { ...r, tree, nav, home: h.data as HomeState };
 }
@@ -138,6 +138,17 @@ describe('IFF-04 홈 새 구성 — 상대 정보 0 · 숫자 0 · 접힌 채 �
     expect(ids(tree, /^home-B7-row-/)).toEqual(['home-B7-row-profile', 'home-B7-row-survey', 'home-B7-row-avoid']);
     expect(notes.get().homeFold).toBe(true); // 펼침은 기기에만
   });
+  test('내 여행 타입 칸(B6): 타입이 있어도 짐을 안 쌌으면 "짐을 싸면 엽서가 나와요" · 짐 일곱을 쌌으면 타입 이름 · 누르면 /type-card (3부-자)', async () => {
+    const a = await home('h6@email.com', 'before', {}, 'tt-04');
+    expect(has(a.tree, 'home-B6-type')).toBe(true);
+    expect(textOf(a.tree, 'home-B6-type-line')).toBe(tx('TYPE_CARD.home.lineNone'));
+    await act(async () => a.notes.set('typeBag', ['thermos', 'paper_map', 'umbrella', 'postcard', 'notebook', 'plant', 'stamp_book']));
+    await wait();
+    expect(textOf(a.tree, 'home-B6-type-line')).toBe(tx('TYPE_CARD.home.line', { '타입 이름': '골목 산책 여행자' }));
+    expect(allTexts(a.tree).filter((t) => /\d/.test(t))).toEqual([]);
+    await press(a.tree, 'home-B6-type');
+    expect(a.nav.open).toHaveBeenCalledWith('/type-card');
+  });
   test('겹칠 때: B3 · B4 도착 준비 · B5 지난 회차 짝(궁합 카드 · 첫 만남 준비 · 돌아보기 메모) — 블록 5', async () => {
     const { tree } = await home('h5@email.com', 'overlap');
     expect(ids(tree, /^home-B\d$/)).toEqual(['home-B3', 'home-B4', 'home-B5', 'home-B7']);
@@ -167,7 +178,10 @@ describe('IFF-01 · IFF-15 궁합 카드 시트', () => {
     const room = h.ok ? String(h.data.pair?.roomId) : '';
     const tree = keep(await mount(<PairCardSheet visible roomId={room} api={r.api} overlap={false} onClose={() => undefined} onChat={() => undefined} onTalk={() => undefined} onCk17={() => undefined} />));
     await wait();
-    expect(textOf(tree, 'if2-pair-same-line')).toBe('두 분 다 독서·공부와 밖에서 즐기는 일을 즐겨요.');
+    // QP-49: 머리 '두 분 다' 한 번 + 줄은 '…을 좋아해요' 틀 · 코드 줄과 갈래 문장은 따로 한 줄(두 줄까지) · 줄 안 '두 분 다' 0
+    expect(textOf(tree, 'if2-pair-same-line')).toBe('독서·공부를 좋아해요');
+    expect(textOf(tree, 'if2-pair-same-line-1')).toBe(tx('PAIR_CARD.hobbyGroup.out'));
+    expect(textOf(tree, 'if2-pair-same-line')).not.toContain('두 분 다');
     expect(has(tree, 'if2-pair-saju') && has(tree, 'if2-pair-star')).toBe(true);
     expect(say(tree, 'if2-pair-footer')).toBe(tx('PAIR_CARD.footer'));
     const all = allTexts(tree).join(' ');
@@ -229,7 +243,7 @@ describe('IFF-10 · IFF-12 기내지 · 이번 주 카드', () => {
     await wait();
     expect(textOf(again, 'card-name')).toBe(name);
   });
-  test('CK17A 를 켜지 않은 분: ① 쪽 자리에 안내 한 줄 + [동의 관리 열기] · 그 쪽을 처음 볼 때만 동의 시트(되풀이 0)', async () => {
+  test('CK17A 를 켜지 않은 분: ① 쪽 자리에 안내 한 줄 + [동의하고 보기] · 쪽에 닿아도 동의 시트는 저절로 안 뜸(누를 때만 · 되풀이 0) — QP-46', async () => {
     const r = rig('m3@email.com');
     r.consents.clear();
     await r.scene('inflight');
@@ -237,23 +251,29 @@ describe('IFF-10 · IFF-12 기내지 · 이번 주 카드', () => {
     await wait();
     await press(tree, 'mag-next');
     expect(has(tree, 'mag-ck17-off')).toBe(true);
-    expect(isOpen(tree, 'if2-ck17')).toBe(true);
-    await press(tree, 'if2-ck17-close');
+    expect(must(tree, 'mag-ck17-agree').props.label).toBe(tx('FUN.ck17.agreeView'));
+    expect(isOpen(tree, 'if2-ck17')).toBe(false); // 쪽에 닿았다고 시트가 뜨지 않는다
     await press(tree, 'mag-prev');
     await press(tree, 'mag-next');
+    expect(isOpen(tree, 'if2-ck17')).toBe(false);
+    await press(tree, 'mag-ck17-agree');
+    expect(isOpen(tree, 'if2-ck17')).toBe(true);
+    await press(tree, 'if2-ck17-close');
     expect(isOpen(tree, 'if2-ck17')).toBe(false);
   });
 });
 
 describe('IFF-08 내 여행 타입 · IFF-13 짝에게 보이는 내 모습 · IFF-14 첫 만남 준비', () => {
   test('타입 엽서: 앞(타입 이름) → 뒤(설명 · 노선도 · 끝줄) · 공유 단추 0 · 타입이 없으면 한 줄', async () => {
-    const tree = keep(await mount(<TypeCardScreen source={{ mine: async () => ({ name: '느린 기차 여행자', lines: ['창밖을 오래 보는 사람처럼, 천천히 알아 가는 대화를 좋아해요.'], route: [] }) }} />));
+    const notes = createDeviceNotes();
+    notes.set('typeBag', ['thermos', 'paper_map', 'umbrella', 'postcard', 'notebook', 'plant', 'stamp_book']); // 짐을 이미 쌈(기기에만)
+    const tree = keep(await mount(<TypeCardScreen source={{ mine: async () => 'tt-01' }} notes={notes} />));
     await wait();
-    expect(textOf(tree, 'type-name')).toBe('느린 기차 여행자');
+    expect(textOf(tree, 'type-name')).toBe('기차 창가 여행자');
     await press(tree, 'type-flip');
     expect(say(tree, 'type-footer')).toBe(tx('TYPE_CARD.footer'));
     expect(allTexts(tree)).not.toContain(tx('TYPE_CARD.share'));
-    const none = keep(await mount(<TypeCardScreen source={{ mine: async () => null }} />));
+    const none = keep(await mount(<TypeCardScreen source={{ mine: async () => null }} notes={notes} />));
     await wait();
     expect(textOf(none, 'type-none')).toBe(tx('TYPE_CARD.loadFailed'));
   });
@@ -313,7 +333,7 @@ describe('대화방 칸(IFF-05 · IFF-06 · IFF-07 · IFF-09)', () => {
   }
   test('첫마디 실마리: 입력창 위 칩 3(같은 취미 소재) · 누르면 입력창에 들어감(바로 보내지 않음) · 내 첫 글 뒤 사라짐 · 맨 위 순서에 더한 것 0', async () => {
     const { tree, chat, id } = await room('c1@email.com');
-    expect(ids(tree, /^if2-chips-\d$/)).toHaveLength(3);
+    expect(ids(tree, /^if2-chips-\d$/)).toHaveLength(2); // 서버 칩 3 가운데 갈래(group) 소재 칩 하나는 이름 글이 없어 그리지 않는다(3부-자 QP-49 — 갈래는 문장 하나, 소재 틀 {v}에 못 넣음)
     const first = (must(tree, 'if2-chips-0').props.label as string) ?? '';
     await press(tree, 'if2-chips-0');
     expect(must(tree, 'chat-composer-input').props.value).toBe(first);

@@ -20,7 +20,7 @@ import { CoverTurn, Fade, MaskLine, scene2, Wipe } from '@/motion';
 import { radius, size, space } from '@/theme/tokens';
 
 import type { BoardingApi, BoardingLoad } from './boardingApi';
-import { BOARDING, REVEAL } from './boardingCopy';
+import { BOARDING, CREDITS, REVEAL } from './boardingCopy';
 import { ArriveView } from './ArriveView';
 import { arriveWhen } from './boardingLogic';
 import { hrefOf } from './BoardingScreen';
@@ -88,7 +88,7 @@ export function RevealScreen({ deps }: { deps: RevealDeps }) {
         <ScrollView contentContainerStyle={[styles.pad, styles.gap, styles.center]} testID="reveal-matched">
           <Fade visible duration={play ? R.swap : 0} name="edOut">
             <AppText variant="captionMedium" tone="accent" testID="reveal-kicker">
-              {REVEAL.kicker(BOARDING.round(result.roundNo))}
+              {REVEAL.kicker(CREDITS.round(result.roundNo))}
             </AppText>
           </Fade>
           <MaskLine variant="title" accessibilityRole="header" style={styles.textCenter} wrapStyle={styles.stretch} play={play} delay={R.titleDelay} duration={R.title} testID="reveal-title">{REVEAL.title}</MaskLine>
@@ -126,7 +126,7 @@ export function RevealScreen({ deps }: { deps: RevealDeps }) {
           <Illustration scene="noMatch" testID="reveal-art" />
           <Fade visible duration={R.swap} name="edOut">
             <AppText variant="captionMedium" tone="accent" testID="reveal-kicker">
-              {REVEAL.kicker(BOARDING.round(result.roundNo))}
+              {REVEAL.kicker(CREDITS.round(result.roundNo))}
             </AppText>
           </Fade>
           <MaskLine variant="title" accessibilityRole="header" style={styles.textCenter} wrapStyle={styles.stretch} delay={R.titleDelay} duration={R.title} testID="reveal-title">{BOARDING.noMatch.title}</MaskLine>

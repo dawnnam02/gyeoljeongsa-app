@@ -10,7 +10,7 @@
 //  · 3부-사 종교 동의 카드(카피 17-1 · 법무 L22 D2): A06 차례에 유효한 CK4 가 없으면 질문 대신 카드 → 동의 = CK4 기록(지금 판) 뒤 A06 질문 ·
 //    거절 = '동의 안 함' 기록 + A06 '답하지 않음'(null) 저장 → 다음 문항(같은 설문에서 다시 묻지 않음). 거절 말풍선을 누르면(고치기) 카드가 다시 — 알림 · 반복 띄우기 0
 // 등급 · 점수 숫자는 화면 · 코드에 없다. 글은 content/surveyChatCopy.ts · 설문 v2 글만.
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, AppState, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -34,6 +34,7 @@ import { answersOf, blockMessage, check, draftFromValue, emptyDraft, FLOW, isPas
 import { emptyPol, polBlock, type PolDraft } from '@/features/surveyV2/PoliticsStage';
 import { schoolLabel } from '@/features/surveyV2/SchoolInput';
 import type { V2Value } from '@/features/surveyV2/types';
+import { TYPE_ENTRY_HREF, TYPE_ENTRY_LABEL } from '@/features/ai/typeEntry';
 import { Rise, TOAST_MS, useReduceMotion } from '@/motion';
 import { illustration } from '@/theme/illustrations';
 import { layout } from '@/theme/layout';
@@ -54,11 +55,11 @@ const STYLE_CODES = ['deliberate', 'warm', 'candid'];
 const same = (x: unknown, y: unknown) => JSON.stringify(x) === JSON.stringify(y);
 const has = (a: Readonly<Record<string, unknown>>, id: string) => Object.prototype.hasOwnProperty.call(a, id);
 
-type Props = { deps?: SurveyChatDeps; onDone?: () => void };
+type Props = { deps?: SurveyChatDeps; onDone?: () => void; typeOn?: boolean }; // typeOn = 스위치 type_card — 끝 화면에 [내 여행 타입 보기] 입구(정책 PF-33 · 3부-자)
 type Pending = { key: string; text: string; behavior: ReturnType<typeof behaviorPayload>; no: number }; // no = 처음 보낸 turn 번호
 type Saved = { answers: Record<string, V2Value>; texts: Record<string, string>; publicOn: Record<string, boolean> };
 
-export function SurveyChatScreen({ deps: given, onDone }: Props) {
+export function SurveyChatScreen({ deps: given, onDone, typeOn = false }: Props) {
   const router = useRouter();
   const [deps] = useState<SurveyChatDeps>(() => given ?? surveyChatDeps());
   const { v2, chat, store } = deps;
@@ -1228,7 +1229,15 @@ export function SurveyChatScreen({ deps: given, onDone }: Props) {
             </AppText>
           ) : null}
           {stage === 'part2' ? <ChatComposer value={text} onChange={onType} onSend={() => void sendTurn()} disabled={waiting} /> : null}
-          {stage === 'wrap' || stage === 'done' || stage === 'paused' ? <Button label={t('CHAT.SUMMARY.next')} variant={stage === 'done' ? 'primary' : 'secondary'} onPress={review} testID="chat-review" /> : null}
+          {stage === 'done' && typeOn ? (
+            // 끝 화면: [내 여행 타입 보기] 입구 + [다음] 같은 크기 — 안 눌러도 [다음]으로 05, 저절로 넘어가는 화면 0(정책 PF-33)
+            <CtaPair
+              secondary={<Button label={TYPE_ENTRY_LABEL} variant="secondary" onPress={() => router.push(TYPE_ENTRY_HREF as Href)} testID="chat-type-entry" />}
+              primary={<Button label={t('CHAT.SUMMARY.next')} onPress={review} testID="chat-review" />}
+            />
+          ) : stage === 'wrap' || stage === 'done' || stage === 'paused' ? (
+            <Button label={t('CHAT.SUMMARY.next')} variant={stage === 'done' ? 'primary' : 'secondary'} onPress={review} testID="chat-review" />
+          ) : null}
           {stage === 'traits' && !traitsEdit ? (
             <CtaPair
               secondary={<Button label={t('CHAT.TRAITS.edit')} variant="secondary" onPress={() => setTraitsEdit({ summary: summaryOf(sum), intro: introOf(sum) })} testID="chat-traits-edit" />}

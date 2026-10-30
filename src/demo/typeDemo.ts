@@ -1,8 +1,17 @@
-// 데모 모드의 내 여행 타입(IF2-F · F-19) — 서버 타입 코드 · 열두 타입 이름 · 설명 · 잘 맞는 타입 표가 아직 없다(청사진 15장 원문 지워짐 · 카피 21-21 'AI IF2-A 몫' · 미확인).
-//  화면 틀을 보이려고 디자인 시안(디자인/IF2_기내서비스/index.html '타입 엽서')의 표본 한 타입만 둔다 — 데모 표시용이고 실서버에는 없다(실서버 = 타입 없음 → 칸 0).
-//  노선도 이웃 타입은 원문이 없어 비워 둔다(내 역만). 이름 · 설명은 {타입 이름} · {설명} 자리에 들어가는 라이브러리 값 자리(카피 키 아님)
+// 데모 모드의 내 여행 타입(IF2-F · F-19 · 3부-자) — 성향 확인(07 또는 대화형 '내 성향')을 마친 회원의 5축으로 계산명세 10-1 식(fun_calc.travel_type)과 같은 값을 낸다.
+//  실서버에는 아직 타입 계산이 없다(백엔드 11-5) → 실서버 = 타입 없음(칸 0), 이 파일은 데모 모드에서만 불러온다. 짐 싸기 답은 이 계산에 들어가지 않는다(엽서 그림에만 · 기기에만).
+//  대화 방식 4칸은 데모 성향 정리에 없어 갈등 대처 축으로 대화 결을 정한다(계산명세 10-1 '대화 방식이 없을 때')
 import type { TypeSource } from '@/features/inflight/inflightService';
 
+import { travelType } from './funCalc';
+
 export const demoTypeSource: TypeSource = {
-  mine: async () => ({ name: '느린 기차 여행자', lines: ['창밖을 오래 보는 사람처럼, 천천히 알아 가는 대화를 좋아해요.'], route: [] }),
+  mine: async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { aiApi } = require('@/lib/services') as typeof import('@/lib/services');
+    const r = await aiApi.loadLatest().catch(() => null);
+    const row = r && r.ok ? r.row : null;
+    const view = row && row.status === 'ok' && row.confirmedAt ? (row.edited ?? row.original) : null; // 확정한 성향만(확정 전엔 타입 0)
+    return view ? travelType(view.traits) : null;
+  },
 };

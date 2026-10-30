@@ -974,7 +974,7 @@ try {
   }
 
   // ── IF2. 기내 서비스 · 연애 기능(IF2-F · D-223 — 카피.md 21장 '앱 반영' 뒤 대조) ──
-  //  ① 앱 글 사본(if2CopyData.ts — gen-if2-copy)이 카피.md 21장 표와 한 글자씩 같다(21장 키 372 = 글 371 + 끌어 쓰는 자리 1) · 기획 가안 키 0
+  //  ① 앱 글 사본(if2CopyData.ts — gen-if2-copy)이 카피.md 21장 표와 한 글자씩 같다(21장 키 376 = 글 375 + 끌어 쓰는 자리 1) · 기획 가안 키 0
   //  ② 카피 밖 글 0: 앱이 부르는 tx · txList 키가 모두 21장에 있고, 기내 서비스 화면 파일에 사본 밖 한글 글이 없다(만남 계획 공유 바로가기 = 카피 v4 SAFE_SHARE.entry)
   //  ③ 말투 · 금지어: 느낌표 · 숫자({…} 빼고) 0 · 정책 PF-18 · 법무 4-2 금지 낱말 0 · 앱 안 '운세' · '타로' 0 · 상대에게 보이는 글(궁합 카드 · 칩 · 대화방 칸)에 별자리 이름 · 일간 · 일주 · 띠 0
   //  ④ 재미 정보 동의 시트 글(content/ck17Content.ts — gen-if2-assets 가 동의문구 4-17 에서 옮김)이 원본과 같다 · 판 = 판_관리(consent-2026.10.28-v1)
@@ -990,7 +990,7 @@ try {
     if (built.dup.length) diffsIF.push(`21장에 같은 키가 다른 글로 두 번: ${built.dup.join(', ')}`);
     const sec21 = gen.chapter21(copyText) ?? '';
     const rows21 = sec21.split(/\r?\n/).filter((l) => /^\| [^|`]*`[A-Z_]+\./.test(l));
-    if (rows21.length !== 372) diffsIF.push(`카피 21장 키 줄이 372가 아님(${rows21.length})`);
+    if (rows21.length !== 376) diffsIF.push(`카피 21장 키 줄이 376이 아님(${rows21.length})`);
     if (!/\*\*앱 반영\*\*/.test(sec21) || /\*\*앱 반영 전\*\*/.test(sec21)) diffsIF.push("카피 21장 표시가 '앱 반영'이 아님");
     // ② 앱이 부르는 키
     const keys = new Set(built.map.keys());

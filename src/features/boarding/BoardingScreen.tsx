@@ -35,7 +35,7 @@ import { colors, size, space } from '@/theme/tokens';
 
 import type { BoardingApi, BoardingLoad, BoardingState, BuyFailure } from './boardingApi';
 import { SCENE_OF } from './boardingArt';
-import { BOARDING } from './boardingCopy';
+import { BOARDING, CREDITS } from './boardingCopy';
 import { afterCancel, arriveWhen, boardingView, canCancel, canUseCredit, contractVersion, daysUntil, nextSaleOpen, whenText, type BoardingView } from './boardingLogic';
 import { TicketCard } from './TicketCard';
 import { ArriveView } from './ArriveView';
@@ -244,7 +244,7 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
           <View style={styles.gap}>
             <MaskLine variant="title" accessibilityRole="header" delay={scene2.ticket.sheetTitleDelay} duration={scene2.ticket.sheetTitle}>{BOARDING.sheet.title}</MaskLine>
             <AppText variant="body" testID="boarding-sheet-summary">
-              {BOARDING.sheet.summary(BOARDING.round(state.round.no), whenText(state.round.matchAt))}
+              {BOARDING.sheet.summary(CREDITS.round(state.round.no), whenText(state.round.matchAt))}
             </AppText>
             <View style={styles.priceRow}>
               <AppText variant="body" tone="sub">

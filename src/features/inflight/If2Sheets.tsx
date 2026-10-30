@@ -23,7 +23,7 @@ import { alpha, colors, radius, size, space } from '@/theme/tokens';
 import { CK17 } from '@/content/ck17Content';
 import { deviceNotes, MEMO_LEN, POSTCARD_EXTRA_LEN, PRE_ANSWER_LEN, PRE_ANSWER_MAX, useDeviceNotes, type DeviceNotes } from './deviceNotes';
 import type { InflightApi, PairCard, PreQuestions } from './inflightApi';
-import { compatText, questionText, questionsOfDepth, sameLine } from './if2Library';
+import { compatText, questionText, questionsOfDepth, sameLines } from './if2Library';
 import { kstDateText, MEMO_KEEP_MS } from './inflightLogic';
 import { Footnote, if2Styles, MarkButton, SheetHead } from './If2Parts';
 import { tx, txList } from './if2Text';
@@ -41,12 +41,15 @@ export function Ck17Sheet(props: Ck17Props) {
     </BottomSheet>
   );
 }
+// QP-48(대비 4.5+): 누를 수 없는 칸(①에 동의해야 고를 수 있어요)을 투명도로 흐리지 않는다 — 글은 sub 색(왜 못 고르는지 알리는 글이라 읽혀야 한다). Pressable 의 자동 흐림도 끈다(offLook own)
 function CheckRow({ on, label, why, note, disabled, onPress, testID }: { on: boolean; label: string; why: string; note?: string; disabled?: boolean; onPress: () => void; testID: string }) {
   return (
-    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: on, disabled: !!disabled }} aria-checked={on} accessibilityLabel={label} disabled={disabled} onPress={onPress} effect="none" style={({ pressed }) => [styles.checkRow, disabled && styles.dim, pressed && styles.pressed]} testID={testID}>
+    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: on, disabled: !!disabled }} aria-checked={on} accessibilityLabel={label} disabled={disabled} offLook="own" onPress={onPress} effect="none" style={({ pressed }) => [styles.checkRow, pressed && styles.pressed]} testID={testID}>
       <CheckBox checked={on} />
       <View style={if2Styles.flex}>
-        <AppText variant="body">{label}</AppText>
+        <AppText variant="body" tone={disabled ? 'sub' : 'text'}>
+          {label}
+        </AppText>
         <AppText variant="caption">{why}</AppText>
         {note ? <AppText variant="caption">{note}</AppText> : null}
       </View>
@@ -317,10 +320,10 @@ function PairCardBody({ roomId, api, overlap, onClose, onChat, onTalk, onCk17, t
     setCard('loading');
     fetchCard();
   };
-  const same = typeof card === 'object' ? sameLine(card.same) : null;
+  const same = typeof card === 'object' ? sameLines(card.same) : [];
   const saju = typeof card === 'object' && card.saju ? compatText(card.saju) : null;
   const star = typeof card === 'object' && card.star ? compatText(card.star) : null;
-  const heads = [same ? tx('PAIR_CARD.same.title') : null, saju ? tx('PAIR_CARD.saju.title') : null, star ? tx('PAIR_CARD.star.title') : null].filter((x): x is string => !!x);
+  const heads = [same.length > 0 ? tx('PAIR_CARD.same.title') : null, saju ? tx('PAIR_CARD.saju.title') : null, star ? tx('PAIR_CARD.star.title') : null].filter((x): x is string => !!x);
   return (
     <>
       <SheetHead title={tx('PAIR_CARD.title')} closeLabel={tx('PAIR_CARD.close')} onClose={onClose} testID={testID} />
@@ -344,12 +347,14 @@ function PairCardBody({ roomId, api, overlap, onClose, onChat, onTalk, onCk17, t
             <AppText variant="body" testID={`${testID}-lead`}>
               {tx('PAIR_CARD.lead')}
             </AppText>
-            {same ? (
-              <View style={if2Styles.paper} accessible accessibilityLabel={tx('PAIR_CARD.a11y.same', { '같은 점': same })} testID={`${testID}-same`}>
+            {same.length > 0 ? (
+              <View style={if2Styles.paper} accessible accessibilityLabel={tx('PAIR_CARD.a11y.same', { '같은 점': same.join(', ') })} testID={`${testID}-same`}>
                 <AppText variant="bodyBold">{tx('PAIR_CARD.same.title')}</AppText>
-                <AppText variant="body" testID={`${testID}-same-line`}>
-                  {tx('PAIR_CARD.same.line', { '같은 점': same })}
-                </AppText>
+                {same.map((line, i) => (
+                  <AppText key={line} variant="body" testID={i === 0 ? `${testID}-same-line` : `${testID}-same-line-${i}`}>
+                    {line}
+                  </AppText>
+                ))}
               </View>
             ) : null}
             {saju ? (
@@ -549,7 +554,6 @@ const styles = StyleSheet.create({
   sheetScroll: { maxHeight: size.touchMin * 12 },
   fullBody: { gap: space.s12, padding: size.screenPadding },
   checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.s12, minHeight: size.touchMin, paddingVertical: space.s8 },
-  dim: { opacity: alpha.disabled },
   pressed: { opacity: alpha.pressed },
   pick: { minHeight: size.touchMin, justifyContent: 'center', paddingHorizontal: space.s16, paddingVertical: space.s12, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg },
   pickOn: { borderColor: colors.accent, backgroundColor: colors.accentSoft },

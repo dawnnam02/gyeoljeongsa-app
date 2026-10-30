@@ -285,11 +285,14 @@ function TopicsBody({ roomId, deps, onClose, onPlaced, onGive, testID = 'if2-top
                         aria-checked={on}
                         accessibilityLabel={l}
                         disabled={full}
+                        offLook="own"
                         onPress={() => setPicks((p) => (on ? Object.fromEntries(Object.entries(p).filter(([k]) => k !== c)) : { ...p, [c]: i }))}
                         effect="none"
-                        style={({ pressed }) => [styles.pick, on && styles.pickOn, full && styles.dim, pressed && styles.pressed]}
+                        style={({ pressed }) => [styles.pick, on && styles.pickOn, pressed && styles.pressed]}
                         testID={`${testID}-about-${c}-${i}`}>
-                        <AppText variant="body">{l}</AppText>
+                        <AppText variant="body" tone={full ? 'sub' : 'text'}>
+                          {l}
+                        </AppText>
                       </Pressable>
                     );
                   })}
@@ -582,7 +585,6 @@ const styles = StyleSheet.create({
   sheetScroll: { maxHeight: size.touchMin * 11 },
   pick: { minHeight: size.touchMin, justifyContent: 'center', paddingHorizontal: space.s16, paddingVertical: space.s12, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg },
   pickOn: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
-  dim: { opacity: alpha.disabled },
   pressed: { opacity: alpha.pressed },
   together: { marginHorizontal: size.screenPadding, padding: space.s16, gap: space.s8, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.bg },
   mineSide: { borderColor: colors.accentSoft },

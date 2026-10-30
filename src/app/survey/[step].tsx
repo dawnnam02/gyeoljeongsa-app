@@ -10,6 +10,7 @@ import { SurveyLiteScreen } from '@/features/surveyLite/SurveyLiteScreen';
 import { SurveyV2Screen } from '@/features/surveyV2/SurveyV2Screen';
 import { surveyV2On } from '@/features/surveyV2/switch';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { isOn as flagOn } from '@/lib/featureFlagsApi';
 import { isSurveyStep } from '@/navigation/surveySteps';
 
 // 화면 ID 04 설문. [step] 값은 04- 뒤 두 자리(01~32, 12는 결번) 또는 v2.
@@ -38,7 +39,7 @@ export default function SurveyScreen() {
   if (!isSurveyStep(step)) {
     return <Redirect href={{ pathname: '/survey/[step]', params: { step: '01' } }} />;
   }
-  const body = !ready ? <View style={{ flex: 1 }} testID="survey-flags-wait" /> : surveyChatOn(flags) ? <SurveyChatScreen key={`chat-${notice ?? ''}`} /> : surveyV2On(flags) ? <SurveyV2Screen key={`v2-${notice ?? ''}`} entry={v2Entry} /> : <SurveyLiteScreen key={`${step}-${notice ?? ''}`} entry={liteEntryOf(step, notice)} />; // V6-F: 대화형 설문 스위치(survey_chat) 켜짐이면 대화형
+  const body = !ready ? <View style={{ flex: 1 }} testID="survey-flags-wait" /> : surveyChatOn(flags) ? <SurveyChatScreen key={`chat-${notice ?? ''}`} typeOn={flagOn(flags, 'type_card')} /> : surveyV2On(flags) ? <SurveyV2Screen key={`v2-${notice ?? ''}`} entry={v2Entry} /> : <SurveyLiteScreen key={`${step}-${notice ?? ''}`} entry={liteEntryOf(step, notice)} />; // V6-F: 대화형 설문 스위치(survey_chat) 켜짐이면 대화형
   return (
     <View style={{ flex: 1 }}>
       {body}

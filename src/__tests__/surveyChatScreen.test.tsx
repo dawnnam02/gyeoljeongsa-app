@@ -64,8 +64,8 @@ const wait = (ms: number) =>
   act(async () => {
     await new Promise((r) => setTimeout(r, ms));
   });
-const show = async (deps: SurveyChatDeps) => {
-  const tree = await mount(<SurveyChatScreen deps={deps} />);
+const show = async (deps: SurveyChatDeps, typeOn = false) => {
+  const tree = await mount(<SurveyChatScreen deps={deps} typeOn={typeOn} />);
   await wait(40);
   return tree;
 };
@@ -205,7 +205,7 @@ afterEach(() => jest.restoreAllMocks());
 describe('1. 1부 저장 키 · 값 = 설문 v2', () => {
   test('시작 → 1부 전부 대화로 → 정치 나중에 → CK16 거절 → 2부 → 여기까지 → 정리 → 내 성향 → 글 문항 → 답 한눈에 보기', async () => {
     const r = rig({ politics: true });
-    const tree = await show(r.deps);
+    const tree = await show(r.deps, true); // 3부-자: 스위치 type_card 켜짐 — 끝 화면에 [내 여행 타입 보기] 입구
     expect(has(tree, 'chat-intro')).toBe(true);
     expect(allTexts(tree)).toEqual(expect.arrayContaining([CHAT_V6['CHAT.START.title'], CHAT_V6['CHAT.START.points.1']]));
     await tap(tree, 'chat-start');
@@ -257,6 +257,16 @@ describe('1. 1부 저장 키 · 값 = 설문 v2', () => {
     await tap(tree, 'chat-send');
     expect(v2Texts(r.memory)).toMatchObject({ T02: DEMO_ANALYSIS.facts.T02, T03: DEMO_ANALYSIS.facts.T03 });
     expect(has(tree, 'chat-review')).toBe(true);
+    // 3부-자(정책 PF-33): 끝 화면 입구 [내 여행 타입 보기] + [다음] 같은 크기 · 안 눌러도 [다음]으로 다음 화면 · 저절로 넘어감 0
+    const entry = tree.root.findAll((n) => n.props.testID === 'chat-type-entry')[0];
+    const nextBtn = tree.root.findAll((n) => n.props.testID === 'chat-review')[0];
+    expect(entry.props.label).toBe('내 여행 타입 보기');
+    expect(entry.props.variant).toBe('secondary');
+    expect(nextBtn.props.variant).toBeUndefined(); // 주 버튼(기본)
+    expect(mockRouter.push).not.toHaveBeenCalled();
+    await tap(tree, 'chat-type-entry');
+    expect(mockRouter.push).toHaveBeenLastCalledWith('/type-card');
+    mockRouter.push.mockClear();
     await tap(tree, 'chat-review');
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/survey/[step]', params: { step: 'v2' } });
   });

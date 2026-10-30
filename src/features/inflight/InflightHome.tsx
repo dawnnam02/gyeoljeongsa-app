@@ -22,8 +22,8 @@ import { alpha, colors, radius, size, space } from '@/theme/tokens';
 import { deviceNotes, useDeviceNotes, type DeviceNotes } from './deviceNotes';
 import type { HomeState, InflightApi } from './inflightApi';
 import { foldRows, hasReflectMemo, homeBlocks, homeCode, tripOf, type FoldRow } from './inflightLogic';
-import type { Ck17Api, TravelType, TypeSource } from './inflightService';
-import { tarotOf } from './if2Library';
+import type { Ck17Api, TypeSource } from './inflightService';
+import { isPacked, tarotOf, travelTypeOf } from './if2Library';
 import { HomeBlock, HomeCell, if2Styles } from './If2Parts';
 import { Ck17Sheet, HelloWriteSheet, MeetPrepSheet, MemoSheet, MustTalkSheet, PairCardSheet, PreAnswerSheet } from './If2Sheets';
 import { tx } from './if2Text';
@@ -69,14 +69,14 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
   const n = useDeviceNotes(notes);
   const now = deps.now ?? Date.now;
   const [sheet, setSheet] = useState<Sheet>('none');
-  const [type, setType] = useState<TravelType | null>(null);
+  const [typeId, setTypeId] = useState<string | null>(null); // 내 여행 타입 id(서버 값이 생기기 전엔 데모만)
   const [memoRoom, setMemoRoom] = useState<string | null>(null);
   const isOn = deps.isOn;
   const round = boarding.ticket?.roundNo ?? boarding.round?.no ?? 0;
   const roomId = home.pair?.roomId ?? null;
 
   useEffect(() => {
-    void deps.type.mine().then(setType);
+    void deps.type.mine().then(setTypeId);
   }, [deps.type]);
   // 회차 끝 · 방 닫힘 + 30일 지움(엽서 · 미리 답 · 표시 · 메모 — PF-10 · PF-A)
   useEffect(() => {
@@ -85,6 +85,8 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
     notes.purge({ now: now(), inflightRound: flying ? round : null, openRoom: roomId, openRoomRound: home.stage === 'matched' ? round : home.stage === 'overlap' ? round - 1 : null, reflectOk: home.reflectOk });
   }, [home, n, notes, now, round, roomId]);
 
+  const type = travelTypeOf(typeId);
+  const packed = isPacked(n.typeBag); // 타입은 있어도 짐을 아직 안 쌌으면 칸 글은 '짐을 싸면 엽서가 나와요'(그때 처음 엽서가 나옴 — 정책 PF-31)
   const blocks = homeBlocks(home, n, now());
   const code = homeCode(home, blocks);
   const trip = tripOf(boarding.round?.no ?? null);
@@ -131,7 +133,7 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
               ) : c.kind === 'card' ? (
                 <HomeCell key="card" icon="tcard" name={tx('HOME.pocket.card')} line={c.state === 'revealed' ? tx('HOME.pocket.cardAfter', { '카드 이름': tarotOf(c.card)?.name ?? '' }) : tx('HOME.pocket.cardBefore')} onPress={isOn('inflight_mag') ? () => nav.open('/magazine?page=card' as Href) : undefined} testID={`${testID}-B3-card`} />
               ) : (
-                <HomeCell key="type" icon="tag" name={tx('HOME.pocket.type')} line={type ? tx('HOME.pocket.typeAfter', { '타입 이름': type.name }) : tx('HOME.pocket.typeNone')} onPress={() => nav.open('/type-card' as Href)} testID={`${testID}-B3-type`} />
+                <HomeCell key="type" icon="tag" name={tx('HOME.pocket.type')} line={type && packed ? tx('HOME.pocket.typeAfter', { '타입 이름': type.name }) : tx('HOME.pocket.typeNone')} onPress={() => nav.open('/type-card' as Href)} testID={`${testID}-B3-type`} />
               ),
             )}
           </HomeBlock>
@@ -173,7 +175,7 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
           <HomeBlock key={b} title={tx('HOME.me.title')} cellNames={cells.map((c) => (c === 'type' ? tx('TYPE_CARD.home.name') : tx('PREVIEW_ME.home.name')))} testID={`${testID}-B6`}>
             {cells.map((c) =>
               c === 'type' ? (
-                <HomeCell key={c} icon="suitcase" name={tx('TYPE_CARD.home.name')} line={type ? tx('TYPE_CARD.home.line', { '타입 이름': type.name }) : tx('TYPE_CARD.home.lineNone')} onPress={() => nav.open('/type-card' as Href)} testID={`${testID}-B6-type`} />
+                <HomeCell key={c} icon="suitcase" name={tx('TYPE_CARD.home.name')} line={type && packed ? tx('TYPE_CARD.home.line', { '타입 이름': type.name }) : tx('TYPE_CARD.home.lineNone')} onPress={() => nav.open('/type-card' as Href)} testID={`${testID}-B6-type`} />
               ) : (
                 <HomeCell key={c} icon="postmark" name={tx('PREVIEW_ME.home.name')} line={tx('PREVIEW_ME.home.line')} onPress={() => nav.open('/preview-me' as Href)} testID={`${testID}-B6-preview`} />
               ),

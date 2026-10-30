@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { boardingServices } from '@/features/boarding/boardingServices';
 import { MagazineScreen } from '@/features/inflight/MagazineScreen';
 import { inflightServices } from '@/features/inflight/inflightService';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
@@ -9,6 +10,17 @@ import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 export default function MagazineRoute() {
   const { isOn } = useFeatureFlags();
   const preOn = isOn('pre_answer');
-  const deps = useMemo(() => ({ ...inflightServices(), preOn }), [preOn]);
+  // 서버는 '안 탄 분'과 '탄 뒤 닫힌 분'을 가르지 않아 탑승권 상태를 함께 넘긴다(3부-자 QP-43 — none 일 때만 읽음)
+  const deps = useMemo(
+    () => ({
+      ...inflightServices(),
+      preOn,
+      boarding: async () => {
+        const r = await boardingServices().api.load();
+        return r.ok ? r.state : null;
+      },
+    }),
+    [preOn],
+  );
   return <MagazineScreen deps={deps} />;
 }

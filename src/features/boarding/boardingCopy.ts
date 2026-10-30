@@ -9,7 +9,7 @@ export const TICKET_PRICE = '26,900원';
 export const BOARDING = {
   headerTitle: '탑승권',
   ticketTitle: '결정사 탑승권',
-  round: (n: number) => `${n}회차`,
+  round: '이번 주', // 카피 21-18(3부-자 · QP-44): 홈 표면 회차 번호 0(정책 PF-08) — 판매가 목요일 0시 ~ 수요일이라 홈의 탑승권은 늘 그 주 회차. 번호는 T3 REVEAL.kicker · 사기 시트 요약 · T5 CREDITS.round 에만
   from: '출발',
   fromDefault: '내 지역',
   to: '도착',

@@ -207,3 +207,43 @@ export function cardTopics(key: string, roomId: string, hobbies: readonly DemoHo
   }
   return out;
 }
+
+// ── 내 여행 타입(3부-자 · F-19 · 계산명세 10-1 — fun_calc.travel_type · type_routes 와 같은 식) ──────────
+//  성향 정리 결과(5축 · 대화 방식 4칸)로만 정한다. 짐 싸기 답 · 등급 · 돈 · 외모 입력 0. 실서버에는 아직 타입 계산이 없어(백엔드 11-5) 데모 모의 서버만 쓴다
+export type DemoTraits = { extraversion: number; planning: number; conflict?: number | null };
+export type DemoTalkStyle = { deliberation: number; expressiveness: number; warmth: number; candor: number };
+export const TYPE_ORDER: readonly (readonly ['quiet' | 'social', 'plan' | 'free', 'calm' | 'warm' | 'frank'])[] = [
+  ['quiet', 'plan', 'calm'], ['quiet', 'plan', 'warm'], ['quiet', 'plan', 'frank'],
+  ['quiet', 'free', 'calm'], ['quiet', 'free', 'warm'], ['quiet', 'free', 'frank'],
+  ['social', 'plan', 'calm'], ['social', 'plan', 'warm'], ['social', 'plan', 'frank'],
+  ['social', 'free', 'calm'], ['social', 'free', 'warm'], ['social', 'free', 'frank'],
+];
+const TALK_STYLES = ['calm', 'warm', 'frank'] as const;
+export const typeId = (index0: number): string => `tt-${String(index0 + 1).padStart(2, '0')}`;
+
+// 대화 결 셋: 대화 방식 4칸이 있으면 차분 = 신중함 · 다정 = (따뜻함 + 표현) / 2 · 솔직 = 솔직함 중 가장 큰 쪽(같으면 차분 → 다정 → 솔직). 없으면 갈등 대처 축(33 이하 차분 · 67 이상 솔직 · 사이 다정). 둘 다 없으면 null(타입 0)
+export function talkStyle(style: DemoTalkStyle | null | undefined, conflict: number | null | undefined): 'calm' | 'warm' | 'frank' | null {
+  if (style) {
+    const marks = { calm: style.deliberation, warm: (style.warmth + style.expressiveness) / 2, frank: style.candor };
+    const best = Math.max(marks.calm, marks.warm, marks.frank);
+    return TALK_STYLES.find((s) => marks[s] === best) ?? 'calm';
+  }
+  if (conflict === null || conflict === undefined) return null;
+  return conflict <= 33 ? 'calm' : conflict >= 67 ? 'frank' : 'warm';
+}
+
+// 외향성 · 계획성 50 이상 = 높음(경계 50 = 높음). 가족 중심 · 경제관은 쓰지 않는다. 결과 'tt-01' ~ 'tt-12' · 자료가 없으면 null
+export function travelType(traits: DemoTraits, style?: DemoTalkStyle | null): string | null {
+  const s = talkStyle(style, traits.conflict);
+  if (!s) return null;
+  const at = TYPE_ORDER.findIndex(([e, p, t]) => e === (traits.extraversion >= 50 ? 'social' : 'quiet') && p === (traits.planning >= 50 ? 'plan' : 'free') && t === s);
+  return at < 0 ? null : typeId(at);
+}
+
+// '대화가 편하게 이어지는 타입' 두 역: ① 같은 여행 결 · 대화 결은 다음 칸(차분 → 다정 → 솔직 → 차분) ② 여행 결 둘 다 반대 · 대화 결 같음
+export function typeRoutes(id: string): [string, string] {
+  const [e, p, s] = TYPE_ORDER[Number(id.slice(3)) - 1];
+  const next = TALK_STYLES[(TALK_STYLES.indexOf(s) + 1) % 3];
+  const idx = (e2: string, p2: string, s2: string) => TYPE_ORDER.findIndex(([a, b, c]) => a === e2 && b === p2 && c === s2);
+  return [typeId(idx(e, p, next)), typeId(idx(e === 'quiet' ? 'social' : 'quiet', p === 'plan' ? 'free' : 'plan', s))];
+}

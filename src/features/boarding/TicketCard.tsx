@@ -1,5 +1,5 @@
 // 탑승권 한 장(T1 · T2 그래픽). 종이 카드(Card paper) + A안 로고 타일 + 점선 한 줄 — 새 색 · 새 크기 0(tokens 만).
-//  칸: 회차 · 출발(내 지역) → 도착(여행지에서 만날 한 분) · 만나는 때(날짜 · 요일 · 시각) · 상태. 좌석 번호 · 순번 · 남은 좌석 0
+//  칸: 이번 주(회차 번호 0 — 정책 PF-08) · 출발(내 지역) → 도착(여행지에서 만날 한 분) · 만나는 때(날짜 · 요일 · 시각) · 상태. 좌석 번호 · 순번 · 남은 좌석 0
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
@@ -14,7 +14,7 @@ const TILE = space.s32;
 type Props = { roundNo: number | null; regionName: string | null; when: string | null; status: string; testID?: string };
 
 export function TicketCard({ roundNo, regionName, when, status, testID = 'ticket' }: Props) {
-  const label = [BOARDING.ticketTitle, roundNo ? BOARDING.round(roundNo) : null, `${BOARDING.from} ${regionName ?? BOARDING.fromDefault}`, when ? `${BOARDING.when} ${when}` : null, status].filter(Boolean).join(', ');
+  const label = [BOARDING.ticketTitle, roundNo ? BOARDING.round : null, `${BOARDING.from} ${regionName ?? BOARDING.fromDefault}`, when ? `${BOARDING.when} ${when}` : null, status].filter(Boolean).join(', ');
   return (
     <Card variant="paper" style={styles.card} accessible accessibilityLabel={label} testID={testID}>
       <View style={styles.head}>
@@ -24,7 +24,7 @@ export function TicketCard({ roundNo, regionName, when, status, testID = 'ticket
         </AppText>
         {roundNo ? (
           <AppText variant="captionMedium" tone="accent" testID={`${testID}-round`}>
-            {BOARDING.round(roundNo)}
+            {BOARDING.round}
           </AppText>
         ) : null}
       </View>

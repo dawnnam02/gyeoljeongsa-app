@@ -5,6 +5,7 @@
 //  [이대로 확정] → confirm_profile → 08(처음 한 번). 정리 결과가 없으면 06 으로 되돌린다.
 //  3부-아(검수 QP-09 · 화면_요구사항 2-1 F2): 대화형 설문 '내 성향'을 마친 분(인터뷰 정리 status done)은 같은 확인을 두 번 하지 않는다 —
 //   07 을 보이지 않고 그 결과로 확정(confirm_profile) → 08. 확정이 안 되면 지금처럼 07 을 보인다.
+//  3부-자: 스위치 type_card 가 켜져 있으면 확정 직후 바로 08 로 가지 않고 같은 화면에서 [내 여행 타입 보기] · [다음] 두 버튼을 보인다(정책 PF-33 — 안 눌러도 [다음]으로 08 · 저절로 넘어감 0)
 //  3부-자(백엔드 0044 12-4): 확정은 confirm_profile(null) — 서버가 인터뷰 정리(done)로 확정하므로 AI 건이 없어도(06 · 07 건너뜀) 08 로. 안 되면 지금 길(건 id 확정 → 07 · 06)
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -20,6 +21,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { OfflineArt } from '@/components/StateArt';
 import { TextField } from '@/components/TextField';
 import { COMMON, TRAITS } from '@/content/copy';
+import { SV2 } from '@/features/surveyV2/copy';
 import { AXIS_NAMES, AXIS_ORDER, MANUAL_TAG_FALLBACK } from '@/content/traitsContent';
 import { aiApi } from '@/lib/services';
 import type { AiApi } from '@/lib/aiApi';
@@ -30,6 +32,7 @@ import { colors, size, space } from '@/theme/tokens';
 import type { AiRow, TraitKey, Traits, TraitsView } from '@/types/ai';
 
 import { EvidenceList } from './EvidenceList';
+import { TYPE_ENTRY_HREF, TYPE_ENTRY_LABEL } from './typeEntry';
 import { confirmFromInterview, interviewDone } from './interviewConfirm';
 import { manualOfferStore } from './manualOffer';
 import { TagEditor, TagList, TagPicker } from './TagEditor';
@@ -56,7 +59,7 @@ function resolveDestHref(dest: '04:first'): Href {
 }
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
-export function TraitsScreen({ deps = defaultDeps }: { deps?: TraitsDeps }) {
+export function TraitsScreen({ deps = defaultDeps, typeOn = false }: { deps?: TraitsDeps; typeOn?: boolean }) {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string }>();
   const manualRequested = first(params.mode) === 'manual';
@@ -74,6 +77,7 @@ export function TraitsScreen({ deps = defaultDeps }: { deps?: TraitsDeps }) {
   const [message, setMessage] = useState<string | null>(null);
   const [confirmFail, setConfirmFail] = useState<keyof typeof TRAITS.confirmErrors | null>(null); // [이대로 확정] 실패 4종 확인창
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [finished, setFinished] = useState(false); // 확정을 마침 — typeOn 이면 [내 여행 타입 보기] · [다음]을 보이는 끝 상태
   const alive = useRef(true);
 
   useEffect(() => {
@@ -169,24 +173,30 @@ export function TraitsScreen({ deps = defaultDeps }: { deps?: TraitsDeps }) {
     setMode('view');
   }, []);
 
+  // 07 확정 직후 한 번은 08 의 '처음 한 번 확인' 상태로 간다(?first=1, 화면_요구사항 08)
+  const toNext = useCallback(() => goForward(router, { pathname: '/profile', params: { first: '1' } }), [router]);
+
   const onBack = useCallback(() => {
-    if (mode === 'edit') cancelEdit();
+    if (finished) toNext();
+    else if (mode === 'edit') cancelEdit();
     else if (mode === 'manual') goBackOr(router, '/analysis');
     else {
       const to = resolveDest('05');
       goBackOr(router, to.kind === 'href' ? to.href : '/photos');
     }
-  }, [mode, cancelEdit, router]);
+  }, [mode, cancelEdit, router, finished, toNext]);
   const onBackRef = useRef(onBack);
   const modeRef = useRef(mode);
+  const finishedRef = useRef(finished);
   useLayoutEffect(() => {
     onBackRef.current = onBack;
     modeRef.current = mode;
+    finishedRef.current = finished;
   });
   useFocusEffect(
     useCallback(() => {
       const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-        if (modeRef.current === 'view') return false; // 보기 상태는 ‹ 와 같게 화면 스택이 처리한다
+        if (modeRef.current === 'view' && !finishedRef.current) return false; // 보기 상태는 ‹ 와 같게 화면 스택이 처리한다. 끝 상태는 [다음]과 같게
         onBackRef.current();
         return true;
       });
@@ -264,9 +274,13 @@ export function TraitsScreen({ deps = defaultDeps }: { deps?: TraitsDeps }) {
     }
     manualOfferStore.clear();
     setStage('traits-confirmed');
-    // 07 확정 직후 한 번은 08 의 '처음 한 번 확인' 상태로 간다(?first=1, 화면_요구사항 08)
-    goForward(router, { pathname: '/profile', params: { first: '1' } });
+    if (typeOn) {
+      setFinished(true); // 끝 상태: 내 여행 타입 입구 + [다음] — 저절로 넘어가지 않는다
+      return;
+    }
+    toNext();
   };
+
 
   if (loading || !view || !row) {
     return (
@@ -405,7 +419,16 @@ export function TraitsScreen({ deps = defaultDeps }: { deps?: TraitsDeps }) {
           </AppText>
         ) : null}
         <View style={styles.buttons}>
-          {mode === 'view' ? (
+          {finished ? (
+            <>
+              <View style={styles.half}>
+                <Button label={TYPE_ENTRY_LABEL} variant="secondary" onPress={() => router.push(TYPE_ENTRY_HREF as Href)} testID="traits-type-entry" />
+              </View>
+              <View style={styles.half}>
+                <Button label={SV2.common.next} onPress={toNext} testID="traits-next" />
+              </View>
+            </>
+          ) : mode === 'view' ? (
             <>
               <View style={styles.half}>
                 <Button label={TRAITS.edit} variant="secondary" onPress={startEdit} testID="traits-edit" />
