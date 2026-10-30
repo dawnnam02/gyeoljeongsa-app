@@ -93,6 +93,7 @@ async function signUp(email, until) {
   await b.clickText('설문 완료 · 정상 응답');
   await b.waitFor(`location.pathname === '/traits' && !!window.__q('traits-confirm')`, 40000);
   await b.click(sel('traits-confirm'));
+  await b.traitsNext(); // 3부-자: type_card 켜짐이면 [다음] 한 번 더
   await b.waitFor(`location.pathname === '/profile' && !!window.__q('profile-first-confirm')`, 15000);
   await b.click(sel('profile-first-confirm'));
   return b.waitFor(until, 20000);
@@ -109,7 +110,7 @@ try {
 
   // ═══ 2. T1 판매 중 ═══
   check('2', `상태 카드 '이번 주 탑승권' + 수락 없이 대화방 한 줄 + [탑승권 사기]`, (await visText('boarding-status-title')) === '이번 주 탑승권' && (await visText('boarding-status-body')).includes('수락 단계 없이') && (await vis('boarding-buy')), await visText('boarding-status-title'));
-  check('2', `탑승권 한 장: 1회차 · 출발 수도권 · 만나는 때 '12월 23일 수요일 오후 6시' · 상태 '아직 사지 않았어요'`, (await visText('ticket-round')) === '1회차' && (await visText('ticket-from')) === '수도권' && (await visText('ticket-when')) === '12월 23일 수요일 오후 6시' && (await visText('ticket-status')) === '아직 사지 않았어요', await visText('ticket-when'));
+  check('2', `탑승권 한 장: 이번 주(회차 번호 0 — 3부-자 QP-44) · 출발 수도권 · 만나는 때 '12월 23일 수요일 오후 6시' · 상태 '아직 사지 않았어요'`, (await visText('ticket-round')) === '이번 주' && (await visText('ticket-from')) === '수도권' && (await visText('ticket-when')) === '12월 23일 수요일 오후 6시' && (await visText('ticket-status')) === '아직 사지 않았어요', await visText('ticket-when'));
   check('2', '재촉 · 카운트다운 · 남은 좌석 · 느낌표 0', !PUSHY.test(await screenText('screen-boarding')), '');
   await shot('T1_판매중');
   await measure('T1 판매 중');

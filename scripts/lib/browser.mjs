@@ -249,6 +249,11 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
       }
       return false;
     },
+    // 3부-자: 07 [이대로 확정] 뒤 스위치 type_card 가 켜져 있으면(데모 처음값) 같은 화면에 [내 여행 타입 보기] · [다음]이 뜬다 — [다음]을 눌러 08 로 간다. 꺼져 있어 바로 08 이면 그대로 지나간다
+    async traitsNext(ms = 15000) {
+      await api.waitFor(`location.pathname === '/profile' || !!window.__q('traits-next')`, ms);
+      if (await evaluate(`!!window.__q('traits-next')`)) await api.click('[data-testid="traits-next"]');
+    },
     async shot(name) {
       const r = await cdp.send('Page.captureScreenshot', { format: 'png' });
       fs.mkdirSync(shotDir, { recursive: true });

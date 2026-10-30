@@ -4,6 +4,7 @@
 //  2 첫 입장: 버튼 하나 '약속을 지키고 들어갈게요'(체크 칸 0) + [나중에] · 짝 안내 → 쪽지 [입장권 뜯기] → 좌석 배정 · 좌석표(내 자리만 점) → 객실
 //  3 객실: 좌석 꼬리표 읽기 이름 '13A 좌석' · 글 보내기 → 가상 탑승객 답이 실시간으로 옴 · 신고 사유 5
 //  4 데모 줄로 장면 12 돌기(평소 · 아침 · 불 끈 시간 · 착륙 준비 · 닫힘 · 기장 안내만 · 빈 객실 · 쓰기 멈춤 · 이용 멈춤 · 나감 · 약속 바뀜 · 처음) — 장면마다 상태 글
+//  3부-자: 공감 알약 aria-pressed · 신고 사유 aria-checked(QP-39) · 위기 안내 [닫기] 48 × 48(QP-40) · 강퇴 · 나감 [돌아가기] → 채팅 목록 · 약속 바뀜 장면의 T4 줄 글(QP-42 · 카피 19-13)
 //  5 장면마다 폭(SHOT_WIDTH, 기본 390) 가로 넘침 0 · 글자 13 이상 · 터치 48 이상 · 숫자 0(좌석 꼬리표 · 때 빼고) · 금지어 0 · 콘솔 오류 0 · 바깥 요청 0
 //  캡처: 확인/스크린샷/[SHOT_SUBDIR 기본 LG_<폭>]/LG_<장면>_<폭>.png
 // 사용: node scripts/web-lounge.mjs [번들 폴더]   SHOT_WIDTH=360 node scripts/web-lounge.mjs
@@ -82,6 +83,7 @@ async function signUp(email) {
   await b.clickText('설문 완료 · 정상 응답');
   await b.waitFor(`location.pathname === '/traits' && !!window.__q('traits-confirm')`, 40000);
   await b.click(sel('traits-confirm'));
+  await b.traitsNext(); // 3부-자: type_card 켜짐이면 [다음] 한 번 더
   await b.waitFor(`location.pathname === '/profile' && !!window.__q('profile-first-confirm')`, 15000);
   await b.click(sel('profile-first-confirm'));
   return b.waitFor(`location.pathname === '/boarding'`, 20000);
@@ -153,6 +155,31 @@ try {
   check('3', '가상 탑승객 답이 실시간으로 온다(그 글 하나만 다시 읽기)', await b.waitFor(`document.body.innerText.includes('반가워요. 천천히 이야기 나눠요.')`, 8000), '');
   await sleep(400);
   await b.shot(`LG_객실_${width}.png`);
+  // QP-39: 공감 알약은 눌림 상태를 aria-pressed 로 읽어 준다(누르기 전 false → 누른 뒤 true → 다시 누르면 false) · 알림 · 개수 0
+  const empathyId = await b.evaluate(`(() => { const el = [...document.querySelectorAll('[data-testid$="-empathy"]')].find((e) => window.__visible(e)); return el ? el.getAttribute('data-testid') : null; })()`);
+  if (empathyId) {
+    const pressed = () => b.evaluate(`(${visQ(empathyId)}).getAttribute('aria-pressed')`);
+    const before = await pressed();
+    await tap(empathyId);
+    await sleep(600);
+    const on = await pressed();
+    await tap(empathyId);
+    await sleep(600);
+    const off = await pressed();
+    check('3', '공감 알약: aria-pressed false → true → false(QP-39) · 터치 48 이상', before === 'false' && on === 'true' && off === 'false' && (await b.evaluate(`(() => { const r = (${visQ(empathyId)}).getBoundingClientRect(); return r.width >= 48 && r.height >= 48; })()`)), `${before} → ${on} → ${off}`);
+  } else {
+    check('3', '공감 알약이 보인다', false, '');
+  }
+  // QP-40: 위기 낱말을 쓰면 내 글 아래 도움 카드가 나오고 [닫기]는 48 × 48
+  await b.type(sel('lounge-input'), '요즘 사라지고 싶다는 생각이 들어요');
+  await tap('lounge-send');
+  const crisisClose = await b.waitFor(`[...document.querySelectorAll('[data-testid$="-crisis-close"]')].some((e) => window.__visible(e))`, 6000);
+  const crisisSize = await b.evaluate(`(() => { const el = [...document.querySelectorAll('[data-testid$="-crisis-close"]')].find((e) => window.__visible(e)); if (!el) return null; const r = el.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) }; })()`);
+  check('3', '위기 도움 카드 [닫기]: 터치 48 × 48 이상(QP-40)', crisisClose && crisisSize !== null && crisisSize.w >= 48 && crisisSize.h >= 48, JSON.stringify(crisisSize));
+  await b.shot(`LG_위기안내_${width}.png`);
+  const crisisCloseId = await b.evaluate(`(() => { const el = [...document.querySelectorAll('[data-testid$="-crisis-close"]')].find((e) => window.__visible(e)); return el ? el.getAttribute('data-testid') : null; })()`);
+  if (crisisCloseId) await tap(crisisCloseId);
+  await sleep(300);
   // 남의 글 메뉴 → 신고 사유 5
   const otherMore = await b.evaluate(`(() => { const el = [...document.querySelectorAll('[data-testid$="-more"]')].find((e) => window.__visible(e) && !e.closest('[data-testid$="-me"]')); return el ? el.getAttribute('data-testid') : null; })()`);
   if (otherMore) {
@@ -163,6 +190,12 @@ try {
       await sleep(500);
       const reasons = await b.evaluate(`[...document.querySelectorAll('[data-testid^="lounge-report-RP"]')].filter((e) => window.__visible(e)).map((e) => e.getAttribute('data-testid').replace('lounge-report-', ''))`);
       check('3', '신고 사유 5(RP4 ~ RP8)', JSON.stringify(reasons) === JSON.stringify(['RP4', 'RP5', 'RP6', 'RP7', 'RP8']), reasons.join(','));
+      const checkedOf = () => b.evaluate(`['RP4', 'RP5', 'RP6', 'RP7', 'RP8'].map((c) => { const el = [...document.querySelectorAll('[data-testid="lounge-report-' + c + '"]')].find((e) => window.__visible(e)); return el ? el.getAttribute('aria-checked') : 'none'; })`);
+      const before = await checkedOf();
+      await tap('lounge-report-RP7');
+      await sleep(400);
+      const after = await checkedOf();
+      check('3', '신고 사유 라디오: aria-checked 모두 false → 고른 하나만 true(QP-39)', before.every((x) => x === 'false') && JSON.stringify(after) === JSON.stringify(['false', 'false', 'false', 'true', 'false']), `${before.join(',')} → ${after.join(',')}`);
       await measure('신고 시트');
       await tap('lounge-report-cancel');
       await sleep(400);
@@ -183,6 +216,27 @@ try {
       const emp = await b.evaluate(`[...document.querySelectorAll('[data-testid$="-empathy"]')].filter((e) => window.__visible(e)).length`);
       const recv = await b.evaluate(`[...document.querySelectorAll('[data-testid$="-received"]')].filter((e) => window.__visible(e)).length`);
       check('4', `장면 ${sc.name}: 공감 단추 · '공감받았어요' 0 · 입력칸 0`, emp === 0 && recv === 0 && !(await vis('lounge-input')), `공감 ${emp} · 받음 ${recv}`);
+    }
+    if (sc.name === 'kicked' || sc.name === 'left') {
+      // 3부-자: 한 줄 + [돌아가기] → T4 채팅 목록(탑승권 아님) — 누른 뒤 라운지로 다시 들어와 장면 돌기를 잇는다(데모 장면은 메모리에 남음)
+      const btn = `lounge-${sc.name}-button`;
+      check('4', `장면 ${sc.name}: [돌아가기] 버튼 하나 · 터치 48 이상`, (await visText(btn)) === '돌아가기' && (await b.evaluate(`(() => { const r = (${visQ(btn)}).getBoundingClientRect(); return r.height >= 48; })()`)), await visText(btn));
+      await words(`장면 ${sc.name}`);
+      await measure(`장면 ${sc.name}`);
+      await b.shot(`LG_${sc.name}_${width}.png`);
+      await tap(btn);
+      check('4', `장면 ${sc.name}: [돌아가기] → T4 채팅 목록(/chat)`, await b.waitFor(`location.pathname === '/chat'`, 8000), await b.evaluate('location.pathname'));
+      await b.evaluate(`(() => { history.pushState(null, '', '/lounge'); dispatchEvent(new PopStateEvent('popstate', { state: null })); return true; })()`);
+      await waitVis('lounge-demo-scene', 8000);
+      continue;
+    }
+    if (sc.name === 'rules') {
+      // QP-42 · 카피 19-13: 약속이 바뀐 회차(좌석은 그대로)의 T4 줄은 '좌석이 정해져요'가 아니라 약속이 바뀌었다는 한 줄 · 빈 좌석 칸 0
+      await b.evaluate(`(() => { history.pushState(null, '', '/chat'); dispatchEvent(new PopStateEvent('popstate', { state: null })); return true; })()`);
+      check('4', "장면 rules: T4 줄 글 '라운지 약속이 바뀌었어요. 들어가서 바뀐 약속을 확인해 주세요.' · 좌석 0 · 빈 좌석 칸 0", (await waitVis('lounge-row', 8000)) && (await visText('lounge-row-line')) === '라운지 약속이 바뀌었어요. 들어가서 바뀐 약속을 확인해 주세요.' && !/정해/.test(await visText('lounge-row')) && !(await vis('lounge-row-seat-box')), await visText('lounge-row-line'));
+      await b.shot(`LG_T4_약속바뀜줄_${width}.png`);
+      await b.evaluate(`(() => { history.pushState(null, '', '/lounge'); dispatchEvent(new PopStateEvent('popstate', { state: null })); return true; })()`);
+      await waitVis('lounge-demo-scene', 8000);
     }
     await words(`장면 ${sc.name}`);
     await measure(`장면 ${sc.name}`);

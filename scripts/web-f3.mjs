@@ -223,6 +223,7 @@ try {
 
   // 확정
   await b.click(sel('traits-confirm'));
+  await b.traitsNext(); // 3부-자: type_card 켜짐이면 [다음] 한 번 더
   const on08 = await b.waitFor(`location.pathname === '/profile'`);
   check('A', '[이대로 확정] → 08 내 프로필(/profile)로 간다', on08, `경로 ${await path0()}`);
   const afterConfirm = await peek(EMAIL_A);
@@ -274,6 +275,7 @@ try {
   const manualExt = await slider('extraversion');
   await note('F3_07_직접입력_칩선택_360x740.png');
   await b.click(sel('traits-confirm'));
+  await b.traitsNext(); // 3부-자: type_card 켜짐이면 [다음] 한 번 더
   const on08b = await b.waitFor(`location.pathname === '/profile'`);
   check('B', '요약을 비운 채 [이대로 확정] → 08 로 간다', on08b, `경로 ${await path0()}`);
   const manualServer = (await peek(EMAIL_B)).rows[0];
@@ -317,6 +319,7 @@ try {
     await b.waitFor(`!window.__q('traits-confirm-fail-confirm')`);
   }
   await b.click(sel('traits-confirm'));
+  await b.traitsNext(); // 3부-자: type_card 켜짐이면 [다음] 한 번 더
   check('E', '다섯 번째 [이대로 확정] → 08', await b.waitFor(`location.pathname === '/profile'`), `경로 ${await path0()}`);
 
   // ═══ D. 마무리 ═══

@@ -221,6 +221,7 @@ try {
   else await b.clickText('취소');
   await b.waitFor(`!!${q('traits-confirm')}`, 5000);
   await tap('traits-confirm');
+  await b.traitsNext(); // 3부-자: type_card 켜짐이면 [다음] 한 번 더
   await b.waitFor(`location.pathname === '/profile' && !!${q('profile-first-confirm')}`, 15000);
   await tap('profile-first-confirm');
   await b.waitFor(`location.pathname === '/recommendations' && !!${q('rec-card-2')}`, 20000);

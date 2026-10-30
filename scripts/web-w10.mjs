@@ -66,6 +66,7 @@ async function signIn(email) {
     if (await b.waitFor(`location.pathname === '/traits' && !!window.__q('traits-confirm')`, 25000)) break;
   }
   await b.click(sel('traits-confirm'));
+  await b.traitsNext(); // 3부-자: type_card 켜짐이면 [다음] 한 번 더
   await b.waitFor(`location.pathname === '/profile' && !!window.__q('profile-first-confirm')`, 15000);
   await watchHidden();
   await b.click(sel('profile-first-confirm'));
