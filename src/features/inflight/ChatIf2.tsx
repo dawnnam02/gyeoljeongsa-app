@@ -32,7 +32,7 @@ export type ChatIf2Deps = { api: InflightApi; isOn: (key: string) => boolean; no
 const FAREWELL_MAX = 100; // 0043 farewell_max(한 줄 · 100자)
 const ANSWER_MAX = 200; // 0043 answer_max
 const count = (t: string) => Array.from(t).length;
-const failText = (f: If2Fail): string => (f.code === 'text_blocked' ? CHAT.send.blocked : f.code === 'room_closed' ? CHAT.send.closed : CHAT.send.failed);
+const failText = (f: If2Fail): string => (f.code === 'text_blocked' ? CHAT.send.blocked : f.code === 'room_closed' ? CHAT.send.closed : f.code === 'rate_limited' ? CHAT.send.limited : CHAT.send.failed); // rate_limited = 0045 오늘 거르기 횟수 상한 · 채팅 글 한도(14-5-2)와 같은 글
 
 // 엽서 글(첫 인사 문장 + 더할 한 줄) — 서버 ref p0 ~ p5 = 카피 21장 배열 번호
 export const postcardBody = (p: Postcard): string => [txList('HELLO_POSTCARD.write.lines')[p.line] ?? '', p.extra].filter((x) => x.trim() !== '').join(' ');
@@ -120,7 +120,7 @@ function HelloSendBody({ roomId, deps, onClose, onSent, testID = 'if2-hello-send
 
 // ── 이야깃거리 시트(F-29 · F-30 · F-14 · F-67 — PF-52 ~ PF-55 · PF-36): 칸 넷 ─────────────────────────────
 type TopicTab = 'topics' | 'together' | 'aboutMe' | 'pre';
-type TopicsProps = { visible: boolean; roomId: string; deps: ChatIf2Deps; onClose: () => void; onPlaced: () => void; onGive: (text: string) => void; testID?: string };
+type TopicsProps = { visible: boolean; roomId: string; deps: ChatIf2Deps; onClose: () => void; onPlaced: (helpFor?: string) => void; onGive: (text: string) => void; testID?: string };
 export function TopicsSheet(props: TopicsProps) {
   const testID = props.testID ?? 'if2-topics';
   return (
@@ -185,7 +185,7 @@ function TopicsBody({ roomId, deps, onClose, onPlaced, onGive, testID = 'if2-top
     const r = await deps.api.togetherSend(roomId, q, questionText(q) ?? '', answer.trim());
     setBusy(false);
     if (r.ok) {
-      onPlaced();
+      onPlaced(r.help && r.message ? r.message.id : undefined); // 위기 표시가 참이면 그 질문 카드 아래에 도움 카드(화면이 하루 3번을 센다)
       onClose();
     } else setError(r.code === 'daily_used' ? tx('OPEN_TOGETHER.dailyUsed') : r.code === 'not_today' ? tx('TOPICS.notToday') : r.code === 'too_long' ? tx('OPEN_TOGETHER.tooLong', { n: String(ANSWER_MAX) }) : failText(r));
   };
@@ -354,7 +354,7 @@ function TopicsBody({ roomId, deps, onClose, onPlaced, onGive, testID = 'if2-top
 }
 
 // ── 같이 열어 보는 질문 카드(F-30 · PF-54 · PF-55): 내 쪽 상태만 — 상대가 답했는지 0 ─────────────────────────
-export function TogetherCard({ message, answers, roomOpen, deps, onChanged, testID }: { message: Message; answers: { mine: string | null; theirs: string | null }; roomOpen: boolean; deps: ChatIf2Deps; onChanged: () => void; testID: string }) {
+export function TogetherCard({ message, answers, roomOpen, deps, onChanged, testID }: { message: Message; answers: { mine: string | null; theirs: string | null }; roomOpen: boolean; deps: ChatIf2Deps; onChanged: (helpFor?: string) => void; testID: string }) {
   const [sheet, setSheet] = useState(false);
   const [ask, setAsk] = useState(false);
   const [text, setText] = useState('');
@@ -371,16 +371,18 @@ export function TogetherCard({ message, answers, roomOpen, deps, onChanged, test
       return;
     }
     setBusy(true);
+    setError(null); // 다시 누르면 앞 오류 한 줄은 걷는다(rate_limited 뒤 재시도 · 성공해도 묵은 오류가 카드 밑에 남지 않게)
     const r = await deps.api.togetherAnswer(message.id, text.trim());
     setBusy(false);
     if (r.ok) {
       setSheet(false);
-      onChanged();
-    } else setError(r.code === 'too_long' ? tx('OPEN_TOGETHER.tooLong', { n: String(ANSWER_MAX) }) : r.code === 'text_blocked' ? CHAT.send.blocked : tx('OPEN_TOGETHER.failed'));
+      onChanged(r.help ? message.id : undefined); // opened:false(열기 직전 검사에 걸림)도 같은 화면 — 카드가 '내 답을 써 뒀어요' 그대로
+    } else setError(r.code === 'too_long' ? tx('OPEN_TOGETHER.tooLong', { n: String(ANSWER_MAX) }) : r.code === 'text_blocked' ? CHAT.send.blocked : r.code === 'rate_limited' ? CHAT.send.limited : tx('OPEN_TOGETHER.failed'));
   };
   const withdraw = async () => {
     if (busy) return;
     setBusy(true);
+    setError(null);
     const r = await deps.api.togetherWithdraw(message.id);
     setBusy(false);
     setAsk(false);

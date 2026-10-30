@@ -24,6 +24,8 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Toast } from '@/components/Toast';
 import { COMMON, REPORT_SHEET } from '@/content/copy';
 import { setToast as setNextToast } from '@/lib/toastBus';
+import { CrisisCard } from '@/features/safety/CrisisCard';
+import { takeCrisisCard } from '@/features/safety/crisisBudget';
 import { MoreButton } from '@/features/safety/MoreButton';
 import { ReportBlockSheet } from '@/features/safety/ReportBlockSheet';
 import { haptic, Rise, scene2, SkeletonLines, TOAST_MS, WaitState, Wipe } from '@/motion';
@@ -84,6 +86,7 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
   const [room, setRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [pending, setPending] = useState<Pending[]>([]);
+  const [crisisId, setCrisisId] = useState<string | null>(null); // 위기 도움 카드가 붙은 내 글 id — 방금 보낸 글 한 장만(화면 메모리 · 방을 다시 열면 0 · 하루 3번, 정책 P4-29 ~ 34)
   const [urls, setUrls] = useState<Record<string, string | null>>({});
   const [seen, setSeen] = useState<Set<string> | null>(null); // 처음 불러온 글(움직이지 않음)
   const [sheet, setSheet] = useState<'none' | 'menu' | 'extend' | 'leave' | 'safety' | 'topics' | 'hello'>('none');
@@ -160,13 +163,19 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
   const meetView = useMeetScene(meet, { id, load: load.kind, room, messages, now: () => api.now() });
   const covered = meetView.scene !== null || meetView.cover; // 장면 · 판단 중 바탕이 덮는 동안 아래 대화방은 화면 읽기에서 숨긴다
 
+  // 새 카드가 뜨면 앞 카드는 걷힌다(한 번에 한 장). 하루 3번을 넘으면 글만 보내고 화면 변화 0(안내 글 0)
+  const showCrisis = (messageId: string) => {
+    if (takeCrisisCard()) setCrisisId(messageId);
+  };
   const sendOut = async (out: Outgoing) => {
     setPending((cur) => [...cur.filter((p) => p.clientId !== out.clientId), { clientId: out.clientId, out, state: 'sending', failure: null, createdAt: api.now() }]);
     const r = await api.send(id, out);
     if (!alive.current) return;
     if (r.ok) {
+      const { help, ...sent } = r.data; // 위기 표시는 보내기 응답에만 — 글 목록 상태에는 넣지 않는다(저장 0)
       setPending((cur) => cur.filter((p) => p.clientId !== out.clientId));
-      setMessages((cur) => (cur.some((m) => m.id === r.data.id) ? cur : [...cur, r.data]));
+      setMessages((cur) => (cur.some((m) => m.id === sent.id) ? cur : [...cur, sent]));
+      if (help && out.kind === 'text') showCrisis(sent.id);
       const mid = r.data.mediaId;
       if (out.kind !== 'text' && out.localUri && mid) setUrls((cur) => ({ ...cur, [mid]: cur[mid] ?? out.localUri ?? null }));
       return;
@@ -331,7 +340,7 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
                   // 2안 핵심 ③: 이 방의 첫 보낸 말풍선(처음 불러올 때 내 글이 없던 방)만 보낸 쪽에서 걷힘 420(위쪽 바탕 그라데이션이라 덮개 대신 역이동), 나머지 새 말풍선은 일상 240 · 6px
                   const firstMine = fresh && m.mine && shown.findIndex((x) => x.m.mine) === i;
                   const bubble = m.tag === 'together_q' && if2 ? (
-                    <TogetherCard message={m} answers={answersOf(m.id)} roomOpen={open} deps={if2} onChanged={() => void refresh()} testID={`chat-together-${i}`} />
+                    <TogetherCard message={m} answers={answersOf(m.id)} roomOpen={open} deps={if2} onChanged={(helpFor) => (helpFor && showCrisis(helpFor), void refresh())} testID={`chat-together-${i}`} />
                   ) : (
                     <MessageBubble
                       label={m.tag ? tagLabel(m) : null}
@@ -366,6 +375,11 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
                       ) : (
                         bubble
                       )}
+                      {crisisId === m.id ? (
+                        <View style={styles.crisisLine}>
+                          <CrisisCard onClose={() => setCrisisId(null)} testID="chat-crisis" />
+                        </View>
+                      ) : null}
                       {safetyAt === m.id ? (
                         <MoneySafetyCard
                           onReport={() => {
@@ -471,7 +485,7 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
           ) : null}
           {if2 && room ? (
             <>
-              <TopicsSheet visible={sheet === 'topics'} roomId={id} deps={if2} onClose={() => setSheet('none')} onPlaced={() => void refresh()} onGive={putText} />
+              <TopicsSheet visible={sheet === 'topics'} roomId={id} deps={if2} onClose={() => setSheet('none')} onPlaced={(helpFor) => (helpFor && showCrisis(helpFor), void refresh())} onGive={putText} />
               <HelloSendSheet
                 visible={sheet === 'hello'}
                 roomId={id}
@@ -559,6 +573,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', gap: space.s12, paddingHorizontal: size.screenPadding, paddingTop: space.s48 },
   centerText: { textAlign: 'center' },
   list: { gap: space.s12, paddingVertical: space.s16 },
+  crisisLine: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: size.screenPadding, marginTop: space.s4 }, // 내 말풍선 바로 아래 · 말풍선 폭 안(카드가 bubbleMaxWidth)
   startNote: { textAlign: 'center', paddingHorizontal: size.screenPadding },
   sheetTitle: { paddingVertical: space.s8, borderBottomWidth: 1, borderBottomColor: colors.line },
   item: { minHeight: size.listRow, justifyContent: 'center', gap: space.s4, paddingVertical: space.s12 },

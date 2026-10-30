@@ -2,7 +2,8 @@
 //   list_chat_rooms()                                  → {rooms:[방]} · {off:true}(스위치 꺼짐) · null
 //   get_chat_room(p_room)                              → 방 · null(볼 수 없음) · {off:true}
 //   list_chat_messages(p_room, p_before?, p_limit=50)  → {messages:[글](오래된 순), has_more}
-//   send_chat_message(p_room, p_body)                  → {ok:true, message} · {ok:false, code:'text_blocked', codes}
+//   send_chat_message(p_room, p_body)                  → {ok:true, message, help?} · {ok:false, code:'text_blocked', codes}
+//        help = 위기 도움 카드 참/거짓 한 칸(보내기 응답에만 · 저장 0 · 정책 P4-31) — 백엔드 0047 뒤에 온다. 응답에 칸이 없으면 0(카드 안 뜸)
 //   mark_chat_read(p_room, p_upto)                     → 남은 안 읽은 수
 //   request_chat_extension(p_room)                     → {extended, room} · cancel_chat_extension(p_room) → 방
 //   leave_chat_room(p_room)                            → {left:true} (나간 사람은 방이 사라짐 · 상대는 partner_left 로 30일 읽기만)
@@ -44,6 +45,8 @@ export type ChatTag = 'postcard' | 'topic' | 'together_q' | 'together_a' | 'abou
 const CHAT_TAGS: readonly ChatTag[] = ['postcard', 'topic', 'together_q', 'together_a', 'about_me', 'farewell'];
 // 같이 열어 보는 질문 카드의 내 쪽 상태(0043 together_state) — 상대가 답했는지 · 눌렀는지는 없다(보안 S-6 · PF-55)
 export type TogetherState = { state: 'mine_needed' } | { state: 'waiting'; myAnswer: string; canWithdraw: boolean } | { state: 'opened' } | { state: 'withdrawn' } | { state: 'closed'; myAnswer: string | null };
+// 보내기 응답으로 돌아온 글 + 위기 표시 한 칸(help). 목록에서 읽은 글에는 이 칸이 없다 — 방을 다시 열면 카드가 다시 뜨지 않는다(정책 P4-33)
+export type SentMessage = Message & { help?: true };
 export type Message = {
   id: string;
   clientId: string | null;
@@ -74,7 +77,7 @@ export type ChatApi = {
   listRooms(): Promise<Result<Room[], Exclude<LoadFailure, 'unavailable'>>>;
   getRoom(id: string): Promise<Result<Room, LoadFailure>>;
   listMessages(id: string, before?: string): Promise<Result<Message[], LoadFailure>>;
-  send(id: string, out: Outgoing): Promise<Result<Message, SendFailure>>;
+  send(id: string, out: Outgoing): Promise<Result<SentMessage, SendFailure>>;
   markRead(id: string, uptoId: string): Promise<void>;
   setExtend(id: string, want: boolean): Promise<Result<{ closesAt: number; extended: boolean }, LoadFailure>>;
   leave(id: string): Promise<Result<null, LoadFailure>>;
@@ -276,7 +279,8 @@ export function createChatApi(client: SupabaseClient, http: typeof fetch = (...a
       }
       if (isRecord(data) && data.ok === false) return { ok: false, reason: data.code === 'text_blocked' ? 'blocked' : 'server' };
       const m = parseMessage(isRecord(data) ? data.message : null);
-      return m ? { ok: true, data: { ...m, clientId: out.clientId } } : { ok: false, reason: 'server' };
+      const help = isRecord(data) && data.help === true;
+      return m ? { ok: true, data: { ...m, clientId: out.clientId, ...(help ? { help: true as const } : {}) } } : { ok: false, reason: 'server' };
     },
     async markRead(id, uptoId) {
       const upto = Number(uptoId);

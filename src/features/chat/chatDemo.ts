@@ -15,6 +15,7 @@
 //  · 나가기: 나간 사람은 방이 사라지고(목록에서 빠짐), 상대는 30일 읽기만(0031 · 팀장 결정)
 //  · 여기 사람은 가상이다(실제 사람 아님). 글은 해요체 · 느낌표 0
 import { createInflightChatDemo } from '@/demo/inflightChatDemo';
+import { DEMO_HELP_PER_DAY, demoHelpHit } from '@/demo/crisisWords';
 import { demoShared } from '@/demo/inflightShared';
 import { demoPerson, kinOrder, mePhotoKey, myReligionOf, poolFor, type DemoPerson } from '@/demo/people';
 import { demoPhotoUri } from '@/demo/peoplePhotos';
@@ -63,7 +64,7 @@ export const sceneOfEmail = (email: string): DemoChatScene => {
 
 type Who = () => Promise<{ id: string; email: string } | null>;
 type RoomState = { room: Room; messages: Message[]; theirExtend: boolean; gone: boolean; replied: boolean; failOnce: boolean };
-type State = { scene: DemoChatScene; rooms: RoomState[]; reports: { room: string; reason: string }[]; startedAt: number };
+type State = { scene: DemoChatScene; rooms: RoomState[]; reports: { room: string; reason: string }[]; startedAt: number; help: { day: string; n: number } };
 
 let seq = 0;
 const nextId = () => String((seq += 1));
@@ -145,7 +146,7 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
   const seed = (key: string, email: string, scene: DemoChatScene): State => {
     const p = kinOrder(poolFor(email), 4, myReligionOf(email))[0] ?? demoPerson(4);
     const rooms = scene === 'empty' || !p ? [] : [seedRoom(p, email, scene)];
-    const s: State = { scene, rooms, reports: [], startedAt: clock() };
+    const s: State = { scene, rooms, reports: [], startedAt: clock(), help: { day: '', n: 0 } };
     states.set(key, s);
     return s;
   };
@@ -155,6 +156,15 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
     return states.get(u.id) ?? seed(u.id, u.email, sceneOverride.get(u.id) ?? sceneOfEmail(u.email));
   };
   const nowOf = (s: State) => SCENE_NOW[s.scene] + shiftOf(s.scene) + (clock() - s.startedAt);
+  // 위기 도움 카드(정책 P4-29 ~ 36): 서버가 보내기 응답에 참/거짓 한 칸을 싣는 흉내 — 위기 낱말(라운지 데모와 같은 목록)이 있으면 참, 한 계정이 하루 3번까지(방을 합쳐), 4번째부터 거짓. 글 표 · 열 0(메모리 셈)
+  const helpOf = (s: State, text: string): boolean => {
+    if (!demoHelpHit(text)) return false;
+    const day = new Date(nowOf(s) + 9 * 3_600_000).toISOString().slice(0, 10);
+    if (s.help.day !== day) s.help = { day, n: 0 };
+    if (s.help.n >= DEMO_HELP_PER_DAY) return false;
+    s.help.n += 1;
+    return true;
+  };
   const notify = (id: string) => listeners.get(id)?.forEach((f) => f());
   const view = (r: RoomState): Room => ({ ...r.room, last: lastOf(r), purgeAt: r.room.closedAt !== null ? r.room.closedAt + PURGE_DAYS * DAY : null });
   const roomOf = (s: State, id: string) => s.rooms.find((r) => r.room.id === id && !r.gone) ?? null;
@@ -209,6 +219,10 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
       void me().then((u) => demoShared.markRoom(u.id, id, 'gone'));
     },
     blocked: (text) => BLOCKED_WORDS.some((w) => text.replace(/\s+/g, '').includes(w)),
+    help: (text) => {
+      const s = states.values().next().value as State | undefined;
+      return s ? helpOf(s, text) : false;
+    },
     newId: nextId,
     replyMs,
   });
@@ -261,7 +275,7 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
           push(r, msg(false, 'text', out.kind === 'text' && out.body.includes('데모안전') ? MONEY_REPLY : REPLY, nowOf(s)));
         }, replyMs);
       }
-      return { ok: true, data: { ...m } };
+      return { ok: true, data: out.kind === 'text' && helpOf(s, out.body) ? { ...m, help: true as const } : { ...m } }; // 위기 표시는 보내기 응답에만(목록 글에는 0)
     },
     async markRead(id) {
       const s = await stateOf();

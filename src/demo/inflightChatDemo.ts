@@ -23,6 +23,7 @@ export type InflightChatContext = {
   notify: (roomId: string) => void; // 글은 그대로 · 실시간 흉내 알림만(카드 상태가 바뀜)
   leave: (roomId: string) => void;
   blocked: (text: string) => boolean;
+  help: (text: string) => boolean; // 위기 도움 카드 한 칸(서버가 보내기 응답에 싣는 참/거짓 — 하루 3번 상한 포함, 정책 P4-34)
   newId: () => string;
   replyMs: number;
 };
@@ -200,7 +201,7 @@ export function createInflightChatDemo(ctx: InflightChatContext) {
         open(card.id, roomId);
         ctx.notify(roomId);
       }, ctx.replyMs);
-      return ok({ ok: true, message: rawOf(decorate(card, true)) });
+      return ok({ ok: true, message: rawOf(decorate(card, true)), ...(ctx.help(answer) ? { help: true } : {}) });
     },
     async together_answer(args) {
       const cardId = String(args.p_card ?? '');
@@ -217,7 +218,7 @@ export function createInflightChatDemo(ctx: InflightChatContext) {
       const before = c.opened;
       open(cardId, c.roomId);
       const m = g.room.messages.find((x) => x.id === cardId);
-      return ok({ ok: true, opened: !before && c.opened, message: m ? rawOf(decorate(m, true)) : null });
+      return ok({ ok: true, opened: !before && c.opened, message: m ? rawOf(decorate(m, true)) : null, ...(ctx.help(answer) ? { help: true } : {}) });
     },
     async together_withdraw(args) {
       const cardId = String(args.p_card ?? '');
