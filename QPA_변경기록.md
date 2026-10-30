@@ -519,3 +519,36 @@
 - 백엔드 넘김: 내 여행 타입 서버 계산(`get_my_travel_type` 가칭) · 실서버는 타입 칸 0.
 - 보안 넘김: `decode-uri-component` 계열 high 3(10-30 권고 갱신) · 웹 점검 도구를 쓰는 검수 · 테스트웹은 07 확정 뒤 [다음] 한 번이 더 필요.
 - 척추 대조: 줄(등급 · 점수) 영향 0 — 타입은 5축만(가족 중심 · 경제관 제외 · 등급 입력 0)이고 매칭 계산에 안 들어감 · 짝 영향 0 · 홈 숫자 0(B1 회차 번호도 '이번 주'로 뺌) · 동의 저절로 0(CK17 시트는 [동의하고 보기]를 누를 때만) · 재촉 · 압박 · 중독 장치 0(짐 싸기 진행 숫자 0 · 입구는 안 눌러도 [다음]).
+
+# 3부-차 (D-230 · 파도 B · 10-30 ~) — 법무 반영 · 위기 카드 공용 · 대화방 위기 안내 · 1.0 경계 한 줄 · 들쑥날쑥 jest · 상태 저장(멈춰도 이어감)
+
+- 기준: 팀장 지시(`팀장/세부청사진/3부차_묶음.md` 파도 B) · 카피 19-6 · 21-23 · 22-10 · 12 · 기획 정책 P4-29 ~ 36 · 화면 요구 T4 '위기 도움 카드' · 점검일지 442 · 443 · 444 · 445 · backend `R_변경기록.md` 13장(0045) · `ai/IF3/G08_경계고침.md` 4-3 · 법무 `판_관리.md` 2-1 · 보안 IF3 8장(재설치 기기 글)
+- 지킨 선: backend · 법무 · 다른 직원 파일 수정 0(카피.md 는 21-23 '표로 옮김'만) · 실서버 · 유료 · AI 호출 · live · 스위치 켜기 0 · `npm audit fix --force` 0 · backend/.env 읽기 0 · 푸시 0(팀장) · 이 묶음에 안 넣음: 카피 22장 화면(IF3-F) · 실제 AI 연결(AIT-F)
+- 시작 상태: HEAD `ab681ea` · tsc 0 · check:copy 102/4(A · I · O · IF2) · jest legal 2 실패(법무 원본 변경)
+
+## 3부-차 세부청사진(착수 전)
+
+| # | 할 일 | 통과 조건(측정) |
+|---|---|---|
+| 1 | ⑤ 법무 반영: `gen:legal -- --fingerprints`(terms f7091d41515e · privacy 87a5ecdabdf7) · `gen-if2-assets`(CK17 시트) · `laterConsent.ts` CK17A consent-2026.10.30-v1 · CK17B consent-2026.10.28-v2 · check-copy 1061행 정규식 · `IMAGE_CREDIT.aiWriting` 법무 5-6 새 글 · `LOUNGE_RULES_NOW` lounge-rules-2026.10.30-v1 · `RULES_ARTICLE` 제9조의4(조를 엶 — 약속 전체 보기가 제9조의4 시트를 연다) | check:copy 의 A · I · O 통과 · IF2 는 ④ ⑨ 뒤 · 법무 jest(legalContent · legalGen · consentLogic) 통과 · 지문 12자리가 지시와 같음 |
+| 2 | ① 3부-자의 타입 소재 33 SVG 확인만 | `if2art.json` 타입 소재 12 + 짐 21 있음(수정 0) |
+| 3 | ② ⑨ 카피 21-23 반영 · 위기 카드 공용: 카피.md 21-23 줄을 해당 장 표(키 백틱 꼴)로 옮김 + 줄 수 맞춤(LG 210 → 211 · IF2 376 → 383) · `LOUNGE.backToList` · `LOUNGE.none.body` · `left.body` · `promise[0]` · `promise[3]` · `TYPE_CARD.entry.open` · `FIRST_HINT.groupChip.*` 6(ct- 번호 홀수 a · 짝수 b) · `CRISIS.note · close · a11y` 공용(라운지 · 대화방 · 12) · 둘째 줄 `SAFETY.emergency` 상수(카드 · 12 안전 안내 같이 부름) · 12 안전 안내에 109 한 줄 · check:copy 에 CRISIS 그룹 · 12 두 줄 대조 | check:copy A · I · O · IF2 · LG 통과 · 새 실패 0 · 카드 시험(라운지 · 12) |
+| 4 | ② 라운지 카드 계정 기준 하루 3번 · 다시 열어도 안 뜸(화면 메모리 · 기기 저장 0) | 시험: 세 번까지 뜨고 4번째 안 뜸 · 목록을 다시 불러와도 지난 글 아래 카드 0 · 저장소 쓰기 0 · web-lounge |
+| 5 | ③ 0045: `together_send` · `together_answer` `{ok:false, code:'rate_limited'}` → 채팅 `limited` 글 · `opened:false` 화면 그대로 | 시험(모의 응답 두 함수 · 화면 글) |
+| 6 | ④ 재설치 때 IF2 기기 글 9종도 비움(`purgeStaleSessionOnFreshInstall` 넓힘 — iOS 키체인 남음) | 시험(새로 깐 표지 없고 키 9종이 남아 있으면 비움 · 있으면 건드리지 않음 · 웹은 건너뜀) |
+| 7 | ⑥ 대화방 위기 안내: `CrisisCard` 공용 · 보낸 본인에게만 · 내 말풍선 아래 한 장 · 목록 불러오기 · 받은 글 0 · 데모 모의 응답(`chatDemo.ts` '사라지고 싶' 등 · 하루 3번 뒤 0) · 실서버 칸은 응답에 칸 없으면 0(백엔드 0047 뒤) | 시험(뜨는 때 · 안 뜨는 때 P4-33) · web-f5 계열 · 상대 화면 흔적 0 |
+| 8 | ⑦ 1.0 별자리 경계 한 줄: `SIGN_CUSP.pair · why`(순서 없는 한 쌍) · 0046 `sky` = `{signs, zodiacs}`(데모도) · funCalc cusp 24 → 36 | iffInflight 시험 36일 · 경계 12곳 3일 같은 쌍 · 기내지 화면 시험 · web-if2 |
+| 9 | ⑧ 들쑥날쑥 jest 하나 찾기 · 고침(jest 5회 이름 · 원인) | jest 5회 연속 전부 통과 |
+| 10 | 바닥선: tsc · jest 5회 · check:copy 실패 0 · tokens 0 · lint · 웹 lounge · if2(360 · 390 · 430) · f1 · f3 · f7 · w6 · d46 · check_sec2 · 새 CRLF 0 | 숫자 |
+
+## 3부-차 진행
+
+| 단계 | 상태 |
+|---|---|
+| 청사진 | 끝 |
+| ⑤ 법무 반영(커밋 8c76c6a) | 끝 — gen:legal --fingerprints(약관 f7091d41515e · 처리방침 87a5ecdabdf7 · 동의 판 13개 그대로) · gen-if2-assets(CK17 시트 9줄 요약) · CK17A consent-2026.10.30-v1 · CK17B consent-2026.10.28-v2 · check-copy CK17 정규식(판_관리 두 줄 모두 대조) · `IMAGE_CREDIT.aiWriting` 법무 5-6 새 글(카피 21-18 표에 줄 옮김) · `LOUNGE_RULES_NOW` lounge-rules-2026.10.30-v1 · `RULES_ARTICLE` 제9조의4(조가 생겨 '약속 전체 보기'가 그 조 시트를 엶 — 코드는 그대로) |
+| ① 타입 소재 33 SVG | 확인만 — if2art.json types 12 + items 21 (gen-if2-assets 다시 돌려도 파일 변화 0) |
+| ② ⑨ 카피 21-23 반영 · 위기 카드 공용(커밋 6cb58ac) | 끝 — 카피.md 21-23 줄을 19장(LOUNGE.backToList · left.body · none.body · promise[0] · [3]) · 19-14 새 절(CRISIS.note · close · a11y) · 12 안전 안내 맨 위 두 줄 · 21장(TYPE_CARD.entry.open · FIRST_HINT.groupChip 6) · 21-18(IMAGE_CREDIT.aiWriting) 표로 옮김 + 21-23 줄에 '반영' · LG 210 → 211 · IF2 376 → 383 · 새 대조 그룹 CR(19-14) · IF3(22-10 SIGN_CUSP) · `copy.ts` SAFETY.emergency · CRISIS · CRISIS_LINE · 공용 `features/safety/CrisisCard` · 12 안전 안내 맨 위 두 줄(settings-safety-emergency · -crisis) · 라운지: 보낸 직후 응답의 help 만 + `crisisBudget` 하루 3번(한국 날짜, 라운지 · 대화방 합쳐, 모듈 변수 — 저장 0, 로그아웃 · 탈퇴에서 비움) · 목록에서 불러온 help 는 안 씀(다시 열어도 안 뜸) |
+| ③ ⑥ 0045 · 대화방 위기(커밋 6d603ba) | 끝 — `rate_limited`(JSON · DB 오류 P0001 모두 같은 코드) → `CHAT.send.limited` · TogetherCard 재시도 때 앞 오류 걷음 · opened:false 그대로 · `ChatApi.send` 응답 `help`(없으면 키 없음) · ChatRoomScreen 내 말풍선(또는 같이 열어 보는 질문 카드) 아래 한 장 · 새 카드가 뜨면 앞 카드 걷힘 · 데모 chatDemo · inflightChatDemo 모의 응답(위기 낱말 + 하루 3번 뒤 0) · 시험 s3chaCrisis 22 |
+| ⑦ 1.0 경계 한 줄(커밋 65e56ec) | 끝 — `content/if3Copy.ts` SIGN_CUSP.pair · why · 기내지 ① 쪽에서만(경계 날 한 줄 + 사실 한 문장 + 두 별자리 글 같은 크기) · 파서 `sky = {signs, zodiacs}`(옛 sign · cusp · zodiac 모양은 안 읽음) · funCalc.sunSign `signs` 달력 순 쌍 · 경계 36일 · 시험 iffInflight C4 · 경계 날 응답 · 파서 · iffInflightUi 경계 화면 |
+| ④ 재설치 비움(커밋 614a926) | 끝 — `purgeStaleSessionOnFreshInstall` 이 `forgetInflightNotes()`(IF2 기기 글 9종) 호출 · 표식 있으면 그대로 · 웹은 건너뜀 · 시험 supabaseClient 2건 |
