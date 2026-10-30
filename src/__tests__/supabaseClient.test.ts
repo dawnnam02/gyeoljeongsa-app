@@ -154,6 +154,31 @@ describe('재설치 (A-12)', () => {
     expect(requests.every((url) => url.startsWith(FAKE_URL))).toBe(true); // 가짜 주소로만 갔다(진짜 서버에 닿지 않는다)
   });
 
+  // 3부-차(보안 IF3 IC3-20 · IFF3-16): iOS 키체인에는 기기 글 9종(IF2 나만 쓰는 글)도 같이 남을 수 있다
+  test('설치 표식이 없으면 키체인에 남은 기기 글 9종도 같이 지운다 (IC3-20)', async () => {
+    const { NOTE_KEYS } = jest.requireActual<typeof import('@/features/inflight/deviceNotes')>('@/features/inflight/deviceNotes');
+    const kinds = Object.keys(NOTE_KEYS) as (keyof typeof NOTE_KEYS)[];
+    expect(kinds).toHaveLength(9);
+    for (const kind of kinds) await storage.if2Storage.setItem(NOTE_KEYS[kind], JSON.stringify(kind === 'wordSafety' ? ['room-1'] : { kept: kind }));
+    expect([...mockSecureData.keys()].length).toBeGreaterThanOrEqual(9);
+
+    await client.purgeStaleSessionOnFreshInstall();
+
+    for (const kind of kinds) expect(await storage.if2Storage.getItem(NOTE_KEYS[kind])).toBeNull();
+    expect([...mockSecureData.keys()]).toEqual([]);
+    expect(await AsyncStorage.getItem('app.installed')).toBe('1');
+  });
+
+  test('표식이 있으면(두 번째 실행부터) 기기 글 9종을 지우지 않는다', async () => {
+    const { NOTE_KEYS } = jest.requireActual<typeof import('@/features/inflight/deviceNotes')>('@/features/inflight/deviceNotes');
+    await AsyncStorage.setItem('app.installed', '1');
+    for (const key of Object.values(NOTE_KEYS)) await storage.if2Storage.setItem(key, JSON.stringify({ kept: key }));
+
+    await client.purgeStaleSessionOnFreshInstall();
+
+    for (const key of Object.values(NOTE_KEYS)) expect(await storage.if2Storage.getItem(key)).toBe(JSON.stringify({ kept: key }));
+  });
+
   test('표식이 있으면(두 번째 실행부터) 세션을 지우지 않는다', async () => {
     await AsyncStorage.setItem('app.installed', '1');
     await storage.authStorage.setItem(STORAGE_KEY, JSON.stringify(fakeSession()));

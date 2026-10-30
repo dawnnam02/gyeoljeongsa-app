@@ -6,6 +6,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
 import { env } from '@/config/env';
+import { forgetInflightNotes } from '@/features/inflight/deviceNotes';
 
 import { createDemoClient } from './demoClient';
 import { safeLog } from './log';
@@ -25,13 +26,15 @@ export const supabase: SupabaseClient = env.demoMode
 
 const INSTALL_MARKER = 'app.installed';
 
-// 첫 실행: iOS 키체인에 남은 옛 세션을 지운다(앱을 지워도 키체인 값은 남는다).
+// 첫 실행: iOS 키체인에 남은 옛 세션과 기기 글을 지운다(앱을 지워도 키체인 값은 남는다).
 // 표식은 AsyncStorage 에 둔다. 앱을 지우면 표식도 같이 지워지므로 재설치를 알아볼 수 있다(점검표 A-12).
+// 3부-차(보안 IF3 IC3-20 · IFF3-16): 세션뿐 아니라 나만 쓰는 기기 글 9종(IF2 — 엽서 · 미리 답 · 표시 · 메모 · 고른 짐 …)도 같은 SecureStore(키체인)라 같이 비운다
 export async function purgeStaleSessionOnFreshInstall(): Promise<void> {
   // 웹은 세션이 메모리에만 있어 옛 세션이 남을 수 없다. 웹 저장소(localStorage)에 표식을 쓰지 않는다.
   if (Platform.OS === 'web') return;
   if (await AsyncStorage.getItem(INSTALL_MARKER)) return;
   await supabase.auth.signOut({ scope: 'local' });
+  await forgetInflightNotes(); // 실패해도 던지지 않는다(저장소를 못 쓰는 환경) — 표식은 그래도 남긴다
   await AsyncStorage.setItem(INSTALL_MARKER, '1');
 }
 
