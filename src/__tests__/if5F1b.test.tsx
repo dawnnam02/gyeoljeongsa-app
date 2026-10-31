@@ -29,7 +29,7 @@ import { ReadGuide, readGuideEntries } from '@/features/inflight/ReadGuide';
 import { SkyBookScreen } from '@/features/inflight/SkyBookScreen';
 import { IF5_ICON_NAMES } from '@/features/saju/If5Icon';
 import { IF5_ICON_PATHS } from '@/features/saju/if5IconPaths';
-import { partnerRest } from '@/features/saju/partnerLocal';
+import { partnerBranch } from '@/features/saju/partnerLocal';
 import { SajuCalendarScreen } from '@/features/saju/SajuCalendarScreen';
 import { createSajuApi, parseMyLuck } from '@/features/saju/sajuApi';
 import { ageSpan, chartOf, hiddenRows, lunarOf, yearView, type ReadyChart, type ReadyLuck } from '@/features/saju/sajuLogic';
@@ -63,12 +63,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
 // ── ⓐ 음력 줄 ───────────────────────────────────────────────────────────────
 describe('IF5-F1b ⓐ 음력 줄', () => {
-  test('양력 ↔ 음력 바꾸기: 알려진 날(2025-01-29 = 음력 1월 1일) · 윤달은 달 앞에 윤 · 범위(1960-01-01 ~ 2051-12-31) 밖은 줄 숨김(null)', () => {
+  test('양력 ↔ 음력 바꾸기: 알려진 날(2025-01-29 = 음력 1월 1일) · 윤달은 달 번호와 윤달 여부를 따로(IF5-F1c) · 범위(1960-01-01 ~ 2051-12-31) 밖은 줄 숨김(null)', () => {
     expect(solarToLunar(2025, 1, 29)).toEqual({ year: 2025, month: 1, day: 1, leap: false });
-    expect(lunarOf('2025-01-29')).toEqual({ month: '1', day: 1 });
+    expect(lunarOf('2025-01-29')).toEqual({ month: 1, leap: false, day: 1 });
     expect(leapMonthOf(2025)).toBe(6);
     const s = lunarToSolar(2025, 6, 1, true);
-    expect(lunarOf(`${s.year}-${pad(s.month)}-${pad(s.day)}`)).toEqual({ month: '윤6', day: 1 });
+    expect(lunarOf(`${s.year}-${pad(s.month)}-${pad(s.day)}`)).toEqual({ month: 6, leap: true, day: 1 });
     expect(lunarOf('1959-12-31')).toBeNull();
     expect(lunarOf('2052-01-01')).toBeNull();
     expect(lunarOf('2027-02-30')).toBeNull(); // 없는 날
@@ -83,7 +83,7 @@ describe('IF5-F1b ⓐ 음력 줄', () => {
     const lunar = textOf(tree, 'saju-cal-day-lunar') ?? '';
     expect(lunar).toMatch(/^음력 윤?\d+월 \d+일$/);
     const l = lunarOf('2027-03-05');
-    expect(lunar).toBe(t5('SAJU.cal.day.lunar', { 월: String(l?.month), 일: l?.day ?? 0 }));
+    expect(lunar).toBe(t5(l?.leap ? 'SAJU.cal.day.lunarLeap' : 'SAJU.cal.day.lunar', { 월: String(l?.month), 일: l?.day ?? 0 }));
     expect(allTexts(tree).join(' ')).not.toMatch(/경계|절기 달|이 달은/); // 경계 달 단서 0
     expect(allTexts(tree)).toContain(IF5_TEXT['SAJU.cal.hint']); // 힌트의 '음력' 약속이 이제 지켜진다
   });
@@ -224,21 +224,17 @@ describe('IF5-F1b ⓔ 날짜 고르기 상대와 합쳐 보기', () => {
     expect(IF5_TEXT['MILEAGE.shop.locked']).toBe('최근 스토어 환불이 여러 번 있어서 지금은 충전이 멈춰 있어요.');
     expect(IF5_TEXT['SAJU.full.label']).toBe('사주 종합 풀이');
   });
-  test('partnerRest: 기기 계산 · 만 19세 미만 · 범위 밖 · 쉬어 가는 날만 가른다(생일 · 기둥을 돌려주지 않는다) · 네트워크 · 저장 0(정적)', () => {
-    const ok = partnerRest({ birthDigits: '19920802', time: null }, '2027-03-20');
+  test('partnerBranch(IF5-F1c): 기기 계산 · 만 19세 미만 · 범위 밖만 가른다 · 돌려주는 것은 일지 숫자 하나뿐(생일 · 기둥을 쥐지 않는다) · 네트워크 · 저장 0(정적)', () => {
+    const ok = partnerBranch({ birthDigits: '19920802', time: null }, '2027-03-20');
     expect(ok.kind).toBe('ok');
-    expect(Object.keys(ok).sort()).toEqual(['kind', 'restOn']);
-    if (ok.kind !== 'ok') return;
-    let rest = 0;
-    for (let d = 1; d <= 31; d += 1) if (ok.restOn(`2027-03-${pad(d)}`, 'moving')) rest += 1;
-    expect(rest).toBeGreaterThan(0);
-    expect(rest).toBeLessThan(31);
-    expect(partnerRest({ birthDigits: '20100101', time: null }, '2027-03-20').kind).toBe('minor');
-    expect(partnerRest({ birthDigits: '19600101', time: null }, '2027-03-20').kind).toBe('outOfRange');
-    expect(partnerRest({ birthDigits: '123', time: null }, '2027-03-20').kind).toBe('outOfRange');
+    expect(Object.keys(ok).sort()).toEqual(['branch', 'kind']);
+    if (ok.kind === 'ok') expect(Number.isInteger(ok.branch) && ok.branch >= 0 && ok.branch <= 11).toBe(true);
+    expect(partnerBranch({ birthDigits: '20100101', time: null }, '2027-03-20').kind).toBe('minor');
+    expect(partnerBranch({ birthDigits: '19600101', time: null }, '2027-03-20').kind).toBe('outOfRange');
+    expect(partnerBranch({ birthDigits: '123', time: null }, '2027-03-20').kind).toBe('outOfRange');
     expect(src('features/saju/partnerLocal.ts')).not.toMatch(/fetch\(|\.rpc\(|supabase|AsyncStorage|SecureStore|safeLog|console\./);
   });
-  test('화면: 상대 생일이 없으면 need 한 줄 + 넣기 단추 → 시트에서 확인 뒤 입력하면 스위치가 켜지고 달력에 겹침 표시 · 네트워크 0 · 점수 · 판정 · 이름 0', async () => {
+  test('화면: 상대 생일이 없으면 need 한 줄 + 넣기 단추 → 시트에서 확인 뒤 입력하면 스위치가 켜지고 달력에 함께 무난한 날 표시(IF5-F1c 새 규칙은 if5F1c 시험) · 네트워크 0 · 점수 · 판정 · 이름 0', async () => {
     const fetchSpy = jest.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('{}'));
     const flags = Object.fromEntries(FEATURE_KEYS.map((k) => [k, demoDefault(k)]));
     const demo = createDemoSaju({ flags: async () => flags, account: () => ({ birthDate: '1994-03-14', consentOn: () => true }), today: () => '2027-03-20' });
@@ -266,14 +262,15 @@ describe('IF5-F1b ⓔ 날짜 고르기 상대와 합쳐 보기', () => {
     expect(tree.root.findAll((n) => String(n.props.accessibilityLabel ?? '').includes(bothLabel)).length).toBe(0);
     expect(has(tree, 'saju-cal-legend-both')).toBe(false);
     expect(allTexts(tree).join(' ')).not.toMatch(/점수|퍼센트|%|판정|이름을|잘 맞/);
-    expect(calls.every((c) => c.fn === 'get_taekil')).toBe(true); // 서버로 가는 건 내 날짜 고르기뿐 — 상대 생일 인자 0
+    expect(calls.every((c) => c.fn === 'get_taekil' || c.fn === 'get_my_saju')).toBe(true); // 서버로 가는 건 내 날짜 고르기 · 내 원국 읽기뿐 — 상대 생일 인자 0
     expect(JSON.stringify(calls)).not.toMatch(/1992|0802/);
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
   test('만 19세 미만 상대는 합쳐 보기 0(스위치가 생기지 않고 부드러운 한 줄)', async () => {
     const consent = createIf5ConsentStore();
-    const tree = keep(await mount(<SajuCalendarScreen api={{ taekil: jest.fn(async () => ({ ok: true as const, data: { purpose: 'moving', days: [] } })) }} now={() => NOW} mode="pick" use={0} consent={consent} />));
+    const chart = { state: 'ready' as const, hourKnown: false, day: { stem: 2, branch: 4 }, hour: null, options: [{ year: { stem: 6, branch: 10 }, month: { stem: 8, branch: 2 } }], flags: [] };
+    const tree = keep(await mount(<SajuCalendarScreen api={{ taekil: jest.fn(async () => ({ ok: true as const, data: { purpose: 'moving', days: [] } })), chart: jest.fn(async () => ({ ok: true as const, data: chart })) }} now={() => NOW} mode="pick" use={0} consent={consent} />));
     await wait(40);
     await press(tree, 'saju-cal-partner-open');
     await press(tree, 'saju-cal-partner-sheet-ck20-check');

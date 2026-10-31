@@ -242,12 +242,12 @@ export function calendarLine(iso: string): CardView | null {
   const idx = day_idx(dnOf(iso));
   return safePick('F5-12', { jeolgi: jeolOn(iso) ?? undefined, day_element: ELEMENTS[Math.floor((idx % 10) / 2)] });
 }
-/** 음력 날짜(IF5-F1b ⓐ). 음양력 표 범위(1960-01-01 ~ 2051-12-31) 밖이면 null(줄을 숨긴다). 윤달은 달 번호 앞에 '윤'을 붙인다. 경계 달 단서(어느 절기 달인지 등)는 달지 않는다(팀장 정함) */
-export function lunarOf(iso: string): { month: string; day: number } | null {
+/** 음력 날짜(IF5-F1b ⓐ). 음양력 표 범위(1960-01-01 ~ 2051-12-31) 밖이면 null(줄을 숨긴다). 달 번호와 윤달 여부를 따로 준다(윤달 글은 카피 키 SAJU.cal.day.lunarLeap '음력 윤{월}월 {일}일' — 글자 '윤'은 사본이 갖는다, IF5-F1c). 경계 달 단서(어느 절기 달인지 등)는 달지 않는다(팀장 정함) */
+export function lunarOf(iso: string): { month: number; leap: boolean; day: number } | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
   try {
     const l = solarToLunar(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)), Number(iso.slice(8, 10)));
-    return { month: `${l.leap ? '윤' : ''}${l.month}`, day: l.day };
+    return { month: l.month, leap: l.leap, day: l.day };
   } catch (e) {
     if (e instanceof LunarError) return null;
     throw e;

@@ -1,5 +1,6 @@
 // IF5-F1 ①②④: 사주 계산 · 미리 쓴 글 모듈을 원본(ai/IF5/ts)에서 앱(src/saju5)으로 복사한다. 원본은 읽기만 한다(수정 0).
 //  · 복사 대상: 계산 saju_calc5 · 조각 고르기 fragments5 · 이름표 names5 · 검사기 check_text5 · 규칙 rules5 · rules_extra5 · 타입 spec5(rules5 가 타입만 부름)
+//  · IF5-F1c: pair5.ts(ai/IF5/ts) 를 클라이언트 복사 대상에 더했다 — 순수 함수(saju_calc5 만 가져옴)라 AI 요청 · 지시문 · 네트워크가 없다
 //    + 데이터 data/jie5.json · sun5.json · fragments5.json · neutral_names5.json (모두 기기 안 계산 · 네트워크 0)
 //  · 순수 글 검사기 셋도 같이 복사한다: ai/AIT/ts 의 rules.ts · text.ts · types.ts(정규식 목록 · 타입뿐, 지시문 · 열쇠 · 업체 호출 0) → src/saju5/ait/. 앱 서버 사본(src/server/ait)을 가져오지 않는 까닭: 화면 쪽 코드가 src/server 를 가져오면 안 된다(시험 aitServer ATF-16 · 보안 check_sec2 P5-e2)
 //  · 들이지 않는 것(src/saju5 쪽): AI 요청 · 지시문 · 원가 · 대화 모듈 전부(IFF5-35 번들 점검). 그 모듈은 서버 폴더 src/server/saju5 로만 간다 — IF5-F2 ⑯:
@@ -18,7 +19,7 @@ const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const SRC_DIR = path.resolve(appDir, '..', 'ai', 'IF5', 'ts');
 export const AIT_SRC_DIR = path.resolve(appDir, '..', 'ai', 'AIT', 'ts');
 export const DEST_DIR = path.join(appDir, 'src', 'saju5');
-export const TS_FILES = ['saju_calc5.ts', 'fragments5.ts', 'names5.ts', 'check_text5.ts', 'rules5.ts', 'rules_extra5.ts', 'spec5.ts', 'mock5.ts', 'lunar5.ts', 'jijanggan5.ts']; // IF5-F1b: lunar5 = 음양력 바꾸기(1960 ~ 2051) · jijanggan5 = 숨은 글자(통설 표 · P0 가안) / mock5 = 미리 만든 모의 글(지시문 · 요청 0) — 코드 없는 데모 글과 서버 모의 모드가 같이 쓴다
+export const TS_FILES = ['saju_calc5.ts', 'fragments5.ts', 'names5.ts', 'check_text5.ts', 'rules5.ts', 'rules_extra5.ts', 'spec5.ts', 'mock5.ts', 'lunar5.ts', 'jijanggan5.ts', 'pair5.ts']; // IF5-F1c: pair5 = 날짜 고르기 '상대와 함께 보기'(함께 무난한 날 — 상대는 일지 숫자 하나 · 네트워크 · 저장 0) / IF5-F1b: lunar5 = 음양력 바꾸기(1960 ~ 2051) · jijanggan5 = 숨은 글자(통설 표 · P0 가안) / mock5 = 미리 만든 모의 글(지시문 · 요청 0) — 코드 없는 데모 글과 서버 모의 모드가 같이 쓴다
 export const DATA_FILES = ['data/jie5.json', 'data/sun5.json', 'data/fragments5.json', 'data/neutral_names5.json', 'data/lunar5.json', 'data/jijanggan5.json'];
 export const AIT_FILES = ['ait/rules.ts', 'ait/text.ts', 'ait/types.ts'];
 /** IF5-F2 ⑯: AI 요청 쪽 서버 전용 모듈 — src/server/saju5 로 간다 */

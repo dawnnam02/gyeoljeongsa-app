@@ -18,11 +18,11 @@ import { if5Consent, useIf5Consent, type If5ConsentStore } from '@/features/cons
 
 import { AiBlock } from './ai/AiBlock';
 import type { AiServices } from './ai/aiService';
-import { matchPartner, partnerAiFacts, partnerRest, type PartnerRest, type PartnerResult } from './partnerLocal';
+import { matchPartner, partnerAiFacts, partnerBranch, type PartnerBranch, type PartnerResult } from './partnerLocal';
 import { clockText, sajuStyles, TimePicker } from './SajuParts';
 
-// pick: 날짜 고르기 '상대와 합쳐 보기'용(IF5-F1b ⓔ) — 맞춰 보기 카드 대신 상대의 쉬어 가는 날 가르개만 부른 화면에 넘기고 닫는다(mine 필요 없음 · AI 칸 0)
-type Props = { visible: boolean; mine: Chart | null; today: () => string; onClose: () => void; consent?: If5ConsentStore; ai?: AiServices; pick?: (r: Extract<PartnerRest, { kind: 'ok' }>) => void; testID?: string };
+// pick: 날짜 고르기 '상대와 함께 보기'용(IF5-F1c) — 맞춰 보기 카드 대신 상대의 일지 숫자 하나만 부른 화면에 넘기고 닫는다(mine 필요 없음 · AI 칸 0)
+type Props = { visible: boolean; mine: Chart | null; today: () => string; onClose: () => void; consent?: If5ConsentStore; ai?: AiServices; pick?: (r: Extract<PartnerBranch, { kind: 'ok' }>) => void; testID?: string };
 
 export function PartnerSheet(props: Props) {
   const testID = props.testID ?? 'saju-partner';
@@ -54,7 +54,7 @@ function Body({ mine, today, onClose, consent, ai, pick, testID = 'saju-partner'
   const go = () => {
     if ((!mine && !pick) || !ck20 || digits.length !== 8) return;
     if (pick) {
-      const r = partnerRest({ birthDigits: digits, time }, today());
+      const r = partnerBranch({ birthDigits: digits, time }, today());
       if (r.kind === 'ok') {
         pick(r);
         onClose();

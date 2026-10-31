@@ -144,10 +144,13 @@ function Shop({ deps }: { deps: MileageDeps }) {
                 </AppText>
               </View>
             ) : canCharge ? (
-              // 서버가 충전을 잠갔을 때(charge_locked): 사실 한 문장 + 글자 단추 '고객센터'(기존 12 설정 줄 이름 · 새 글 0). 잔액 · 내역 · 쓰기는 그대로 열려 있다
+              // 서버가 충전을 잠갔을 때(charge_locked): 이유 한 문장 + 둘째 줄(가진 마일리지는 그대로 쓸 수 있음) + 글자 단추 '고객센터'(기존 12 설정 줄 이름). 잔액 · 내역 · 쓰기는 그대로 열려 있다
               <View style={styles.card} testID="mileage-locked">
                 <AppText variant="body" testID="mileage-locked-text">
                   {IF5_TEXT['MILEAGE.shop.locked']}
+                </AppText>
+                <AppText variant="body" testID="mileage-locked-keep">
+                  {IF5_TEXT['MILEAGE.shop.lockedKeep']}
                 </AppText>
                 <TextButton label={SUPPORT.rowName} align="start" onPress={() => openSettingsPage(router, 'support')} testID="mileage-locked-support" />
               </View>

@@ -171,6 +171,17 @@ try {
   await words('날짜 고르기');
   await measure('날짜 고르기');
   await b.shot(`SAJU_날짜고르기_${width}.png`);
+  // IF5-F1c: 상대와 함께 보기 — 내 원국 읽기 뒤 상대 생일 시트(CK20 확인은 이 기기에 이미 기록) → 함께 무난한 날 표시(점수 · 판정 · 이름 0)
+  await tap('saju-cal-partner-open');
+  check('4', '상대와 함께 보기: 상대 생일 시트가 열린다(내 원국이 있어 안내 0)', (await waitVis('saju-cal-partner-sheet-birth', 6000)) && !(await vis('saju-cal-mine-missing')), '');
+  await b.type(sel('saju-cal-partner-sheet-birth'), '19920802');
+  await tap('saju-cal-partner-sheet-go');
+  await b.waitFor(`document.querySelectorAll('[aria-label*="함께 무난한"]').length > 0`, 8000).catch(() => false);
+  const together = await b.evaluate(`document.querySelectorAll('[aria-label*="함께 무난한"]').length`);
+  check('4', '달력에 함께 무난한 날 표시 · 범례 한 줄', together > 0 && (await waitVis('saju-cal-legend-both', 4000)), String(together));
+  await words('날짜 고르기 함께 보기');
+  await measure('날짜 고르기 함께 보기');
+  await b.shot(`SAJU_함께보기_${width}.png`);
   await goto('/saju-calendar?mode=cal');
   check('4', '만세력 달력: 칸마다 그날의 글자', await waitVis('saju-cal-day-10', 8000), '');
   await tap('saju-cal-day-10');
