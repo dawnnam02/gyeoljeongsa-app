@@ -42,7 +42,7 @@ const KIND_OF: Readonly<Record<Exclude<S5Feature, 's5_chat'>, Feature5>> = { s5_
 const MAX_FACTS_CHARS = 12000;
 const POOL = 'pool5';
 // 앱이 보내면 안 되는 칸 이름(어느 깊이에서든): 대운 날짜 · 생일 원값 · 입력 · 내부 번호/코드
-const BAD_KEYS = new Set(['start_date', 'end_date', 'date_exact', 'birth', 'birth_date', 'birthday', 'input', 'idx', 'name', 'nickname', 'phone', 'email']);
+const BAD_KEYS = new Set(['start_date', 'end_date', 'date_exact', 'birth', 'birth_date', 'birthday', 'input', 'idx', 'nickname', 'phone', 'email']);
 const ISO_DAY = /\b\d{4}-\d{2}-\d{2}\b/;
 const HANJA = /[㐀-鿿]/;
 
