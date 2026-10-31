@@ -21,7 +21,7 @@ export async function makeShopRig(scene = 'plain', now: () => number = () => SHO
     grade: createGradeApi(client),
     now,
     newId: () => `00000000-0000-4000-8000-${String((n += 1)).padStart(12, '0')}`,
-    toastMs: 400,
+    toastMs: 3_000, // 3부-차 ⑧: 400ms 였을 때 바쁜 기계에서 토스트가 시험이 보기 전에 사라져 gradeScreen '내 등급 알려 주세요' 시험이 가끔 실패했다(글은 setTimeout 으로 걷힘)
     slowMs: 30_000,
   };
   return { backend, client, deps, email, gradeApi: createGradeApi(client) };
