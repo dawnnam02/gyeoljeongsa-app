@@ -314,8 +314,8 @@ function ChatBody({ onClose, onSettings, testID }: { onClose: () => void; onSett
           </AppText>
         ) : null}
         {busy ? <AitLoading testID={`${testID}-loading`} /> : null}
-        {error ? <AitError code={error} locked={locked} onRetry={() => void send(null)} onSettings={onSettings} testID={`${testID}-error`} /> : null}
-        {noCode ? <AitNoCode onSettings={onSettings} testID={`${testID}-nocode`} /> : null}
+        {error ? <AitError code={error} locked={locked} onRetry={() => void send(null)} onRestart={restart} onSettings={onSettings} testID={`${testID}-error`} /> : null}
+        {noCode ? <AitNoCode feature="concern" onSettings={onSettings} testID={`${testID}-nocode`} /> : null}
         {!closedByCard ? (
           <View style={styles.gap} testID={`${testID}-input`}>
             {chips.length > 0 && !busy ? (
@@ -355,7 +355,7 @@ function ChatBody({ onClose, onSettings, testID }: { onClose: () => void; onSett
         ) : null}
         {footer}
       </ScrollView>
-      <AitConsentSheet visible={consent} confirmLabel={ait('CONCERN.send')} onConfirm={() => void confirmConsent()} onClose={cancelConsent} testID={`${testID}-consent`} />
+      <AitConsentSheet visible={consent} onConfirm={() => void confirmConsent()} onClose={cancelConsent} testID={`${testID}-consent`} />
     </>
   );
 }

@@ -10,8 +10,8 @@ import { AIT_CODE_MAX } from './aitConfig';
 
 export const AIT_CODE_KEY = 'ait.code';
 export const AIT_CONSENT_KEY = 'ait.consent';
-/** 시험자 동의 판 이름(글이 바뀌면 올린다) */
-export const AIT_CONSENT_VERSION = 'ait-2026.10.31-v1';
+/** 시험자 동의 판 이름(글이 바뀌면 올린다). v2 = 시트 글을 법무 13-3 문안(받는 업체 이름 · 더 오래 남을 수 있음 · 거부 효과)으로 바꿈 — v1 로 받은 동의는 다시 받는다 */
+export const AIT_CONSENT_VERSION = 'ait-2026.10.31-v2';
 
 export type AitConsent = { version: string; at: string };
 type State = { loaded: boolean; code: string | null; consent: AitConsent | null };

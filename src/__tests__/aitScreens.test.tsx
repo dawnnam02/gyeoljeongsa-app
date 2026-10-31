@@ -163,10 +163,18 @@ describe('AIT-F ⑥ 궁합 카드 AI판 (카피 23-7 · ATF-26 ~ 27)', () => {
     await flush();
     expect(f).not.toHaveBeenCalled();
     expect(isOpen(tree, 'pair-ai-consent')).toBe(true);
-    expect(textOf(tree, 'pair-ai-consent-privacy-send')).toBe(AIT_TEXT['AIT.privacy.send']);
+    // 동의 시트 줄 순서(카피 23-13-2): 제목 → send(받는 업체 이름) → privacy.keep → keepMore → name → noSend → 체크 → refuse → 단추. privacy.send 중복 · 시험판 알약은 시트에 없다
+    expect(textOf(tree, 'pair-ai-consent-title')).toBe(AIT_TEXT['AIT.consent.title']);
+    expect(textOf(tree, 'pair-ai-consent-send')).toBe(AIT_TEXT['AIT.consent.send']);
     expect(textOf(tree, 'pair-ai-consent-privacy-keep')).toBe(AIT_TEXT['AIT.privacy.keep']);
-    expect(textOf(tree, 'pair-ai-consent-name')).toBe(AIT_TEXT['CONCERN.notice.name']);
-    expect(textOf(tree, 'pair-ai-consent-nosend')).toBe(AIT_TEXT['CONCERN.intro.noSend']);
+    expect(textOf(tree, 'pair-ai-consent-keepmore')).toBe(AIT_TEXT['AIT.consent.keepMore']);
+    expect(textOf(tree, 'pair-ai-consent-name')).toBe(AIT_TEXT['AIT.consent.name']);
+    expect(textOf(tree, 'pair-ai-consent-nosend')).toBe(AIT_TEXT['AIT.consent.noSend']);
+    expect(textOf(tree, 'pair-ai-consent-refuse')).toBe(AIT_TEXT['AIT.consent.refuse']);
+    expect(has(tree, 'pair-ai-consent-privacy-send')).toBe(false);
+    expect(has(tree, 'pair-ai-consent-head')).toBe(false);
+    expect(textOf(tree, 'pair-ai-consent-confirm')).toBe(AIT_TEXT['AIT.consent.confirm']);
+    expect(aitStore.get().consent).toBeNull();
     expect(must(tree, 'pair-ai-consent-confirm').props.disabled).toBe(true); // 체크 전
     await press(tree, 'pair-ai-consent-check');
     await press(tree, 'pair-ai-consent-confirm');
@@ -188,7 +196,7 @@ describe('AIT-F ⑥ 궁합 카드 AI판 (카피 23-7 · ATF-26 ~ 27)', () => {
   test.each([
     ['auth', true, false],
     ['spend_limit', false, true],
-    ['limit', false, true],
+    ['limit', false, false], // 카피 23-13-1: limit 은 챗만 받는 코드 — 미리 쓴 글 안내 줄을 달지 않는다
     ['unavailable', false, true],
     ['upstream', false, true],
     ['timeout', false, false],
@@ -308,7 +316,7 @@ describe('AIT-F ⑥ 문장 다듬기 (카피 23-8 · ATF-23 · 28)', () => {
     await typeInto(tree, 'coach-text', OWN);
     await press(tree, 'coach-send');
     await flush();
-    expect(textOf(tree, 'coach-nocode-line')).toBe(AIT_TEXT['AIT_SET.rowLine']);
+    expect(textOf(tree, 'coach-nocode-line')).toBe(AIT_TEXT['AIT.noCode.coach']);
     expect(f).not.toHaveBeenCalled();
     await press(tree, 'coach-nocode-settings');
     expect(onSettings).toHaveBeenCalled();
@@ -404,7 +412,7 @@ describe('AIT-F ⑥ 연애 고민 정리 (카피 23-4 · 23-5 · ATF-12 ~ 15 · 
     await typeInto(tree, 'concern-mine', '요즘 상대의 답이 늦어져서 마음이 쓰여요');
     await press(tree, 'concern-send');
     await flush();
-    expect(textOf(tree, 'concern-nocode-line')).toBe(AIT_TEXT['AIT_SET.rowLine']);
+    expect(textOf(tree, 'concern-nocode-line')).toBe(AIT_TEXT['AIT.noCode.concern']);
     expect(f).not.toHaveBeenCalled();
   });
 
@@ -512,6 +520,21 @@ describe('AIT-F ⑥ 연애 고민 정리 (카피 23-4 · 23-5 · ATF-12 ~ 15 · 
     expect(has(tree, 'concern-error-retry')).toBe(true);
   });
 
+  test('오류 limit(대화 기록이 너무 길어짐): 새 글 · 다시 시도 0 · [새 고민 시작하기]가 입력 화면으로 돌려보낸다 (카피 23-13-1)', async () => {
+    await grant();
+    serve(err('limit', { text: '서버 문장' }));
+    const tree = await open();
+    await typeInto(tree, 'concern-mine', '글 하나');
+    await sendFirst(tree);
+    expect(textOf(tree, 'concern-error-text')).toBe(AIT_TEXT['AIT.code.limit']);
+    expect(has(tree, 'concern-error-retry')).toBe(false);
+    expect(has(tree, 'concern-error-fallback')).toBe(false);
+    expect(textOf(tree, 'concern-error-restart')).toBe(AIT_TEXT['CONCERN.end.again']);
+    await press(tree, 'concern-error-restart');
+    expect(has(tree, 'concern-error-text')).toBe(false);
+    expect(must(tree, 'concern-mine').props.value).toBe('');
+  });
+
   test("끝: '충분해요'로 끝나면 끝 화면(제목 · 본문 · 새로 시작 · 닫기 · 지우기) · 남은 횟수 숫자 0 (23-4-6)", async () => {
     await grant();
     const onClose = jest.fn();
@@ -546,7 +569,7 @@ describe('AIT-F 글 · 화면 정적 점검 (ATF-12 · 13 · 16 ~ 19 · 21 · 23
   test('ait(): {자리} 채움 · 카피 사본과 같은 글', () => {
     expect(ait('CONCERN.stage.a11y', { '단계 이름': '일어난 일 정리' })).toBe('일어난 일 정리 단계');
     expect(ait('AIT.badge')).toBe('시험판');
-    expect(Object.keys(AIT_TEXT)).toHaveLength(189);
+    expect(Object.keys(AIT_TEXT)).toHaveLength(199);
   });
 
   test('채팅 · 가입 필수 AI와 분리: ait 화면 코드가 features/chat · chatApi · supabase · 채팅 표 · functions.invoke 를 가져오지 않는다 (ATF-16 ~ 19)', () => {

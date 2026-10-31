@@ -1,5 +1,5 @@
 // AIT-F ⑥: AI 시험판 화면 글(마케팅/카피.md 23장)의 앱 사본을 만든다. 읽기는 카피.md 23-2 ~ 23-9, 쓰기는 src/content/aitCopy.ts 하나.
-//  · 접두어 일곱 — AIT 27 · AIT_SET 17 · CONCERN 91 · CONCERN_CARD 19 · PAIR_AI 8 · COACH 23 · STAR_AI 8 = 193키(카피 23-12). 표 줄의 첫 칸에 `접두어.키` 가 있으면 둘째 칸 글을 한 글자도 바꾸지 않고 옮긴다(마크다운 ** · ` 만 걷음)
+//  · 접두어 일곱 — 23-2 ~ 23-9 표 193키 + 23-13-2 새 키 10(AIT.consent 8 · AIT.noCode 2) = 203키(IF5-F2 ⑭). 23-13-1 표의 두 줄(AIT.privacy.keep · AIT.code.limit)은 같은 키의 새 글이라 23-2 · 23-3 글을 덮는다(마케팅이 표를 옮겨 합치면 같은 글이라 그대로 맞는다). 표 줄의 첫 칸에 `접두어.키` 가 있으면 둘째 칸 글을 한 글자도 바꾸지 않고 옮긴다(마크다운 ** · ` 만 걷음)
 //  · 글 칸이 '('로 시작하는 줄(글 없음 · 다른 키를 그대로 쓴다는 뜻) 4개는 글을 만들지 않고 NO_TEXT_KEYS 에 이름만 둔다 → 글이 있는 키 189
 //  · {…} 자리는 앱이 채운다(aitText.ait)
 // 사용: node scripts/gen-ait-copy.mjs          → 파일을 다시 쓴다
@@ -15,8 +15,8 @@ const COPY_DOC = process.env.CHECK_COPY_DOC ?? path.join(root, '마케팅', '카
 
 // 긴 접두어를 먼저 쓴다(CONCERN_CARD 가 CONCERN 보다 앞)
 export const AIT_PREFIXES = ['AIT_SET', 'CONCERN_CARD', 'AIT', 'CONCERN', 'PAIR_AI', 'COACH', 'STAR_AI'];
-export const AIT_KEY_COUNT = 193;
-export const AIT_TEXT_COUNT = 189;
+export const AIT_KEY_COUNT = 203;
+export const AIT_TEXT_COUNT = 199;
 
 const cellsOf = (line) => {
   const t = line.trim();
@@ -35,7 +35,12 @@ export function readRows(docPath = COPY_DOC) {
   const rows = new Map();
   const noText = [];
   const seen = new Set();
-  for (const line of (end >= 0 ? sec.slice(0, end) : sec).split('\n')) {
+  // 23-13-1(새 글로 덮는 두 줄) · 23-13-2(새 키 10) 표도 같이 읽는다 — 23-10 ~ 23-13 의 나머지 표 첫 칸에는 키가 아닌 낱말이 있다
+  const lines = (end >= 0 ? sec.slice(0, end) : sec).split('\n');
+  const from1 = sec.search(/^#### 23-13-1\. /m);
+  const to1 = sec.search(/^#### 23-13-3\. /m);
+  if (from1 >= 0) lines.push(...sec.slice(from1, to1 >= 0 ? to1 : undefined).split('\n'));
+  for (const line of lines) {
     if (!line.startsWith('| ')) continue;
     const c = cellsOf(line);
     const m = keyRe.exec(c[0] ?? '');
@@ -57,7 +62,7 @@ export function build({ rows, noText }) {
   const keys = [...rows.keys()];
   const lines = keys.map((k) => `  ${q(k)}: ${q(rows.get(k))},`);
   return `// AI 시험판(AIT · 카피 23장) 화면 글의 앱 사본 — scripts/gen-ait-copy.mjs 가 마케팅/카피.md 23장에서 만든다(손으로 고치지 않는다).
-//  · 접두어 일곱 193키 가운데 글이 있는 ${keys.length}키. 글 칸이 '(' 로 시작하는 ${noText.length}키(${noText.join(' · ')})는 글 없이 NO_TEXT_KEYS 에만 이름을 둔다.
+//  · 접두어 일곱 ${AIT_KEY_COUNT}키 가운데 글이 있는 ${keys.length}키. 글 칸이 '(' 로 시작하는 ${noText.length}키(${noText.join(' · ')})는 글 없이 NO_TEXT_KEYS 에만 이름을 둔다.
 //  · 쓰지 않는 글(보류 · 조건부): AIT.privacy.keep(켜는 조건은 features/ait/aitConfig) · CONCERN.end.keep(보류) · CONCERN_CARD.violence.l3b(보류) · CONCERN_CARD.body.l1(신체 위험 카드 없음) · PAIR_AI.needBoth(실서비스 전용) — 사본에는 글만 두고 화면은 그리지 않는다.
 //  · check:copy AIT 그룹이 카피 23장 표와 한 글자씩 대조한다. 서버 고정 문구(src/server/ait/fixed.ts)와 겹치는 줄도 함께 본다.
 //  · 이 파일은 check:copy 가 Node 로 바로 읽으므로 경로 별칭 없이 홀로 선다

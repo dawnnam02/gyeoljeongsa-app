@@ -77,7 +77,7 @@ export function StarAiBlock({ signs, stem, onSettings, testID = 'star-ai' }: { s
           </AppText>
         </View>
       ) : null}
-      <AitConsentSheet visible={phase.k === 'consent'} confirmLabel={ait('STAR_AI.button')} onConfirm={() => void confirmConsent()} onClose={cancelConsent} testID={`${testID}-consent`} />
+      <AitConsentSheet visible={phase.k === 'consent'} onConfirm={() => void confirmConsent()} onClose={cancelConsent} testID={`${testID}-consent`} />
     </View>
   );
 }

@@ -1227,7 +1227,7 @@ try {
     check('IF2', `기내 서비스 · 연애 기능 글 ${built.map.size}개(카피 21장 키 줄 ${rows21.length}) = 앱 사본 · 앱이 부르는 글 키 ${calls}곳이 모두 21장에 있고 · 사본 밖 글 0 · 느낌표 · 숫자 · 금지 낱말 · 상대 화면 별자리 · 일간 0 · 동의 시트 = 4-17 · 생성 파일 = 원본`, diffsIF.length === 0, diffsIF.join('\n') || `21장 ${rows21.length}줄`);
   }
 
-  // ── AIT. AI 시험판 글(AIT-F · 카피 23-2 ~ 23-9 표 193키): 앱 사본(content/aitCopy.ts)이 표와 한 글자씩 같고 · 서버 고정 문구(src/server/ait/fixed.ts)와 겹치는 줄이 같고 ·
+  // ── AIT. AI 시험판 글(AIT-F · 카피 23-2 ~ 23-9 표 193키 + 23-13-1 · 23-13-2 새 글 203키): 앱 사본(content/aitCopy.ts)이 표와 한 글자씩 같고 · 서버 고정 문구(src/server/ait/fixed.ts)와 겹치는 줄이 같고 ·
   //       느낌표 · 숫자(법무 확정 번호 줄 예외) · 법무 8장 금지어 · 재촉 · 업체 이름 0 · 화면 코드(features/ait · settings/AitCodePage)에 사본 밖 한글 글 0
   {
     const genAit = await load(path.join(APP_DIR, 'scripts', 'gen-ait-copy.mjs'));
@@ -1261,11 +1261,14 @@ try {
     const DIGIT_OK = new Set(['CONCERN.always', 'CONCERN_CARD.crisis.l2', 'CONCERN_CARD.crisis.l3', 'CONCERN_CARD.violence.l2', 'CONCERN_CARD.violence.l3', 'CONCERN_CARD.minor.l2', 'CONCERN_CARD.violence.l3b', 'CONCERN_CARD.body.l1', 'AIT.privacy.keep']);
     const WORD_OK = { 상담: ['CONCERN.footer', 'CONCERN.intro.notCounsel', 'CONCERN_CARD.crisis.l4', 'CONCERN_CARD.crisis.l2'], 진단: ['CONCERN.footer'], 치료: ['CONCERN.footer'], 전문: ['CONCERN.footer'] };
     const BAN = ['무제한', '평생', '구독', '자동 갱신', '남은 횟수', '서두르', '오늘만', '한정', '카운트다운', 'Claude', 'Anthropic', '해결책', '솔루션', '속마음', '검증된', '과학적', '무료', '곧 연결', '완전히 보장', '1577', '1393', '내 편', '언제든', '24시간 내 곁', '코치', '운명', '천생연분', '성사율', '대신 써', '자동 답장'];
+    // 받는 자 이름(Anthropic)은 국외 이전 동의를 받는 시트 두 줄만 쓴다(법무 13-3 · 카피 23-13-2 예외 줄). 그 밖의 줄은 그대로 막는다
+    const BAN_ONLY_IN = { Anthropic: ['AIT.consent.send', 'AIT.consent.check'] };
     for (const [k, v] of Object.entries(AT)) {
       const s = v.replace(/\{[^{}]+\}/g, '');
       if (/[!！]/.test(s)) diffsAit.push(`${k}: 느낌표`);
       if (/\d/.test(s) && !DIGIT_OK.has(k)) diffsAit.push(`${k}: 숫자`);
-      for (const w of BAN) if (s.includes(w)) diffsAit.push(`${k}: 금지 낱말 '${w}'`);
+      for (const w of BAN) if (s.includes(w) && !(BAN_ONLY_IN[w] ?? []).includes(k)) diffsAit.push(`${k}: 금지 낱말 '${w}'`);
+      for (const [w, only] of Object.entries(BAN_ONLY_IN)) if (only.includes(k) && !s.includes(w)) diffsAit.push(`${k}: 받는 자 이름 '${w}' 가 빠짐(법무 13-3 필수)`);
       for (const [w, ok] of Object.entries(WORD_OK)) if (s.includes(w) && !ok.includes(k)) diffsAit.push(`${k}: 허용 줄 밖 '${w}'`);
     }
     // 화면 코드에 사본 밖 한글 글 0 (글은 모두 ait() 로만)
@@ -1279,7 +1282,7 @@ try {
       for (const m of src.matchAll(/'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`/g)) if (/[가-힣]/.test(m[0]) && !AIT_LIT_OK.has(m[0].slice(1, -1))) diffsAit.push(`${rel(f)}: 사본 밖 한글 글 ${m[0].slice(0, 30)}`);
       for (const m of src.matchAll(/>\s*([^<>{}\n]*[가-힣][^<>{}\n]*?)\s*</g)) diffsAit.push(`${rel(f)}: JSX 한글 글 ${m[1].slice(0, 30)}`);
     }
-    check('AIT', `AI 시험판 글 ${table.rows.size}줄(카피 23-2 ~ 23-9 · 193키 중 글 있는 키) = 앱 사본 · 서버 고정 문구 ${pairs.length + Object.keys(chat.CHIP_LABEL).length}줄 같음 · 느낌표 · 숫자 · 금지 낱말 0 · 화면 코드 ${aitFiles.length}개에 사본 밖 한글 글 0`, diffsAit.length === 0, diffsAit.join('\n') || `표 ${table.rows.size}줄`);
+    check('AIT', `AI 시험판 글 ${table.rows.size}줄(카피 23-2 ~ 23-9 + 23-13-1 · 23-13-2 · ${genAit.AIT_KEY_COUNT}키 중 글 있는 키) = 앱 사본 · 서버 고정 문구 ${pairs.length + Object.keys(chat.CHIP_LABEL).length}줄 같음 · 느낌표 · 숫자 · 금지 낱말 0 · 화면 코드 ${aitFiles.length}개에 사본 밖 한글 글 0`, diffsAit.length === 0, diffsAit.join('\n') || `표 ${table.rows.size}줄`);
   }
 
   // R1 A⑦ T04 · K11: 오류 · 안내 문구 규칙(카피.md 1-1)과 v4 글 대조(카피.md 7장). 규칙 본문은 check-copy-rules.mjs

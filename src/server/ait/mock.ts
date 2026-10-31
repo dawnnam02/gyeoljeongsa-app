@@ -4,7 +4,7 @@
 import type { CallSpec } from './chat.ts';
 import type { EvidenceCard } from './cards.ts';
 import { quoteInSource } from './text.ts';
-import { COMPAT_DICT, SIGN_CODES, ELEMENT_CODES } from './features.ts';
+import { COMPAT_DICT } from './features.ts';
 import type { CompatInput } from './features.ts';
 
 const VARIANTS: Readonly<Record<string, readonly string[]>> = {
@@ -113,5 +113,3 @@ export function mockCoachOutput(input: { field: string; text: string }): Record<
     }],
   };
 }
-
-export { SIGN_CODES, ELEMENT_CODES };

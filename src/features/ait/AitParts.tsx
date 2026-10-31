@@ -24,8 +24,8 @@ export const ERROR_CODES = ['auth', 'rate', 'spend_limit', 'limit', 'unavailable
 export type AitErrorCode = (typeof ERROR_CODES)[number];
 export const isErrorCode = (c: AitCode): c is AitErrorCode => (ERROR_CODES as readonly string[]).includes(c);
 export const codeLine = (c: AitErrorCode): string => ait(`AIT.code.${c}` as AitKey);
-/** 미리 쓴 글이 있는 기능(궁합 카드 · 별자리 풀이)에서 이 글 아래에 '그동안은 미리 쓴 글로'를 더하는 코드 */
-export const FALLBACK_CODES: readonly AitErrorCode[] = ['spend_limit', 'limit', 'unavailable', 'upstream'];
+/** 미리 쓴 글이 있는 기능(궁합 카드 · 별자리 풀이)에서 이 글 아래에 '그동안은 미리 쓴 글로'를 더하는 코드. limit(대화 기록이 너무 큼)은 챗만 받는 코드라 뺐다(카피 23-13-1) */
+export const FALLBACK_CODES: readonly AitErrorCode[] = ['spend_limit', 'unavailable', 'upstream'];
 
 // ── 머리: 시험판 알약 + 안내 한 번 ──────────────────────────────────────────────
 export function AitHead({ testID = 'ait-head' }: { testID?: string }) {
@@ -79,12 +79,12 @@ export function AitDemoNote({ onSettings, testID = 'ait-demo' }: { onSettings: (
   );
 }
 
-/** 미리 쓴 글이 없는 기능(고민 정리 · 문장 다듬기): 코드를 넣으면 AI가 새로 쓴 글로 보여 줘요(설정 줄 설명) + 코드 넣기 */
-export function AitNoCode({ onSettings, testID = 'ait-nocode' }: { onSettings: () => void; testID?: string }) {
+/** 미리 쓴 글이 없는 기능(고민 정리 · 문장 다듬기): 무엇이 안 보이는지 기능별로 말하고(카피 23-13-2 AIT.noCode.*) + 코드 넣기 */
+export function AitNoCode({ feature, onSettings, testID = 'ait-nocode' }: { feature: 'concern' | 'coach'; onSettings: () => void; testID?: string }) {
   return (
     <View style={styles.gapSmall} testID={testID}>
       <AppText variant="body" testID={`${testID}-line`}>
-        {ait('AIT_SET.rowLine')}
+        {ait(feature === 'concern' ? 'AIT.noCode.concern' : 'AIT.noCode.coach')}
       </AppText>
       <Button label={ait('AIT.action.codeSettings')} variant="secondary" onPress={onSettings} testID={`${testID}-settings`} />
     </View>
@@ -102,10 +102,10 @@ export function AitLoading({ testID = 'ait-loading' }: { testID?: string }) {
 
 /**
  * 오류 칸: 코드마다 고정 글 하나(숫자 · 초 · 금액 0). 코드가 틀린 것인지 없는 것인지는 밝히지 않는다.
- *  · auth → [시험용 AI 코드 넣기]만(다시 시도 0)  · spend_limit · limit → 다시 시도 0(미리 쓴 글이 있는 기능은 아래 줄)
+ *  · auth → [시험용 AI 코드 넣기]만(다시 시도 0)  · spend_limit → 다시 시도 0(미리 쓴 글이 있는 기능은 아래 줄)  · limit → [새 고민 시작하기](CONCERN.end.again · onRestart)만(대화 기록이 너무 길어짐 — 같은 묶음으로 다시 보내지 않는다)
  *  · rate → [다시 시도]는 잠깐 잠김(남은 시간 글 0)  · 그 밖 → [다시 시도]
  */
-export function AitError({ code, fallback = false, locked = false, onRetry, onSettings, testID = 'ait-error' }: { code: AitErrorCode; fallback?: boolean; locked?: boolean; onRetry?: () => void; onSettings: () => void; testID?: string }) {
+export function AitError({ code, fallback = false, locked = false, onRetry, onRestart, onSettings, testID = 'ait-error' }: { code: AitErrorCode; fallback?: boolean; locked?: boolean; onRetry?: () => void; onRestart?: () => void; onSettings: () => void; testID?: string }) {
   const noRetry = code === 'auth' || code === 'spend_limit' || code === 'limit';
   return (
     <View style={styles.gapSmall} testID={testID}>
@@ -118,6 +118,7 @@ export function AitError({ code, fallback = false, locked = false, onRetry, onSe
         </AppText>
       ) : null}
       {code === 'auth' ? <Button label={ait('AIT.action.codeSettings')} variant="secondary" onPress={onSettings} testID={`${testID}-settings`} /> : null}
+      {code === 'limit' && onRestart ? <Button label={ait('CONCERN.end.again')} variant="secondary" onPress={onRestart} testID={`${testID}-restart`} /> : null}
       {!noRetry && onRetry ? <Button label={BOARDING.retry} variant="secondary" disabled={locked} onPress={onRetry} testID={`${testID}-retry`} /> : null}
     </View>
   );
@@ -164,34 +165,52 @@ export function AitCardView({ kind, options, onContinue, onEnd, testID = 'ait-ca
   );
 }
 
-// ── 시험자 동의 시트(법무 16-4 #2 · 16-2 국외 이전: 쓴 글이 미국의 AI 업체로 · 30일 · 실명 쓰지 않기 · 캡처해 보내지 않기) ───────
-//  체크는 미리 켜 두지 않는다. 동의한 판 · 시각은 aitStore 가 기기에 기록한다(웹은 메모리).
-export function AitConsentSheet({ visible, confirmLabel, onConfirm, onClose, testID = 'ait-consent' }: { visible: boolean; confirmLabel: string; onConfirm: () => void; onClose: () => void; testID?: string }) {
+// ── 시험자 동의 시트(법무 16-4 #2 · 16-2 국외 이전 · 13-3 문안 · 카피 23-13-2) ───────────────────────────
+//  줄 순서(카피 23-13-2): 제목 → send(받는 업체 이름) → privacy.keep(재사용 · 조건부) → keepMore → name → noSend → 체크 check → refuse → 단추 confirm → 닫기.
+//  체크는 미리 켜 두지 않는다. 시험판 알약 · 안내(AitHead)와 privacy.send 는 시트에서 뺀다(기능 화면 머리에 계속 있음). 동의한 판 · 시각은 aitStore 가 기기에 기록한다(웹은 메모리).
+export function AitConsentSheet({ visible, onConfirm, onClose, testID = 'ait-consent' }: { visible: boolean; onConfirm: () => void; onClose: () => void; testID?: string }) {
   return (
     <BottomSheet visible={visible} onClose={onClose} testID={testID}>
-      {visible ? <ConsentBody confirmLabel={confirmLabel} onConfirm={onConfirm} onClose={onClose} testID={testID} /> : null}
+      {visible ? <ConsentBody onConfirm={onConfirm} onClose={onClose} testID={testID} /> : null}
     </BottomSheet>
   );
 }
-function ConsentBody({ confirmLabel, onConfirm, onClose, testID }: { confirmLabel: string; onConfirm: () => void; onClose: () => void; testID: string }) {
+function ConsentBody({ onConfirm, onClose, testID }: { onConfirm: () => void; onClose: () => void; testID: string }) {
   const [checked, setChecked] = useState(false);
   return (
     <View style={styles.sheet} testID={`${testID}-body`}>
-      <AitHead testID={`${testID}-head`} />
-      <AitPrivacyLines testID={`${testID}-privacy`} />
+      <AppText variant="bodyBold" accessibilityRole="header" testID={`${testID}-title`}>
+        {ait('AIT.consent.title')}
+      </AppText>
+      <AppText variant="caption" testID={`${testID}-send`}>
+        {ait('AIT.consent.send')}
+      </AppText>
+      {AIT_KEEP_NOTE_ON ? (
+        <>
+          <AppText variant="caption" testID={`${testID}-privacy-keep`}>
+            {ait('AIT.privacy.keep')}
+          </AppText>
+          <AppText variant="caption" testID={`${testID}-keepmore`}>
+            {ait('AIT.consent.keepMore')}
+          </AppText>
+        </>
+      ) : null}
       <AppText variant="caption" testID={`${testID}-name`}>
-        {ait('CONCERN.notice.name')}
+        {ait('AIT.consent.name')}
       </AppText>
       <AppText variant="caption" testID={`${testID}-nosend`}>
-        {ait('CONCERN.intro.noSend')}
+        {ait('AIT.consent.noSend')}
       </AppText>
-      <Pressable accessibilityRole="checkbox" accessibilityState={{ checked }} aria-checked={checked} accessibilityLabel={ait('AIT.privacy.send')} onPress={() => setChecked((v) => !v)} effect="none" style={({ pressed }) => [styles.checkRow, pressed && styles.pressed]} testID={`${testID}-check`}>
+      <Pressable accessibilityRole="checkbox" accessibilityState={{ checked }} aria-checked={checked} accessibilityLabel={ait('AIT.consent.check')} onPress={() => setChecked((v) => !v)} effect="none" style={({ pressed }) => [styles.checkRow, pressed && styles.pressed]} testID={`${testID}-check`}>
         <CheckBox checked={checked} />
         <AppText variant="body" style={styles.flex}>
-          {ait('AIT.privacy.send')}
+          {ait('AIT.consent.check')}
         </AppText>
       </Pressable>
-      <Button label={confirmLabel} disabled={!checked} onPress={onConfirm} testID={`${testID}-confirm`} />
+      <AppText variant="caption" testID={`${testID}-refuse`}>
+        {ait('AIT.consent.refuse')}
+      </AppText>
+      <Button label={ait('AIT.consent.confirm')} disabled={!checked} onPress={onConfirm} testID={`${testID}-confirm`} />
       <TextButton label={A11Y.close} onPress={onClose} testID={`${testID}-cancel`} />
     </View>
   );

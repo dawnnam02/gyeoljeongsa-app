@@ -101,7 +101,7 @@ function CoachBody({ onSettings, testID }: { onSettings: () => void; testID: str
         testID={`${testID}-text`}
       />
       <Button label={ait('COACH.send')} loading={busy} onPress={send} testID={`${testID}-send`} />
-      {phase.k === 'nocode' ? <AitNoCode onSettings={onSettings} testID={`${testID}-nocode`} /> : null}
+      {phase.k === 'nocode' ? <AitNoCode feature="coach" onSettings={onSettings} testID={`${testID}-nocode`} /> : null}
       {phase.k === 'loading' ? <AitLoading testID={`${testID}-loading`} /> : null}
       {phase.k === 'error' ? <AitError code={phase.code} locked={locked} onRetry={send} onSettings={onSettings} testID={`${testID}-error`} /> : null}
       {cardNode}
@@ -141,7 +141,7 @@ function CoachBody({ onSettings, testID }: { onSettings: () => void; testID: str
           </AppText>
         </View>
       ) : null}
-      <AitConsentSheet visible={phase.k === 'consent'} confirmLabel={ait('COACH.send')} onConfirm={() => void confirmConsent()} onClose={cancelConsent} testID={`${testID}-consent`} />
+      <AitConsentSheet visible={phase.k === 'consent'} onConfirm={() => void confirmConsent()} onClose={cancelConsent} testID={`${testID}-consent`} />
     </ScrollView>
   );
 }

@@ -1,5 +1,6 @@
 // IF5-F1(사주 마당 · 마일리지): 화면 글의 앱 사본을 만든다. 읽기는 마케팅/카피.md 24장, 쓰기는 src/content/if5Copy.ts 하나.
 //  · 24장 24-2 ~ 24-11 표 가운데 첫 칸 끝에 키(`SAJU.…` · `MILEAGE.…` · `REST_HINT.…`)가 있는 줄의 둘째 칸 글을 한 글자도 바꾸지 않고 옮긴다(마크다운 ** · ` 만 걷음). 318키
+//  · 24-15-2 표의 새 글은 같은 키를 덮는다(SAJU.status.balanceFailed 마침표 — 앱과 같은 커밋). 24-15-1 의 새 키 12 는 F1b 에서 키 수 330 으로 더한다
 //  · 24-12(금지어) · 24-13(디자인 시안 대응표 — 첫 칸이 '시안 `키`' 꼴) · 24-14 는 읽지 않는다
 //  · {…} 자리는 앱이 채운다(if5Copy.t5). 글이 {…} 하나뿐인 줄(40개)은 AI 라이브러리 · 서버 값이 들어오는 자리라 앱 글이 아니다 — 사본에는 틀 그대로 두되 화면은 값을 넣어 쓴다
 //  · F1(무료 층)이 쓰는 글과 F2(마일리지 · AI 맞춤 · 동의)가 쓰는 글이 한 사본에 있다. F2 몫 글은 F1 화면이 부르지 않는다(시험이 잡는다)
@@ -40,6 +41,17 @@ export function readRows(docPath = COPY_DOC) {
     if (c[1] === undefined) continue;
     rows.set(m[1], c[1].replace(/\*\*/g, '').replace(/`/g, ''));
   }
+  // 24-15-2(앱과 같은 커밋으로 바꿀 줄 — F2 첫 커밋): 이미 있는 키의 새 글만 덮는다. 24-15-1 의 새 키 12(F1b 몫)는 여기서 더하지 않는다(키 수 318 그대로)
+  const from2 = sec.search(/^#### 24-15-2\. /m);
+  const to2 = sec.search(/^#### 24-15-3\. /m);
+  if (from2 >= 0) {
+    for (const line of sec.slice(from2, to2 >= 0 ? to2 : undefined).split('\n')) {
+      if (!line.startsWith('| ')) continue;
+      const c = cellsOf(line);
+      const m = keyRe.exec(c[0] ?? '');
+      if (m && c[1] !== undefined && rows.has(m[1])) rows.set(m[1], c[1].replace(/\*\*/g, '').replace(/`/g, ''));
+    }
+  }
   return rows;
 }
 
@@ -49,7 +61,7 @@ export function build(rows) {
   const keys = [...rows.keys()];
   const lines = keys.map((k) => `  ${q(k)}: ${q(rows.get(k))},`);
   return `// 사주 마당 · 마일리지(IF5 · 카피 24장) 글의 앱 사본 — scripts/gen-if5-copy.mjs 가 마케팅/카피.md 24장에서 만든다(손으로 고치지 않는다). ${keys.length}키.
-//  · F1(무료 층 · 10-31)은 MILEAGE.* · SAJU.talk.* · REST_HINT.* · SAJU.card.aiButton 계열을 부르지 않는다 — 그 글은 F2(마일리지 · AI 맞춤 · 동의) 몫이라 사본에만 있다.
+//  · 무료 층(F1)은 MILEAGE.* · SAJU.talk.* · REST_HINT.* · SAJU.card.aiButton 계열을 부르지 않는다 — 그 글은 마일리지 · AI 맞춤(F2)이 부른다. 아직 어느 화면도 안 부르는 키는 '앱 반영 전'(F1b 몫 포함).
 //  · 글이 {…} 하나뿐인 키(값 틀)는 AI 라이브러리 · 서버 값이 들어오는 자리다. 화면은 이 틀 대신 값을 쓴다.
 //  · check:copy IF5 그룹이 24장 표와 한 글자씩 대조한다. 이 파일은 check:copy 가 Node 로 바로 읽으므로 경로 별칭 없이 홀로 선다
 // 받침이 있으면 앞 글자, 없으면 뒤 글자 — 하늘 읽기 글 사본(if3)의 t3 와 같은 규칙

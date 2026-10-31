@@ -52,8 +52,8 @@ describe('AIT-F 서버 고정 문구 ↔ 화면 글(카피 23장)', () => {
     expect(AIT_TEXT['COACH.note']).toBe(COACH_NOTE);
     expect(AIT_TEXT['PAIR_AI.note']).toBe(COMPAT_NOTE);
     expect(AIT_TEXT['STAR_AI.footer']).toBe(FUN_FOOTER);
-    // 저장 문구: 카피 23-2 는 '받은 날부터'를 뺀 꼴이다(법무 16-3 · 서버 STORAGE_NOTE 에는 있음) — 마케팅에 맞춰 달라고 넘김. 그 밖은 같다
-    expect(AIT_TEXT['AIT.privacy.keep']).toBe(STORAGE_NOTE.replace('받은 날부터 ', ''));
+    // 저장 문구: 카피 23-13-1 로 '받은 날부터'가 들어가 서버 STORAGE_NOTE(법무 16-3)와 글자까지 같다
+    expect(AIT_TEXT['AIT.privacy.keep']).toBe(STORAGE_NOTE);
   });
 
   test('칩 열여섯 글이 화면 글(23-4-4)과 같다 — 칩 코드마다 화면 글이 있다', () => {

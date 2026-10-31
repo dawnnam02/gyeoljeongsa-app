@@ -57,7 +57,8 @@ module.exports = defineConfig([
   },
   {
     // IF5-F1: src/saju5 의 파일은 ai/IF5/ts 원본을 scripts/sync-if5.mjs 로 복사한 것이라(경로 · JSON 가져오기 꼴만 바꿈) 앱 쪽 스타일 규칙을 걸지 않는다(원본 수정 0 — 고칠 게 있으면 AI 직원에게 넘김)
-    files: ['src/saju5/**/*.ts'],
+    // IF5-F2 ⑯: src/server/saju5 도 같은 원본 복사본(서버 전용 AI 요청 모듈) — handler5.ts 는 앱이 따로 쓰는 파일이지만 같은 규칙을 얹는다
+    files: ['src/saju5/**/*.ts', 'src/server/saju5/**/*.ts'],
     rules: { 'import/export': 'off', 'import/first': 'off', '@typescript-eslint/array-type': 'off', '@typescript-eslint/no-explicit-any': 'off' },
     linterOptions: { reportUnusedDisableDirectives: 'off' },
   },

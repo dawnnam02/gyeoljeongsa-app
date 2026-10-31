@@ -67,7 +67,7 @@ export function CompatAiBlock({ same, onSettings, testID = 'pair-ai' }: { same: 
           <Button label={ait('PAIR_AI.regen')} variant="secondary" disabled={locked} onPress={start} testID={`${testID}-regen`} />
         </AitPaper>
       ) : null}
-      <AitConsentSheet visible={phase.k === 'consent'} confirmLabel={ait('PAIR_AI.button')} onConfirm={() => void confirmConsent()} onClose={cancelConsent} testID={`${testID}-consent`} />
+      <AitConsentSheet visible={phase.k === 'consent'} onConfirm={() => void confirmConsent()} onClose={cancelConsent} testID={`${testID}-consent`} />
     </View>
   );
 }

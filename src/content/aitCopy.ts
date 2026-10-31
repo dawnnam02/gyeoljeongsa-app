@@ -1,5 +1,5 @@
 // AI 시험판(AIT · 카피 23장) 화면 글의 앱 사본 — scripts/gen-ait-copy.mjs 가 마케팅/카피.md 23장에서 만든다(손으로 고치지 않는다).
-//  · 접두어 일곱 193키 가운데 글이 있는 189키. 글 칸이 '(' 로 시작하는 4키(AIT.code.crisis · AIT.code.refused_intent · AIT.code.ok · CONCERN_CARD.soft.l2)는 글 없이 NO_TEXT_KEYS 에만 이름을 둔다.
+//  · 접두어 일곱 203키 가운데 글이 있는 199키. 글 칸이 '(' 로 시작하는 4키(AIT.code.crisis · AIT.code.refused_intent · AIT.code.ok · CONCERN_CARD.soft.l2)는 글 없이 NO_TEXT_KEYS 에만 이름을 둔다.
 //  · 쓰지 않는 글(보류 · 조건부): AIT.privacy.keep(켜는 조건은 features/ait/aitConfig) · CONCERN.end.keep(보류) · CONCERN_CARD.violence.l3b(보류) · CONCERN_CARD.body.l1(신체 위험 카드 없음) · PAIR_AI.needBoth(실서비스 전용) — 사본에는 글만 두고 화면은 그리지 않는다.
 //  · check:copy AIT 그룹이 카피 23장 표와 한 글자씩 대조한다. 서버 고정 문구(src/server/ait/fixed.ts)와 겹치는 줄도 함께 본다.
 //  · 이 파일은 check:copy 가 Node 로 바로 읽으므로 경로 별칭 없이 홀로 선다
@@ -14,13 +14,13 @@ export const AIT_TEXT = {
   'AIT.loadingA11y': 'AI가 답을 쓰고 있어요',
   'AIT.done.a11y': '답이 도착했어요',
   'AIT.privacy.send': '여기에 적은 글은 미국의 AI 업체로 전달돼요.',
-  'AIT.privacy.keep': '운영 서버에는 저장하지 않아요. AI 업체에는 30일 안에 지워질 때까지 남아요.',
+  'AIT.privacy.keep': '운영 서버에는 저장하지 않아요. AI 업체에는 받은 날부터 30일 안에 지워질 때까지 남아요.',
   'AIT.report.sentence': '이 문장 신고',
   'AIT.report.note': '이 문장과 앞 글이 운영팀에 전달돼요.',
   'AIT.code.auth': '접근 코드가 맞지 않아요. 설정의 \'시험용 AI 코드\'에서 다시 확인해 주세요.',
   'AIT.code.rate': '요청이 많았어요. 잠시 뒤에 다시 보내 주세요.',
   'AIT.code.spend_limit': '이번 달 시험 이용분을 다 썼어요. 다음 달에 다시 시도해 주세요.',
-  'AIT.code.limit': '오늘 이용할 수 있는 만큼을 다 썼어요. 내일 다시 시도해 주세요.',
+  'AIT.code.limit': '이 대화 기록이 너무 길어졌어요. 새 대화로 시작할 수 있어요.',
   'AIT.code.unavailable': 'AI를 쓸 수 없어요. 잠시 뒤에 다시 시도해 주세요.',
   'AIT.code.too_long': '글이 너무 길어요. 조금 줄여서 다시 보내 주세요.',
   'AIT.code.bad_request': '요청을 읽지 못했어요. 화면을 새로 열어 다시 시도해 주세요.',
@@ -193,6 +193,16 @@ export const AIT_TEXT = {
   'STAR_AI.cusp': '별자리가 바뀌는 무렵에 태어난 분은 AI 풀이를 만들지 않아요. 미리 쓴 글로 보여 드려요.',
   'STAR_AI.footer': '재미로 보는 이야기예요.',
   'STAR_AI.a11y': 'AI가 쓴 풀이, {편 이름}, {본문}',
+  'AIT.consent.title': '시험판을 쓰기 전에 확인해 주세요',
+  'AIT.consent.send': '적은 글은 미국의 AI 업체 Anthropic PBC로 전달돼요.',
+  'AIT.consent.keepMore': '이용 규칙을 어긴 것으로 보이면 더 오래 남을 수 있다고 업체가 밝혀요.',
+  'AIT.consent.name': '다른 사람의 이름, 직장, 학교, 연락처는 적지 마세요.',
+  'AIT.consent.noSend': '결과를 캡처해서 다른 사람에게 보내거나 올리지 말아 주세요.',
+  'AIT.consent.check': '안내를 읽었고, 적은 글이 미국의 AI 업체 Anthropic PBC로 전달되는 데 동의해요.',
+  'AIT.consent.refuse': '동의하지 않으면 닫아도 돼요. 이 기능만 쓰지 않고, 나머지 앱은 그대로 써요.',
+  'AIT.consent.confirm': '동의하고 계속하기',
+  'AIT.noCode.concern': '연애 고민 정리는 미리 쓴 글이 없어요. 설정의 \'시험용 AI 코드\'를 넣으면 시작할 수 있어요.',
+  'AIT.noCode.coach': '문장 다듬기는 미리 쓴 글이 없어요. 설정의 \'시험용 AI 코드\'를 넣으면 쓸 수 있어요.',
 } as const;
 
 export type AitKey = keyof typeof AIT_TEXT;
