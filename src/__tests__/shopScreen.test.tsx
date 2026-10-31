@@ -65,7 +65,7 @@ async function setup(scene = 'plain', over: Partial<ShopDeps> | ((deps: ShopDeps
     grade: createGradeApi(client),
     now: () => START,
     newId: () => `00000000-0000-4000-8000-${String((n += 1)).padStart(12, '0')}`,
-    toastMs: 50,
+    toastMs: 3_000, // 3부-카 ⑥: 50ms 경쟁 손봄(f16Shop 과 같음)
     slowMs: 30_000,
   };
   Object.assign(deps, typeof over === 'function' ? over(deps) : over);

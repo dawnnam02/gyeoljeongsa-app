@@ -75,7 +75,7 @@ async function setup(scene = 'plain', over: (deps: ShopDeps) => Partial<ShopDeps
     grade: createGradeApi(client),
     now: () => START,
     newId: () => `00000000-0000-4000-8000-${String((n += 1)).padStart(12, '0')}`,
-    toastMs: 50,
+    toastMs: 3_000, // 3부-카 ⑥: 50ms 면 토스트가 시험이 보기 전에 걷혀 가끔 실패(shopRig 3부-차 ⑧ 과 같은 경쟁)
     slowMs: 30_000,
   };
   Object.assign(deps, over(deps));

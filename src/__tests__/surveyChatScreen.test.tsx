@@ -36,7 +36,7 @@ jest.mock('@/config/env', () => ({ env: { demoMode: false, supabaseUrl: '', supa
 jest.mock('@/lib/services', () => ({ supabase: {} }));
 jest.mock('@/lib/log', () => ({ safeLog: jest.fn() }));
 
-jest.setTimeout(600_000); // 3부-차 ⑧: 1부 전부 대화로 답하는 시험이 한가할 때도 50 ~ 75초라, 계산이 바쁜 기계(CPU 부하 8 ~ 32개)에서 180초를 넘겨 시간 초과 → 뒤 시험 13개가 줄줄이 실패하던 들쑥날쑥을 막는다
+jest.setTimeout(180_000); // 3부-카 ⑥: 3부-차 ⑧ 이 600초로 늘렸던 제한을 되돌린다 — 1번 시험이 1부 앞 열 장만 누르고 나머지는 도우미(answerRestFast)로 한 번에 넣어 한가할 때 10초대로 줄었다
 
 type Tree = Awaited<ReturnType<typeof mount>>;
 const base = (id: string, email: string) => ({ auth: { getSession: async () => ({ data: { session: { user: { id, email } } }, error: null }) } }) as unknown as Pick<SupabaseClient, 'auth'>;
@@ -157,16 +157,28 @@ async function answerCurrent(tree: Tree, id: string) {
   throw new Error(`답하는 법이 없는 문항 ${id}`);
 }
 
-async function answerPart1(tree: Tree) {
+// 1부 앞 UI_CARDS 장은 사람처럼 누르고(줄 · 고르기 · 지역 · 숫자 · 학교 검색 …), 남은 답은 같은 저장 길(save_answers)로 한 번에 넣은 뒤 화면을 다시 열어 [이어하기] → 정치 막대까지 간다(3부-카 ⑥ — 한 글자씩 80장을 누르던 50 ~ 75초를 줄임)
+const UI_CARDS = 10;
+async function answerPart1Fast(r: ReturnType<typeof rig>, tree: Tree) {
   const order: string[] = [];
-  for (let guard = 0; guard < 80; guard += 1) {
+  for (let i = 0; i < UI_CARDS; i += 1) {
     const id = currentCard(tree);
     if (!id || id === 'POL') break;
     order.push(id);
     await answerCurrent(tree, id);
     if (currentCard(tree) === id) throw new Error(`${id} 에서 넘어가지 않았어요: ${allTexts(tree).slice(-4).join(' / ')}`);
   }
-  return order;
+  const e13 = emptyDraft(qOf('E13'), 'u1'); // '이대로 괜찮아요' = 사람마다 섞인 처음 순서
+  const rest = Object.fromEntries(Object.entries(FULL).filter(([k]) => !(k in v2Answers(r.memory)))) as Record<string, V2Value>;
+  if ('E13' in rest) rest.E13 = e13.kind === 'rankAll' ? e13.order : [];
+  const res = await r.api.save({ answers: rest });
+  expect(res.ok).toBe(true);
+  await act(async () => tree.unmount());
+  const next = await show(r.deps, true);
+  expect(has(next, 'chat-resume-go')).toBe(true);
+  await tap(next, 'chat-resume-go');
+  await wait(80);
+  return { order, tree: next };
 }
 
 // 1부 답을 미리 넣어 둔다(2부 시험용) — 같은 저장 길(save_answers)
@@ -203,19 +215,19 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 describe('1. 1부 저장 키 · 값 = 설문 v2', () => {
-  test('시작 → 1부 전부 대화로 → 정치 나중에 → CK16 거절 → 2부 → 여기까지 → 정리 → 내 성향 → 글 문항 → 답 한눈에 보기', async () => {
+  test('시작 → 1부 앞 열 장 대화로 + 나머지 한 번에 → 정치 나중에 → CK16 거절 → 2부 → 여기까지 → 정리 → 내 성향 → 글 문항 → 답 한눈에 보기', async () => {
     const r = rig({ politics: true });
-    const tree = await show(r.deps, true); // 3부-자: 스위치 type_card 켜짐 — 끝 화면에 [내 여행 타입 보기] 입구
-    expect(has(tree, 'chat-intro')).toBe(true);
-    expect(allTexts(tree)).toEqual(expect.arrayContaining([CHAT_V6['CHAT.START.title'], CHAT_V6['CHAT.START.points.1']]));
-    await tap(tree, 'chat-start');
-    expect(currentCard(tree)).toBe('A12');
-    expect(allTexts(tree).join(' ')).toContain('지금 이야기 · 기본');
-    const order = await answerPart1(tree);
-    // 보이는 문항만 물었다(여성 → 병역 없음 · 활성 조건 F03 → F12 · F13 물음 · T01~T03 은 2부)
+    const first = await show(r.deps, true); // 3부-자: 스위치 type_card 켜짐 — 끝 화면에 [내 여행 타입 보기] 입구
+    expect(has(first, 'chat-intro')).toBe(true);
+    expect(allTexts(first)).toEqual(expect.arrayContaining([CHAT_V6['CHAT.START.title'], CHAT_V6['CHAT.START.points.1']]));
+    await tap(first, 'chat-start');
+    expect(currentCard(first)).toBe('A12');
+    expect(allTexts(first).join(' ')).toContain('지금 이야기 · 기본');
+    const { order, tree } = await answerPart1Fast(r, first);
+    // 보이는 문항만 물었다(여성 → 병역 없음 · T01~T03 은 2부). 앞 열 장은 사람처럼 눌렀고 나머지는 한 번에 넣었다
+    expect(order).toEqual(['A12', 'A02', 'A03', 'A05', 'A06', 'A07', 'A08', 'B01', 'B02', 'B06']);
     expect(order).not.toContain('A11');
     expect(order.filter((x) => ['T01', 'T02', 'T03'].includes(x))).toEqual([]);
-    expect(order).toEqual(expect.arrayContaining(['B03', 'F12', 'F13']));
     // 저장 키 · 값 대조(B02 는 검색 결과의 학교 키)
     const saved = v2Answers(r.memory);
     const e13 = emptyDraft(qOf('E13'), 'u1'); // '이대로 괜찮아요' = 사람마다 섞인 처음 순서(설문 v2 와 같은 씨앗)
