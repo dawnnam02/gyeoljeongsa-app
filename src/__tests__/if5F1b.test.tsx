@@ -218,7 +218,7 @@ describe('IF5-F1b ⓔ 날짜 고르기 상대와 합쳐 보기', () => {
     const keys = ['SAJU.pillars.col.year', 'SAJU.pillars.col.month', 'SAJU.pillars.col.day', 'SAJU.pillars.col.hour', 'SAJU.pillars.col.a11y', 'SAJU.input.hourUnit', 'SAJU.input.minUnit', 'SAJU.life.age', 'SAJU.pick.partner.toggle', 'SAJU.pick.partner.hint', 'SAJU.pick.partner.both', 'SAJU.pick.partner.need'] as const;
     expect(keys).toHaveLength(12);
     for (const k of keys) expect(typeof IF5_TEXT[k]).toBe('string');
-    expect(Object.keys(IF5_TEXT)).toHaveLength(334);
+    expect(Object.keys(IF5_TEXT)).toHaveLength(336);
     expect([IF5_TEXT['SAJU.pillars.col.year'], IF5_TEXT['SAJU.pillars.col.month'], IF5_TEXT['SAJU.pillars.col.day'], IF5_TEXT['SAJU.pillars.col.hour']]).toEqual(['해', '달', '날', '시']);
     expect(ageSpan(10, 20)).toBe('10세 ~ 20세');
     expect(IF5_TEXT['MILEAGE.shop.locked']).toBe('최근 스토어 환불이 여러 번 있어서 지금은 충전이 멈춰 있어요.');

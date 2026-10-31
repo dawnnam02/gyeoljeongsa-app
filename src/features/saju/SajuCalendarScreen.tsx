@@ -143,6 +143,9 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
   const toneLabel = (t: Tone | null): string => (t === 'good' ? IF5_TEXT['SAJU.pick.good'] : t === 'rest' ? IF5_TEXT['SAJU.pick.rest'] : IF5_TEXT['SAJU.pick.plain']);
   const picked = sel && inSupport(sel) ? sel : null;
   const pickedTone = picked ? toneOf(picked) : null;
+  // 함께 보기 날 카드 한 줄(IF5-QF · M-QF 카피 F-05): ◇ 날은 규칙 한 줄 · 표시 없는 날(쉬어 가는 날 제외)은 '표시가 없다'는 사실 한 줄 — 이유(누구 때문) · 판정 0
+  const pairOn = mode === 'pick' && combine && partner !== null && mine.kind === 'ready' && use !== null && !outOfRangeMonth;
+  const together: 'both' | 'none' | null = !picked || !pairOn ? null : bothOk(picked) ? 'both' : pickedTone === null || pickedTone === 'rest' ? null : 'none';
 
   return (
     <Screen edges={['top']} testID="screen-saju-cal">
@@ -280,7 +283,7 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
           </View>
         )}
 
-        {picked ? <DayCard iso={picked} mode={mode} tone={pickedTone} purpose={use === null ? null : USE_PURPOSE[use]} taekil={taekil.kind === 'ready' ? taekil.data : null} toneLabel={toneLabel(pickedTone)} /> : mode === 'pick' && use !== null ? <AppText variant="caption">{IF5_TEXT['SAJU.pick.tap']}</AppText> : null}
+        {picked ? <DayCard iso={picked} mode={mode} tone={pickedTone} purpose={use === null ? null : USE_PURPOSE[use]} taekil={taekil.kind === 'ready' ? taekil.data : null} toneLabel={toneLabel(pickedTone)} together={together} /> : mode === 'pick' && use !== null ? <AppText variant="caption">{IF5_TEXT['SAJU.pick.tap']}</AppText> : null}
 
         {mode === 'pick' && ai && use !== null && taekil.kind === 'ready' && taekil.data.days.length > 0 ? <PickAi ai={ai} purpose={USE_PURPOSE[use]} taekil={taekil.data} /> : null}
         {mode === 'pick' ? <AppText variant="caption">{IF5_TEXT['SAJU.pick.scope']}</AppText> : null}
@@ -299,7 +302,7 @@ function PickAi({ ai, purpose, taekil }: { ai: AiServices; purpose: string; taek
   return <AiBlock id="saju-pick" kind="taekil" svc={ai} buttonLabel={IF5_TEXT['SAJU.pick.ai']} facts={() => taekilFacts(purpose, taekil)} />;
 }
 
-function DayCard({ iso, mode, tone, purpose, taekil, toneLabel }: { iso: string; mode: 'cal' | 'pick'; tone: Tone | null; purpose: string | null; taekil: Taekil | null; toneLabel: string }) {
+function DayCard({ iso, mode, tone, purpose, taekil, toneLabel, together }: { iso: string; mode: 'cal' | 'pick'; tone: Tone | null; purpose: string | null; taekil: Taekil | null; toneLabel: string; together: 'both' | 'none' | null }) {
   const m = Number(iso.slice(5, 7));
   const d = Number(iso.slice(8, 10));
   const line = calendarLine(iso);
@@ -328,6 +331,11 @@ function DayCard({ iso, mode, tone, purpose, taekil, toneLabel }: { iso: string;
             </AppText>
           ))}
         </>
+      ) : null}
+      {together ? (
+        <AppText variant="body" testID="saju-cal-day-together">
+          {together === 'both' ? IF5_TEXT['SAJU.pick.partner.bothCard'] : IF5_TEXT['SAJU.pick.partner.noMark']}
+        </AppText>
       ) : null}
       {tone === null && mode === 'pick' ? <AppText variant="caption">{IF5_TEXT['SAJU.pick.hint']}</AppText> : null}
     </View>

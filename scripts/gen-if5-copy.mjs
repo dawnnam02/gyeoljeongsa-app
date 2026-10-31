@@ -18,7 +18,7 @@ export const IF5_COPY_FILE = path.join(appDir, 'src', 'content', 'if5Copy.ts');
 const COPY_DOC = process.env.CHECK_COPY_DOC ?? path.join(root, '마케팅', '카피.md');
 
 export const IF5_PREFIXES = ['SAJU', 'MILEAGE', 'REST_HINT'];
-export const IF5_KEY_COUNT = 334; // 318(24-2 ~ 24-11) + 24-15-1 새 키 12(IF5-F1b) + 24-16-1 새 키 2(M-F2) + F1c 새 키 2(윤달 SAJU.cal.day.lunarLeap · 충전 잠김 둘째 줄 MILEAGE.shop.lockedKeep)
+export const IF5_KEY_COUNT = 336; // 318(24-2 ~ 24-11) + 24-15-1 새 키 12(IF5-F1b) + 24-16-1 새 키 2(M-F2) + F1c 새 키 2(윤달 SAJU.cal.day.lunarLeap · 충전 잠김 둘째 줄 MILEAGE.shop.lockedKeep) + M-QF 새 키 2(◇ 날 카드 SAJU.pick.partner.bothCard · 표시 없는 날 카드 SAJU.pick.partner.noMark)
 
 const NL = String.fromCharCode(10);
 const cellsOf = (line) => {

@@ -1,4 +1,4 @@
-// 사주 마당 · 마일리지(IF5 · 카피 24장) 글의 앱 사본 — scripts/gen-if5-copy.mjs 가 마케팅/카피.md 24장에서 만든다(손으로 고치지 않는다). 334키.
+// 사주 마당 · 마일리지(IF5 · 카피 24장) 글의 앱 사본 — scripts/gen-if5-copy.mjs 가 마케팅/카피.md 24장에서 만든다(손으로 고치지 않는다). 336키.
 //  · 무료 층(F1)은 MILEAGE.* · SAJU.talk.* · REST_HINT.* · SAJU.card.aiButton 계열을 부르지 않는다 — 그 글은 마일리지 · AI 맞춤(F2)이 부른다. 아직 어느 화면도 안 부르는 키는 '앱 반영 전'(F1b 몫 포함).
 //  · 글이 {…} 하나뿐인 키(값 틀)는 AI 라이브러리 · 서버 값이 들어오는 자리다. 화면은 이 틀 대신 값을 쓴다.
 //  · check:copy IF5 그룹이 24장 표와 한 글자씩 대조한다. 이 파일은 check:copy 가 Node 로 바로 읽으므로 경로 별칭 없이 홀로 선다
@@ -342,9 +342,11 @@ export const IF5_TEXT = {
   'SAJU.input.minUnit': '{n}분',
   'SAJU.life.age': '{n}세',
   'SAJU.pick.partner.toggle': '상대와 함께 보기',
-  'SAJU.pick.partner.hint': '상대 생일을 넣었을 때만 쓸 수 있어요. 두 사람 모두 그날의 글자와 부딪히지 않고 쉬어 가는 날도 아닌 날을 달력에 표시해요.',
-  'SAJU.pick.partner.both': '함께 무난한 날',
+  'SAJU.pick.partner.hint': '상대 생일을 넣었을 때만 쓸 수 있어요. 두 사람 모두 그날의 글자와 부딪히지 않고 쉬어 가는 날도 아닌 날을 둘 다 편한 날로 달력에 표시해요.',
+  'SAJU.pick.partner.both': '둘 다 편한 날',
   'SAJU.pick.partner.need': '함께 보려면 상대 생일을 먼저 넣어 주세요.',
+  'SAJU.pick.partner.bothCard': '두 사람 모두 그날의 글자와 부딪히지 않는 날이에요.',
+  'SAJU.pick.partner.noMark': '함께 보기에서는 표시가 없는 날이에요.',
   'SAJU.cal.day.lunarLeap': '음력 윤{월}월 {일}일',
   'MILEAGE.shop.locked': '최근 스토어 환불이 여러 번 있어서 지금은 충전이 멈춰 있어요.',
   'MILEAGE.shop.lockedKeep': '가진 마일리지는 그대로 쓸 수 있어요.',
