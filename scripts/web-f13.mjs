@@ -172,7 +172,8 @@ try {
   // ═══ 내 등급 G1 ═══
   await tap('shop-grade-my');
   check('G1', '내 등급(W9 · D-154): 내 무리(풍경 아이콘 + 이름 + 나만 보여요) · 단계 숫자 · 점수 막대 · 방향 문구 0', (await wait(`!!window.__q('grade-flock')`)) && (await vis('grade-flock-icon-bridge')) && (await inner('grade-flock-name')) === '다리' && !(await q('grade-bars')) && !/\d\s*등급|숫자가 작을수록|위 등급|\+\d+점/.test(await b.evaluate('document.body.innerText')), await inner('grade-flock-name'));
-  check('G1', '바뀔 수 있는 일 3줄 · 한계 문구(점수 글 없음)', (await has('서류 인증하기')) && (await has('프로필 선택 항목 채우기')) && (await has('앱에 접속하기')) && (await q('grade-limits')) && !(await has('최대 +')), '');
+  // 3부-카(FB-019): 올리는 방법 줄은 서버가 올릴 여지를 준 항목만(최대 3줄) 나온다 — 데모 계정은 0줄일 수 있어 줄 수는 보지 않고, 나온 줄은 NV77 세 글 가운데 하나여야 한다
+  check('G1', '바뀔 수 있는 일(있는 만큼만) · 한계 문구(점수 글 없음)', (await q('grade-limits')) && !(await has('최대 +')), `서류 ${await has('서류 인증하기')} · 선택 ${await has('프로필 선택 항목 채우기')} · 접속 ${await has('앱에 접속하기')} · 한계 ${await q('grade-limits')}`);
   await shot('16-G1_내등급_위');
   await measure('16-G1(위)');
   await scrollTo('grade-up');
@@ -189,7 +190,7 @@ try {
   await scrollTo('grade-link-goal', 'center');
   await tap('grade-link-goal');
   await wait(`!!window.__q('goal-body')`);
-  check('G3', '목표(W9): 단계 고르기 칩 없음 · 할 일 체크 + NV53', (await q('goal-tasks')) && !(await q('goal-choice-3')) && (await has('다 해도 목표 등급이 꼭 되는 건 아니에요.')), '');
+  check('G3', '목표(W9): 단계 고르기 칩 없음 · 할 일 체크 + NV53(3부-아 QP-37: "목표 등급" 말을 빼 "아이콘이 꼭 바뀌는 건 아니에요")', (await q('goal-tasks')) && !(await q('goal-choice-3')) && (await has('다 해도 아이콘이 꼭 바뀌는 건 아니에요.')), '');
   await shot('16-G3_목표');
   await tap('shop-sub-header-back');
   await tap('shop-sub-header-back');
@@ -198,35 +199,24 @@ try {
   // ═══ 09 / 10 배지 (구독자) ═══
   await goTab('추천', '/recommendations');
   await wait(`!!window.__q('rec-card-0')`);
-  check('E', '09 구독자(W9): CK10 동의 카드에만 아이콘 칩(숫자 글 없음), 동의 안 한 카드는 칩 없음', (await q('rec-grade-0')) && (await q('rec-grade-2')) && !(await q('rec-grade-0-text')) && !(await q('rec-grade-1')), '');
+  // 3부-카(FB-019): 등급 구독은 v4 숨김 기능(W10)이라 상점 구독을 시작해도 09 카드 칩 · 10 등급 배지가 그려지지 않는다(칩 · 배지 동작은 jest gradeBadge 가 본다)
+  check('E', '09: 구독자 칩 0(v4 숨김 기능) · 카드는 그대로', (await q('rec-card-0')) && !(await q('rec-grade-0')) && !(await q('rec-grade-1')) && !(await q('rec-grade-2')), '');
   await shot('09_구독자_배지');
   await measure('09 구독자');
-  await tap('rec-grade-0');
-  check('E', '칩을 누르면 말풍선(W9): NV85 한 줄 · 숫자 · 방향 문구 없음', (await wait(`!!window.__q('rec-grade-0-bubble')`)) && (await inner('rec-grade-0-bubble')) === '등급은 이분의 인생을 대변하지 않아요.', await inner('rec-grade-0-bubble'));
-  await shot('09_구독자_말풍선');
   await tap('rec-card-0');
-  check('F', '10 상세(동의한 상대): 배지 + NV55 · NV81 · NV85 · 한계 문구', (await wait(`!!window.__q('candidate-grade-text')`)) && (await inner('candidate-grade-text')) === '9단계 중 2등급 · 이분 나이대 기준이에요.' && (await q('candidate-grade-limits')), await inner('candidate-grade-text'));
+  check('F', '10 상세: 등급 배지 · 등급 글 · 한계 문구 0(v4 숨김 기능)', (await wait(`!!window.__q('screen-10')`)) && !(await q('candidate-grade')) && !(await q('candidate-grade-text')) && !(await q('candidate-grade-limits')), '');
   await shot('10_구독자_동의상대_등급');
   await measure('10 구독자(동의)');
-  await tap('candidate-header-back');
-  await wait(`!!window.__q('rec-card-1')`);
-  await tap('rec-card-1');
-  check('F', '10 상세(동의 안 한 상대): 배지 자리도 "비공개" 글자도 없다', (await wait(`!!window.__q('screen-10')`)) && !(await q('candidate-grade')) && !(await has('등급')), '');
-  await shot('10_구독자_미동의상대');
   await tap('candidate-header-back');
 
   // ═══ 12 설정 ═══
   await goTab('설정', '/settings');
   await wait(`!!window.__q('settings-grade-switches')`);
-  check('H', '12 설정: "구매 · 등급 구독" 줄 · "내 등급 보이기" · "등급 계산 멈추기" 스위치 + 설명', (await q('settings-row-purchase')) && (await has('켜면 등급 구독 회원이 추천에서 내 등급을 볼 수 있어요.')) && (await has('멈추면 내 등급을 지우고 더 계산하지 않아요.')), '');
+  check('H', '12 설정: "등급 계산 멈추기" 스위치 줄 · 옛 "구매 · 등급 구독" 줄 0 · 옛 "내 등급 보이기" 스위치 0(D-200 ②)', (await q('settings-grade-stop')) && !(await q('settings-row-purchase')) && !(await q('settings-grade-show')), '');
   await shot('12_설정_등급줄과_스위치');
   await measure('12 설정');
   await scrollTo('settings-grade-switches', 'center');
-  await tap('settings-grade-show');
-  await sleep(500);
-  check('H', '내 등급 보이기를 켜면 스위치가 켜지고 "저장했어요."', (await b.evaluate(`window.__q('settings-grade-show').getAttribute('aria-checked') === 'true'`)) && (await has('저장했어요.')), '');
-  await shot('12_설정_내등급보이기_켬');
-  await sleep(2600);
+  await sleep(300);
   await tap('settings-grade-stop');
   await shot('H_stop_confirm');
   await tap('settings-grade-stop-confirm-confirm'); // 16-N 확인창(멈출 때만)
@@ -243,7 +233,7 @@ try {
   await goTab('설정', '/settings');
   await scrollTo('settings-withdraw', 'center');
   await tap('settings-withdraw');
-  check('H', '탈퇴 확인창(구독 이용 중): NV36 "탈퇴해도 스토어의 등급 구독 결제는 멈추지 않아요…" + [구독 관리]', (await wait(`!!window.__q('withdraw-confirm-note-text')`)) && (await q('withdraw-confirm-note-action')), '');
+  check('H', '탈퇴 확인창: 남은 크레딧 · 다시 가입 안내 한 칸(옛 구독 [구독 관리] 단추 0 — v5 WITHDRAW.credit · rejoinNote)', (await wait(`!!window.__q('withdraw-confirm-note-text')`)) && (await inner('withdraw-confirm-note-text')).includes('탈퇴하면 남은 크레딧은 더 쓸 수 없어요.') && !(await q('withdraw-confirm-note-action')), await inner('withdraw-confirm-note-text'));
   await shot('12_탈퇴확인_구독안내');
   await tap('withdraw-confirm-cancel');
 

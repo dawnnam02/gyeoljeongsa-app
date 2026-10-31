@@ -154,6 +154,11 @@ try {
   await tap('reveal-chat', 800);
   check('3', '[대화 시작하기] → 대화방', await wait(`location.pathname.startsWith('/chat/') && !!${visQ('chat-composer-input')}`, 10000), '');
   await sleep(600);
+  // 3부-카(FB-019): 막 열린 방은 D46 만남 장면(T4S)이 대화방 위를 덮는다 — [건너뛰기]로 장면을 걷은 뒤 글을 보낸다(장면 자체는 web-d46 이 본다)
+  if (await vis('chat-meet-skip')) {
+    await tap('chat-meet-skip', 600);
+    await wait(`!${visQ('chat-meet')}`, 4000);
+  }
   await b.type(sel('chat-composer-input'), '안녕하세요. 반가워요.');
   await moment('3', '첫 보낸 말풍선(보낸 쪽에서 걷힘)', () => tap('chat-composer-send', 0), ['3a_첫글_걷힘중', '3b_첫글', 200]);
   check('3', '첫 글이 보인다', await b.evaluate(`document.body.innerText.includes('안녕하세요. 반가워요.')`), '');

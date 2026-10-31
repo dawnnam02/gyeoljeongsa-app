@@ -69,7 +69,8 @@ const BANNED = ['운명의 짝', '별이 이어 준', '사주가 맞는 분', '�
 // 기내 서비스 자리(홈 블록 · 기내지 · 시트 · 대화방 칸) 글: 숫자 0 · 금지 낱말 0 · 느낌표 0 · 상대 이름(김OO 꼴) 0
 async function words(label, ids, { digits = true, partner = true } = {}) {
   const t = await b.evaluate(`${JSON.stringify(ids)}.map((id) => [...document.querySelectorAll('[data-testid="' + id + '"]')].filter((e) => window.__visible(e)).map((e) => e.innerText).join('\\n')).join('\\n')`);
-  const dig = digits ? (t.match(/[^\n]*\d[^\n]*/g) ?? []).slice(0, 3) : [];
+  // 3부-카: 날짜 글 '1월 14일'(창밖 하늘 · 도감 칸의 호 날짜 범위 — 카피 22장 {시작 날짜} · {끝 날짜}, 정책 PG-05 가 숫자 금지에서 날짜를 빼 둠)은 숫자로 세지 않는다
+  const dig = digits ? (t.replace(/\d{1,2}월 \d{1,2}일/g, '').match(/[^\n]*\d[^\n]*/g) ?? []).slice(0, 3) : [];
   const banned = BANNED.filter((w) => t.includes(w));
   const name = partner ? (t.match(/[가-힣]OO/g) ?? []) : [];
   check('7', `${label}: ${digits ? '숫자 0 · ' : ''}금지 낱말 0 · 느낌표 0${partner ? ' · 상대 이름 0' : ''}`, t.trim().length > 0 && dig.length === 0 && banned.length === 0 && name.length === 0 && !/[!！]/.test(t), `${dig.join(' | ')} ${banned.join(',')} ${name.join(',')}`.trim());

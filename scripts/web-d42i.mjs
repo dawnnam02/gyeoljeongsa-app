@@ -113,7 +113,8 @@ try {
 
   // ═══ 3. 채팅 빈 목록(가입 전에도 데모 목록이 열린다) ═══
   check('3', '/chat 가 열린다', await b.open('/chat', `!!window.__q('chat-row-0') || !!window.__q('chat-list-empty') || !!window.__q('chat-list-failed')`), '');
-  for (let n = 0; n < 6 && !(await b.evaluate(`!!${visQ('chat-list-empty')}`)); n++) {
+  // 3부-카(FB-019): 데모 장면이 여덟 가지(막 열린 방 · 상대가 먼저 … 방 없음)로 늘어 '방 없음'까지 일곱 번 눌러야 한다 — 아홉 번까지 본다
+  for (let n = 0; n < 9 && !(await b.evaluate(`!!${visQ('chat-list-empty')}`)); n++) {
     await tap('chat-demo-scene');
     await sleep(600);
   }

@@ -237,7 +237,8 @@ try {
   check('5', '09 위 데모 줄 "데모 · 끼리끼리: 내 등급 4 (누르면 5)"', (await wait(`!!${visQ('kin-demo')}`, 6000)) && (await visText('kin-demo')) === '데모 · 끼리끼리: 내 등급 4 (누르면 5)', await visText('kin-demo'));
   const k4 = await heads(3);
   check('5', "'나' 4: 나보다 위(이OO 3) → 같은 등급(문OO 4) → 한 단계 아래(장OO 5) — 같은 등급 가까운 분만", startsAll(k4, ['이OO · 31 · 서울 서초', '문OO · 32 · 서울 마포', '장OO · 37 · 부산 해운대']), k4.join(' / '));
-  check('5', '구독자 칩은 지금 규칙대로(동의한 분만, W9: 아이콘만 · 숫자 글 0): 이OO · 문OO 칩 · 장OO 은 칩 없음', (await vis('rec-grade-0')) && (await vis('rec-grade-1')) && !/\d/.test(await visText('rec-grade-0')) && !(await vis('rec-grade-2')), `${await visText('rec-grade-0')} / ${await visText('rec-grade-1')}`);
+  // 3부-카(FB-019): 등급 구독은 v4 숨김 기능(W10)이라 16 상점을 거치지 않은 계정은 구독자가 아니다 — 09 카드에 등급 아이콘 칩 0(칩은 구독자 + 상대 CK10 동의일 때만 · 칩 동작 자체는 jest gradeBadge 가 본다)
+  check('5', '09 카드에 등급 아이콘 칩 없음(구독자 칩은 v4 숨김 기능 — 이 계정은 구독자가 아님): 이OO · 문OO · 장OO 모두 칩 0', !(await vis('rec-grade-0')) && !(await vis('rec-grade-1')) && !(await vis('rec-grade-2')), `${await visText('rec-grade-0')} / ${await visText('rec-grade-1')}`);
   const pk = await allPhotos([
     ['rec-photo-0', 'p17_face'],
     ['rec-photo-1', 'p18_face'],

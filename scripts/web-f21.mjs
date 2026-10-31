@@ -252,24 +252,21 @@ try {
   const fadeMin = await b.evaluate('window.__minOp');
   const fadeMoved = await b.evaluate('window.__moved');
   if (reduced) check('7', '동작 줄이기: 두 번째 방문 탭 넘김도 화면 이동 0 · 바로 또렷함(Reanimated ReduceMotion.System 이 페이드를 건너뜀)', fadeMoved === 0 && (await effOp('screen-11')) > 0.99, `가장 흐린 투명도 ${Number(fadeMin).toFixed(2)} · 이동 ${fadeMoved}`);
-  else check('7', '두 번째 방문부터 탭 넘김 = 페이드 스루(흐리게 시작해 또렷해짐 · 화면 이동 0)', fadeMin < 0.5 && fadeMoved === 0 && (await effOp('screen-11')) > 0.99, `가장 흐린 투명도 ${Number(fadeMin).toFixed(2)} · 이동 ${fadeMoved}`);
+  // 3부-카(FB-019): D42 이후 탭 넘김(Screen enter='tab')은 투명도 + 4 아래에서 올라오는 움직임이다(components/Screen.tsx tab.in) — '이동 0' 이 아니라 흐리게 시작해 또렷해지는지만 본다(이동 요소 수는 참고로 적음)
+  else check('7', '두 번째 방문부터 탭 넘김 = 페이드 스루(흐리게 시작해 또렷해짐 · 4 아래에서)', fadeMin < 0.5 && (await effOp('screen-11')) > 0.99, `가장 흐린 투명도 ${Number(fadeMin).toFixed(2)} · 이동한 요소 ${fadeMoved}(참고)`);
 
   // ═══ 8. 설정: 스위치 ═══
   await b.click(`[role=tab][aria-label="설정"]`);
   await wait(`location.pathname === '/settings' && !!window.__q('settings-rows')`);
   await sleep(600);
   await shot('12_설정');
-  await b.evaluate(`window.__q('settings-grade-show')?.scrollIntoView({ block: 'center' })`);
+  // 3부-카(FB-019): v5(D-200 ②)의 12 에는 옛 '등급 보이기' 스위치(settings-grade-show)가 없고 '등급 계산 멈추기'(settings-grade-stop)만 있다 — 줄이 보이고 켜짐 상태 속성이 있는지만 본다(누르면 확인 시트가 열려 손잡이 움직임은 web-f13 쪽 몫)
+  await b.evaluate(`window.__q('settings-grade-stop')?.scrollIntoView({ block: 'center' })`);
   await sleep(300);
-  check('8', '12 등급 스위치 줄이 있다', await vis('settings-grade-show'), '');
-  if (await vis('settings-grade-show')) {
-    const before = await b.evaluate(`document.querySelector('${sel('settings-grade-show')}').getAttribute('aria-checked')`);
-    await tap('settings-grade-show');
-    await sleep(80);
-    await shot('12_스위치_움직임중');
-    await wait(`document.querySelector('${sel('settings-grade-show')}').getAttribute('aria-checked') !== '${before}'`, 5000);
-    await sleep(500);
-    check('8', '스위치: 누르면 켜짐 · 꺼짐이 바뀌고 손잡이가 끝까지 간다', (await b.evaluate(`document.querySelector('${sel('settings-grade-show')}').getAttribute('aria-checked')`)) !== before, before);
+  check('8', '12 등급 스위치 줄(등급 계산 멈추기)이 있다', await vis('settings-grade-stop'), '');
+  if (await vis('settings-grade-stop')) {
+    const state = await b.evaluate(`document.querySelector('${sel('settings-grade-stop')}').getAttribute('aria-checked')`);
+    check('8', '스위치: 켜짐 · 꺼짐 상태 속성이 있다', state === 'true' || state === 'false', String(state));
   }
   check('8', '12 주 버튼 1개 이하', (await primaries()) <= 1, `${await primaries()}`);
   await measure('12 설정');

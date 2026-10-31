@@ -219,7 +219,7 @@ try {
   await shot('W8_01_정치_동의전');
   await layoutOk('정치성향');
   await tap('v2-next');
-  check('W8', '동의 전 [다음] → 이유 한 줄 · 서버 저장 0', (await text('v2-pol-reason')) === '동의해야 답을 저장할 수 있어요.' && (await peek())[0]?.ck15 === false && (await peek())[0]?.politicsSet === false, await text('v2-pol-reason'));
+  check('W8', '동의 전 [다음] → 이유 한 줄 · 서버 저장 0', (await text('v2-pol-reason')) === '동의 칸을 눌러야 답을 저장할 수 있어요.' && (await peek())[0]?.ck15 === false && (await peek())[0]?.politicsSet === false, await text('v2-pol-reason'));
   await tap('v2-pol-check');
   const TRACK = `[...document.querySelectorAll('[data-testid="v2-pol-slider-track"]')].find((e) => window.__visible(e))`;
   const sliderInfo = () => b.evaluate(`(() => { const el = ${TRACK}; return el ? { role: el.getAttribute('role'), tab: el.getAttribute('tabindex'), vt: el.getAttribute('aria-valuetext'), label: el.getAttribute('aria-label'), dis: el.getAttribute('aria-disabled') } : null; })()`);

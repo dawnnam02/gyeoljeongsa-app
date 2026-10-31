@@ -50,7 +50,8 @@ const q = (id) => b.evaluate(`!!window.__q(${JSON.stringify(id)})`);
 const inner = (id) => b.evaluate(`(window.__q(${JSON.stringify(id)})?.innerText ?? '').replace(/\\s+/g, ' ').trim()`);
 const path0 = () => b.evaluate('location.pathname + location.search');
 const peek = () => b.evaluate('JSON.stringify(window.__surveyLitePeek ? window.__surveyLitePeek() : null)').then(JSON.parse);
-const noScore = async () => !/등급|점수|순위표|퍼센트/.test(await text());
+// 3부-카(FB-019): 05 안내는 법무 5-4 문장 '…외모를 평가하거나 점수를 매기지 않아요.'(점수를 매기지 않겠다는 약속)를 싣는다 — 그 문장은 빼고 센다
+const noScore = async () => !/등급|점수|순위표|퍼센트/.test((await text()).replace(/외모를 평가하거나 점수를 매기지 않아요\./g, ''));
 
 async function measure(label) {
   const m = await b.evaluate('window.__metrics()');

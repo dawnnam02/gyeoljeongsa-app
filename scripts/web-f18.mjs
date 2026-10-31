@@ -2,7 +2,7 @@
 //  먼저 `npm run check:web:demo`(= 데모 모드 웹 번들 dist-demo/)를 만든 뒤 쓴다. 헤드리스 Edge 로 사람이 하는 순서대로 누른다.
 //  조건 1 (Q5A-04 · N1): 10 상대 프로필의 사진 번호 · 화살표는 승인 사진만 센다 — 박OO(승인 0 · 확인 중 3)은 '사진 1 / 3' · 다음 화살표 없이 기본 그림 + '사진 확인 중' 한 쪽,
 //                        김OO(승인 2 · 확인 중 1)은 '사진 1 / 2', 최OO(승인 1 · 없음 2)은 번호 없음
-//  조건 2 (Q5A-14 · N2): 09 → 10 → [등급 구독 안내 줄] → 등급 구독 상세 → ‹ = 10(주소 /candidate/…), 10 에서 ‹ = 09 · 12 → [구매 · 등급 구독] → 이용권 쪽 → ‹ = 12
+//  조건 2 (Q5A-14 · N2, 3부-카에서 v5 로 바꿈): 등급 구독은 v4 숨김 기능이라 10 에 [등급 구독 안내 줄] 0 · 10 에서 ‹ = 09 · 12 에 옛 [구매 · 등급 구독] 줄 0 · '크레딧 · 구매 내역' 줄 있음
 //  캡처: 확인/스크린샷/[SHOT_SUBDIR]/F18_*.png · 폭은 SHOT_WIDTH(기본 390)
 // 사용: node scripts/web-f18.mjs [번들 폴더]   (npm run check:f18)
 // 종료 코드: 0 통과 · 1 실패 · 2 번들이나 브라우저가 없어 못 봄(미확인)
@@ -114,30 +114,16 @@ try {
   await sleep(700);
   check('1', `다음을 누르면 '사진 2 / 2', 끝이라 다음 화살표 없음`, (await visText('candidate-photo-index')) === '사진 2 / 2' && !(await vis('candidate-photo-next')), await visText('candidate-photo-index'));
 
-  // ═══ 조건 2: 10 → 등급 구독 상세 → ‹ = 10 ═══
-  await b.evaluate(`(() => { document.querySelectorAll('[data-testid="candidate-grade-subscribe"]').forEach((el) => el.scrollIntoView({ block: 'center' })); return true; })()`);
-  await sleep(400);
-  await tap('candidate-grade-subscribe');
-  check('2', '10 의 등급 구독 안내 줄 → 상점 등급 구독 상세(/shop)', (await wait(`location.pathname === '/shop' && !!window.__q('shop-page-product')`)) && (await vis('shop-sub-header-back')), await path0());
-  await shot('16-2_10에서연_상세');
-  await tap('shop-sub-header-back');
-  const afterBack = (await wait(`location.pathname === '/candidate/demo-cand-1'`)) ? await path0() : await path0();
-  await sleep(500);
-  check('2', '상세의 ‹ → 10 으로 돌아온다(09 아님) · 10 은 누르기 전 스크롤 자리 그대로', afterBack === '/candidate/demo-cand-1' && (await vis('candidate-header-back')) && (await vis('candidate-grade-subscribe')), afterBack);
-  await shot('10_뒤로_돌아옴');
+  // ═══ 조건 2(v5 · 3부-카 FB-019): 등급 구독은 v4 숨김 기능 — 10 의 등급 구독 안내 줄 · 12 의 [구매 · 등급 구독] 줄이 없다. 그 길의 ‹ 동작은 시험하지 않는다(구독 화면 자체가 숨김) ═══
+  await b.evaluate(`document.querySelectorAll('[data-testid="candidate-header-back"]').forEach((el) => el.scrollIntoView({ block: 'start' }))`);
+  check('2', '10 에 등급 구독 안내 줄이 없다(v4 숨김 기능)', !(await vis('candidate-grade-subscribe')), '');
   await tap('candidate-header-back');
-  check('2', '10 에서 ‹ 한 번 더 → 09(쌓인 화면이 남지 않음)', (await wait(`location.pathname === '/recommendations'`)) && (await vis('rec-card-0')), await path0());
-
-  // ═══ 조건 2: 12 → 이용권 쪽 → ‹ = 12 ═══
+  check('2', '10 에서 ‹ → 09(쌓인 화면이 남지 않음)', (await wait(`location.pathname === '/recommendations'`)) && (await vis('rec-card-0')), await path0());
   await b.click(`[role=tab][aria-label="설정"]`);
   await wait(`location.pathname === '/settings'`);
   await sleep(400);
-  await tap('settings-row-purchase');
-  check('2', '12 [구매 · 등급 구독] → 상점 이용권 · 구매 내역 쪽', await wait(`location.pathname === '/shop' && !!window.__q('shop-page-inventory')`), await path0());
-  await shot('16-8_12에서연_이용권');
-  await tap('shop-sub-header-back');
-  check('2', '이용권 쪽의 ‹ → 12 로 돌아온다(09 아님)', (await wait(`location.pathname === '/settings'`)) && (await vis('settings-row-purchase')), await path0());
-  await shot('12_뒤로_돌아옴');
+  check('2', "12 에 옛 [구매 · 등급 구독] 줄이 없고 '크레딧 · 구매 내역' 줄이 있다", !(await vis('settings-row-purchase')) && (await vis('settings-row-credits')), await path0());
+  await shot('12_구매줄_v5');
 
   const errors = b.errors.filter((e) => !/favicon/.test(e));
   check('3', '콘솔 오류 · 예외 0', errors.length === 0, errors.slice(0, 3).join(' | '));
