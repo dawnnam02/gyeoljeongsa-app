@@ -1,6 +1,8 @@
 // IF5-F1(사주 마당 · 마일리지): 화면 글의 앱 사본을 만든다. 읽기는 마케팅/카피.md 24장, 쓰기는 src/content/if5Copy.ts 하나.
 //  · 24장 24-2 ~ 24-11 표 가운데 첫 칸 끝에 키(`SAJU.…` · `MILEAGE.…` · `REST_HINT.…`)가 있는 줄의 둘째 칸 글을 한 글자도 바꾸지 않고 옮긴다(마크다운 ** · ` 만 걷음). 318키
-//  · 24-15-2 표의 새 글은 같은 키를 덮는다(SAJU.status.balanceFailed 마침표 — 앱과 같은 커밋). 24-15-1 의 새 키 12 는 F1b 에서 키 수 330 으로 더한다
+//  · 24-15-2 표의 새 글은 같은 키를 덮는다(SAJU.status.balanceFailed 마침표 — 앱과 같은 커밋)
+//  · IF5-F1b: 24-15-1 표의 새 키 12(네 기둥 칸 이름 5 · {n}시 · {n}분 · {n}세 · 상대와 합쳐 보기 4)를 24-4 ~ 24-6 표 키와 똑같이 읽어 키 수 330 으로 더하고, 24-16-1(M-F2)의 `MILEAGE.shop.locked` · `SAJU.full.label` 둘로 332.
+//    카피 파일은 앱이 고치지 않으므로(마케팅 몫) 표를 24-4 ~ 24-6 으로 옮기는 일은 기다리지 않는다 — 마케팅이 옮겨도(같은 키 · 같은 글) 키 수는 그대로다
 //  · 24-12(금지어) · 24-13(디자인 시안 대응표 — 첫 칸이 '시안 `키`' 꼴) · 24-14 는 읽지 않는다
 //  · {…} 자리는 앱이 채운다(if5Copy.t5). 글이 {…} 하나뿐인 줄(40개)은 AI 라이브러리 · 서버 값이 들어오는 자리라 앱 글이 아니다 — 사본에는 틀 그대로 두되 화면은 값을 넣어 쓴다
 //  · F1(무료 층)이 쓰는 글과 F2(마일리지 · AI 맞춤 · 동의)가 쓰는 글이 한 사본에 있다. F2 몫 글은 F1 화면이 부르지 않는다(시험이 잡는다)
@@ -16,8 +18,9 @@ export const IF5_COPY_FILE = path.join(appDir, 'src', 'content', 'if5Copy.ts');
 const COPY_DOC = process.env.CHECK_COPY_DOC ?? path.join(root, '마케팅', '카피.md');
 
 export const IF5_PREFIXES = ['SAJU', 'MILEAGE', 'REST_HINT'];
-export const IF5_KEY_COUNT = 318;
+export const IF5_KEY_COUNT = 332; // 318(24-2 ~ 24-11) + 24-15-1 새 키 12(IF5-F1b) + 24-16-1 새 키 2(M-F2)
 
+const NL = String.fromCharCode(10);
 const cellsOf = (line) => {
   const t = line.trim();
   return t.slice(1, t.endsWith('|') ? -1 : undefined).split('|').map((c) => c.trim());
@@ -41,7 +44,20 @@ export function readRows(docPath = COPY_DOC) {
     if (c[1] === undefined) continue;
     rows.set(m[1], c[1].replace(/\*\*/g, '').replace(/`/g, ''));
   }
-  // 24-15-2(앱과 같은 커밋으로 바꿀 줄 — F2 첫 커밋): 이미 있는 키의 새 글만 덮는다. 24-15-1 의 새 키 12(F1b 몫)는 여기서 더하지 않는다(키 수 318 그대로)
+  // 24-15-1(IF5-F1b) 새 키 12 · 24-16-1(M-F2) 새 키 2: 앱 반영 전 꼴 절의 표를 24-4 ~ 24-10 표와 같게 읽는다. 이미 있는 키면(마케팅이 표로 옮긴 뒤) 글이 같아야 하고 키 수는 늘지 않는다
+  for (const [head, tail] of [[/^#### 24-15-1\. /m, /^#### 24-15-2\. /m], [/^#### 24-16-1\. /m, /^### 24-17\. |^## \d+\. /m]] ) {
+    const a = sec.search(head);
+    if (a < 0) continue;
+    const after = sec.slice(a + 5);
+    const b = after.search(tail);
+    for (const line of (b >= 0 ? after.slice(0, b) : after).split(NL)) {
+      if (!line.startsWith('| ')) continue;
+      const c = cellsOf(line);
+      const m = keyRe.exec(c[0] ?? '');
+      if (m && c[1] !== undefined) rows.set(m[1], c[1].replace(/\*\*/g, '').replace(/`/g, ''));
+    }
+  }
+  // 24-15-2(앱과 같은 커밋으로 바꿀 줄 — F2 첫 커밋): 이미 있는 키의 새 글만 덮는다
   const from2 = sec.search(/^#### 24-15-2\. /m);
   const to2 = sec.search(/^#### 24-15-3\. /m);
   if (from2 >= 0) {

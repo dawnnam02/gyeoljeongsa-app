@@ -18,8 +18,8 @@ const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const SRC_DIR = path.resolve(appDir, '..', 'ai', 'IF5', 'ts');
 export const AIT_SRC_DIR = path.resolve(appDir, '..', 'ai', 'AIT', 'ts');
 export const DEST_DIR = path.join(appDir, 'src', 'saju5');
-export const TS_FILES = ['saju_calc5.ts', 'fragments5.ts', 'names5.ts', 'check_text5.ts', 'rules5.ts', 'rules_extra5.ts', 'spec5.ts', 'mock5.ts']; // mock5 = 미리 만든 모의 글(지시문 · 요청 0) — 코드 없는 데모 글과 서버 모의 모드가 같이 쓴다
-export const DATA_FILES = ['data/jie5.json', 'data/sun5.json', 'data/fragments5.json', 'data/neutral_names5.json'];
+export const TS_FILES = ['saju_calc5.ts', 'fragments5.ts', 'names5.ts', 'check_text5.ts', 'rules5.ts', 'rules_extra5.ts', 'spec5.ts', 'mock5.ts', 'lunar5.ts', 'jijanggan5.ts']; // IF5-F1b: lunar5 = 음양력 바꾸기(1960 ~ 2051) · jijanggan5 = 숨은 글자(통설 표 · P0 가안) / mock5 = 미리 만든 모의 글(지시문 · 요청 0) — 코드 없는 데모 글과 서버 모의 모드가 같이 쓴다
+export const DATA_FILES = ['data/jie5.json', 'data/sun5.json', 'data/fragments5.json', 'data/neutral_names5.json', 'data/lunar5.json', 'data/jijanggan5.json'];
 export const AIT_FILES = ['ait/rules.ts', 'ait/text.ts', 'ait/types.ts'];
 /** IF5-F2 ⑯: AI 요청 쪽 서버 전용 모듈 — src/server/saju5 로 간다 */
 export const SERVER_DEST_DIR = path.join(appDir, 'src', 'server', 'saju5');

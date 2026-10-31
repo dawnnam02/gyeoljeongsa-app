@@ -1,4 +1,4 @@
-// 사주 마당 · 마일리지(IF5 · 카피 24장) 글의 앱 사본 — scripts/gen-if5-copy.mjs 가 마케팅/카피.md 24장에서 만든다(손으로 고치지 않는다). 318키.
+// 사주 마당 · 마일리지(IF5 · 카피 24장) 글의 앱 사본 — scripts/gen-if5-copy.mjs 가 마케팅/카피.md 24장에서 만든다(손으로 고치지 않는다). 332키.
 //  · 무료 층(F1)은 MILEAGE.* · SAJU.talk.* · REST_HINT.* · SAJU.card.aiButton 계열을 부르지 않는다 — 그 글은 마일리지 · AI 맞춤(F2)이 부른다. 아직 어느 화면도 안 부르는 키는 '앱 반영 전'(F1b 몫 포함).
 //  · 글이 {…} 하나뿐인 키(값 틀)는 AI 라이브러리 · 서버 값이 들어오는 자리다. 화면은 이 틀 대신 값을 쓴다.
 //  · check:copy IF5 그룹이 24장 표와 한 글자씩 대조한다. 이 파일은 check:copy 가 Node 로 바로 읽으므로 경로 별칭 없이 홀로 선다
@@ -333,6 +333,20 @@ export const IF5_TEXT = {
   'SAJU.status.sendFailed': '보내지 못했어요. 같은 말을 다시 보내 주세요. 마일리지는 쓰이지 않았어요.',
   'SAJU.status.balanceFailed': '마일리지를 불러오지 못했어요.',
   'SAJU.status.empty': '먼저 내 정보를 넣어 주세요',
+  'SAJU.pillars.col.year': '해',
+  'SAJU.pillars.col.month': '달',
+  'SAJU.pillars.col.day': '날',
+  'SAJU.pillars.col.hour': '시',
+  'SAJU.pillars.col.a11y': '{칸 이름} 기둥',
+  'SAJU.input.hourUnit': '{n}시',
+  'SAJU.input.minUnit': '{n}분',
+  'SAJU.life.age': '{n}세',
+  'SAJU.pick.partner.toggle': '상대와 합쳐 보기',
+  'SAJU.pick.partner.hint': '상대 생일을 넣었을 때만 쓸 수 있어요. 두 사람이 모두 쉬어 가는 날을 달력에 겹쳐 보여 줘요.',
+  'SAJU.pick.partner.both': '두 사람 모두 쉬어 가는 날',
+  'SAJU.pick.partner.need': '상대 생일을 먼저 넣어 주세요.',
+  'MILEAGE.shop.locked': '지금은 마일리지를 충전할 수 없어요.',
+  'SAJU.full.label': '사주 종합 풀이',
 } as const;
 
 export type If5Key = keyof typeof IF5_TEXT;
