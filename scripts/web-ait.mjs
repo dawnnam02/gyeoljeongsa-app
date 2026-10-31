@@ -117,7 +117,7 @@ try {
   await measure('고민 정리 입력 화면');
   await b.type(sel('concern-mine'), '요즘 상대의 답이 늦어져서 마음이 쓰여요');
   await b.click(sel('concern-send'));
-  check('D', '코드 없이 [보내기] → 코드를 넣으라는 안내(AIT_SET.rowLine) · /api/ai 요청 0', (await b.waitFor(`document.body.innerText.includes(${JSON.stringify(AIT['AIT_SET.rowLine'])})`)) && [...b.requests.values()].filter((r) => r.url.includes('/api/ai')).length === 0, '');
+  check('D', '코드 없이 [보내기] → 코드를 넣으라는 안내(AIT.noCode.concern) · /api/ai 요청 0', (await b.waitFor(`document.body.innerText.includes(${JSON.stringify(AIT['AIT.noCode.concern'])})`)) && [...b.requests.values()].filter((r) => r.url.includes('/api/ai')).length === 0, '');
   const bad = b.errors.filter((e) => !/Failed to load resource/.test(e));
   check('C', '콘솔 오류 · 예외 0', bad.length === 0, bad.slice(0, 3).join(' | '));
   const outside = [...b.requests.values()].filter((r) => !r.url.startsWith(b.origin) && !r.url.startsWith('data:'));

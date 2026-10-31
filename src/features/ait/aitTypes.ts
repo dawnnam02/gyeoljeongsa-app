@@ -9,7 +9,8 @@ export const AIT_CODES = ['auth', 'rate', 'spend_limit', 'limit', 'unavailable',
 export type AitCode = (typeof AIT_CODES)[number];
 export const isAitCode = (v: unknown): v is AitCode => typeof v === 'string' && (AIT_CODES as readonly string[]).includes(v);
 
-export type AitCard = { id: string; lines: string[]; options: ('continue' | 'end')[] };
+/** 고정 카드. lines 가 비어 있으면 화면은 카피 23-5 글을 카드 id 로 읽고, 가해 의도 카드 · 겹침 카드는 lines 를 그대로 그린다(IF5-QF2). also = 확정 줄을 덧붙인 다른 갈래 카드 id */
+export type AitCard = { id: string; lines: string[]; options: ('continue' | 'end')[]; also?: string[] };
 export type AitReply = { ok: boolean; code: AitCode; mode: 'mock' | 'live' | null; display: unknown; card: AitCard | null; bundle: unknown; retryAfterSec: number | null };
 
 /** 호출 결과: 서버가 답했거나(reply) 닿지 못했거나(offline — 정적 판 · 끊김 · 시간 초과 · 모양이 다른 답) */
@@ -20,9 +21,10 @@ const text = (v: unknown, max = 600): string | null => (typeof v === 'string' ? 
 
 export function parseCard(raw: unknown): AitCard | null {
   if (!isRecord(raw) || typeof raw.id !== 'string' || !Array.isArray(raw.lines) || !Array.isArray(raw.options)) return null;
-  const lines = raw.lines.filter((l): l is string => typeof l === 'string').map((l) => l.slice(0, 400)).slice(0, 8);
+  const lines = raw.lines.filter((l): l is string => typeof l === 'string').map((l) => l.slice(0, 400)).slice(0, 10);
   const options = raw.options.filter((o): o is 'continue' | 'end' => o === 'continue' || o === 'end');
-  return { id: raw.id.slice(0, 24), lines, options };
+  const also = Array.isArray(raw.also) ? raw.also.filter((a): a is string => typeof a === 'string').map((a) => a.slice(0, 24)).slice(0, 4) : [];
+  return also.length > 0 ? { id: raw.id.slice(0, 24), lines, options, also } : { id: raw.id.slice(0, 24), lines, options };
 }
 
 export function parseReply(raw: unknown): AitReply | null {

@@ -16,7 +16,7 @@ import { TextField } from '@/components/TextField';
 import { A11Y } from '@/content/copy';
 import { colors, radius, space } from '@/theme/tokens';
 
-import { AitAiLabel, AitCardView, AitConsentSheet, AitError, AitHead, AitLoading, AitNoCode, AitPaper, AitPrivacyLines, cardKind, isErrorCode, type AitErrorCode, type CardKind } from './AitParts';
+import { AitAiLabel, AitCardView, AitConsentSheet, AitError, AitHead, AitLoading, AitNoCode, AitPaper, AitPrivacyLines, cardView, isErrorCode, type AitErrorCode, type CardKind } from './AitParts';
 import { AIT_REST_AFTER_ANSWERS } from './aitConfig';
 import { postAit } from './aitClient';
 import { localPrecheckCard } from './localPrecheck';
@@ -28,7 +28,7 @@ export const ASKER_MAX = 600;
 export const PARTNER_MAX = 800;
 export const ALIAS_MAX = 20;
 
-type Item = { t: 'me'; text: string } | { t: 'partner'; text: string } | { t: 'ai'; d: AitChatDisplay } | { t: 'card'; kind: CardKind; options: ('continue' | 'end')[] };
+type Item = { t: 'me'; text: string } | { t: 'partner'; text: string } | { t: 'ai'; d: AitChatDisplay } | { t: 'card'; kind: CardKind; options: ('continue' | 'end')[]; lines?: readonly string[] | null; ends?: boolean };
 
 const KIND_KEY: Readonly<Record<string, AitKey>> = {
   problem_line: 'CONCERN.kind.problem_line',
@@ -152,11 +152,11 @@ function ChatBody({ onClose, onSettings, testID }: { onClose: () => void; onSett
         return;
       }
       if ((r.code === 'crisis' || r.code === 'refused_intent') && r.card) {
-        const kind = cardKind(r.card);
+        const view = cardView(r.card);
         setAsker('');
         setPartner(''); // 카드가 나온 턴의 글은 말풍선에도 입력 칸에도 남기지 않는다
-        if (!kind) return setError('unavailable');
-        setItems((xs) => [...xs.filter((x) => !(x.t === 'card' && x.kind === 'soft')), { t: 'card', kind, options: r.card?.options ?? [] }]);
+        if (!view) return setError('unavailable');
+        setItems((xs) => [...xs.filter((x) => !(x.t === 'card' && x.kind === 'soft')), { t: 'card', kind: view.kind, options: r.card?.options ?? [], lines: view.lines, ends: view.ends }]);
         return;
       }
       if (isErrorCode(r.code)) {
@@ -184,14 +184,14 @@ function ChatBody({ onClose, onSettings, testID }: { onClose: () => void; onSett
       if (!aitStore.get().code || !hasConsent(aitStore.get())) {
         const early = localPrecheckCard(`${asker}
 ${partner}`);
-        const kind = early ? cardKind(early) : null;
-        if (early && kind) {
+        const view = early ? cardView(early) : null;
+        if (early && view) {
           setAsker('');
           setPartner('');
           setError(null);
           setInputMsg(null);
           setNoCode(false);
-          setItems((xs) => [...xs.filter((x) => !(x.t === 'card' && x.kind === 'soft')), { t: 'card', kind, options: early.options }]);
+          setItems((xs) => [...xs.filter((x) => !(x.t === 'card' && x.kind === 'soft')), { t: 'card', kind: view.kind, options: early.options, lines: view.lines, ends: view.ends }]);
           return;
         }
       }
@@ -304,7 +304,7 @@ ${partner}`);
   }
 
   const lastCard = [...items].reverse().find((x) => x.t === 'card');
-  const closedByCard = lastCard?.t === 'card' && lastCard.kind === 'minor';
+  const closedByCard = lastCard?.t === 'card' && (lastCard.kind === 'minor' || lastCard.ends === true);
   return (
     <>
       <ScrollView ref={scroll} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: false })} testID={`${testID}-scroll`}>
@@ -385,7 +385,7 @@ function ItemView({ it, testID, onContinue, onEnd }: { it: Item; testID: string;
       </View>
     );
   }
-  if (it.t === 'card') return <AitCardView kind={it.kind} options={it.options} onContinue={onContinue} onEnd={onEnd} testID={testID} />;
+  if (it.t === 'card') return <AitCardView kind={it.kind} options={it.options} lines={it.lines} ends={it.ends} onContinue={onContinue} onEnd={onEnd} testID={testID} />;
   return <AiTurn d={it.d} testID={testID} />;
 }
 

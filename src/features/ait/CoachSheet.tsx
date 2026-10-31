@@ -12,7 +12,7 @@ import { FullSheet } from '@/components/FullSheet';
 import { TextField } from '@/components/TextField';
 import { space } from '@/theme/tokens';
 
-import { AitAiLabel, AitCardView, AitConsentSheet, AitError, AitHead, AitLoading, AitNoCode, AitPaper, AitPrivacyLines, cardKind } from './AitParts';
+import { AitAiLabel, AitCardView, AitConsentSheet, AitError, AitHead, AitLoading, AitNoCode, AitPaper, AitPrivacyLines, cardView } from './AitParts';
 import { ait, type AitKey } from './aitText';
 import { parseCoachDisplay, type AitCoachFinding } from './aitTypes';
 import { useAitRun } from './useAitRun';
@@ -57,9 +57,9 @@ function CoachBody({ onSettings, testID }: { onSettings: () => void; testID: str
   const busy = phase.k === 'loading';
   const cardNode = (() => {
     if (phase.k !== 'card') return null;
-    const kind = cardKind(phase.card);
-    return kind ? (
-      <AitCardView kind={kind} options={phase.card.options.filter((o) => o === 'end')} onEnd={reset} testID={`${testID}-card`} />
+    const view = cardView(phase.card);
+    return view ? (
+      <AitCardView kind={view.kind} lines={view.lines} ends={view.ends} options={phase.card.options.filter((o) => o === 'end')} onEnd={reset} testID={`${testID}-card`} />
     ) : (
       <AitError code="unavailable" onSettings={onSettings} testID={`${testID}-error`} />
     );

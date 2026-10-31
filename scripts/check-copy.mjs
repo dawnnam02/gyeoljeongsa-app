@@ -1253,6 +1253,19 @@ try {
       ['COACH.note', fx.COACH_NOTE], ['PAIR_AI.note', fx.COMPAT_NOTE], ['STAR_AI.footer', fx.FUN_FOOTER],
     ];
     for (const [k, s] of pairs) if (AT[k] !== s) diffsAit.push(`${k}: 서버 고정 문구와 다름`);
+    // IF5-QF2: 가해 의도 카드 · 겹침 위로 줄은 카피 23-13-4 표(생성기가 사본으로 안 옮김)와 서버 고정 카드가 한 글자씩 같아야 한다 — 화면은 고정 카드 줄을 그대로 그린다
+    {
+      const harm = genAit.readHarmRows();
+      const hc = fx.HARM_INTENT_CARD.lines;
+      const want = [['CONCERN_CARD.harm.title', hc[0]], ['CONCERN_CARD.harm.l1', hc[1]], ['CONCERN_CARD.harm.l2', hc[2]], ['CONCERN_CARD.harm.l3', hc[3]], ['CONCERN_CARD.harm.l4', hc[4]], ['CONCERN_CARD.bridge.violence', fx.BRIDGE_VIOLENCE], ['CONCERN_CARD.bridge.minor', fx.BRIDGE_MINOR]];
+      for (const [k, s] of want) {
+        const doc = AT[k] ?? harm.get(k);
+        if (doc === undefined) diffsAit.push(`${k}: 카피 23-13-4 표에서 못 찾음`);
+        else if (doc !== s) diffsAit.push(`${k}: 카피 "${doc.slice(0, 24)}" ≠ 서버 고정 카드 "${String(s).slice(0, 24)}"`);
+      }
+      if (hc.length !== 5 || hc.some((l) => /1366|이해하려고/.test(l))) diffsAit.push('가해 의도 카드: 줄 5개가 아니거나 1366 · 폭력 카드 4번째 줄이 들어 있음');
+      if (fx.VIOLENCE_CARD.lines.length !== 4) diffsAit.push('폭력 카드 4번째 줄이 바뀜');
+    }
     for (const [code, label] of Object.entries(chat.CHIP_LABEL)) if (AT[`CONCERN.chip.${code}`] !== label) diffsAit.push(`CONCERN.chip.${code}: 서버 칩 글과 다름`);
     // 서버 가안과 카피 확정이 아직 다른 줄(화면은 카피를 쓴다) — 실패가 아니라 참고
     const drift = [];

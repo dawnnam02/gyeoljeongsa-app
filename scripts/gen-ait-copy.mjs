@@ -56,6 +56,29 @@ export function readRows(docPath = COPY_DOC) {
   return { rows, noText, keyCount: seen.size };
 }
 
+/**
+ * IF5-QF2: 카피 23-13-4(가해 의도 카드 · 겹침 위로 줄) 표의 글 Map<키, 글>. 이 표는 생성기가 사본(aitCopy.ts)으로 옮기지 않는다 —
+ * 화면은 서버 고정 카드(src/server/ait/fixed.ts = 화면 쪽 사본 src/saju5/ait/fixed.ts)의 줄을 그대로 그리고, check:copy 가 그 줄을 이 표와 한 글자씩 대조한다.
+ * (마케팅이 표를 23-5로 옮기면 readRows 가 읽어 사본 키가 되고, 이 함수는 그 뒤에도 같은 키를 못 찾으면 빈 Map 을 준다.)
+ */
+export function readHarmRows(docPath = COPY_DOC) {
+  const text = fs.readFileSync(docPath, 'utf8').replace(/\r\n/g, '\n');
+  const from = text.search(/^#### 23-13-4\. /m);
+  const out = new Map();
+  if (from < 0) return out;
+  const rest = text.slice(from + 5);
+  const next = rest.search(/^#{2,4} /m);
+  const sec = text.slice(from, from + 5 + (next >= 0 ? next : rest.length));
+  for (const line of sec.split('\n')) {
+    if (!line.startsWith('| ')) continue;
+    const c = cellsOf(line);
+    const m = /`(CONCERN_CARD\.(?:harm|bridge)\.[A-Za-z0-9_.]+)`/.exec(c[0] ?? '');
+    if (!m || c[1] === undefined || c[1].startsWith('(')) continue;
+    out.set(m[1], c[1].replace(/\*\*/g, '').replace(/`/g, ''));
+  }
+  return out;
+}
+
 const q = (s) => `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 
 export function build({ rows, noText }) {

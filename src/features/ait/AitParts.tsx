@@ -18,6 +18,7 @@ import { alpha, colors, radius, space } from '@/theme/tokens';
 import { AIT_KEEP_NOTE_ON } from './aitConfig';
 import { ait, type AitKey } from './aitText';
 import type { AitCard, AitCode } from './aitTypes';
+import { cardEndsSession, cardLinesOverride } from './safetyCard';
 
 // ── 응답 코드 → 고정 글 (AIT.code.* · 서버 문장은 쓰지 않는다) ──────────────────────
 export const ERROR_CODES = ['auth', 'rate', 'spend_limit', 'limit', 'unavailable', 'too_long', 'bad_request', 'upstream', 'timeout', 'blocked_output'] as const;
@@ -124,10 +125,11 @@ export function AitError({ code, fallback = false, locked = false, onRetry, onRe
   );
 }
 
-// ── 고정 카드 (위기 · 폭력 · 거절 · 미성년 · 마침) — 카피 23-5 줄을 카드 id 로 고른다 ─────────────
+// ── 고정 카드 (위기 · 가해 의도 · 폭력 · 거절 · 미성년 · 마침) — 한 갈래 카드는 카피 23-5 줄을 카드 id 로 고르고, 가해 의도 카드 · 겹침 카드는 고정 카드의 줄을 그대로 그린다(safetyCard.ts · IF5-QF2) ─────────────
 const CARD_LINES: Readonly<Record<string, readonly AitKey[]>> = {
   crisis: ['CONCERN_CARD.crisis.l1', 'CONCERN_CARD.crisis.l2', 'CONCERN_CARD.crisis.l3', 'CONCERN_CARD.crisis.l4'],
   violence: ['CONCERN_CARD.violence.l1', 'CONCERN_CARD.violence.l2', 'CONCERN_CARD.violence.l3', 'CONCERN_CARD.violence.l4'],
+  harm_intent: [], // 줄은 고정 카드에서(카피 23-13-4 — 생성기가 읽는 23-5 표로 옮겨지면 키로 바꾼다)
   misuse: ['CONCERN_CARD.misuse.l1', 'CONCERN_CARD.misuse.l2'],
   minor: ['CONCERN_CARD.minor.l1', 'CONCERN_CARD.minor.l2'],
   session_end: ['CONCERN.end.body'],
@@ -135,28 +137,39 @@ const CARD_LINES: Readonly<Record<string, readonly AitKey[]>> = {
 /** 마음 힘듦 칩(state_4)을 골랐을 때 앞에 붙는 위로 한 줄 + 번호 줄(crisis.l2 그대로) */
 export const SOFT_CARD_LINES: readonly AitKey[] = ['CONCERN_CARD.soft.l1', 'CONCERN_CARD.crisis.l2'];
 
-export type CardKind = 'crisis' | 'violence' | 'misuse' | 'minor' | 'session_end' | 'soft';
+export type CardKind = 'crisis' | 'harm_intent' | 'violence' | 'misuse' | 'minor' | 'session_end' | 'soft';
 export const cardKind = (card: AitCard): CardKind | null => (Object.prototype.hasOwnProperty.call(CARD_LINES, card.id) ? (card.id as CardKind) : null);
 
-export function AitCardView({ kind, options, onContinue, onEnd, testID = 'ait-card' }: { kind: CardKind; options: readonly ('continue' | 'end')[]; onContinue?: () => void; onEnd?: () => void; testID?: string }) {
-  const keys = kind === 'soft' ? SOFT_CARD_LINES : CARD_LINES[kind];
+/** 카드 응답 → 그리는 값(종류 · 줄을 그대로 그릴지 · 세션을 마칠지). 알 수 없는 카드면 null */
+export function cardView(card: AitCard): { kind: CardKind; lines: readonly string[] | null; ends: boolean } | null {
+  const kind = cardKind(card);
+  return kind ? { kind, lines: cardLinesOverride(card), ends: cardEndsSession(card) } : null;
+}
+
+/**
+ * 카드 한 장. lines 가 있으면(가해 의도 카드 · 겹침 카드) 그 줄을 그대로 그린다 — 첫 줄이 가해 의도 카드의 제목(harm.title)이라 굵게.
+ * ends 면 미성년이 끼어 세션을 마치는 카드: [이어서 이야기하기] 0 · [닫기](CONCERN_CARD.minor.end)만.
+ */
+export function AitCardView({ kind, options, onContinue, onEnd, lines, ends = false, testID = 'ait-card' }: { kind: CardKind; options: readonly ('continue' | 'end')[]; onContinue?: () => void; onEnd?: () => void; lines?: readonly string[] | null; ends?: boolean; testID?: string }) {
+  const texts: readonly string[] = lines && lines.length > 0 ? lines : (kind === 'soft' ? SOFT_CARD_LINES : CARD_LINES[kind]).map((k) => ait(k));
+  const shown = ends ? options.filter((o) => o === 'end') : options;
   return (
-    <View style={styles.card} accessibilityLabel={ait('CONCERN.a11y.card', { 본문: keys.map((k) => ait(k)).join(' ') })} testID={`${testID}-${kind}`}>
-      {keys.map((k, i) => (
-        <AppText key={k} variant="body" testID={`${testID}-${kind}-l${i + 1}`}>
-          {ait(k)}
+    <View style={styles.card} accessibilityLabel={ait('CONCERN.a11y.card', { 본문: texts.join(' ') })} testID={`${testID}-${kind}`}>
+      {texts.map((t, i) => (
+        <AppText key={`${i}-${t}`} variant={kind === 'harm_intent' && i === 0 ? 'bodyBold' : 'body'} testID={`${testID}-${kind}-l${i + 1}`}>
+          {t}
         </AppText>
       ))}
-      {options.length > 0 ? (
+      {shown.length > 0 ? (
         <View style={styles.cardButtons}>
-          {options.includes('continue') && onContinue ? (
+          {shown.includes('continue') && onContinue ? (
             <View style={styles.flex}>
               <Button label={ait('CONCERN_CARD.option.continue')} variant="secondary" onPress={onContinue} testID={`${testID}-${kind}-continue`} />
             </View>
           ) : null}
-          {options.includes('end') && onEnd ? (
+          {shown.includes('end') && onEnd ? (
             <View style={styles.flex}>
-              <Button label={kind === 'minor' ? ait('CONCERN_CARD.minor.end') : ait('CONCERN_CARD.option.end')} variant="secondary" onPress={onEnd} testID={`${testID}-${kind}-end`} />
+              <Button label={kind === 'minor' || ends ? ait('CONCERN_CARD.minor.end') : ait('CONCERN_CARD.option.end')} variant="secondary" onPress={onEnd} testID={`${testID}-${kind}-end`} />
             </View>
           ) : null}
         </View>

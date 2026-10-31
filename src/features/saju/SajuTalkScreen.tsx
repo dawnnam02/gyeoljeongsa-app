@@ -15,10 +15,11 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextButton } from '@/components/TextButton';
 import { TextField } from '@/components/TextField';
 import { IF5_TEXT } from '@/content/if5Copy';
-import { AitCardView, cardKind } from '@/features/ait/AitParts';
+import { AitCardView, cardView } from '@/features/ait/AitParts';
 import { ait } from '@/features/ait/aitText';
 import type { AitCard } from '@/features/ait/aitTypes';
 import { localPrecheckCard } from '@/features/ait/localPrecheck';
+import { cardEndsSession } from '@/features/ait/safetyCard';
 import { Ck17dSheet, Ck19Sheet } from '@/features/consent/If5ConsentSheets';
 import { useIf5Consent } from '@/features/consent/if5Consent';
 import { Footnote } from '@/features/inflight/If2Parts';
@@ -161,13 +162,13 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
   const takeCard = (card: AitCard, newBundle?: unknown): void => {
     reqId.current = null;
     if (newBundle) bundle.current = newBundle;
-    const n = card.id === 'crisis' ? crisis + 1 : crisis;
+    const n = card.id === 'crisis' || card.id === 'harm_intent' ? crisis + 1 : crisis; // 가해 의도 카드도 위기 카드처럼 횟수에 센다(차감 0)
     const next = [...msgs, { id: seq.current++, role: 'card' as const, text: '', card }];
     setText('');
     setNotice('none');
     setLow(null);
     setCrisis(n);
-    const close = n >= CRISIS_CLOSE_AT || card.id === 'minor';
+    const close = n >= CRISIS_CLOSE_AT || cardEndsSession(card); // 미성년이 한 갈래라도 끼면(겹침 포함) 세션을 마친다
     if (close) setClosed(true);
     setMsgs(next);
     saveSession({ msgs: next, crisis: n, closed: close });
@@ -387,11 +388,11 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
 }
 
 function CardRow({ card, last, closed, onContinue, onRestart }: { card: AitCard; last: boolean; closed: boolean; onContinue: () => void; onRestart: () => void }) {
-  const kind = cardKind(card);
-  if (!kind) return null;
+  const view = cardView(card);
+  if (!view) return null;
   return (
     <View style={styles.gap} testID={`saju-talk-card-${card.id}`}>
-      <AitCardView kind={kind} options={last && !closed ? card.options.filter((o) => o === 'continue') : []} onContinue={onContinue} testID="saju-talk-cardview" />
+      <AitCardView kind={view.kind} lines={view.lines} ends={view.ends} options={last && !closed ? card.options.filter((o) => o === 'continue') : []} onContinue={onContinue} testID="saju-talk-cardview" />
       {last && closed ? (
         <View style={styles.gap} testID="saju-talk-closed">
           <AitCardView kind="session_end" options={[]} testID="saju-talk-end-card" />
