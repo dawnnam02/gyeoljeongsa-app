@@ -24,7 +24,8 @@ function walk(dir: string): string[] {
 }
 
 // 시험 파일은 검사 대상이 아니다(규칙 글자를 시험 코드에 적어야 하므로).
-const appSources = walk(SRC_DIR).filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`));
+// AIT-F: src/server/ait 의 원본 복사본(ai/AIT/ts — 등급 낱말 사전 · 금지어 목록이 든다)은 scripts/sync-ait.mjs 동기 검사와 aitServer 시험이 따로 본다. 앱이 쓴 route.ts 는 그대로 검사한다.
+const appSources = walk(SRC_DIR).filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`) && !(file.includes(`${path.sep}server${path.sep}ait${path.sep}`) && path.basename(file) !== 'route.ts'));
 
 type AppJson = {
   expo: {
@@ -221,9 +222,9 @@ describe('보안 점검표 E-01 · F-01 · E-02', () => {
     expect(ignore).toEqual(expect.arrayContaining(['node_modules/', '.env', '.env.*', '!.env.example']));
   });
 
-  test('로그는 safeLog 하나로만: console 은 src/lib/log.ts 에만 있다', () => {
+  test('로그는 safeLog 하나로만: console 은 src/lib/log.ts 와 서버 함수 로그 출구(server/ait/route.ts 의 sink 한 곳)에만 있다', () => {
     const hits = appSources.filter((file) => /\bconsole\./.test(fs.readFileSync(file, 'utf8')));
-    expect(hits.map((file) => path.relative(SRC_DIR, file).split(path.sep).join('/'))).toEqual(['lib/log.ts']);
+    expect(hits.map((file) => path.relative(SRC_DIR, file).split(path.sep).join('/'))).toEqual(['lib/log.ts', 'server/ait/route.ts']); // AIT-F: 서버 함수 로그는 허용 키만 든 JSON 한 줄(logRecord) — 시험 aitServer 가 한 곳뿐임을 센다
   });
 });
 

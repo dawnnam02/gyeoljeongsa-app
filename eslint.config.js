@@ -51,6 +51,11 @@ module.exports = defineConfig([
     rules: { 'no-restricted-imports': 'off' },
   },
   {
+    // AIT-F ②: src/server/ait 의 파일은 ai/AIT/ts 원본을 scripts/sync-ait.mjs 로 그대로 복사한 것이라 앱 쪽 스타일 규칙을 걸지 않는다(원본 수정 0 — 고칠 게 있으면 AI 직원에게 넘김)
+    files: ['src/server/ait/**/*.ts'],
+    rules: { 'import/export': 'off', '@typescript-eslint/array-type': 'off' },
+  },
+  {
     files: ['scripts/**/*.mjs'],
     rules: { 'no-console': 'off' },
   },

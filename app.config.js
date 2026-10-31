@@ -14,8 +14,13 @@ module.exports = ({ config }) => {
   const plugins = [...(config.plugins ?? [])];
   if (!plugins.some((p) => (Array.isArray(p) ? p[0] : p) === 'expo-audio')) plugins.push(['expo-audio', { microphonePermission: MIC }]);
   if (!plugins.some((p) => (Array.isArray(p) ? p[0] : p) === 'expo-image-picker')) plugins.push(['expo-image-picker', { photosPermission: photo, cameraPermission: camera, microphonePermission: false }]);
+  // AIT-F ①: 실제 AI 시험 연결(서버 함수 /api/ai/*)은 서버 출력 판에서만 켜진다. 기본은 app.json 의 정적 데모 출력(web.output 'single') 그대로다.
+  //  서버 판은 AIT_SERVER_EXPORT=1 로 따로 만든다(scripts/export-ait.mjs · npm run check:web:ait). 이 값은 켬/끔 표시일 뿐 비밀이 아니다 — 열쇠는 서버 변수에서만 읽는다.
+  const web = process.env.AIT_SERVER_EXPORT === '1' ? { ...config.web, output: 'server' } : config.web;
+
   return {
     ...config,
+    web,
     ios: { ...config.ios, infoPlist: { ...config.ios?.infoPlist, NSMicrophoneUsageDescription: MIC } },
     plugins,
   };
