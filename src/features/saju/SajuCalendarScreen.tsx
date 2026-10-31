@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   weekRow: { flexDirection: 'row' },
   cell: { flex: 1, minHeight: size.touchMin, textAlign: 'center' },
-  day: { alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, gap: 2 },
+  day: { alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, gap: space.s4 },
   good: { backgroundColor: colors.accent },
   onAccent: { color: colors.onAccent },
   legendGood: { width: 20, height: 20, borderRadius: radius.sm, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },

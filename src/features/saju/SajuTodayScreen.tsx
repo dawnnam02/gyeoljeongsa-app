@@ -21,9 +21,15 @@ import { sajuServices, type SajuDeps } from './sajuService';
 import { ErrorBlock, LoadingBlock, sajuStyles } from './SajuParts';
 import { useCk17, useSajuData } from './useSajuData';
 
-export function SajuTodayScreen({ deps: injected, store: injectedStore }: { deps?: SajuDeps; store?: InputStore }) {
+export function SajuTodayScreen({ deps, store }: { deps?: SajuDeps; store?: InputStore }) {
+  return deps ? <Today svc={deps} store={store} /> : <TodayWithDefaults />;
+}
+function TodayWithDefaults() {
   const flags = useFeatureFlags();
-  const svc = useMemo(() => injected ?? { ...sajuServices(), isOn: flags.isOn }, [injected, flags.isOn]);
+  const svc = useMemo(() => ({ ...sajuServices(), isOn: flags.isOn }), [flags.isOn]);
+  return <Today svc={svc} />;
+}
+function Today({ svc, store: injectedStore }: { svc: SajuDeps; store?: InputStore }) {
   const router = useRouter();
   const store = injectedStore ?? inputStore();
   const input = useInputStore(store);

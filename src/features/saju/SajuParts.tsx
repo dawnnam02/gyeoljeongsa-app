@@ -47,6 +47,7 @@ export function SummaryCard({ id, label, sub, one, lines, more, children, labels
         <>
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={open ? IF5_TEXT['SAJU.card.less'] : IF5_TEXT['SAJU.card.more']}
             accessibilityState={{ expanded: open }}
             aria-expanded={open}
             onPress={() => setOpen(!open)}
@@ -80,7 +81,7 @@ export function FoldRow({ id, title, sub, children }: { id: string; title: strin
   const [open, setOpen] = useState(false);
   return (
     <View style={styles.fold} testID={id}>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} aria-expanded={open} onPress={() => setOpen(!open)} effect="none" style={({ pressed }) => [styles.foldHead, pressed && styles.pressed]} testID={`${id}-toggle`}>
+      <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ expanded: open }} aria-expanded={open} onPress={() => setOpen(!open)} effect="none" style={({ pressed }) => [styles.foldHead, pressed && styles.pressed]} testID={`${id}-toggle`}>
         <View style={styles.flex}>
           <AppText variant="bodyMedium">{title}</AppText>
           <AppText variant="caption">{sub}</AppText>

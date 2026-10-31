@@ -42,15 +42,19 @@ describe('스위치 키 한 목록(K19 2-5) · 앱이 87키를 읽는다', () =>
   const IF2_KEYS = ['inflight_home', 'inflight_mag', 'inflight_tarot', 'type_card', 'type_card_share', 'profile_preview', 'pre_answer', 'postcard', 'pair_card', 'pair_card_ai', 'same_points', 'values_talk', 'opener_chips', 'talk_depth', 'my_manual', 'together_q', 'word_safety', 'farewell', 'meet_prep', 'meet_memo'];
   // IF3-F(3부-카): 하늘 읽기 스위치 7 — 정책 PG-91 차례 · 서버 0046 과 같은 이름(live 꺼짐 · 데모 켜짐 · G-01 · 05 · 06 화면은 IF5-F, 이번엔 키만)
   const IF3_KEYS = ['read_guide', 'sky_week', 'sky_book', 'my_ways', 'three_pillars', 'meet_sky', 'birth_card'];
-  const k19 = () => FEATURE_KEY_LIST.filter((k) => !['K12', 'K15', 'V5', 'V6', 'R', 'D46', 'LG', 'IF2', 'IF3'].includes(k.group));
+  // IF5-F1(D-237): 사주 마당 · 마일리지 스위치 17 — 기획/IF5_스위치.md(서버 이름: saju_yard · mileage · mileage_charge — 0048) · live 꺼짐 · 데모 켜짐(saju_ai · saju_talk · mileage_charge 는 데모도 꺼짐)
+  const IF5_KEYS = ['saju_yard', 'saju_home', 'saju_reading', 'saju_season', 'saju_year', 'saju_calendar', 'saju_today', 'saju_pickday', 'saju_partner', 'pair_card_saju', 'saju_ai', 'saju_talk', 'mileage', 'mileage_spend', 'mileage_charge', 'mileage_gift', 'rest_hint'];
+  const k19 = () => FEATURE_KEY_LIST.filter((k) => !['K12', 'K15', 'V5', 'V6', 'R', 'D46', 'LG', 'IF2', 'IF3', 'IF5'].includes(k.group));
 
-  test('121키 = K12 9 · K15 3 · 새 키 75 · V5 3 · V6 1 · R 1 · D46 1 · LG 1 · IF2 20 · IF3 7, 이름은 겹치지 않고 snake_case', () => {
-    expect(FEATURE_KEYS).toHaveLength(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length + D46_KEYS.length + LG_KEYS.length + IF2_KEYS.length + IF3_KEYS.length);
-    expect(new Set(FEATURE_KEYS).size).toBe(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length + D46_KEYS.length + LG_KEYS.length + IF2_KEYS.length + IF3_KEYS.length);
+  test('138키 = K12 9 · K15 3 · 새 키 75 · V5 3 · V6 1 · R 1 · D46 1 · LG 1 · IF2 20 · IF3 7 · IF5 17, 이름은 겹치지 않고 snake_case', () => {
+    expect(FEATURE_KEYS).toHaveLength(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length + D46_KEYS.length + LG_KEYS.length + IF2_KEYS.length + IF3_KEYS.length + IF5_KEYS.length);
+    expect(new Set(FEATURE_KEYS).size).toBe(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length + D46_KEYS.length + LG_KEYS.length + IF2_KEYS.length + IF3_KEYS.length + IF5_KEYS.length);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'LG').map((k) => k.key)).toEqual(LG_KEYS);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'IF2').map((k) => k.key)).toEqual(IF2_KEYS);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'IF3').map((k) => k.key)).toEqual(IF3_KEYS);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'IF3').every((k) => k.live === false)).toBe(true); // 실서버 처음값은 모두 꺼짐
+    expect(FEATURE_KEY_LIST.filter((k) => k.group === 'IF5').map((k) => k.key)).toEqual(IF5_KEYS);
+    expect(FEATURE_KEY_LIST.filter((k) => k.group === 'IF5').every((k) => k.live === false)).toBe(true);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'R').map((k) => k.key)).toEqual(R_KEYS);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'D46').map((k) => k.key)).toEqual(D46_KEYS);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'V5').map((k) => k.key)).toEqual(V5_KEYS);
@@ -83,7 +87,7 @@ describe('스위치 키 한 목록(K19 2-5) · 앱이 87키를 읽는다', () =>
   });
 
   test('demo 처음값: review_required · prelaunch 만 꺼짐(테스트 웹은 지금 동작 · 심사를 끈 데모, 정책 1-2 7번) · avoid_org · vouch 켜짐(K20 4-3) · 목록 밖은 꺼짐', () => {
-    expect(FEATURE_KEYS.filter((k) => !isPendingKey(k) && !demoDefault(k))).toEqual(['review_required', 'prelaunch', ...V5_KEYS, ...R_KEYS, 'type_card_share', 'pair_card_ai']); // V5: 숨긴 v4 화면은 데모에서도 꺼짐(v4on 장면만 켜짐) · R: chat_push 데모도 꺼짐 · IF2: 바깥 공유 · AI판은 데모도 꺼짐(PF-91)
+    expect(FEATURE_KEYS.filter((k) => !isPendingKey(k) && !demoDefault(k))).toEqual(['review_required', 'prelaunch', ...V5_KEYS, ...R_KEYS, 'type_card_share', 'pair_card_ai', 'saju_ai', 'saju_talk', 'mileage_charge']); // V5: 숨긴 v4 화면은 데모에서도 꺼짐(v4on 장면만 켜짐) · R: chat_push 데모도 꺼짐 · IF2: 바깥 공유 · AI판은 데모도 꺼짐(PF-91)
     expect(demoDefault('avoid_org')).toBe(true);
     expect(demoDefault('vouch')).toBe(true);
     expect(demoDefault('rude_warn')).toBe(true); // 넣고 꺼 둔 키(live 꺼짐) — 데모 시드처럼 켜짐
