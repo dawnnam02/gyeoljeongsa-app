@@ -25,7 +25,8 @@ function walk(dir: string): string[] {
 
 // 시험 파일은 검사 대상이 아니다(규칙 글자를 시험 코드에 적어야 하므로).
 // AIT-F: src/server/ait 의 원본 복사본(ai/AIT/ts — 등급 낱말 사전 · 금지어 목록이 든다)은 scripts/sync-ait.mjs 동기 검사와 aitServer 시험이 따로 본다. 앱이 쓴 route.ts 는 그대로 검사한다.
-const appSources = walk(SRC_DIR).filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`) && !(file.includes(`${path.sep}server${path.sep}ait${path.sep}`) && path.basename(file) !== 'route.ts'));
+// IF5-F1: src/saju5 는 ai/IF5/ts 원본 복사본(금지어 규칙 표에 '점수' 같은 낱말이 든다) — scripts/sync-if5.mjs 동기 검사(if5Sync 시험)가 따로 본다
+const appSources = walk(SRC_DIR).filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`) && !file.includes(`${path.sep}saju5${path.sep}`) && !(file.includes(`${path.sep}server${path.sep}ait${path.sep}`) && path.basename(file) !== 'route.ts'));
 
 type AppJson = {
   expo: {

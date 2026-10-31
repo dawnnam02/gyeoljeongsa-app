@@ -207,14 +207,19 @@ export function createDemoInflight(o: DemoInflightOptions) {
     const { stage } = stageOf(u);
     const acct = o.account(u);
     if (!(stage === 'inflight' || stage === 'landing' || stage === 'overlap') || !acct.birthDate) return ok({ ok: true, state: 'none' });
-    if (u.email.toLowerCase().includes('if3birth')) return ok({ ok: true, state: 'ready', birthday_week: true });
+    // 0049 응답 꼴: 참이면 set 1~4 를 같이(발행 창 7일 안에서 생일 월 · 일과 같은 그날의 서기 해 mod 4 + 1, 2월 29일생은 평년에 2월 28일), 거짓이면 set 키 없음
     const md = Number(acct.birthDate.slice(5, 7)) * 100 + Number(acct.birthDate.slice(8, 10));
     const start = Date.parse(DEMO_SKY_ISSUE);
-    const inWeek = [0, 1, 2, 3, 4, 5, 6].some((i) => {
+    let hitYear: number | null = null;
+    for (let i = 0; i < 7 && hitYear === null; i += 1) {
       const t = new Date(start + i * 86_400_000);
-      return (t.getUTCMonth() + 1) * 100 + t.getUTCDate() === md;
-    });
-    return ok({ ok: true, state: 'ready', birthday_week: inWeek });
+      const y = t.getUTCFullYear();
+      const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+      const cur = (t.getUTCMonth() + 1) * 100 + t.getUTCDate();
+      if (cur === md || (md === 229 && !leap && cur === 228)) hitYear = y;
+    }
+    if (u.email.toLowerCase().includes('if3birth')) hitYear = hitYear ?? new Date(start).getUTCFullYear();
+    return ok(hitYear === null ? { ok: true, state: 'ready', birthday_week: false } : { ok: true, state: 'ready', birthday_week: true, set: (hitYear % 4) + 1 });
   }
 
   async function weekCard(u: DemoInflightUser): Promise<DbResult> {

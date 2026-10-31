@@ -8,6 +8,7 @@ import { StyleSheet, Text } from 'react-native';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 
 import art from '../../assets/illustrations/if2art.json';
+import { IF3_TEXT } from '@/content/if3Copy';
 import { CK17 } from '@/content/ck17Content';
 import lib from '@/content/if2Library.json';
 import { travelType, typeRoutes, talkStyle, typeId, TYPE_ORDER } from '@/demo/funCalc';
@@ -422,7 +423,7 @@ describe('IF-TYPE 내 여행 타입 화면 — 짐 싸기 → 엽서 → 뒷면'
   test('서버 값이 없는 실서버(타입 0): 불러오지 못함 한 줄 · 홈 칸 글: 타입은 있고 짐을 안 쌌으면 "짐을 싸면 엽서가 나와요"', async () => {
     const none = keep(await mount(<TypeCardScreen source={{ mine: async () => null }} notes={createDeviceNotes()} />));
     await wait();
-    expect(textOf(none, 'type-none')).toBe(tx('TYPE_CARD.loadFailed'));
+    expect(textOf(none, 'type-none')).toBe(IF3_TEXT['TYPE_CARD.state.none']); // 22-14: 타입 0 = 실패가 아니라 사실 한 문장
   });
 });
 

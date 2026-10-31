@@ -94,10 +94,12 @@ export const mercuryText = (code: string): string | null => lib.mercury.find((x)
 export const planetNotice = (): string => lib.planetNotice[0]?.text ?? '';
 
 // ── G-07 생일 주간 엽서 ─────────────────────────────────────────────────────
-// 질문 묶음: 서버는 참 · 거짓만 준다(날짜 · 묶음 번호 0). 앱이 발행일의 서기 해로 정한다 → 같은 호에는 모두 같은 묶음, 해마다 다른 묶음(연속 0 · 회원 값 0). 묶음 = (발행 해 mod 4) + 1
-export function birthdayQuestions(issueDate: string | null): string[] {
+// 질문 묶음: 서버(0049)가 참일 때 묶음 번호 set 1~4 를 같이 주면 그 값을 쓴다(생일이 든 그날의 서기 해 기준 — 경계 호에서 발행 해와 어긋나지 않음). 없으면(옛 서버 · 거짓) 지금 규칙:
+//  발행일의 서기 해로 정한다 → 같은 호에는 모두 같은 묶음, 해마다 다른 묶음(연속 0 · 회원 값 0). 묶음 = (발행 해 mod 4) + 1
+export function birthdayQuestions(issueDate: string | null, serverSet?: number | null): string[] {
+  const fromServer = serverSet !== undefined && serverSet !== null && Number.isInteger(serverSet) && serverSet >= 1 && serverSet <= 4 ? serverSet : null;
   const year = issueDate ? Number(issueDate.slice(0, 4)) : NaN;
-  if (!Number.isInteger(year)) return [];
-  const set = (year % 4) + 1;
+  if (fromServer === null && !Number.isInteger(year)) return [];
+  const set = fromServer ?? (year % 4) + 1;
   return lib.birthdayQuestions.filter((q) => q.set === set).map((q) => q.text);
 }

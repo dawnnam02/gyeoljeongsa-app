@@ -1066,7 +1066,7 @@ try {
     }
     // 쓰는 곳: if3Copy 를 부르는 파일은 허용 목록 안에 있고, 나만 보는 글 접두어는 기내지 쪽 파일에서만 쓴다
     const OWN = ['features/inflight/MagazineScreen.tsx', 'features/inflight/SkyParts.tsx'];
-    const ALLOWED3 = [...OWN, 'features/inflight/SkyBookScreen.tsx', 'features/settings/SettingsScreen.tsx', 'features/settings/settingsLogic.ts'];
+    const ALLOWED3 = [...OWN, 'features/inflight/SkyBookScreen.tsx', 'features/inflight/TypeCardScreen.tsx', 'features/saju/SajuMadangScreen.tsx', 'features/settings/SettingsScreen.tsx', 'features/settings/settingsLogic.ts'];
     const importers = [];
     const ownUsers = [];
     const walk3 = (dir) => {

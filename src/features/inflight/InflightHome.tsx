@@ -21,6 +21,8 @@ import { ConcernChat } from '@/features/ait/ConcernChat';
 import { ait } from '@/features/ait/aitText';
 import { SafeShareSheet } from '@/features/safeShare/SafeShareSheet';
 import { if2Look } from '@/theme/if2Look';
+import { IF5_TEXT } from '@/content/if5Copy';
+import { nowIso, todayBaseLine } from '@/features/saju/sajuLogic';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 
 import { deviceNotes, useDeviceNotes, type DeviceNotes } from './deviceNotes';
@@ -90,6 +92,21 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
     const flying = home.stage === 'inflight' || home.stage === 'landing' || home.stage === 'overlap';
     notes.purge({ now: now(), inflightRound: flying ? round : null, openRoom: roomId, openRoomRound: home.stage === 'matched' ? round : home.stage === 'overlap' ? round - 1 : null, reflectOk: home.reflectOk });
   }, [home, n, notes, now, round, roomId]);
+
+  // IF5-F1 사주 마당 입구(정책 PS-34): 스위치 saju_yard · saju_home 이 켜지고 CK17A 를 켠 분에게만 B6 칸 · B7 줄 · 오늘 하루 띠 — 꺼져 있으면 칸째 0(권유 0 · 숫자 · 점 · '새' 0). 홈을 열 때 서버 호출은 동의 읽기뿐 — 사주 계산 · AI 0
+  const sajuHomeOn = isOn('saju_yard') && isOn('saju_home');
+  const [ck17On, setCk17On] = useState(false);
+  useEffect(() => {
+    if (!sajuHomeOn) return undefined;
+    let alive = true;
+    void Promise.resolve(deps.ck17?.load?.())
+      .then((r) => alive && setCk17On(!!r && r.ok && r.data.a))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [sajuHomeOn, deps.ck17]);
+  const sajuIn = sajuHomeOn && ck17On;
 
   const type = travelTypeOf(typeId);
   const packed = isPacked(n.typeBag); // 타입은 있어도 짐을 아직 안 쌌으면 칸 글은 '짐을 싸면 엽서가 나와요'(그때 처음 엽서가 나옴 — 정책 PF-31)
@@ -176,8 +193,9 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
       }
       case 'B6': {
         const cells = (home.me?.cells ?? []).filter((c) => c !== 'type' || !!type);
-        if (cells.length === 0) return null;
-        const names = cells.map((c) => (c === 'type' ? tx('TYPE_CARD.home.name') : tx('PREVIEW_ME.home.name')));
+        const sajuCell = sajuIn && cells.length + (aitOn ? 1 : 0) < 3; // 칸 3 이하 — 넘치면 B7 접힘 줄로
+        if (cells.length === 0 && !sajuCell) return null;
+        const names = [...cells.map((c) => (c === 'type' ? tx('TYPE_CARD.home.name') : tx('PREVIEW_ME.home.name'))), ...(sajuCell ? [IF5_TEXT['SAJU.entry.name']] : [])];
         return (
           <HomeBlock key={b} title={tx('HOME.me.title')} cellNames={aitOn ? [...names, ait('CONCERN.name')] : names} testID={`${testID}-B6`}>
             {cells.map((c) =>
@@ -187,12 +205,18 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
                 <HomeCell key={c} icon="postmark" name={tx('PREVIEW_ME.home.name')} line={tx('PREVIEW_ME.home.line')} onPress={() => nav.open('/preview-me' as Href)} testID={`${testID}-B6-preview`} />
               ),
             )}
+            {sajuCell ? <HomeCell icon="story" name={IF5_TEXT['SAJU.entry.name']} line={IF5_TEXT['SAJU.entry.line']} onPress={() => nav.open('/saju' as Href)} testID={`${testID}-B6-saju`} /> : null}
             {aitOn ? <HomeCell icon="memo" name={ait('CONCERN.name')} line={ait('CONCERN.home.line')} onPress={() => setSheet('concern')} testID={`${testID}-B6-concern`} /> : null}
           </HomeBlock>
         );
       }
       case 'B7':
-        return <FoldBlock key={b} rows={foldRowsOf()} open={n.homeFold} onToggle={() => notes.set('homeFold', !n.homeFold)} onRow={onFoldRow} boarding={boarding} testID={`${testID}-B7`} />;
+        return (
+          <View key={b} style={styles.full}>
+            {sajuIn && isOn('saju_today') ? <TodayStrip line={todayBaseLine(nowIso(now()))} onPress={() => nav.open('/saju-today' as Href)} testID={`${testID}-today`} /> : null}
+            <FoldBlock rows={foldRowsOf()} open={n.homeFold} onToggle={() => notes.set('homeFold', !n.homeFold)} onRow={onFoldRow} boarding={boarding} testID={`${testID}-B7`} />
+          </View>
+        );
       default:
         return null;
     }
@@ -204,10 +228,11 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
     setSheet('memo');
   }
   function foldRowsOf(): FoldRow[] {
-    return foldRows(home, { hasPastChat: boarding.past.some((p) => !!p.chatId), memoElsewhere: code !== 'reflect' && hasReflectMemo(home, n, now()), typeOn: isOn('type_card') && !!type, previewOn: isOn('profile_preview') });
+    return foldRows(home, { hasPastChat: boarding.past.some((p) => !!p.chatId), memoElsewhere: code !== 'reflect' && hasReflectMemo(home, n, now()), typeOn: isOn('type_card') && !!type, previewOn: isOn('profile_preview'), sajuRow: sajuIn && home.me !== null && (home.me.cells.filter((c) => c !== 'type' || !!type).length + (aitOn ? 1 : 0)) >= 3 });
   }
   function onFoldRow(r: FoldRow) {
-    if (r === 'profile') nav.open('/profile' as Href);
+    if (r === 'saju') nav.open('/saju' as Href);
+    else if (r === 'profile') nav.open('/profile' as Href);
     else if (r === 'survey') nav.open({ pathname: '/survey/[step]', params: { step: '01' } } as Href);
     else if (r === 'avoid') nav.settings('avoid');
     else if (r === 'chats') {
@@ -271,11 +296,24 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
 }
 
 // B7 접힘 줄 '다듬기 · 지난 대화' — 펼침은 기기에만 기억 · 끝 있는 줄 목록
+// 홈 '오늘 하루' 띠(F5-08 · 정책 PS-34): B7 바로 위 한 줄 — 블록 셈 0 · 높이 상한 56 · 한 줄 · 숫자 · 점 · '새' 0. 한 줄은 오늘 날짜의 바탕만(모든 회원에게 같은 글 · 앱 번들 표 · 내 정보 0)이고 눌러서 /saju-today
+function TodayStrip({ line, onPress, testID }: { line: string | null; onPress: () => void; testID: string }) {
+  if (!line) return null;
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`${IF5_TEXT['SAJU.today.title']}, ${line}`} onPress={onPress} effect="none" style={({ pressed }) => [styles.strip, pressed && styles.pressed]} testID={testID}>
+      <AppText variant="bodyMedium">{IF5_TEXT['SAJU.today.title']}</AppText>
+      <AppText variant="caption" numberOfLines={1} style={if2Styles.flex} testID={`${testID}-line`}>
+        {line}
+      </AppText>
+    </Pressable>
+  );
+}
+
 function FoldBlock({ rows, open, onToggle, onRow, boarding, testID }: { rows: FoldRow[]; open: boolean; onToggle: () => void; onRow: (r: FoldRow) => void; boarding: BoardingState; testID: string }) {
   const nameOf = (r: FoldRow) =>
-    r === 'profile' ? BOARDING.tasks.profile.name : r === 'survey' ? BOARDING.tasks.survey.name : r === 'avoid' ? BOARDING.tasks.avoid.name : r === 'chats' ? BOARDING.tasks.chats.name : r === 'memo' ? tx('MEET_MEMO.home.name') : r === 'type' ? tx('TYPE_CARD.home.name') : tx('PREVIEW_ME.home.name');
+    r === 'profile' ? BOARDING.tasks.profile.name : r === 'survey' ? BOARDING.tasks.survey.name : r === 'avoid' ? BOARDING.tasks.avoid.name : r === 'chats' ? BOARDING.tasks.chats.name : r === 'memo' ? tx('MEET_MEMO.home.name') : r === 'type' ? tx('TYPE_CARD.home.name') : r === 'saju' ? IF5_TEXT['SAJU.entry.name'] : tx('PREVIEW_ME.home.name');
   const lineOf = (r: FoldRow) =>
-    r === 'profile' ? BOARDING.tasks.profile.line : r === 'survey' ? BOARDING.tasks.survey.line : r === 'avoid' ? BOARDING.tasks.avoid.line : r === 'chats' ? BOARDING.tasks.chats.line(boarding.past.length) : r === 'memo' ? tx('MEET_MEMO.home.lineWritten') : r === 'type' ? tx('TYPE_CARD.home.open') : tx('PREVIEW_ME.home.line');
+    r === 'profile' ? BOARDING.tasks.profile.line : r === 'survey' ? BOARDING.tasks.survey.line : r === 'avoid' ? BOARDING.tasks.avoid.line : r === 'chats' ? BOARDING.tasks.chats.line(boarding.past.length) : r === 'memo' ? tx('MEET_MEMO.home.lineWritten') : r === 'type' ? tx('TYPE_CARD.home.open') : r === 'saju' ? IF5_TEXT['SAJU.entry.line'] : tx('PREVIEW_ME.home.line');
   return (
     <View style={styles.fold} testID={testID}>
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} aria-expanded={open} accessibilityLabel={open ? tx('HOME.fold.a11yClose') : tx('HOME.fold.a11yOpen')} onPress={onToggle} effect="none" style={({ pressed }) => [styles.foldRow, pressed && styles.pressed]} testID={`${testID}-toggle`}>
@@ -301,6 +339,7 @@ const styles = StyleSheet.create({
   full: { width: '100%', gap: space.s8 },
   band: { backgroundColor: colors.accentSoft, borderRadius: radius.lg, padding: space.s16, gap: space.s12 },
   bandButtons: { flexDirection: 'row', gap: space.s8 },
+  strip: { minHeight: size.touchMin, maxHeight: 56, flexDirection: 'row', alignItems: 'center', gap: space.s12, paddingHorizontal: space.s16, backgroundColor: colors.accentSoft, borderRadius: radius.lg },
   fold: { backgroundColor: colors.bg, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.line, overflow: 'hidden' },
   foldRow: { minHeight: if2Look.foldRowH, flexDirection: 'row', alignItems: 'center', gap: space.s12, paddingHorizontal: space.s16 },
   foldItem: { minHeight: size.touchMin, justifyContent: 'center', gap: space.s4, paddingHorizontal: space.s16, paddingVertical: space.s8, borderTopWidth: 1, borderTopColor: colors.line },

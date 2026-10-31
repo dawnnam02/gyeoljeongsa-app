@@ -39,11 +39,13 @@ export function homeCode(s: HomeState, blocks: readonly HomeBlock[]): HomeCode {
 export type StatusHead = 'arrival' | 'landing' | 'meet' | 'reflect';
 
 // B7 접힘 줄 안 줄(PF-85, 끝 있는 목록 · 8 이하)
-export type FoldRow = 'profile' | 'survey' | 'avoid' | 'chats' | 'memo' | 'type' | 'preview';
-export function foldRows(s: HomeState, opts: { hasPastChat: boolean; memoElsewhere: boolean; typeOn: boolean; previewOn: boolean }): FoldRow[] {
+export type FoldRow = 'profile' | 'survey' | 'avoid' | 'chats' | 'memo' | 'type' | 'preview' | 'saju';
+// sajuRow(IF5-F1 · 정책 PS-34): B6 에 '사주 마당' 칸이 못 들어갈 때(칸 3 이하) 접힘 줄 하나로 — 줄 8 이하 그대로
+export function foldRows(s: HomeState, opts: { hasPastChat: boolean; memoElsewhere: boolean; typeOn: boolean; previewOn: boolean; sajuRow?: boolean }): FoldRow[] {
   const rows: FoldRow[] = ['profile', 'survey', 'avoid'];
   if (opts.hasPastChat) rows.push('chats');
   if (opts.memoElsewhere) rows.push('memo');
+  if (opts.sajuRow) rows.push('saju');
   if (s.stage === 'matched' || s.stage === 'overlap') {
     if (opts.typeOn) rows.push('type');
     if (opts.previewOn) rows.push('preview');

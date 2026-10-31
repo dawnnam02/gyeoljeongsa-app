@@ -181,6 +181,16 @@ const FLOW_MAIN: readonly Arrow[] = [
   a('12', 'IF-BOOK', '정보 묶음 줄 하늘 도감', '카피 22-5 SKY_BOOK.entry.settings · PG-32'),
   a('IF-BOOK', 'entry', '‹ · [닫기]', '정책 PG-31'),
   a('IF-PREVIEW', '08', '[공개 범위 바꾸기]', '카피 21-6 PREVIEW_ME.edit'),
+  // IF5-F1 사주 마당(D-237) — 입구는 홈 B6 칸 · B7 줄 · 오늘 하루 띠와 12 설정 줄. 새 탭 0(정책 PS-31 ~ PS-34)
+  a('T1', 'IF-MADANG', '나를 알기 칸 · 접힘 줄 사주 마당', '화면 요구 IF5 이동 · 정책 PS-34'),
+  a('T1', 'IF-SJ-TODAY', '홈 오늘 하루 띠', '화면 요구 IF5 이동 · 정책 PS-34'),
+  a('12', 'IF-MADANG', '줄 사주 마당', '카피 24-3 SAJU.entry.settingsRow · PS-42'),
+  a('IF-SJ-TODAY', 'IF-MADANG', '[사주 마당 가기]', '카피 24-3 SAJU.today.go'),
+  a('IF-SJ-TODAY', 'entry', '‹', '화면 요구 IF5 이동'),
+  a('IF-MADANG', 'IF-SJ-CAL', '날짜 고르기 [달력에서 고르기] · 만세력 달력 [달력 열기]', '화면 요구 IF5 이동 · 정책 PS-35 · PS-36'),
+  a('IF-MADANG', 'entry', '‹', '화면 요구 IF-MADANG'),
+  a('IF-MADANG', 'stay', '내 정보 시트 · 상대 생일 시트 · 낱말 풀이 시트 · 재미 정보 동의 시트 · 카드 펼침', '화면 요구 IF5 이동'),
+  a('IF-SJ-CAL', 'entry', '‹', '화면 요구 IF-SJ-CAL'),
 
   // 어느 화면에서든
   a('ANY', '02', '로그인 풀림(세션 만료 · 다른 기기 로그인)', '2-2 ⑦', 7),

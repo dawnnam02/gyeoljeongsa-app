@@ -41,6 +41,7 @@ import { NotificationsPage } from './NotificationsPage';
 import { AvoidPage } from './AvoidPage';
 import { ConsentManagePage } from './ConsentManagePage';
 import { forgetInflightNotes } from '@/features/inflight/deviceNotes';
+import { forgetSajuDevice } from '@/features/saju/deviceInput';
 import type { Ck17Api } from '@/features/inflight/inflightService';
 import { AitCodePage } from './AitCodePage';
 import { aitStore } from '@/features/ait/aitStore';
@@ -63,6 +64,7 @@ export type SettingsDeps = SupportDeps & {
   requestPush: () => Promise<PushStatus>; // 시스템 권한 창(서비스 알림을 켤 때, 안내 글을 먼저 보인 뒤)
   contact?: () => ContactPorts; // 12-5 지인 차단 기기 연결(주소록 · 해시, 3부-바). 없으면 지인 차단 줄은 '준비 중'
   boarded?: () => Promise<boolean>; // 3부-아: 판매 마감 전 · 이번 회차 탑승권이 있나(동의 관리 CK4 · CK15 끄기 확인창 한 줄). 없으면 그 줄 없음
+  sajuYard?: () => boolean; // IF5-F1: 12-1 '사주 마당' 줄(스위치 saju_yard 가 켜졌을 때만). 없으면 줄 없음
   skyBook?: () => boolean; // IF3-F: 정보 묶음 '하늘 도감' 줄(스위치 sky_book 이 켜졌을 때만). 없으면 줄 없음
   ait?: () => boolean; // AIT-F ⑤: 시험용 AI 코드 줄(데모 판에서만 참 — 실서버 판엔 줄 0). 없으면 줄 없음
   ck17?: () => Ck17Api | null; // IF2-F: 동의 관리 '재미 정보' 줄(기내지 · 궁합 카드 스위치가 켜졌을 때만). 없거나 null 이면 줄 없음
@@ -81,6 +83,7 @@ export function defaultSettingsDeps(): SettingsDeps {
     boarded: boardedNow,
     ck17: ck17Now,
     skyBook: skyBookNow,
+    sajuYard: sajuYardNow,
     ait: aitEnabled,
     copyText: copyToClipboard,
     openMail: async (email) => {
@@ -101,6 +104,15 @@ async function boardedNow(): Promise<boolean> {
   /* eslint-enable @typescript-eslint/no-require-imports */
   const r = await boardingServices().api.load();
   return r.ok && canCancel(r.state);
+}
+
+// IF5-F1: 사주 마당 줄은 스위치 saju_yard 가 켜졌을 때만(처음값 꺼짐 — 실서버엔 줄 0)
+function sajuYardNow(): boolean {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const { appFlagsStore } = require('@/hooks/useFeatureFlags') as typeof import('@/hooks/useFeatureFlags');
+  const { isOn } = require('@/lib/featureFlagsApi') as typeof import('@/lib/featureFlagsApi');
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  return isOn(appFlagsStore().get(), 'saju_yard');
 }
 
 // IF3-F: 하늘 도감 줄은 스위치 sky_book 이 켜졌을 때만(스위치 처음값 꺼짐 — 실서버엔 줄 0)
@@ -198,6 +210,9 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
       case 'skyBook':
         go('/sky-book' as Href, false);
         return;
+      case 'saju':
+        go('/saju' as Href, false);
+        return;
       case 'credits':
         router.push('/credits' as unknown as Href); // T5(탭 위에 열리는 화면)
         return;
@@ -216,6 +231,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
     resetCrisisCards(); // 3부-차: 위기 도움 카드 하루 3번 셈(화면 메모리)도 비운다 — 다음 계정에 넘어가지 않게
     await aitStore.forget(); // AIT-F: 시험용 AI 코드 · 시험자 동의 기록도 지운다(다음 사람에게 넘어가지 않게)
     await forgetInflightNotes(); // IF2-F: 나만 쓰는 글 9종(엽서 · 미리 답 · 표시 · 메모 · 고른 짐 · 본 기록 · 띠 · 접힘)도 지운다(정책 PF-10 · IFF-03)
+    await forgetSajuDevice(); // IF5-F1: 내 시각 · 곳(이 휴대폰에만 둔 값)도 지운다(IFF5-31)
     const target = resolveDest('01');
     if (target.kind === 'href') {
       if (router.canDismiss()) router.dismissAll();
@@ -292,7 +308,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
     }
   })();
 
-  const main = [...SETTINGS_ROWS.filter((r) => r.group === 'main'), ...(deps.ait?.() === true ? [AIT_ROW] : [])];
+  const main = [...SETTINGS_ROWS.filter((r) => r.group === 'main' && (r.key !== 'saju-yard' || deps.sajuYard?.() === true)), ...(deps.ait?.() === true ? [AIT_ROW] : [])];
   const info = SETTINGS_ROWS.filter((r) => r.group === 'info' && (r.key !== 'business-info' || bizRows !== null) && (r.key !== 'sky-book' || deps.skyBook?.() === true));
 
   return (

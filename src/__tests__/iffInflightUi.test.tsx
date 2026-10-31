@@ -3,6 +3,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 
+import { IF3_TEXT } from '@/content/if3Copy';
 import { demoDefault, FEATURE_KEYS } from '@/config/featureKeys';
 import { SAFETY_GUIDE } from '@/content/copy';
 import { CK17 } from '@/content/ck17Content';
@@ -303,7 +304,7 @@ describe('IFF-08 내 여행 타입 · IFF-13 짝에게 보이는 내 모습 · I
     expect(allTexts(tree)).not.toContain(tx('TYPE_CARD.share'));
     const none = keep(await mount(<TypeCardScreen source={{ mine: async () => null }} notes={notes} />));
     await wait();
-    expect(textOf(none, 'type-none')).toBe(tx('TYPE_CARD.loadFailed'));
+    expect(textOf(none, 'type-none')).toBe(IF3_TEXT['TYPE_CARD.state.none']); // 22-14: 타입이 아직 없음 = 실패가 아니라 사실 한 문장
   });
   test('미리 보기는 서버 응답 그대로 그린다(앱 공개 범위 필터 0) · 등급 · 신고 · 차단 0 · CK17B · 같은 취미 한 줄', async () => {
     const r = rig('v1@email.com');

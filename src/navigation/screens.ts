@@ -5,12 +5,12 @@ import type { Href } from 'expo-router';
 
 // V5(W6 · 청사진 v5 초안 6-1): 새 화면 T1 탑승권(T2 기다림은 T1 의 상태 — 같은 주소) · T3 공개 순간 · T5 크레딧. T4 채팅 목록(탭) · T4R 대화방(W5 · D-159)
 export const SCREEN_IDS = [
-  '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', 'T1', 'T3', 'T5', 'T4', 'T4R', '16G', 'T6', 'IF-MAG', 'IF-TYPE', 'IF-PREVIEW', 'IF-BOOK',
+  '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', 'T1', 'T3', 'T5', 'T4', 'T4R', '16G', 'T6', 'IF-MAG', 'IF-TYPE', 'IF-PREVIEW', 'IF-BOOK', 'IF-MADANG', 'IF-SJ-CAL', 'IF-SJ-TODAY',
 ] as const;
 export type ScreenId = (typeof SCREEN_IDS)[number];
 
 // 이 화면의 본문을 채우는 세부계획(팀장/세부계획.md 2장 Phase 3)
-export type FilledBy = 'F1' | 'F2' | 'F3' | 'F4' | 'F5' | 'F6' | 'F7' | 'F11' | 'W6' | 'W5' | 'R-A' | 'LG-F' | 'IF2-F' | 'IF3-F';
+export type FilledBy = 'F1' | 'F2' | 'F3' | 'F4' | 'F5' | 'F6' | 'F7' | 'F11' | 'W6' | 'W5' | 'R-A' | 'LG-F' | 'IF2-F' | 'IF3-F' | 'IF5-F';
 
 export type ScreenDef = {
   readonly id: ScreenId;
@@ -70,6 +70,10 @@ export const SCREENS: readonly ScreenDef[] = [
   { id: 'IF-PREVIEW', name: '짝에게 보이는 내 모습', route: '/preview-me', href: '/preview-me' as Href, tabBar: false, filledBy: 'IF2-F', k2: '화면_요구사항 IF-PREVIEW · 정책 PF-34' },
   // IF3-F(3부-카 · G-03): 하늘 도감 — 기내지 뒤표지 길 · 12 정보 줄에서만 들어간다(홈 입구 0)
   { id: 'IF-BOOK', name: '하늘 도감', route: '/sky-book', href: '/sky-book' as Href, tabBar: false, filledBy: 'IF3-F', k2: '화면_요구사항 IF3 · 정책 PG-31 ~ PG-33' },
+  // IF5-F1(D-237): 사주 마당 한 화면(새 탭 0) + 달력 · 날짜 고르기 + 홈 '오늘 하루' 화면. 입구 = 홈 B6 칸 · B7 줄 · 오늘 하루 띠 · 12 설정 '사주 마당' 줄
+  { id: 'IF-MADANG', name: '사주 마당', route: '/saju', href: '/saju' as Href, tabBar: false, filledBy: 'IF5-F', k2: '화면_요구사항 IF-MADANG · 정책 PS-31 ~ PS-38' },
+  { id: 'IF-SJ-CAL', name: '만세력 달력 · 날짜 고르기', route: '/saju-calendar', href: '/saju-calendar' as Href, tabBar: false, filledBy: 'IF5-F', k2: '화면_요구사항 IF-SJ-CAL · 정책 PS-35 · PS-36 · PS-71 · PS-72' },
+  { id: 'IF-SJ-TODAY', name: '오늘 하루', route: '/saju-today', href: '/saju-today' as Href, tabBar: false, filledBy: 'IF5-F', k2: '화면_요구사항 홈 오늘 하루 띠 · 정책 PS-34' },
 ];
 
 export function screenById(id: ScreenId): ScreenDef {

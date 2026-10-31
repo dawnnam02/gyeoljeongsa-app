@@ -92,4 +92,16 @@ export async function forgetStaleDeviceStorage(): Promise<void> {
   } catch {
     // 위와 같다
   }
+  await forgetStaleIf5Storage(); // IF5-F1: 내 시각 · 곳도 새로 깐 기기에서는 비운다
+}
+
+// IF5-F1 사주 마당: 내가 고른 태어난 시각 · 곳(지점 id)만 기기에 둔다(서버 저장 0 · 보안 IC5-55 (a)안). 열쇠 목록을 함께 둬 새로 깐 기기(iOS 키체인 잔존)에서 비운다(withKeyIndex 꼴 — 3부-카 ⑤ 지킴).
+//  열쇠 이름에는 생일 · 상대 · 사주 · 마일리지 낱말을 쓰지 않는다(check_sec2 IF5-aa) — 값은 features/saju/deviceInput.ts 가 정한 짧은 이름
+export const if5Storage = withKeyIndex(chunkedStorage(secureStore), 'device.keys.if5');
+export async function forgetStaleIf5Storage(): Promise<void> {
+  try {
+    await if5Storage.clearAll();
+  } catch {
+    // 지우지 못해도 앱은 계속 켜진다
+  }
 }

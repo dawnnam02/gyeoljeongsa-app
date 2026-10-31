@@ -113,6 +113,7 @@ describe('12 설정 규칙', () => {
       '동의 관리',
       '이용약관 · 개인정보 처리방침',
       '안전 안내',
+      '사주 마당', // IF5-F1(12-1): 정보 묶음 바로 위 — 스위치 saju_yard 가 켜졌을 때만 화면에 그린다(실서버 처음값 꺼짐)
       '오픈소스 라이선스',
       '생성형 AI 고지',
       '하늘 도감', // IF3-F(3부-카): 스위치 sky_book 이 켜졌을 때만 화면에 그린다(실서버 처음값 꺼짐)
@@ -149,11 +150,11 @@ describe('12 하위 화면 이름 = flow.ts 의 sub:* (F-1)', () => {
 });
 
 describe('12 목록 화면', () => {
-  test('상단 "설정" · 줄 13개(사업자 정보는 값이 비어 숨김) · 정보 묶음 · 로그아웃 · 탈퇴하기 · 인증 서류 "준비 중"', async () => {
+  test('상단 "설정" · 줄 13개(사업자 정보 · 하늘 도감 · 사주 마당은 스위치 · 값이 없어 숨김) · 정보 묶음 · 로그아웃 · 탈퇴하기 · 인증 서류 "준비 중"', async () => {
     const { deps } = setup();
     const tree = await show(deps);
     expect(hasText(tree, SETTINGS.headerTitle)).toBe(true);
-    for (const row of SETTINGS_ROWS) expect(has(tree, `settings-row-${row.key}`)).toBe(row.key !== 'business-info' && row.key !== 'sky-book');
+    for (const row of SETTINGS_ROWS) expect(has(tree, `settings-row-${row.key}`)).toBe(row.key !== 'business-info' && row.key !== 'sky-book' && row.key !== 'saju-yard');
     expect(textIn(tree, 'settings-info-label')).toBe('정보');
     expect(hasText(tree, '준비 중')).toBe(true);
     expect(hasText(tree, '로그아웃')).toBe(true);

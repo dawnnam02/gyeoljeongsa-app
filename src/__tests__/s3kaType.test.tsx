@@ -2,6 +2,7 @@
 //  기준: backend R_변경기록 15-2(응답 모양) · 정책 PF-31 ~ PF-33 · 카피 21-5(TYPE_CARD) · 기기 저장 0
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 
+import { IF3_TEXT } from '@/content/if3Copy';
 import { createDeviceNotes } from '@/features/inflight/deviceNotes';
 import { tx } from '@/features/inflight/if2Text';
 import { TypeCardScreen } from '@/features/inflight/TypeCardScreen';
@@ -85,7 +86,9 @@ describe('IF-TYPE 화면 — 상태 다섯 · 서버 값만 · 숫자 0', () => 
       const tree = await screen({ mine: async () => null, state: async () => ({ state: s }) });
       expect(has(tree, `type-state-${s}`)).toBe(true);
       expect(has(tree, 'type-name')).toBe(false);
-      expect(textOf(tree, 'type-none')).toBe(tx('TYPE_CARD.loadFailed'));
+      // 22-14(F0-M): not_ready 만 '불러오지 못했어요 + 다시 시도', 나머지 셋은 사실 한 문장 · 단추 0
+      const want = { none: IF3_TEXT['TYPE_CARD.state.none'], not_ready: tx('TYPE_CARD.loadFailed'), feature_off: IF3_TEXT['TYPE_CARD.state.featureOff'], forbidden: IF3_TEXT['TYPE_CARD.state.forbidden'] }[s];
+      expect(textOf(tree, 'type-none')).toBe(want);
       expect(has(tree, 'type-retry')).toBe(s === 'not_ready');
     }
   });

@@ -48,11 +48,13 @@ describe('IF3 사본: 카피 22장 41키 · 라이브러리 · 하늘표 · 그�
     test('gen-if3-assets --check (라이브러리 · 하늘표 · 그림 사본)', () => expect(run('gen-if3-assets.mjs')).toContain('최신'));
   });
 
-  test('이번 묶음 키 41 + 3부-차 SIGN_CUSP 2 — G-01 · 05 · 06 접두어는 아직 없다(IF5-F)', () => {
+  test('3부-카 키 41 + IF5-F1 22장 남은 36(READ_GUIDE 5 · THREE_PILLARS 22 · MEET_SKY 9) + 22-14 네 키 = 81 + 3부-차 SIGN_CUSP 2', () => {
     const keys = Object.keys(IF3_TEXT);
-    expect(keys).toHaveLength(41);
+    expect(keys).toHaveLength(81);
     const heads = new Set(keys.map((k) => k.split('.')[0]));
-    expect([...heads].sort()).toEqual(['BIRTH_CARD', 'FUN', 'MY_WAYS', 'SKY_BOOK', 'SKY_WEEK']);
+    expect([...heads].sort()).toEqual(['BIRTH_CARD', 'FUN', 'MEET_SKY', 'MY_WAYS', 'READ_GUIDE', 'SKY_BOOK', 'SKY_WEEK', 'THREE_PILLARS', 'TYPE_CARD']);
+    expect(keys.filter((k) => k.startsWith('TYPE_CARD.'))).toEqual(['TYPE_CARD.state.none', 'TYPE_CARD.state.featureOff', 'TYPE_CARD.state.forbidden']);
+    expect(IF3_TEXT['MY_WAYS.loadFailed']).toBe('풀이를 불러오지 못했어요. 다시 시도해 주세요.');
     expect(Object.keys(SIGN_CUSP)).toEqual(['pair', 'why']);
   });
 
@@ -312,7 +314,8 @@ describe('기내지 ① 쪽 G-02 창밖 하늘 · G-04 사랑하는 방식', () 
     const failed = await open(makeDeps({ ways: async () => (n++ === 0 ? { ok: false, code: 'not_ready' } : { ok: true, data: { state: 'ready', venus: 'leo', mercury: 'leo' } }) }));
     await press(failed, 'ways-toggle');
     await wait();
-    expect(allTexts(failed)).toContain(tx('MAGAZINE.loadFailed'));
+    expect(allTexts(failed)).toContain(IF3_TEXT['MY_WAYS.loadFailed']); // 22-14: 기내지는 이미 떠 있고 이 칸만 실패 — '기내지를 불러오지 못했어요'가 아니다
+    expect(allTexts(failed)).not.toContain(tx('MAGAZINE.loadFailed'));
     await press(failed, 'ways-retry');
     await wait();
     expect(has(failed, 'ways-love')).toBe(true);

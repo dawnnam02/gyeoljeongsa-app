@@ -14,6 +14,7 @@ import { Button } from '@/components/Button';
 import { Pressable } from '@/components/Pressable';
 import { Screen } from '@/components/Screen';
 import { COMMON } from '@/content/copy';
+import { IF3_TEXT } from '@/content/if3Copy';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { if2Look } from '@/theme/if2Look';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
@@ -129,6 +130,13 @@ function PackQuiz({ notes, onLater }: { notes: DeviceNotes; onLater: () => void 
   );
 }
 
+// 서버 상태마다 사실 한 문장(카피 22-14 · F0-M): not_ready 만 '불러오지 못했어요 + 다시 시도', 나머지 셋은 단추 0
+const STATE_TEXT = {
+  none: IF3_TEXT['TYPE_CARD.state.none'],
+  feature_off: IF3_TEXT['TYPE_CARD.state.featureOff'],
+  forbidden: IF3_TEXT['TYPE_CARD.state.forbidden'],
+} as const;
+
 export function TypeCardScreen({ source, notes }: { source?: TypeSource; notes?: DeviceNotes }) {
   const router = useRouter();
   const src = source ?? inflightServices().type;
@@ -168,7 +176,7 @@ export function TypeCardScreen({ source, notes }: { source?: TypeSource; notes?:
     body = (
       <View style={if2Styles.gap} testID={`type-state-${stateKey}`}>
         <AppText variant="body" tone="sub" testID="type-none">
-          {tx('TYPE_CARD.loadFailed')}
+          {stateKey === 'not_ready' ? tx('TYPE_CARD.loadFailed') : (STATE_TEXT[stateKey as keyof typeof STATE_TEXT] ?? tx('TYPE_CARD.loadFailed'))}
         </AppText>
         {stateKey === 'not_ready' ? <Button label={COMMON.retry} variant="secondary" onPress={() => (setTypeState('loading'), setTries((n) => n + 1))} testID="type-retry" /> : null}
       </View>

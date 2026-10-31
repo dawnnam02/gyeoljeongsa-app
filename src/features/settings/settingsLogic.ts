@@ -5,6 +5,7 @@ import { COMMON, SIGN_IN } from '@/content/copy';
 import { REPORTS, SETTINGS, WITHDRAW } from '@/content/settingsCopy';
 import { AIT_TEXT } from '@/content/aitCopy';
 import { IF3_TEXT } from '@/content/if3Copy';
+import { IF5_TEXT } from '@/content/if5Copy';
 import { SUPPORT_CONTACT, type SupportContact } from '@/content/supportContact';
 import type { WithdrawConfirmFailure, WithdrawStartFailure } from '@/lib/settingsApi';
 
@@ -18,6 +19,7 @@ export type RowAction =
   | { kind: 'soon' } // 인증 서류 제출: 이동 없음, "준비 중이에요"
   | { kind: 'legal' } // 이용약관 · 개인정보 처리방침 읽기(03 과 같은 시트)
   | { kind: 'credits' } // 크레딧 · 구매 내역(카피.md 12-Q, 옛 NV35 '구매 · 등급 구독' 자리) → T5 크레딧 · 내역. 상점이 꺼져도 보인다
+  | { kind: 'saju' } // 사주 마당(IF5-F1 · 12-1 줄 · 스위치 saju_yard 가 켜졌을 때만) → /saju
   | { kind: 'skyBook' } // 하늘 도감(IF3-F · G-03 · 정책 PG-32): 스위치 sky_book 이 켜졌을 때만 보이는 정보 줄 → /sky-book
   | { kind: 'grade' }; // 내 등급(D-200 ② · 정책 P3-10) → 16-G(/grade, 상점 밖에서 여는 화면)
 
@@ -40,6 +42,7 @@ const ALL_ROWS: readonly RowDef[] = [
   { key: 'consents', label: SETTINGS.rows.consents, action: { kind: 'page', page: 'consent-management' }, group: 'main', icon: 'consent' },
   { key: 'legal', label: SETTINGS.rows.legal, action: { kind: 'legal' }, group: 'main', icon: 'document' },
   { key: 'safety', label: SETTINGS.rows.safety, action: { kind: 'page', page: 'safety' }, group: 'main', icon: 'safety' },
+  { key: 'saju-yard', label: IF5_TEXT['SAJU.entry.settingsRow'], action: { kind: 'saju' }, group: 'main', icon: 'how_to' }, // 12-1 '사주 마당' 줄(정보 묶음 바로 위 · 숫자 · 새 점 0) — 스위치 saju_yard 꺼짐이면 SettingsScreen 이 거른다
   { key: 'licenses', label: SETTINGS.rows.licenses, action: { kind: 'page', page: 'licenses' }, group: 'info', icon: 'document' },
   { key: 'image-credit', label: SETTINGS.rows.imageCredit, action: { kind: 'page', page: 'image-credit' }, group: 'info', icon: 'document' },
   { key: 'sky-book', label: IF3_TEXT['SKY_BOOK.entry.settings'], action: { kind: 'skyBook' }, group: 'info', icon: 'how_to' }, // 스위치 sky_book 꺼짐이면 SettingsScreen 이 거른다(실서버 처음값 꺼짐)

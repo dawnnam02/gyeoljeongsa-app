@@ -128,7 +128,7 @@ export function MyWaysFold({ api, onAgree, testID = 'ways' }: { api: Pick<Inflig
             {st.kind === 'failed' ? (
               <View style={if2Styles.gapSmall} testID={`${testID}-failed`}>
                 <AppText variant="body" tone="sub" accessibilityRole="alert">
-                  {tx('MAGAZINE.loadFailed')}
+                  {IF3_TEXT['MY_WAYS.loadFailed']}
                 </AppText>
                 <Button label={BOARDING.retry} variant="secondary" inline onPress={load} testID={`${testID}-retry`} />
               </View>
@@ -185,7 +185,7 @@ function WayRow({ kind, code, id }: { kind: 'love' | 'talk'; code: string; id: s
 // 생일이 든 호의 ④ 쪽 질문 아래 카드 한 장 · 읽기만(답 적기 칸 0 · 기기 저장 0). 서버는 참/거짓만 준다 — 거짓 · 없음 · 오류는 칸째 없음(빈 상태 글 0 · 오류 글 0).
 // 서버 응답(week)은 기내지 화면이 ④ 쪽에 닿았을 때 한 번 받아 쥐고 있다(쪽을 넘겨도 다시 부르지 않음 · 기내지를 닫으면 사라짐). 카드 끝줄은 법무 안 MAGAZINE.love.footer(질문용 · 상담 아님), 쪽 맨 아래 FUN.footer 는 그대로
 export function BirthCard({ week, issueDate, active, testID = 'birth' }: { week: BirthWeek | null; issueDate: string | null; active: boolean; testID?: string }) {
-  const questions = birthdayQuestions(issueDate);
+  const questions = birthdayQuestions(issueDate, week?.state === 'ready' ? week.set : undefined); // 0049: 서버가 준 묶음 번호가 있으면 그 값 · 없으면 발행 해 규칙
   const show = week?.state === 'ready' && week.birthdayWeek && questions.length > 0;
   useAlwaysCaptureBlock(show && active);
   if (!show) return null;

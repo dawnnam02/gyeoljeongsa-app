@@ -3,7 +3,7 @@
 //   get_magazine()                         → {state none | not_yet | issued, issue_date, trip_no, week_element, column, ck17a, sky{signs[달력 순 한두 개], zodiacs[같은 차례 주간 글 id]} | null, grain{stem, saju, relation} | null}
 //        0046(3부-차): 경계 날(시작일 −1 · 0 · +1, 해마다 36일)은 순서 없는 한 쌍을 달력 순으로 — 대표 · 이웃 구분 키 sign · cusp · zodiac 은 응답에 없다
 //   get_my_ways()                          → {ok, state ready, venus, mercury}(한국 정오 별자리 코드 한 개씩 · 경계 표시 0) | {ok, state none} | {ok:false, code consent_required | not_ready} — 3부-카(G-04 · 0046) · 본인만 · 인자 0 · 저장 0
-//   get_my_birth_week()                    → {ok, state ready, birthday_week 참/거짓} | {ok, state none} | {ok:false, code not_ready} — 3부-카(G-07 · 0046) · 날짜 · 별자리 · 나이 · 묶음 번호 0(질문 묶음은 발행일로 앱이 정함)
+//   get_my_birth_week()                    → {ok, state ready, birthday_week 참/거짓, set 1~4(참일 때만 · 0049)} | {ok, state none} | {ok:false, code not_ready} — 3부-카(G-07 · 0046) · 날짜 · 별자리 · 나이 · 묶음 번호 0(질문 묶음은 발행일로 앱이 정함)
 //   get_week_card() · pick_week_card(p_slot) → {state none | face_down | revealed(slot, card) | not_ready} · {ok, slot, card} | {ok:false, code already_picked(slot, card) | invalid_slot | none | not_ready}
 //   pre_answer_questions()                 → {state none | open | landing | not_ready, questions[20 id]}
 //   preview_my_profile()                   → {profile(짝이 get_candidate_profile 로 받는 값 그대로), ck17b, same_hobby}
@@ -180,7 +180,7 @@ export type InflightApi = {
 // ── 하늘 읽기 본인 함수(3부-카 · 0046): 별자리 코드 · 참/거짓 하나뿐. 날짜 · 나이 · 좌석 · 회차 번호는 응답에 있어도 읽지 않는다 ────────────
 export const SIGN_CODES = ['aquarius', 'pisces', 'aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn'] as const;
 export type MyWays = { state: 'ready'; venus: string; mercury: string } | { state: 'none' };
-export type BirthWeek = { state: 'ready'; birthdayWeek: boolean } | { state: 'none' };
+export type BirthWeek = { state: 'ready'; birthdayWeek: boolean; set?: 1 | 2 | 3 | 4 } | { state: 'none' };
 export function parseMyWays(raw: unknown): MyWays | null {
   if (!isRecord(raw)) return null;
   if (raw.state === 'none') return { state: 'none' };
@@ -191,7 +191,10 @@ export function parseMyWays(raw: unknown): MyWays | null {
 export function parseBirthWeek(raw: unknown): BirthWeek | null {
   if (!isRecord(raw)) return null;
   if (raw.state === 'none') return { state: 'none' };
-  return raw.state === 'ready' && typeof raw.birthday_week === 'boolean' ? { state: 'ready', birthdayWeek: raw.birthday_week } : null;
+  if (raw.state !== 'ready' || typeof raw.birthday_week !== 'boolean') return null;
+  // 0049: 참일 때만 질문 묶음 번호 set 1~4 를 같이 준다(거짓이면 set 키 없음 · 범위 밖 값은 버리고 앱 규칙으로)
+  const set = raw.birthday_week && typeof raw.set === 'number' && Number.isInteger(raw.set) && raw.set >= 1 && raw.set <= 4 ? (raw.set as 1 | 2 | 3 | 4) : undefined;
+  return set === undefined ? { state: 'ready', birthdayWeek: raw.birthday_week } : { state: 'ready', birthdayWeek: raw.birthday_week, set };
 }
 
 export function createInflightApi(call: RpcCall): InflightApi {

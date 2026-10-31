@@ -65,13 +65,16 @@ describe('데모 get_my_birth_week (G-07)', () => {
     };
     const inWeek = rig('if3f@email.com', {}, md(3));
     await inWeek.demo.rpc(inWeek.user, 'demo_inflight_scene', { p_scene: 'inflight' });
-    expect(await inWeek.api.birthWeek()).toEqual({ ok: true, data: { state: 'ready', birthdayWeek: true } });
+    // 0049 응답 꼴: 참이면 set 1~4 를 같이(생일이 든 그날의 서기 해 mod 4 + 1) · 거짓이면 set 키 없음
+    const hitYear = new Date(issue.getTime() + 3 * 86_400_000).getUTCFullYear();
+    expect(await inWeek.api.birthWeek()).toEqual({ ok: true, data: { state: 'ready', birthdayWeek: true, set: (hitYear % 4) + 1 } });
     const outWeek = rig('if3g@email.com', {}, md(9));
     await outWeek.demo.rpc(outWeek.user, 'demo_inflight_scene', { p_scene: 'inflight' });
     expect(await outWeek.api.birthWeek()).toEqual({ ok: true, data: { state: 'ready', birthdayWeek: false } });
     const force = rig('if3birth@email.com', {}, '1990-06-15');
     await force.demo.rpc(force.user, 'demo_inflight_scene', { p_scene: 'inflight' });
-    expect(await force.api.birthWeek()).toEqual({ ok: true, data: { state: 'ready', birthdayWeek: true } });
+    const forced = await force.api.birthWeek();
+    expect(forced.ok && forced.data.state === 'ready' && forced.data.birthdayWeek).toBe(true);
     const before = rig('if3h@email.com', {}, md(3));
     await before.demo.rpc(before.user, 'demo_inflight_scene', { p_scene: 'before' });
     expect(await before.api.birthWeek()).toEqual({ ok: true, data: { state: 'none' } });

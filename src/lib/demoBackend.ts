@@ -27,6 +27,7 @@ import { createDemoV4 } from './v4Demo';
 import { createDemoBoarding } from '@/demo/boardingDemo';
 import { createDemoLounge } from '@/demo/loungeDemo';
 import { createDemoInflight } from '@/demo/inflightDemo';
+import { createDemoSaju } from '@/demo/sajuDemo';
 import { demoShared } from '@/demo/inflightShared';
 
 export const DEMO_OTP_CODE = '123456';
@@ -216,6 +217,14 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
         ...pick('C05', 'c05_income'),
       };
       return { birthDate: a?.birthDate ?? null, consentOn: (code: string) => consentOn(a, code), sameHobby: vis.same_hobby !== false, previewAnswers };
+    },
+  });
+  // IF5-F1 사주 마당(get_my_saju · get_my_luck · get_my_day · get_taekil) — 계산은 기기 안(saju5), 서버 요청 0
+  const saju = createDemoSaju({
+    flags: flagsOf,
+    account: (u) => {
+      const a = accountOf(u.id);
+      return { birthDate: a?.birthDate ?? null, consentOn: (code: string) => consentOn(a, code) };
     },
   });
   demoShared.setFlags((userId) => {
@@ -778,6 +787,11 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
       if (inflight.handles(name)) {
         const account = me();
         return account ? inflight.rpc({ id: account.id, email: account.email }, name, args) : Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
+      }
+      // IF5-F1 사주 마당(get_my_saju · get_my_luck · get_my_day · get_taekil)
+      if (saju.handles(name)) {
+        const account = me();
+        return account ? saju.rpc({ id: account.id, email: account.email }, name, args) : Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
       }
       // LG-F 탑승객 라운지(lounge_state · agree · take_seat · get_post · post · empathy · hide · report · pick · delete + 데모 줄 demo_lounge_scene)
       if (lounge.handles(name)) {
