@@ -141,7 +141,7 @@ describe('IF5-F1c ⓐ 상대와 함께 보기 — 함께 무난한 날', () => {
     expect(day_branch_of_pillar(0)).toBe(0);
     expect(day_branch_of_pillar(59)).toBe(11);
   });
-  test('화면 글: 스위치 · 범례는 카피 그대로(함께 보기 · 둘 다 편한 날 — 기본 범례 '무난해요'와 낱말이 겹치지 않는다, IF5-QF M-QF) · 점수 · 퍼센트 · 판정 · 이름 0 · 켜면 범례 · 끄면 표시 0', async () => {
+  test('화면 글: 스위치 · 범례는 카피 그대로(함께 보기 · 둘 다 편한 날 — 기본 범례 무난해요와 낱말이 겹치지 않는다, IF5-QF M-QF) · 점수 · 퍼센트 · 판정 · 이름 0 · 켜면 범례 · 끄면 표시 0', async () => {
     const a = await bothDaysOnScreen(MINE_A, PARTNER);
     const texts = allTexts(a.tree);
     expect(texts).toContain(IF5_TEXT['SAJU.pick.partner.toggle']);
@@ -158,7 +158,7 @@ describe('IF5-F1c ⓐ 상대와 함께 보기 — 함께 무난한 날', () => {
 
 describe('IF5-QF M-QF 함께 보기 날 카드 한 줄', () => {
   test('◇ 날은 규칙 한 줄(bothCard) · 표시 없는 날은 사실 한 줄(noMark) · 쉬어 가는 날 · 끄면 두 줄 모두 0 · 판정 낱말 0', async () => {
-    const a = await bothDaysOnScreen(MINE_A, PARTNER);
+    const a = await bothDaysOnScreen('1994-03-14', '19920802');
     const dayIds = (set: Set<number>) => [...set].sort((x, y) => x - y);
     const both = dayIds(a.days);
     expect(both.length).toBeGreaterThan(0);
