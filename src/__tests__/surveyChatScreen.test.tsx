@@ -36,7 +36,7 @@ jest.mock('@/config/env', () => ({ env: { demoMode: false, supabaseUrl: '', supa
 jest.mock('@/lib/services', () => ({ supabase: {} }));
 jest.mock('@/lib/log', () => ({ safeLog: jest.fn() }));
 
-jest.setTimeout(180_000);
+jest.setTimeout(600_000); // 3부-차 ⑧: 1부 전부 대화로 답하는 시험이 한가할 때도 50 ~ 75초라, 계산이 바쁜 기계(CPU 부하 8 ~ 32개)에서 180초를 넘겨 시간 초과 → 뒤 시험 13개가 줄줄이 실패하던 들쑥날쑥을 막는다
 
 type Tree = Awaited<ReturnType<typeof mount>>;
 const base = (id: string, email: string) => ({ auth: { getSession: async () => ({ data: { session: { user: { id, email } } }, error: null }) } }) as unknown as Pick<SupabaseClient, 'auth'>;
