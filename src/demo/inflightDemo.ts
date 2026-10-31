@@ -1,5 +1,6 @@
 // 데모 모드 모의 서버의 기내 서비스 · 연애 기능 부분(IF2-F · D-223). 이름 · 인자 · 응답 모양 = 서버 0043(backend/R_변경기록.md 11-4):
 //  get_home_state · get_magazine · get_week_card · pick_week_card(p_slot) · pre_answer_questions · preview_my_profile · get_pair_card(p_room)
+//  3부-카(IF3-F 축소판): get_my_ways(G-04 · 0046) · get_my_birth_week(G-07 · 0046) — 별자리 코드 · 참/거짓 하나뿐(데모 값은 모의: 실제 천문 값 아님 · 참조표는 서버에만)
 //  + 데모 전용 demo_inflight_scene({ p_scene }) — 홈 아래 데모 줄이 장면을 바꾼다(탑승권 데모 장면도 같이)
 //  · 대화방 칸(opener_chips · talk_topics · send_chat_card · together_*)은 데모 채팅(features/chat/chatDemo)이 같은 모양으로 답한다
 //  · 계산(타로 · 칩 · 별자리 · 일간 · 그 주 기운 · 변형)은 demo/funCalc — ai/IF2/fun_calc.py 시험값과 같다(시험 iffCalc). 키 = 데모 키
@@ -40,6 +41,9 @@ export type DemoInflightOptions = {
 
 const ROUND = { no: 1, issue: '2026-12-17' }; // 탑승권 데모 1회차(판매 시작 12-17 목 = 발행 목요일)
 const FIRST_ISSUE = '2026-12-17'; // 호 번호 1(첫 실제 회차 발행일)
+// 기내지 응답의 issue_date — 하늘 52주 표(2027-01-07 ~)에 든 목요일로 보인다(창밖 하늘 G-02 를 데모에서 볼 수 있게). 호 번호 · 카드 값은 위 ROUND 그대로
+export const DEMO_SKY_ISSUE = '2027-01-14';
+const SIGN_ORDER = ['aquarius', 'pisces', 'aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn'] as const;
 const PARTNER_BIRTH = '1995-07-30'; // 데모 짝 생년월일(가상 — 계산만 · 응답에 0)
 
 const sceneOfEmail = (email: string): InflightScene => {
@@ -178,7 +182,39 @@ export function createDemoInflight(o: DemoInflightOptions) {
       sky = { signs: sg.signs, zodiacs: sg.signs.map(zw) };
       grain = { stem, saju: `sw-${stem}-${week}-v${(Math.floor((no - 1) / 10) % 1) + 1}`, relation: rel5Week(stemElement(stem), week) };
     }
-    return ok({ state: 'issued', issue_date: ROUND.issue, trip_no: ((ROUND.no - 1) % 12) + 1, week_element: week, column: `col-${String(((no - 1) % 12) + 1).padStart(2, '0')}`, ck17a: ck, sky, grain });
+    return ok({ state: 'issued', issue_date: DEMO_SKY_ISSUE, trip_no: ((ROUND.no - 1) % 12) + 1, week_element: week, column: `col-${String(((no - 1) % 12) + 1).padStart(2, '0')}`, ck17a: ck, sky, grain });
+  }
+
+  // G-04: CK17A 켠 분만 · 태양 별자리 ±1 칸 안의 모의 금성 · 수성(경계 날 표시 0 — 별자리 하나씩) · 표 밖(1966 ~ 2008년생 밖) · 생년월일 없음 = none
+  async function myWays(u: DemoInflightUser): Promise<DbResult> {
+    const flags = await o.flags(u);
+    if (!flags.my_ways) return off();
+    const acct = o.account(u);
+    if (!acct.consentOn('CK17A')) return ok({ ok: false, code: 'consent_required' });
+    const year = acct.birthDate ? Number(acct.birthDate.slice(0, 4)) : NaN;
+    if (!acct.birthDate || !(year >= 1966 && year <= 2008)) return ok({ ok: true, state: 'none' });
+    const sun = SIGN_ORDER.indexOf(sunSign(acct.birthDate).sign as (typeof SIGN_ORDER)[number]);
+    const m = Number(acct.birthDate.slice(5, 7));
+    const d = Number(acct.birthDate.slice(8, 10));
+    const at = (k: number) => SIGN_ORDER[(sun + k + 12) % 12];
+    return ok({ ok: true, state: 'ready', venus: at((d % 3) - 1), mercury: at(((m + d) % 3) - 1) });
+  }
+
+  // G-07: 탑승 중인 회차가 있을 때만 · 생일(월 · 일)이 그 호 7일(목 ~ 수)에 들면 참. 이메일에 if3birth 가 들어 있으면 늘 참(데모에서 카드를 보려고)
+  async function birthWeek(u: DemoInflightUser): Promise<DbResult> {
+    const flags = await o.flags(u);
+    if (!flags.birth_card) return off();
+    const { stage } = stageOf(u);
+    const acct = o.account(u);
+    if (!(stage === 'inflight' || stage === 'landing' || stage === 'overlap') || !acct.birthDate) return ok({ ok: true, state: 'none' });
+    if (u.email.toLowerCase().includes('if3birth')) return ok({ ok: true, state: 'ready', birthday_week: true });
+    const md = Number(acct.birthDate.slice(5, 7)) * 100 + Number(acct.birthDate.slice(8, 10));
+    const start = Date.parse(DEMO_SKY_ISSUE);
+    const inWeek = [0, 1, 2, 3, 4, 5, 6].some((i) => {
+      const t = new Date(start + i * 86_400_000);
+      return (t.getUTCMonth() + 1) * 100 + t.getUTCDate() === md;
+    });
+    return ok({ ok: true, state: 'ready', birthday_week: inWeek });
   }
 
   async function weekCard(u: DemoInflightUser): Promise<DbResult> {
@@ -256,6 +292,8 @@ export function createDemoInflight(o: DemoInflightOptions) {
     get_home_state: (u) => homeState(u),
     get_magazine: (u) => magazine(u),
     get_week_card: (u) => weekCard(u),
+    get_my_ways: (u) => myWays(u),
+    get_my_birth_week: (u) => birthWeek(u),
     pick_week_card: pickWeekCard,
     pre_answer_questions: (u) => preQuestions(u),
     preview_my_profile: (u) => preview(u),

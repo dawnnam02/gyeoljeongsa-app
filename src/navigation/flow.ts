@@ -176,6 +176,10 @@ const FLOW_MAIN: readonly Arrow[] = [
   a('IF-MAG', 'stay', '쪽 넘김 · 카드 뒤집기 · 미리 답해 두기 시트 · 재미 정보 동의 시트', '정책 PF-21 ~ PF-25'),
   a('IF-TYPE', 'entry', '‹', '화면 요구 IF-TYPE'),
   a('IF-PREVIEW', 'entry', '‹', '화면 요구 IF-PREVIEW'),
+  // IF3-F 하늘 도감(G-03) — 들어오는 길은 기내지 뒤표지 한 줄과 12 정보 줄 둘뿐(홈 입구 0 · 정책 PG-32)
+  a('IF-MAG', 'IF-BOOK', '뒤표지 [하늘 도감 보기]', '카피 22-5 SKY_BOOK.entry.back · PG-32'),
+  a('12', 'IF-BOOK', '정보 묶음 줄 하늘 도감', '카피 22-5 SKY_BOOK.entry.settings · PG-32'),
+  a('IF-BOOK', 'entry', '‹ · [닫기]', '정책 PG-31'),
   a('IF-PREVIEW', '08', '[공개 범위 바꾸기]', '카피 21-6 PREVIEW_ME.edit'),
 
   // 어느 화면에서든

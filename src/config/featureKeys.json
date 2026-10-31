@@ -132,6 +132,13 @@
     { "key": "word_safety", "group": "IF2", "id": "F-39", "live": false },
     { "key": "farewell", "group": "IF2", "id": "F-45", "live": false },
     { "key": "meet_prep", "group": "IF2", "id": "F-37", "live": false },
-    { "key": "meet_memo", "group": "IF2", "id": "F-46", "live": false }
+    { "key": "meet_memo", "group": "IF2", "id": "F-46", "live": false },
+    { "key": "read_guide", "group": "IF3", "id": "G-01", "live": false },
+    { "key": "sky_week", "group": "IF3", "id": "G-02", "live": false },
+    { "key": "sky_book", "group": "IF3", "id": "G-03", "live": false },
+    { "key": "my_ways", "group": "IF3", "id": "G-04", "live": false },
+    { "key": "three_pillars", "group": "IF3", "id": "G-05", "live": false },
+    { "key": "meet_sky", "group": "IF3", "id": "G-06", "live": false },
+    { "key": "birth_card", "group": "IF3", "id": "G-07", "live": false }
   ]
 }

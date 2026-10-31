@@ -115,9 +115,10 @@ describe('12 설정 규칙', () => {
       '안전 안내',
       '오픈소스 라이선스',
       '생성형 AI 고지',
+      '하늘 도감', // IF3-F(3부-카): 스위치 sky_book 이 켜졌을 때만 화면에 그린다(실서버 처음값 꺼짐)
       '사업자 정보',
     ]);
-    expect(SETTINGS_ROWS.filter((r) => r.group === 'info').map((r) => r.key)).toEqual(['licenses', 'image-credit', 'business-info']); // 사업자 정보는 값이 모두 있을 때만 화면에 그린다(QP-A)
+    expect(SETTINGS_ROWS.filter((r) => r.group === 'info').map((r) => r.key)).toEqual(['licenses', 'image-credit', 'sky-book', 'business-info']); // 사업자 정보는 값이 모두 있을 때만 화면에 그린다(QP-A)
   });
 
   test('신고 날짜(R-D18-2): 올해는 "10월 15일", 해가 다르면 "2025년 12월 3일", 한국 날짜 · 시각 없음', () => {
@@ -152,7 +153,7 @@ describe('12 목록 화면', () => {
     const { deps } = setup();
     const tree = await show(deps);
     expect(hasText(tree, SETTINGS.headerTitle)).toBe(true);
-    for (const row of SETTINGS_ROWS) expect(has(tree, `settings-row-${row.key}`)).toBe(row.key !== 'business-info');
+    for (const row of SETTINGS_ROWS) expect(has(tree, `settings-row-${row.key}`)).toBe(row.key !== 'business-info' && row.key !== 'sky-book');
     expect(textIn(tree, 'settings-info-label')).toBe('정보');
     expect(hasText(tree, '준비 중')).toBe(true);
     expect(hasText(tree, '로그아웃')).toBe(true);

@@ -40,13 +40,17 @@ describe('스위치 키 한 목록(K19 2-5) · 앱이 87키를 읽는다', () =>
   const LG_KEYS = ['lounge']; // LG-F(D-220): 탑승객 라운지 스위치 — K19 표 밖의 묶음 LG(서버 0042 와 같은 이름, live 꺼짐 · 데모 켜짐 · 정책 PL-34)
   // IF2-F(D-223): 기내 서비스 · 연애 기능 1.0 스위치 20 — 정책 PF-91 차례 · 서버 0043 과 같은 이름(live 꺼짐 · 데모 켜짐, type_card_share · pair_card_ai 는 데모도 꺼짐)
   const IF2_KEYS = ['inflight_home', 'inflight_mag', 'inflight_tarot', 'type_card', 'type_card_share', 'profile_preview', 'pre_answer', 'postcard', 'pair_card', 'pair_card_ai', 'same_points', 'values_talk', 'opener_chips', 'talk_depth', 'my_manual', 'together_q', 'word_safety', 'farewell', 'meet_prep', 'meet_memo'];
-  const k19 = () => FEATURE_KEY_LIST.filter((k) => !['K12', 'K15', 'V5', 'V6', 'R', 'D46', 'LG', 'IF2'].includes(k.group));
+  // IF3-F(3부-카): 하늘 읽기 스위치 7 — 정책 PG-91 차례 · 서버 0046 과 같은 이름(live 꺼짐 · 데모 켜짐 · G-01 · 05 · 06 화면은 IF5-F, 이번엔 키만)
+  const IF3_KEYS = ['read_guide', 'sky_week', 'sky_book', 'my_ways', 'three_pillars', 'meet_sky', 'birth_card'];
+  const k19 = () => FEATURE_KEY_LIST.filter((k) => !['K12', 'K15', 'V5', 'V6', 'R', 'D46', 'LG', 'IF2', 'IF3'].includes(k.group));
 
-  test('114키 = K12 9 · K15 3 · 새 키 75 · V5 3 · V6 1 · R 1 · D46 1 · LG 1 · IF2 20, 이름은 겹치지 않고 snake_case', () => {
-    expect(FEATURE_KEYS).toHaveLength(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length + D46_KEYS.length + LG_KEYS.length + IF2_KEYS.length);
-    expect(new Set(FEATURE_KEYS).size).toBe(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length + D46_KEYS.length + LG_KEYS.length + IF2_KEYS.length);
+  test('121키 = K12 9 · K15 3 · 새 키 75 · V5 3 · V6 1 · R 1 · D46 1 · LG 1 · IF2 20 · IF3 7, 이름은 겹치지 않고 snake_case', () => {
+    expect(FEATURE_KEYS).toHaveLength(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length + D46_KEYS.length + LG_KEYS.length + IF2_KEYS.length + IF3_KEYS.length);
+    expect(new Set(FEATURE_KEYS).size).toBe(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length + D46_KEYS.length + LG_KEYS.length + IF2_KEYS.length + IF3_KEYS.length);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'LG').map((k) => k.key)).toEqual(LG_KEYS);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'IF2').map((k) => k.key)).toEqual(IF2_KEYS);
+    expect(FEATURE_KEY_LIST.filter((k) => k.group === 'IF3').map((k) => k.key)).toEqual(IF3_KEYS);
+    expect(FEATURE_KEY_LIST.filter((k) => k.group === 'IF3').every((k) => k.live === false)).toBe(true); // 실서버 처음값은 모두 꺼짐
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'R').map((k) => k.key)).toEqual(R_KEYS);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'D46').map((k) => k.key)).toEqual(D46_KEYS);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'V5').map((k) => k.key)).toEqual(V5_KEYS);

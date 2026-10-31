@@ -3,6 +3,7 @@ import type { IconName } from '@/components/Icon';
 import { PREFERENCES_EDIT_ENABLED } from '@/config/flags';
 import { COMMON, SIGN_IN } from '@/content/copy';
 import { REPORTS, SETTINGS, WITHDRAW } from '@/content/settingsCopy';
+import { IF3_TEXT } from '@/content/if3Copy';
 import { SUPPORT_CONTACT, type SupportContact } from '@/content/supportContact';
 import type { WithdrawConfirmFailure, WithdrawStartFailure } from '@/lib/settingsApi';
 
@@ -16,6 +17,7 @@ export type RowAction =
   | { kind: 'soon' } // 인증 서류 제출: 이동 없음, "준비 중이에요"
   | { kind: 'legal' } // 이용약관 · 개인정보 처리방침 읽기(03 과 같은 시트)
   | { kind: 'credits' } // 크레딧 · 구매 내역(카피.md 12-Q, 옛 NV35 '구매 · 등급 구독' 자리) → T5 크레딧 · 내역. 상점이 꺼져도 보인다
+  | { kind: 'skyBook' } // 하늘 도감(IF3-F · G-03 · 정책 PG-32): 스위치 sky_book 이 켜졌을 때만 보이는 정보 줄 → /sky-book
   | { kind: 'grade' }; // 내 등급(D-200 ② · 정책 P3-10) → 16-G(/grade, 상점 밖에서 여는 화면)
 
 // icon: 줄 앞 아이콘(D43 A · 1안 24 · text). 디자인 QA 14곳 중 설정 몫(A3 ~ A7) + 함께 붙일 것(공개 범위 · 보안 · 동의 관리 · 안전 안내)
@@ -39,6 +41,7 @@ const ALL_ROWS: readonly RowDef[] = [
   { key: 'safety', label: SETTINGS.rows.safety, action: { kind: 'page', page: 'safety' }, group: 'main', icon: 'safety' },
   { key: 'licenses', label: SETTINGS.rows.licenses, action: { kind: 'page', page: 'licenses' }, group: 'info', icon: 'document' },
   { key: 'image-credit', label: SETTINGS.rows.imageCredit, action: { kind: 'page', page: 'image-credit' }, group: 'info', icon: 'document' },
+  { key: 'sky-book', label: IF3_TEXT['SKY_BOOK.entry.settings'], action: { kind: 'skyBook' }, group: 'info', icon: 'how_to' }, // 스위치 sky_book 꺼짐이면 SettingsScreen 이 거른다(실서버 처음값 꺼짐)
   { key: 'business-info', label: SETTINGS.rows.businessInfo, action: { kind: 'page', page: 'business-info' }, group: 'info', icon: 'document' }, // 값 6개가 모두 있을 때만(SettingsScreen 이 거른다)
 ];
 export const SETTINGS_ROWS: readonly RowDef[] = ALL_ROWS.filter((r) => PREFERENCES_EDIT_ENABLED || r.key !== 'preferences');

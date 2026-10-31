@@ -14,22 +14,30 @@ import { Pressable } from '@/components/Pressable';
 import { Screen } from '@/components/Screen';
 import { TextButton } from '@/components/TextButton';
 import { Toast } from '@/components/Toast';
-import { SIGN_CUSP } from '@/content/if3Copy';
+import { SIGN_CUSP, t3 } from '@/content/if3Copy';
 import type { BoardingState } from '@/features/boarding/boardingApi';
 import { BOARDING } from '@/features/boarding/boardingCopy';
 import { Rise, TOAST_MS } from '@/motion';
 import { if2Look } from '@/theme/if2Look';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 
-import type { InflightApi, Magazine, PreQuestions, WeekCard } from './inflightApi';
+import type { BirthWeek, InflightApi, Magazine, PreQuestions, WeekCard } from './inflightApi';
 import { columnOf, element5Name, questionText, sajuText, signName, stemIntro, tarotOf, tripPlaceOf, zodiacText } from './if2Library';
 import { MAG_PAGES, magazineNoneKind, tripOf, type MagPage } from './inflightLogic';
 import { Art, artXml, Footnote, if2Styles, tarotXml } from './If2Parts';
 import { Ck17Sheet, PreAnswerSheet } from './If2Sheets';
 import { tx } from './if2Text';
 import type { Ck17Api } from './inflightService';
+import { BirthCard, MyWaysFold, SkyWeekCard } from './SkyParts';
 
-export type MagazineDeps = { api: Pick<InflightApi, 'magazine' | 'weekCard' | 'pickWeekCard' | 'preQuestions'>; ck17: Ck17Api; preOn?: boolean; boarding?: () => Promise<BoardingState | null> };
+// isOn: 3부-카 하늘 읽기 스위치(sky_week · my_ways · birth_card · sky_book). 없으면 모두 꺼짐(실서버 처음값) — 꺼진 칸은 그리지 않는다(정책 PG-93)
+export type MagazineDeps = {
+  api: Pick<InflightApi, 'magazine' | 'weekCard' | 'pickWeekCard' | 'preQuestions'> & Partial<Pick<InflightApi, 'myWays' | 'birthWeek'>>;
+  ck17: Ck17Api;
+  preOn?: boolean;
+  boarding?: () => Promise<BoardingState | null>;
+  isOn?: (key: string) => boolean;
+};
 const GRAIN: Readonly<Record<string, 'grainWood' | 'grainFire' | 'grainEarth' | 'grainMetal' | 'grainWater'>> = { wood: 'grainWood', fire: 'grainFire', earth: 'grainEarth', metal: 'grainMetal', water: 'grainWater' };
 const pageName = (p: MagPage) =>
   p === 'cover' ? tx('MAGAZINE.cover.issue') : p === 'skyGrain' ? tx('MAGAZINE.page.skyGrain') : p === 'card' ? tx('MAGAZINE.page.card') : p === 'love' ? tx('MAGAZINE.page.love') : p === 'question' ? tx('MAGAZINE.page.question') : p === 'place' ? tx('MAGAZINE.page.place') : tx('MAGAZINE.page.back');
@@ -45,6 +53,8 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
   const [width, setWidth] = useState(0);
   const [sheet, setSheet] = useState<'none' | 'ck17' | 'pre'>('none');
   const [toast, setToast] = useState<string | null>(null);
+  const [birth, setBirth] = useState<BirthWeek | null>(null); // G-07: ④ 쪽에 닿았을 때 한 번만 부른다(스위치 birth_card 켜짐일 때) · 이 화면 메모리뿐
+  const birthAsked = useRef(false);
   const pager = useRef<ScrollView>(null);
   const startPage = params.page === 'card' ? MAG_PAGES.indexOf('card') : 0;
   const round = Number(params.round ?? '0') || 0;
@@ -63,12 +73,25 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
     setMag('loading');
     fetchAll();
   };
+  const birthOn = (deps.isOn ?? (() => false))('birth_card');
+  const birthFetch = deps.api.birthWeek;
+  useEffect(() => {
+    if (!birthOn || !birthFetch || MAG_PAGES[page] !== 'question' || birthAsked.current) return;
+    birthAsked.current = true;
+    void birthFetch().then(
+      (r) => setBirth(r.ok ? r.data : null),
+      () => undefined,
+    );
+  }, [birthOn, birthFetch, page]);
   useEffect(() => {
     if (!toast) return undefined;
     const t = setTimeout(() => setToast(null), TOAST_MS);
     return () => clearTimeout(t);
   }, [toast]);
 
+  const isOn = deps.isOn ?? (() => false);
+  const waysApi = deps.api.myWays;
+  const birthApi = deps.api.birthWeek;
   const issued = typeof mag === 'object' && mag.state === 'issued' ? mag : null;
   const trip = issued ? (tripOf(issued.tripNo) ?? '') : '';
   // 쪽을 넘길 뿐 — 동의 시트는 쪽에 닿아도 저절로 띄우지 않는다. ① 쪽의 [동의하고 보기]를 누를 때만(정책 PF-16 · PF-23, QP-46)
@@ -151,6 +174,7 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
         return (
           <View style={styles.page} testID="mag-sky">
             <AppText variant="title">{tx('MAGAZINE.page.skyGrain')}</AppText>
+            {isOn('sky_week') ? <SkyWeekCard issueDate={issued.issueDate} /> : null}
             {issued.sky && issued.grain ? (
               <>
                 <AppText variant="bodyBold">{tx('MAGAZINE.page.sky')}</AppText>
@@ -185,6 +209,7 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
                   <AppText variant="body">{stemIntro(issued.grain.stem) ?? ''}</AppText>
                   <AppText variant="body">{sajuText(issued.grain.saju) ?? ''}</AppText>
                 </View>
+                {isOn('my_ways') && waysApi ? <MyWaysFold api={{ myWays: waysApi }} onAgree={() => setSheet('ck17')} /> : null}
               </>
             ) : (
               <View style={if2Styles.gapSmall} testID="mag-ck17-off">
@@ -228,6 +253,7 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
               </AppText>
             ))}
             {deps.preOn && pre && pre.state !== 'none' ? <Button label={tx('MAGAZINE.question.preAnswer')} variant="secondary" onPress={() => setSheet('pre')} testID="mag-pre" /> : null}
+            {isOn('birth_card') && birthApi ? <BirthCard week={birth} issueDate={issued.issueDate} active={MAG_PAGES[page] === 'question'} /> : null}
             <Footnote text={tx('FUN.footer')} />
           </View>
         );
@@ -260,6 +286,7 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
             <AppText variant="body" tone="sub">
               {tx('MAGAZINE.back.next')}
             </AppText>
+            {isOn('sky_book') ? <Button label={t3('SKY_BOOK.entry.back')} variant="secondary" inline onPress={() => router.push('/sky-book' as Href)} testID="mag-book" /> : null}
             <Button label={tx('MAGAZINE.a11y.close')} variant="secondary" inline onPress={close} testID="mag-back-close" />
             <Footnote text={tx('MAGAZINE.back.aiNote')} testID="mag-ai-note" />
           </View>

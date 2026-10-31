@@ -59,6 +59,7 @@ export type SettingsDeps = SupportDeps & {
   requestPush: () => Promise<PushStatus>; // 시스템 권한 창(서비스 알림을 켤 때, 안내 글을 먼저 보인 뒤)
   contact?: () => ContactPorts; // 12-5 지인 차단 기기 연결(주소록 · 해시, 3부-바). 없으면 지인 차단 줄은 '준비 중'
   boarded?: () => Promise<boolean>; // 3부-아: 판매 마감 전 · 이번 회차 탑승권이 있나(동의 관리 CK4 · CK15 끄기 확인창 한 줄). 없으면 그 줄 없음
+  skyBook?: () => boolean; // IF3-F: 정보 묶음 '하늘 도감' 줄(스위치 sky_book 이 켜졌을 때만). 없으면 줄 없음
   ck17?: () => Ck17Api | null; // IF2-F: 동의 관리 '재미 정보' 줄(기내지 · 궁합 카드 스위치가 켜졌을 때만). 없거나 null 이면 줄 없음
 };
 
@@ -74,6 +75,7 @@ export function defaultSettingsDeps(): SettingsDeps {
     contact: contactPorts, // 누를 때 처음 만든다(기기 모듈을 미리 읽지 않음)
     boarded: boardedNow,
     ck17: ck17Now,
+    skyBook: skyBookNow,
     copyText: copyToClipboard,
     openMail: async (email) => {
       try {
@@ -93,6 +95,15 @@ async function boardedNow(): Promise<boolean> {
   /* eslint-enable @typescript-eslint/no-require-imports */
   const r = await boardingServices().api.load();
   return r.ok && canCancel(r.state);
+}
+
+// IF3-F: 하늘 도감 줄은 스위치 sky_book 이 켜졌을 때만(스위치 처음값 꺼짐 — 실서버엔 줄 0)
+function skyBookNow(): boolean {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const { appFlagsStore } = require('@/hooks/useFeatureFlags') as typeof import('@/hooks/useFeatureFlags');
+  const { isOn } = require('@/lib/featureFlagsApi') as typeof import('@/lib/featureFlagsApi');
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  return isOn(appFlagsStore().get(), 'sky_book');
 }
 
 // IF2-F: 재미 정보 동의(CK17A · CK17B) 줄은 기내지 · 궁합 카드 스위치가 켜졌을 때만(스위치 처음값 꺼짐 — 실서버엔 줄 0)
@@ -177,6 +188,9 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
         return;
       case 'legal':
         setLegalOpen(true);
+        return;
+      case 'skyBook':
+        go('/sky-book' as Href, false);
         return;
       case 'credits':
         router.push('/credits' as unknown as Href); // T5(탭 위에 열리는 화면)
@@ -270,7 +284,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
   })();
 
   const main = SETTINGS_ROWS.filter((r) => r.group === 'main');
-  const info = SETTINGS_ROWS.filter((r) => r.group === 'info' && (r.key !== 'business-info' || bizRows !== null));
+  const info = SETTINGS_ROWS.filter((r) => r.group === 'info' && (r.key !== 'business-info' || bizRows !== null) && (r.key !== 'sky-book' || deps.skyBook?.() === true));
 
   return (
     <Screen edges={['top']} enter="tab" testID="settings-screen">

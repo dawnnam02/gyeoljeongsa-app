@@ -2,6 +2,8 @@
 //   get_home_state()                       → {stage, blocks, hobby_notice?, pocket?{cells}, status?{head, cells, writable}, pair?{room_id, cells}, me?{cells}, reflect_ok?}
 //   get_magazine()                         → {state none | not_yet | issued, issue_date, trip_no, week_element, column, ck17a, sky{signs[달력 순 한두 개], zodiacs[같은 차례 주간 글 id]} | null, grain{stem, saju, relation} | null}
 //        0046(3부-차): 경계 날(시작일 −1 · 0 · +1, 해마다 36일)은 순서 없는 한 쌍을 달력 순으로 — 대표 · 이웃 구분 키 sign · cusp · zodiac 은 응답에 없다
+//   get_my_ways()                          → {ok, state ready, venus, mercury}(한국 정오 별자리 코드 한 개씩 · 경계 표시 0) | {ok, state none} | {ok:false, code consent_required | not_ready} — 3부-카(G-04 · 0046) · 본인만 · 인자 0 · 저장 0
+//   get_my_birth_week()                    → {ok, state ready, birthday_week 참/거짓} | {ok, state none} | {ok:false, code not_ready} — 3부-카(G-07 · 0046) · 날짜 · 별자리 · 나이 · 묶음 번호 0(질문 묶음은 발행일로 앱이 정함)
 //   get_week_card() · pick_week_card(p_slot) → {state none | face_down | revealed(slot, card) | not_ready} · {ok, slot, card} | {ok:false, code already_picked(slot, card) | invalid_slot | none | not_ready}
 //   pre_answer_questions()                 → {state none | open | landing | not_ready, questions[20 id]}
 //   preview_my_profile()                   → {profile(짝이 get_candidate_profile 로 받는 값 그대로), ck17b, same_hobby}
@@ -161,6 +163,8 @@ export type InflightApi = {
   home(): Promise<If2Result<HomeState>>;
   magazine(): Promise<If2Result<Magazine>>;
   weekCard(): Promise<If2Result<WeekCard>>;
+  myWays(): Promise<If2Result<MyWays>>;
+  birthWeek(): Promise<If2Result<BirthWeek>>;
   pickWeekCard(slot: number): Promise<{ ok: true; slot: number; card: number } | (If2Fail & { slot?: number; card?: number })>;
   preQuestions(): Promise<If2Result<PreQuestions>>;
   preview(): Promise<If2Result<PreviewMe>>;
@@ -172,6 +176,23 @@ export type InflightApi = {
   togetherAnswer(cardId: string, answer: string): Promise<{ ok: true; opened: boolean; message: Message | null; crisis?: true } | If2Fail>;
   togetherWithdraw(cardId: string): Promise<{ ok: true; message: Message | null } | If2Fail>;
 };
+
+// ── 하늘 읽기 본인 함수(3부-카 · 0046): 별자리 코드 · 참/거짓 하나뿐. 날짜 · 나이 · 좌석 · 회차 번호는 응답에 있어도 읽지 않는다 ────────────
+export const SIGN_CODES = ['aquarius', 'pisces', 'aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn'] as const;
+export type MyWays = { state: 'ready'; venus: string; mercury: string } | { state: 'none' };
+export type BirthWeek = { state: 'ready'; birthdayWeek: boolean } | { state: 'none' };
+export function parseMyWays(raw: unknown): MyWays | null {
+  if (!isRecord(raw)) return null;
+  if (raw.state === 'none') return { state: 'none' };
+  const venus = oneOf(raw.venus, SIGN_CODES);
+  const mercury = oneOf(raw.mercury, SIGN_CODES);
+  return raw.state === 'ready' && venus && mercury ? { state: 'ready', venus, mercury } : null;
+}
+export function parseBirthWeek(raw: unknown): BirthWeek | null {
+  if (!isRecord(raw)) return null;
+  if (raw.state === 'none') return { state: 'none' };
+  return raw.state === 'ready' && typeof raw.birthday_week === 'boolean' ? { state: 'ready', birthdayWeek: raw.birthday_week } : null;
+}
 
 export function createInflightApi(call: RpcCall): InflightApi {
   const rpc = async (fn: string, args: Record<string, unknown> = {}): Promise<RpcResult> => {
@@ -208,6 +229,8 @@ export function createInflightApi(call: RpcCall): InflightApi {
     home: () => read('get_home_state', {}, parseHomeState, 'if2.home.fail'),
     magazine: () => read('get_magazine', {}, parseMagazine, 'if2.mag.fail'),
     weekCard: () => read('get_week_card', {}, parseWeekCard, 'if2.card.fail'),
+    myWays: () => read('get_my_ways', {}, parseMyWays, 'if3.ways.fail'),
+    birthWeek: () => read('get_my_birth_week', {}, parseBirthWeek, 'if3.birth.fail'),
     async pickWeekCard(slot) {
       const { data, error } = await rpc('pick_week_card', { p_slot: slot });
       if (error) return failOf(error, 'if2.card.pick.fail');

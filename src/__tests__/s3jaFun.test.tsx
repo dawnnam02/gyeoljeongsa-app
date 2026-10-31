@@ -162,8 +162,9 @@ describe('QP-45 · QP-46 카피 반영', () => {
   test('기내지 코드에 동의 시트를 저절로 띄우는 길 0(쪽에 닿을 때 setSheet 없음 · 이번 실행 asked 메모 없음)', () => {
     const t = read('features/inflight/MagazineScreen.tsx').replace(/\/\/.*$/gm, '');
     expect(t).not.toMatch(/asked\s*=\s*new Set|asked\.has|asked\.add/);
-    expect((t.match(/setSheet\('ck17'\)/g) ?? []).length).toBe(1); // 버튼 onPress 한 곳뿐
+    expect((t.match(/setSheet\('ck17'\)/g) ?? []).length).toBe(2); // 누르는 곳 둘뿐: ① 쪽 [동의하고 보기] 버튼 + 3부-카 사랑하는 방식 접힘 안 [동의하고 보기] 버튼(onAgree)
     expect(t).toMatch(/onPress=\{\(\) => setSheet\('ck17'\)\}/);
+    expect(t).toMatch(/onAgree=\{\(\) => setSheet\('ck17'\)\}/);
   });
 });
 

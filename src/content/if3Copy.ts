@@ -1,15 +1,78 @@
-// 재미 기능 2(IF3 · 카피 22장) 글의 앱 사본. 3부-차에서는 1.0 별자리 경계 한 줄 두 키(22-10 `SIGN_CUSP`)만 들어온다 — 나머지 77키는 IF3-F 가 이 파일에 붙이고
-//  check:copy IF3 그룹이 22장 표와 한 글자씩 대조한다(지금은 SIGN_CUSP 두 줄).
-//  · 경계 날(해마다 36일)에만 기내지 ① 쪽 별자리 칸 위에 한 번: '○○자리와 ○○자리 사이에 태어났어요.' + 사실 한 문장. 이름 둘은 서버가 준 한 쌍을 달력 차례 그대로 —
-//    어느 쪽이 위인지 · 전날인지 당일인지 드러나지 않게 '대표' · '또는' 같은 우열 말 0 · 숫자('36일' 따위) 화면 0
-// 받침이 있으면 '과', 없으면 '와' — features/inflight/if2Text.josa 와 같은 규칙(이 파일은 check:copy 가 바로 읽으므로 경로 별칭 없이 홀로 선다)
-const josaGwa = (word: string): string => {
+// 재미 기능 2(IF3 · 카피 22장) 글의 앱 사본 — scripts/gen-if3-copy.mjs 가 마케팅/카피.md 22장에서 만든다(손으로 고치지 않는다).
+//  · 3부-카(IF3-F 축소판): G-02 `SKY_WEEK` 4 · G-03 `SKY_BOOK` 14 · G-04 `MY_WAYS` 14 · G-07 `BIRTH_CARD` 8 · `FUN.aiNote` 1 = 41키 + 3부-차 `SIGN_CUSP`(22-10) 두 줄.
+//    G-01 `READ_GUIDE` · G-05 `THREE_PILLARS` · G-06 `MEET_SKY` 는 IF5-F 에서 이 파일에 붙인다. check:copy IF3 그룹이 22장 표와 한 글자씩 대조한다.
+//  · 쓰지 않는 글(조건부 · 보류): MY_WAYS.off.body · BIRTH_CARD.off.body — 사본에 글만 두고 화면은 쪽이 따로 갈릴 때(MY_WAYS.off.body)만 부른다. BIRTH_CARD.off.body 는 변호사 답 전까지 그리지 않는다.
+//  · 이 파일은 check:copy 가 Node 로 바로 읽으므로 경로 별칭 없이 홀로 선다
+// 받침이 있으면 앞 글자, 없으면 뒤 글자 — features/inflight/if2Text.josa 와 같은 규칙
+const pickJosa = (word: string, a: string, b: string): string => {
   const code = word.trim().slice(-1).charCodeAt(0) - 0xac00;
-  return code >= 0 && code <= 11171 && code % 28 !== 0 ? '과' : '와';
+  return code >= 0 && code <= 11171 && code % 28 !== 0 ? a : b;
 };
+const JOSA_PAIRS: readonly (readonly [string, string, string])[] = [
+  ['을/를', '을', '를'],
+  ['이/가', '이', '가'],
+  ['은/는', '은', '는'],
+  ['과/와', '과', '와'],
+];
 
 export const SIGN_CUSP = {
   // 카피 22-10 `SIGN_CUSP.pair` = '{별자리 이름}{과/와} {별자리 이름} 사이에 태어났어요.' — 조사는 받침으로
-  pair: (a: string, b: string) => `${a}${josaGwa(a)} ${b} 사이에 태어났어요.`,
+  pair: (a: string, b: string) => `${a}${pickJosa(a, '과', '와')} ${b} 사이에 태어났어요.`,
   why: '해마다 경계가 하루쯤 달라서 두 별자리를 함께 보여 드려요.',
 } as const;
+
+export const IF3_TEXT = {
+  'FUN.aiNote': '이 화면의 글은 생성형 AI로 미리 써 두었어요.',
+  'SKY_WEEK.title': '창밖 하늘',
+  'SKY_WEEK.lead': '이번 주 달 모양과 절기를 있는 그대로 적었어요.',
+  'SKY_WEEK.period': '{시작 날짜} ~ {끝 날짜}',
+  'SKY_WEEK.a11y': '창밖 하늘, {한 줄}',
+  'SKY_BOOK.title': '하늘 도감',
+  'SKY_BOOK.lead': '별자리와 카드에 담긴 이야기를 실었어요. 처음부터 모두 열려 있어요.',
+  'SKY_BOOK.section.sign': '별자리',
+  'SKY_BOOK.signNote': '해가 머무는 때를 달력 차례대로 놓았어요. 순서에 뜻은 없어요.',
+  'SKY_BOOK.sign.period': '{시작 날짜} ~ {끝 날짜}',
+  'SKY_BOOK.section.card': '카드',
+  'SKY_BOOK.cardNote': '예부터 전해 오는 차례대로 놓았어요. 순서에 뜻은 없어요.',
+  'SKY_BOOK.end': '도감은 여기까지예요.',
+  'SKY_BOOK.entry.back': '하늘 도감 보기',
+  'SKY_BOOK.entry.settings': '하늘 도감',
+  'SKY_BOOK.loadFailed': '하늘 도감을 불러오지 못했어요. 다시 시도해 주세요.',
+  'SKY_BOOK.a11y.sheet': '하늘 도감, {갈래 이름}',
+  'SKY_BOOK.a11y.sign': '{별자리 이름}, {시기}, {뜻}',
+  'SKY_BOOK.a11y.card': '{카드 이름}, {뜻}',
+  'MY_WAYS.title': '사랑하는 방식 · 말하는 방식',
+  'MY_WAYS.pill': '나만 봐요',
+  'MY_WAYS.lead': '별자리 풀이에서는 내가 태어난 날 금성이 있던 별자리로 사랑하는 방식을, 수성이 있던 별자리로 말하는 방식을 읽어요.',
+  'MY_WAYS.love.title': '사랑하는 방식',
+  'MY_WAYS.love.sub': '금성이 있던 별자리',
+  'MY_WAYS.talk.title': '말하는 방식',
+  'MY_WAYS.talk.sub': '수성이 있던 별자리',
+  'MY_WAYS.note': '금성과 수성은 태어난 시각에 따라 다른 별자리로 읽히는 날이 있어요.',
+  'MY_WAYS.mine': '나만 보는 화면이에요.',
+  'MY_WAYS.off.body': '사랑하는 방식과 말하는 방식은 생년월일 이용에 동의한 분께만 보여요. 원하시면 설정 \'동의 관리\'에서 켤 수 있어요.',
+  'MY_WAYS.a11y.open': '사랑하는 방식과 말하는 방식 펼치기',
+  'MY_WAYS.a11y.close': '사랑하는 방식과 말하는 방식 접기',
+  'MY_WAYS.a11y.love': '사랑하는 방식, {한 줄}',
+  'MY_WAYS.a11y.talk': '말하는 방식, {한 줄}',
+  'BIRTH_CARD.kicker': '생일이 든 주예요. 축하해요.',
+  'BIRTH_CARD.title': '생일 주간 엽서',
+  'BIRTH_CARD.heading': '한 해를 돌아봐요',
+  'BIRTH_CARD.lead': '한 해를 돌아보는 질문이에요. 답하지 않아도 괜찮아요.',
+  'BIRTH_CARD.end': '이 엽서는 이번 호까지만 나와요.',
+  'BIRTH_CARD.note': '나만 보는 화면이에요.',
+  'BIRTH_CARD.off.body': '생일 주간 엽서는 생년월일 이용에 동의한 분께만 보여요. 원하시면 설정 \'동의 관리\'에서 켤 수 있어요.',
+  'BIRTH_CARD.a11y.card': '생일 주간 엽서, {질문 차례}',
+} as const;
+
+export type If3Key = keyof typeof IF3_TEXT;
+
+// {이름} 자리를 채운다. {이름}{을/를} 꼴이면 값의 받침으로 조사도 고른다. 값이 없는 자리는 그대로 둔다
+export function t3(key: If3Key, vals: Readonly<Record<string, string>> = {}): string {
+  let out: string = IF3_TEXT[key];
+  for (const [name, v] of Object.entries(vals)) {
+    for (const [pair, a, b] of JOSA_PAIRS) out = out.split(`{${name}}{${pair}}`).join(v + pickJosa(v, a, b));
+    out = out.split(`{${name}}`).join(v);
+  }
+  return out;
+}

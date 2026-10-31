@@ -27,7 +27,7 @@
 //        X 에서 20장 줄 · 12-Q 새 줄 4개 · 13-1 POL7 · POL14 를 앱 글과 한 글자씩 맞춘다. '(줄 없음)'은 앱에 그 키가 없어야 한다
 //  LG. 탑승객 라운지 글(LG-F · D-220, features/lounge/loungeCopy.ts LOUNGE)이 카피.md 19장 표(첫 칸 'T4 · T6 `LOUNGE.키`' — 19-1 ~ 19-10, 211줄)와 한 글자씩 같은가 ·
 //        앱 LOUNGE 의 글이 모두 19장에 있는가(카피 밖 글 0) · 화면 금지어 14(세부청사진 3장 · 정책 PL-22) · 창가 · 통로 · 가운데 · 느낌표 · 숫자 0(19장 말투)
-//  IF3. 재미 기능 2 글(content/if3Copy.ts)이 카피.md 22장 표와 같은가 — 3부-차는 22-10 SIGN_CUSP 두 줄만(경계 날 한 줄) · 우열 · 순서 말 0 · 기내지 ① 쪽에서만 쓰임
+//  IF3. 재미 기능 2 글(content/if3Copy.ts)이 카피.md 22장 표와 같은가 — 3부-카: 하늘 읽기 41키(G-02 · 03 · 04 · 07 + FUN.aiNote) + 3부-차 SIGN_CUSP 두 줄 · 판정 · 우열 · 모으기 말 0 · 나만 보는 글은 기내지 쪽에서만
 //  CR. 위기 도움 카드 공용 글(3부-차, content/copy.ts CRISIS · SAFETY.emergency)이 카피.md 19-14 표 3줄과 한 글자씩 같은가 · 둘째 줄 = 카피 12 · 되풀이 말 · 신고 · 상대 · 라운지 말 · 겁주기 · 느낌표 · 숫자 0
 //  IF2. 기내 서비스 · 연애 기능 글(IF2-F · D-223, features/inflight/if2CopyData.ts — gen-if2-copy)이 카피.md 21장 표와 한 글자씩 같은가 · 앱이 부르는 글 키가 모두 21장에 있는가 ·
 //        사본 밖 글 0 · 느낌표 · 숫자 · PF-18 금지 낱말 · 상대 화면 별자리 이름 · 일간 0 · 재미 정보 동의 시트 = 동의문구 4-17 · 생성 파일(라이브러리 · 그림 · 안전 낱말 · 아이콘) = 원본.
@@ -1017,12 +1017,31 @@ try {
     check('CR', `위기 도움 카드 공용 글 ${rowsCR.length}줄(카피 19-14)이 copy.ts CRISIS 와 같고 · 둘째 줄 SAFETY.emergency = 카피 12 · 되풀이 말 · 신고 · 상대 · 라운지 말 · 겁주기 · 느낌표 · 숫자 0`, rowsCR.length === 3 && diffsCR.length === 0, diffsCR.join('\n') || `표 ${rowsCR.length}줄`);
   }
 
-  // ── IF3. 재미 기능 2(카피.md 22장 · content/if3Copy.ts) — 3부-차는 22-10 `SIGN_CUSP` 두 줄(1.0 별자리 경계 한 줄)만 대조한다. IF3-F 가 나머지 키를 붙일 때 이 그룹을 22장 전체로 넓힌다 ──
-  //  · 22-10 표(첫 칸 'IF-MAG① `SIGN_CUSP.키`')와 한 글자씩 같다 — pair 는 이름 자리({별자리 이름}{과/와})를 자리 표지로 맞춘다
-  //  · 말투: 느낌표 · 숫자('36일' 따위) · 우열 · 순서 말('대표' · '또는' · '전날' · '당일' · '관례') · 확률 말 0
-  //  · 이 글은 기내지 ① 쪽(나만 보는 화면)에서만 쓴다 — 상대에게 보이는 화면 파일이 부르면 실패(정책 PG-81 · 보안 IC3-17)
+  // ── IF3. 재미 기능 2(카피.md 22장 · content/if3Copy.ts — scripts/gen-if3-copy.mjs 가 만든 사본) ──
+  //  · 3부-카(IF3-F 축소판)는 G-02 SKY_WEEK 4 · G-03 SKY_BOOK 14 · G-04 MY_WAYS 14 · G-07 BIRTH_CARD 8 · FUN.aiNote 1 = 41키 + 3부-차 SIGN_CUSP 두 줄(22-10)만 대조한다.
+  //    G-01 READ_GUIDE · G-05 THREE_PILLARS · G-06 MEET_SKY 는 IF5-F 에서 붙이므로 아직 사본에 없다(22장에는 있어도 읽지 않음)
+  //  · 22장 표(22-2 ~ 22-10 · 첫 칸에 `키`)와 한 글자씩 같다 · 앱 키는 모두 22장에 있다 · SIGN_CUSP.pair 는 이름 자리({별자리 이름}{과/와})를 자리 표지로 맞춘다
+  //  · 말투: 느낌표 · 숫자 · 판정 · 우열 · 예언 · 모으기 말 0(정책 PG-05) · SIGN_CUSP 는 대표 · 또는 · 전날 · 당일 · 관례 · 확률 말 0
+  //  · 나만 보는 글(SKY_WEEK · MY_WAYS · BIRTH_CARD · SIGN_CUSP)은 기내지 쪽 파일(MagazineScreen · SkyParts)에서만 쓴다 — 상대에게 보이는 화면이 부르면 실패(정책 PG-03 · PG-81 · 보안 IC3-17)
   {
     const i3 = await load(path.join(APP_DIR, 'src', 'content', 'if3Copy.ts'));
+    const gen3 = await load(path.join(APP_DIR, 'scripts', 'gen-if3-copy.mjs'));
+    const rows3 = gen3.readRows();
+    const diffsIF3 = [];
+    for (const [key, want] of rows3) {
+      const got = i3.IF3_TEXT[key];
+      if (got !== want) diffsIF3.push(`${key}: 앱 "${got}" / 카피 "${want}"`);
+    }
+    for (const key of Object.keys(i3.IF3_TEXT)) if (!rows3.has(key)) diffsIF3.push(`${key}: 카피 22장에 없는 글`);
+    if (rows3.size !== gen3.IF3_KEY_COUNT) diffsIF3.push(`카피 22장에서 읽은 키가 ${gen3.IF3_KEY_COUNT}개가 아님(${rows3.size}개)`);
+    const BAN3 = ['운세', '점수', '순위', '퍼센트', '대운', '세운', '용신', '신살', '상극', '행운', '반드시', '운명', '조심', '나쁜', '완성', '모았', '연속', '잠금'];
+    for (const [key, t0] of Object.entries(i3.IF3_TEXT)) {
+      const t = t0.replace(/\{[^{}]+\}/g, '');
+      if (/[!！]/.test(t)) diffsIF3.push(`${key}: 느낌표`);
+      if (/\d/.test(t)) diffsIF3.push(`${key}: 숫자`);
+      for (const w of BAN3) if (t.includes(w)) diffsIF3.push(`${key}: 금지 낱말 '${w}'`);
+    }
+    // SIGN_CUSP(22-10): 3부-차 그대로
     const from2210 = copyText.search(/^### 22-10\. /m);
     const rest2210 = from2210 >= 0 ? copyText.slice(from2210 + 5) : '';
     const next2210 = rest2210.search(/^#{1,3} /m);
@@ -1033,7 +1052,6 @@ try {
       .map(cells)
       .map((r) => [(/`SIGN_CUSP\.([^`]+)`/.exec(r[0]) ?? [])[1], r[1]]);
     const want2210 = Object.fromEntries(rows2210);
-    const diffsIF3 = [];
     const slots = (t) => t.replace(/\{별자리 이름\}(\{과\/와\})?/g, '§');
     const appPair = i3.SIGN_CUSP.pair('\u0001', '\u0002').replace(/[\u0001\u0002](과|와)?/g, '§');
     if (slots(want2210.pair ?? '') !== appPair) diffsIF3.push(`SIGN_CUSP.pair: 앱 "${appPair}" / 카피 "${slots(want2210.pair ?? '')}"`);
@@ -1045,17 +1063,27 @@ try {
       if (/\d/.test(t)) diffsIF3.push(`SIGN_CUSP.${key}: 숫자`);
       for (const w of ['대표', '또는', '전날', '당일', '관례', '확률', '운세', '정확']) if (t.includes(w)) diffsIF3.push(`SIGN_CUSP.${key}: 금지 낱말 '${w}'`);
     }
-    const users = [];
+    // 쓰는 곳: if3Copy 를 부르는 파일은 허용 목록 안에 있고, 나만 보는 글 접두어는 기내지 쪽 파일에서만 쓴다
+    const OWN = ['features/inflight/MagazineScreen.tsx', 'features/inflight/SkyParts.tsx'];
+    const ALLOWED3 = [...OWN, 'features/inflight/SkyBookScreen.tsx', 'features/settings/SettingsScreen.tsx', 'features/settings/settingsLogic.ts'];
+    const importers = [];
+    const ownUsers = [];
     const walk3 = (dir) => {
       for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
         const f = path.join(dir, e.name);
         if (e.isDirectory()) walk3(f);
-        else if (/\.(ts|tsx)$/.test(e.name) && !f.includes(`${path.sep}__tests__${path.sep}`) && /content\/if3Copy/.test(fs.readFileSync(f, 'utf8'))) users.push(path.relative(path.join(APP_DIR, 'src'), f).split(path.sep).join('/'));
+        else if (/\.(ts|tsx)$/.test(e.name) && !f.includes(`${path.sep}__tests__${path.sep}`) && !f.endsWith(`content${path.sep}if3Copy.ts`)) {
+          const text = fs.readFileSync(f, 'utf8');
+          const rel = path.relative(path.join(APP_DIR, 'src'), f).split(path.sep).join('/');
+          if (/content\/if3Copy/.test(text)) importers.push(rel);
+          if (/['"`](MY_WAYS|BIRTH_CARD|SKY_WEEK)\./.test(text) || /\bSIGN_CUSP\b/.test(text)) ownUsers.push(rel);
+        }
       }
     };
     walk3(path.join(APP_DIR, 'src'));
-    for (const f of users) if (f !== 'features/inflight/MagazineScreen.tsx') diffsIF3.push(`${f}: 22장 글(if3Copy)을 기내지 밖에서 부름(나만 보는 화면 밖)`);
-    check('IF3', `재미 기능 2 글 ${rows2210.length}줄(카피 22-10 SIGN_CUSP — 경계 날 한 줄)이 if3Copy.ts 와 같고 · 느낌표 · 숫자 · 우열 · 순서 말 0 · 기내지 ① 쪽에서만 쓴다`, rows2210.length === 2 && diffsIF3.length === 0, diffsIF3.join('\n') || `표 ${rows2210.length}줄`);
+    for (const f of importers) if (!ALLOWED3.includes(f)) diffsIF3.push(`${f}: 22장 글(if3Copy)을 허용 밖 화면에서 부름`);
+    for (const f of ownUsers) if (!OWN.includes(f)) diffsIF3.push(`${f}: 나만 보는 글(SKY_WEEK · MY_WAYS · BIRTH_CARD · SIGN_CUSP)을 기내지 쪽 밖에서 부름`);
+    check('IF3', `재미 기능 2 글 ${rows3.size + rows2210.length}줄(카피 22-2 ~ 22-10: 하늘 읽기 41키 + SIGN_CUSP 2)이 if3Copy.ts 와 같고 · 느낌표 · 숫자 · 판정 · 우열 · 모으기 말 0 · 나만 보는 글은 기내지 쪽에서만 쓴다`, rows3.size === gen3.IF3_KEY_COUNT && rows2210.length === 2 && diffsIF3.length === 0, diffsIF3.join('\n') || `표 ${rows3.size + rows2210.length}줄`);
   }
 
   // ── IF2. 기내 서비스 · 연애 기능(IF2-F · D-223 — 카피.md 21장 '앱 반영' 뒤 대조) ──
