@@ -1232,10 +1232,15 @@ export function SurveyChatScreen({ deps: given, onDone, typeOn = false }: Props)
           {stage === 'part2' ? <ChatComposer value={text} onChange={onType} onSend={() => void sendTurn()} disabled={waiting} /> : null}
           {stage === 'done' && typeOn ? (
             // 끝 화면: [내 여행 타입 보기] 입구 + [다음] 같은 크기 — 안 눌러도 [다음]으로 05, 저절로 넘어가는 화면 0(정책 PF-33)
-            <CtaPair
-              secondary={<Button label={tx('TYPE_CARD.entry.open')} variant="secondary" onPress={() => router.push(TYPE_ENTRY_HREF as Href)} testID="chat-type-entry" />}
-              primary={<Button label={t('CHAT.SUMMARY.next')} onPress={review} testID="chat-review" />}
-            />
+            // 3부-카(FB-017): CtaPair 는 1 : 2 비율이라 앞 단추 글이 두 줄로 접혔다 → 07 과 같은 반반(flex 1 : 1)
+            <View style={styles.endPair} testID="chat-end-pair">
+              <View style={styles.endHalf}>
+                <Button label={tx('TYPE_CARD.entry.open')} variant="secondary" onPress={() => router.push(TYPE_ENTRY_HREF as Href)} testID="chat-type-entry" />
+              </View>
+              <View style={styles.endHalf}>
+                <Button label={t('CHAT.SUMMARY.next')} onPress={review} testID="chat-review" />
+              </View>
+            </View>
           ) : stage === 'wrap' || stage === 'done' || stage === 'paused' ? (
             <Button label={t('CHAT.SUMMARY.next')} variant={stage === 'done' ? 'primary' : 'secondary'} onPress={review} testID="chat-review" />
           ) : null}
@@ -1282,6 +1287,8 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 const styles = StyleSheet.create({
   stack: { gap: space.s8, marginTop: space.s8 },
+  endPair: { flexDirection: 'row', gap: space.s12 },
+  endHalf: { flex: 1 },
   content: { paddingHorizontal: size.screenPadding, paddingTop: space.s8, paddingBottom: space.s48, gap: space.s12 },
   now: { paddingHorizontal: size.screenPadding, paddingBottom: space.s8 },
   block: { gap: space.s12 },

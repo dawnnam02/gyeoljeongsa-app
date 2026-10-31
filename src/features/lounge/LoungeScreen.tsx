@@ -105,6 +105,10 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
   const scroll = useRef<ScrollView>(null);
 
   const st = view.kind === 'ready' ? view.st : null;
+  const postsNow = useRef<readonly LoungePost[]>([]); // 늦게 오는 응답이 가장 새 목록을 보게(FB-020)
+  useEffect(() => {
+    postsNow.current = st?.posts ?? [];
+  });
   const trip = st ? tripName(st.tripNo) : null;
 
   const toList = useCallback(() => router.replace(LOUNGE_CHAT_HREF as Href), [router]);
@@ -216,6 +220,15 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
         if (!r.ok) return; // 숨긴 좌석 · 가려진 글은 서버가 not_found
         patchPosts((list) => mergePost(list, r.data));
         if (!atBottom.current && !(r.data.kind !== 'captain' && r.data.mine)) setNewBelow(true);
+        // FB-020(3부-카): 내 글을 인용한 새 글이 들어오면 내 글의 상태('공감받았어요')를 한 번 다시 읽어 같은 화면에서 보이게 한다(이미 목록에 있는 내 글만 · 새 점 0)
+        const q = r.data.kind !== 'captain' ? r.data.quote : null;
+        const known = q ? postsNow.current.find((p) => p.id === q.id) : null;
+        if (q && q.state === 'shown' && !(known && (known.kind === 'captain' || !known.mine))) {
+          // 남의 글을 인용한 새 글은 건너뛴다. 목록에 아직 없는 글(내 보내기 응답이 늦은 때)은 읽어 보고, 내 글이고 그때 목록에 있을 때만 바꾼다
+          void deps.api.getPost(q.id).then((m) => {
+            if (m.ok && m.data.kind !== 'captain' && m.data.mine) patchPosts((list) => (list.some((p) => p.id === m.data.id) ? mergePost(list, m.data) : list));
+          });
+        }
       });
     };
     onGone.current = (e) => patchPosts((list) => removePost(list, e.id));

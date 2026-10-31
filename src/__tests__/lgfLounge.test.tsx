@@ -349,9 +349,11 @@ describe('LG-F T6 객실(open) — LGF-04 · 07 · 08 · 11 · 12 · 13 · 15 ·
     await typeInto(tree, 'lounge-input', '반가워요');
     await press(tree, 'lounge-send');
     await wait(120); // 가상 탑승객 답(30ms) → 방송
-    expect(spy.getPost).toHaveBeenCalledTimes(1);
+    // 3부-카(FB-020): 새 글(1) + 그 글이 내 글을 인용하면 내 글의 상태 한 번(2) — 목록 전체 다시 읽기는 여전히 0
+    expect(spy.getPost).toHaveBeenCalledTimes(2);
     expect(spy.state.mock.calls.length).toBe(statesBefore);
     expect(allTexts(tree)).toContain('반가워요. 천천히 이야기 나눠요.');
+    expect(allTexts(tree)).toContain(LOUNGE.empathy.received); // 같은 화면에서 내 글에 '공감받았어요'(나에게만)
   });
 });
 

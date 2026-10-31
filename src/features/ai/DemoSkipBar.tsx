@@ -19,11 +19,11 @@ export function DemoSkipBar() {
     void aiApi.startDemo(scenario); // 모의 서버가 건을 바로 만든다. 처리가 끝나기를 기다리지 않고 06 이 상태를 읽는다
     router.push('/analysis');
   };
-  // FB-011: 줄이 대화 화면 아래를 늘 크게 가리지 않게 — 안내 한 줄 + 글자 버튼 셋을 한 줄(넘치면 다음 줄)로 작게. 버튼 이름 · testID 는 그대로(점검 스크립트가 쓴다)
+  // FB-011: 줄이 대화 화면 아래를 늘 크게 가리지 않게 — 안내(FB-018: 한 줄에서 잘려 "…" 로 끝나던 것을 최대 세 줄까지 풀어 보임) + 글자 버튼 셋을 한 줄(넘치면 다음 줄)로 작게. 버튼 이름 · testID 는 그대로(점검 스크립트가 쓴다)
   return (
     <SafeAreaView edges={['bottom']} style={styles.bar} testID="demo-skip">
       <View style={styles.inner}>
-        <AppText variant="caption" numberOfLines={1} testID="demo-skip-note">
+        <AppText variant="caption" numberOfLines={3} testID="demo-skip-note">
           {DEMO.skipNote}
         </AppText>
         <View style={styles.row}>
