@@ -24,9 +24,72 @@ const memoryStore: Store = {
 
 export const secureStore: Store = Platform.OS === 'web' ? memoryStore : nativeStore;
 
+// 열쇠 목록을 함께 적는 저장소(3부-카 ⑤ · 보안 IC3-20): 설문 임시 저장 · 피할 회사 · 학교는 열쇠 끝에 회원 id 가 붙어, 앱을 지웠다 새로 깐 기기(iOS 키체인에 값이 남음)에서는 어떤 열쇠가 있는지 알 수 없다.
+//  쓴 열쇠를 목록 한 곳(indexKey)에 적어 두고, clearAll 이 목록대로 지운다. 목록에는 열쇠 이름만 있다(값 · 회원 정보 0 — 이름 끝의 회원 id 는 이미 열쇠에 있던 것). 같은 저장소의 작업은 줄을 서서 한다.
+function withKeyIndex(base: ReturnType<typeof chunkedStorage>, indexKey: string) {
+  let tail: Promise<unknown> = Promise.resolve();
+  const inOrder = <T>(task: () => Promise<T>): Promise<T> => {
+    const run = tail.then(task, task);
+    tail = run.catch(() => undefined);
+    return run;
+  };
+  const readIndex = async (): Promise<string[]> => {
+    try {
+      const raw = await base.getItem(indexKey);
+      const v: unknown = raw ? JSON.parse(raw) : [];
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+    } catch {
+      return [];
+    }
+  };
+  return {
+    getItem: (key: string): Promise<string | null> => base.getItem(key),
+    setItem: (key: string, value: string): Promise<void> =>
+      inOrder(async () => {
+        await base.setItem(key, value);
+        const idx = await readIndex();
+        if (!idx.includes(key)) await base.setItem(indexKey, JSON.stringify([...idx, key]));
+      }),
+    removeItem: (key: string): Promise<void> =>
+      inOrder(async () => {
+        await base.removeItem(key);
+        const idx = await readIndex();
+        if (idx.includes(key)) {
+          const next = idx.filter((k) => k !== key);
+          if (next.length) await base.setItem(indexKey, JSON.stringify(next));
+          else await base.removeItem(indexKey);
+        }
+      }),
+    // 목록의 열쇠 + 목록이 생기기 전부터 있던 고정 열쇠(extraKeys)를 모두 지우고 목록도 지운다
+    clearAll: (extraKeys: readonly string[] = []): Promise<void> =>
+      inOrder(async () => {
+        const idx = await readIndex();
+        for (const k of new Set([...idx, ...extraKeys])) await base.removeItem(k);
+        await base.removeItem(indexKey);
+      }),
+  };
+}
+
 // 줄 세우기가 저장소 인스턴스마다 따로라서, 용도별로 인스턴스를 나눈다.
 export const authStorage = chunkedStorage(secureStore); // Supabase 세션(lib/supabase.ts)
-export const appStateStorage = chunkedStorage(secureStore); // 설문 임시 저장(store/)
+export const appStateStorage = withKeyIndex(chunkedStorage(secureStore), 'device.keys.appState'); // 설문 임시 저장 · 가입 진행 · 만남 장면 본 표시(store/ · features/surveyV2 · surveyChat · chat/meetSeen) — 새로 깐 기기에서 비울 수 있게 열쇠 목록을 함께 둔다(3부-카 ⑤)
 export const securityStorage = chunkedStorage(secureStore); // 보안 설정: 상대 화면 캡처 차단(store/securityStore.ts, 팀장 결정 10-15 ⑥)
-export const avoidStorage = chunkedStorage(secureStore); // 12-5 피할 회사 · 학교 이름 원문(lib/avoidLocal, 보안 T126 · 3부-바)
+export const avoidStorage = withKeyIndex(chunkedStorage(secureStore), 'device.keys.avoid'); // 12-5 피할 회사 · 학교 이름 원문(lib/avoidLocal, 보안 T126 · 3부-바) — 열쇠 목록을 함께 둔다(3부-카 ⑤)
 export const if2Storage = chunkedStorage(secureStore); // IF2-F 기내 서비스 · 연애 기능 나만 쓰는 글 9종(features/inflight/deviceNotes, 정책 PF-10 · 보안 IC-12)
+
+// 새로 깐 기기(설치 표식 없음)에서 키체인에 남은 설문 임시 저장 · 피할 회사 · 학교 원문을 비운다(lib/supabase.purgeStaleSessionOnFreshInstall 이 부름 · 3부-카 ⑤ · 보안 IC3-20).
+//  목록이 생기기 전에 쓴 고정 열쇠 둘(가입 진행 'gyeoljeongsa.signup' = store/signupStore SIGNUP_STORE_KEY · 만남 장면 'chat.meetScene.v1' = chat/meetSeen MEET_SEEN_KEY — 시험이 같은 글자인지 대조)도 함께 지운다.
+//  한쪽이 실패해도 던지지 않고 다음으로 간다(저장소를 못 쓰는 환경)
+export const APP_STATE_FIXED_KEYS = ['gyeoljeongsa.signup', 'chat.meetScene.v1'] as const;
+export async function forgetStaleDeviceStorage(): Promise<void> {
+  try {
+    await appStateStorage.clearAll(APP_STATE_FIXED_KEYS);
+  } catch {
+    // 지우지 못해도 앱은 계속 켜진다
+  }
+  try {
+    await avoidStorage.clearAll();
+  } catch {
+    // 위와 같다
+  }
+}

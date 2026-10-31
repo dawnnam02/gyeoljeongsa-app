@@ -179,6 +179,60 @@ describe('재설치 (A-12)', () => {
     for (const key of Object.values(NOTE_KEYS)) expect(await storage.if2Storage.getItem(key)).toBe(JSON.stringify({ kept: key }));
   });
 
+  // 3부-카 ⑤(보안 IC3-20): 설문 임시 저장(appStateStorage) · 피할 회사 · 학교 원문(avoidStorage)도 같은 키체인 — 회원 id 가 열쇠에 붙어 있어 열쇠 목록대로 지운다
+  const USER_A = '00000000-0000-4000-8000-0000000000aa';
+  const USER_B = '00000000-0000-4000-8000-0000000000bb';
+  test('설치 표식이 없으면 설문 임시 저장(회원마다 열쇠 · 가입 진행 · 만남 장면)과 피할 회사 · 학교 원문도 지운다 (3부-카 ⑤)', async () => {
+    const { avoidKeyOf } = jest.requireActual<typeof import('@/lib/avoidLocal')>('@/lib/avoidLocal');
+    await storage.appStateStorage.setItem(`survey.v2.draft_${USER_A}`, JSON.stringify({ A01: '가나다'.repeat(300) })); // 조각 여러 개
+    await storage.appStateStorage.setItem(`survey.chat.local_${USER_B}`, JSON.stringify({ turn: 3 }));
+    await storage.appStateStorage.setItem('gyeoljeongsa.signup', JSON.stringify({ email: 'x' }));
+    await storage.avoidStorage.setItem(avoidKeyOf(USER_A), JSON.stringify({ companies: ['예시회사'], schools: [] }));
+    await storage.avoidStorage.setItem(avoidKeyOf(USER_B), JSON.stringify({ companies: [], schools: [{ key: 'k', name: '예시학교' }] }));
+    // 목록이 생기기 전에 쓴 고정 열쇠(목록에 없음)도 지운다
+    mockSecureData.set('chat.meetScene.v1.n', '1');
+    mockSecureData.set('chat.meetScene.v1.0', '{}');
+    expect(mockSecureData.size).toBeGreaterThan(8);
+
+    await client.purgeStaleSessionOnFreshInstall();
+
+    expect(await storage.appStateStorage.getItem(`survey.v2.draft_${USER_A}`)).toBeNull();
+    expect(await storage.appStateStorage.getItem(`survey.chat.local_${USER_B}`)).toBeNull();
+    expect(await storage.appStateStorage.getItem('gyeoljeongsa.signup')).toBeNull();
+    expect(await storage.avoidStorage.getItem(avoidKeyOf(USER_A))).toBeNull();
+    expect(await storage.avoidStorage.getItem(avoidKeyOf(USER_B))).toBeNull();
+    expect([...mockSecureData.keys()]).toEqual([]); // 열쇠 목록까지 남기지 않는다
+    expect(await AsyncStorage.getItem('app.installed')).toBe('1');
+  });
+
+  test('표식이 있으면(두 번째 실행부터) 설문 임시 저장 · 피할 회사 · 학교 원문을 지우지 않는다 (3부-카 ⑤)', async () => {
+    const { avoidKeyOf } = jest.requireActual<typeof import('@/lib/avoidLocal')>('@/lib/avoidLocal');
+    await AsyncStorage.setItem('app.installed', '1');
+    await storage.appStateStorage.setItem(`survey.v2.draft_${USER_A}`, JSON.stringify({ A01: 'a' }));
+    await storage.avoidStorage.setItem(avoidKeyOf(USER_A), JSON.stringify({ companies: ['예시회사'], schools: [] }));
+
+    await client.purgeStaleSessionOnFreshInstall();
+
+    expect(await storage.appStateStorage.getItem(`survey.v2.draft_${USER_A}`)).toBe(JSON.stringify({ A01: 'a' }));
+    expect(await storage.avoidStorage.getItem(avoidKeyOf(USER_A))).toBe(JSON.stringify({ companies: ['예시회사'], schools: [] }));
+  });
+
+  test('열쇠 목록 저장소: 지운 열쇠는 목록에서도 빠지고 · 같은 열쇠를 다시 써도 목록에 하나 · 고정 열쇠 둘 이름이 앱 상수와 같다', async () => {
+    const { SIGNUP_STORE_KEY } = jest.requireActual<typeof import('@/store/signupStore')>('@/store/signupStore');
+    const { MEET_SEEN_KEY } = jest.requireActual<typeof import('@/features/chat/meetSeen')>('@/features/chat/meetSeen');
+    expect([...storage.APP_STATE_FIXED_KEYS]).toEqual([SIGNUP_STORE_KEY, MEET_SEEN_KEY]);
+    await storage.avoidStorage.setItem('k1', 'v1');
+    await storage.avoidStorage.setItem('k1', 'v1b');
+    await storage.avoidStorage.setItem('k2', 'v2');
+    expect(JSON.parse((await jest.requireActual<typeof import('@/lib/secureStorage')>('@/lib/secureStorage').secureStore.get('device.keys.avoid.0')) ?? '[]')).toEqual(['k1', 'k2']);
+    await storage.avoidStorage.removeItem('k1');
+    expect(await storage.avoidStorage.getItem('k1')).toBeNull();
+    expect(await storage.avoidStorage.getItem('k2')).toBe('v2');
+    expect(JSON.parse((await storage.secureStore.get('device.keys.avoid.0')) ?? '[]')).toEqual(['k2']);
+    await storage.avoidStorage.removeItem('k2');
+    expect([...mockSecureData.keys()]).toEqual([]);
+  });
+
   test('표식이 있으면(두 번째 실행부터) 세션을 지우지 않는다', async () => {
     await AsyncStorage.setItem('app.installed', '1');
     await storage.authStorage.setItem(STORAGE_KEY, JSON.stringify(fakeSession()));
