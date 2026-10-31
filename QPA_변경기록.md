@@ -870,3 +870,101 @@
 - 점수 · 퍼센트 · 판정 · 순위 · 숫자 배지 · 깜빡임 · 푸시 · 연속 접속 표시 0 · 재회운 0 · 겁주기 0('쉬어 가는 날' · '부딪히기 쉬운 결' 화면 말).
 - 네 질문: ① 줄을 흐리지 않나 — 예 ② 필수 일치를 깨지 않나 — 예 ③ 진지한 사람에게 도움 — 예(재미 영역, 결과는 짝 · 줄에 안 쓰임을 화면에 밝힘) ④ 차분 · 기다림 즐겁게 — 예(펼침 기억 0 · 끝이 있는 한 화면 · 재촉 · 중독 장치 0).
 - 벗어난 것: 없음.
+
+# IF5-F2 (D-237 · 10-31 ~) — 마일리지 · AI 맞춤 · 동의: 마일리지 화면(가상 잔액) · 내역 · 확인 시트 셋 · 잔액 부족 · AI 맞춤(AIT 서버 경로 위) · 사주 이야기 · 동의 시트(CK17A ③④⑤ · CK17D · CK19 · CK20) · AIT 카피 23-13 · 법무 재생성
+
+- 세부청사진 `팀장/세부청사진/IF5-F_앱.md` 2장 ⑨ ~ ⑯ · 3장 바닥선. 시작 `767af0f`(jest 120묶음 2,127건) → 끝 아래 커밋. 실호출 0 · 실결제 0 · 푸시 0 · `.env` 안 열음. F1b 빈칸(음력 · 숨은 글자 · G-06 · READ_GUIDE · 상대 합쳐 보기 · 아이콘)은 안 건드림.
+- 커밋: `41c5136`(첫 일 — gen:legal · gen:if5) · `1bd704e`(⑭ ⑯ + sync 서버 폴더) · `b36f91a`(⑨ ⑩ ⑪ 본체) · `44a8cb8`(시험 + 기대값 갱신) · `975d56e`(웹 점검 3폭 + 서버 핸들러 자리) · 이 절 커밋.
+
+## IF5-F2 세부청사진 ↔ 만든 것
+
+| # | 조건 | 만든 것 |
+|---|---|---|
+| 첫 일 | gen:legal · gen:if5 → check:copy 실패 0 | `gen:legal -- --fingerprints`: **바뀐 파일 0**(F1 ⑧-2 가 이미 반영한 약관 `20c57ceb8492` · 처리방침 `efa323055ed0` 그대로 · `consentContent.ts` 변화 0). `gen:if5`: `MILEAGE.free.leave.refund` 한 줄만 바뀜 → check:copy 110/0 |
+| ⑨ | 마일리지: 설정 줄 + [충전] 길 · 잔액 · 내역 · 확인 시트(300 이상) · 큰 충전 한 줄 · 잔액 부족 · 가산 더한 최종 마일리지 · 가입 1,000 + 탑승 200 · 값은 `get_mileage` 꼴 · 결제 호출 0 | `demo/mileageDemo.ts`(0048 응답 꼴 모의 서버 — 상품 4 · 차감표 10 · 규칙 · 가입 선물 1회 · 탑승 적립 회차마다 · 무료 먼저 → 유료 먼저 산 것부터 · 예치 → 확정 · 해제 · 같은 요청 번호 재생 · 위기 턴 0 · 데모 전용 `demo_mileage_*`) · `features/mileage/`(`mileageApi` 파서 · `ledgerEdge` · `mileageLogic` · `useMileage` · `MileageScreen` IF-MILE · `MileageLogScreen` IF-MILE-LOG · `MileageSheets` ① 쓰기 확인 ② 대화 시작 ③ 큰 충전 + 잔액 부족) · 12 설정 '마일리지' 줄(크레딧 아래 · 스위치 mileage) · 사주 마당 머리 [마일리지] · 탈퇴 확인창 마일리지 줄(잔액 · 환불 요청 · 무료분 사라짐 — `WithdrawFlow.mileageLines`) · 화면 ID 3(IF-MILE · IF-MILE-LOG · IF-SJ-TALK) · 라우트 3 · flow 화살표. 앱 코드에 가격 / 수 / 차감 숫자 0(시험이 정적 점검) · 큰 충전은 카피 한 줄이 말하는 가격에서 읽음 · 상점 탭 0 |
+| ⑩ | AI 맞춤: 풀이 · 대운 · 올해 · 궁합 · 종합 · 날짜 설명 · 사주 이야기 → AIT 서버 경로 위 · 상대 2단계 · 위기 카드 차감 0 · 5번째면 닫힘 · 30번째 뒤 쉬어 가요 한 번 · 결과 기기에만 · 끝줄 앱 한 곳 | 서버: `server/ait/sajuRoute.ts`(`/api/ai/s5_*` 여섯 — AIT 핸들러와 같은 문 순서 · 접근 코드 닫힘이 기본 · 키 허용 목록 · 사실 문 `guardFacts`(대운 날짜 · 생일 · 코드 · 한자 거절 · 상대는 `guardCompatFacts`) · 모의/live 둘 · 서명 묶음 이어 가기 · 로그 허용 키뿐 · FOOTER5 안 붙임) · `route.ts` 가 `s5_` 만 이 핸들러로. 앱: `features/saju/ai/`(`aiFacts` 서버 읽기 응답 → 사실 · `aiClient` · `aiRun` 위기 앞거름 → 예치 → 호출 → 확정/해제 · `aiResults` 기기 저장(withKeyIndex 꼴) · `AiBlock` 버튼 옆 N 한 곳 · 결과 · 재열람 무료) · `SajuTalkScreen` · 결 읽기 / 올해 / 인생 계절표(대운) 카드 아래 AI 칸 + 종합 칸 · 날짜 설명(30 · 확인 시트 0) · 둘이 맞춰 보기 결과 아래 AI 칸 · 코드 있으면 실제 / 없으면 데모 글(서버 요청 0) |
+| ⑪ | 동의 시트 CK17A ③④⑤ · CK17D · CK19 · CK20 → 그 뒤에만 inflight_mag · pair_card 데모 켬 | `gen-if2-assets.mjs` 가 법무 4-17 새 칸 · 4-18 · 4-19 · 4-20 을 `content/if5ConsentContent.ts` 로 생성(글자 그대로) · `features/consent/if5Consent`(이 기기 기록 · 판 값 `config/laterConsent.IF5_CONSENT_VERSIONS` — 판이 바뀌면 다시 받음) · `If5ConsentSheets`(CK17D · CK19 · CK20 블록) · `Ck17Sheet` 에 ③④⑤ 칸(①이 있어야 · 미리 체크 0 · 이어 가기로 항목별 기록) · 시각 · 곳은 ③ ④ 동의가 있어야 요청에 실림 · 대운은 ⑤ 동의가 있을 때만(없으면 법무 안내 한 줄) · PartnerSheet 의 CK20 은 법무 4-20 블록으로 교체. 시트가 생겨 데모 `inflight_mag` · `pair_card` 는 켜 둔 채(처음값 그대로 · 실서버 live:false 그대로) · 법무가 '보안 시험 통과 전엔 쓰지 말라'고 한 '우리 쪽 저장 0' 줄은 `IF5_KEEP_NOTE_ON=false` 로 꺼 둠 |
+| ⑫ | 법무 재생성 · 지문 기록 | 위 첫 일 — 지문 바뀐 것 0 · 동의 변화 0 · `gen-if2-assets --check` 같음 |
+| ⑬ | 보안 앱 시험 IFF5 대응표 · 새 웹 점검 3폭 · AIT 서버 오류 5종 · 던지기 경로 로그 전수 | 아래 대응표 · `check:mileage`(360 · 390 · 430) · `if5Ai.test` 의 로그 전수 |
+| ⑭ | AIT 카피 23-13 반영 | `gen-ait-copy.mjs` 가 23-13-1(두 줄 덮기) · 23-13-2(새 키 10) 표도 읽음 → 키 193 → 203 · 글 189 → 199 · 동의 시트 줄 순서(제목 → send → privacy.keep → keepMore → name → noSend → check → refuse → confirm · 알약 · privacy.send 중복 뺌) · `AIT_CONSENT_VERSION` `ait-2026.10.31-v2` · `AitNoCode` 기능별 · `limit` 칸에 `CONCERN.end.again` · `FALLBACK_CODES` 에서 limit 뺌 · `aitSync.test` 같음 · check-copy 'Anthropic' 은 consent.send · check 두 줄만(없으면 오히려 실패) |
+| ⑮ | `MILEAGE.free.leave.refund` 재생성 | 첫 일 `gen:if5` · 탈퇴 확인창이 이 글을 씀 |
+| ⑯ | `balanceFailed` 마침표 · partner5 동기 | `gen-if5-copy` 가 24-15-2 새 글로 덮음(키 수 318 그대로 — 24-15-1 새 키 12 는 F1b) · R5 허용 목록에서 뺌 · `sync-if5` 에 서버 폴더 `src/server/saju5/`(partner5 · request5 · chat5 · ai_facts5 · generated5 · input5 · validate5) — `src/saju5`(화면 쪽)에는 AI 요청 · 지시문 0 유지, `mock5`(미리 만든 모의 글)만 화면 쪽 |
+
+## IF5-F2 화면 × 상태 5종
+
+| 화면 · 칸 | 빈 | 불러오는 중 | 오류 | 범위 밖 | 시각 모름 | 시험 |
+|---|---|---|---|---|---|---|
+| IF-MILE 마일리지 | 잔액 0: 숫자 0 + 상품 줄 | 뼈대 + `SAJU.status.loadLab` | `SAJU.status.balanceFailed` + [다시 시도](자동 재시도 0) / 충전 꺼짐 · 잠김: `SAJU.status.maint` · 충전 숨김 | 해당 없음(나라 · 날짜 범위 없음) | 해당 없음 | if5F2Ui · web-mileage |
+| IF-MILE-LOG 내역 | `MILEAGE.log.empty` | 뼈대 | 한 줄 + [다시 시도] | 해당 없음 | 해당 없음 | if5F2Ui · web-mileage |
+| IF-MILE-OK 확인 시트(① 쓰기 · ② 시작 · ③ 큰 충전) | 해당 없음(누를 때만) | `holding` [쓰기] busy(연타 0) | 실패는 AI 칸이 받음(차감 0) | 해당 없음 | 해당 없음 | if5F2Ui |
+| 잔액 부족 | 사실 한 줄 + [충전하러 가기](재촉 0) · 채팅이면 쓰던 글 그대로 | 해당 없음 | 해당 없음 | 해당 없음 | 해당 없음 | if5F2Ui · if5Ai |
+| AI 맞춤 칸(카드 아래) | 버튼 + 마일리지 N 한 곳 · 사실 없으면(대운 칸 없음) 칸 0 | `aiRunning` 한 줄 · 버튼 loading | `aiBlocked`(차감 0) + [다시 시도] · 장부 꺼짐 `maint` · 잔액 읽기 실패 `balanceFailed` | 카드 쪽 `SAJU.range.before` 가 앞서 칸이 안 뜸 | 세 기둥 사실로(hour_known false) | if5F2Ui · if5Ai |
+| IF-SJ-TALK 사주 이야기 | 입구 한 줄 + 동의 → 시작 시트 | `aiRunning` · 입력 보존 | `sendFailed` / `aiBlocked`(차감 0) + [다시 시도](같은 요청 번호) | `SAJU.talk.noRange`(대화 길 0) | `SAJU.talk.hourUnknown` | if5F2Ui · web-mileage |
+| 동의 시트(CK17A · D · 19 · 20) | 미리 체크 0 | 저장 중 busy | `CONSENT_MANAGE.saveFailed`(CK17A) | 해당 없음 | 해당 없음 | if5F2Ui · web-mileage |
+
+## IF5-F2 `보안/IF5_위협.md` 앱 시험 IFF5 중 F2 몫 · AIT 14장 ⓑ
+
+| 번호 | 대응 | 근거 |
+|---|---|---|
+| IFF5-01 키 · SDK 0 | package.json 의존성 변경 0 · 마일리지 코드에 결제 모듈 · 가격 숫자 0 | if5Mileage 정적 · check_sec2 IF5-z |
+| IFF5-02 잔액 계산 0 | 잔액은 서버 응답만 · 쓴 뒤 `get_mileage` 다시 읽음 · 시트의 '쓴 뒤'는 서버 값 빼기일 뿐 · 요청 인자에 금액 · 잔액 0 | if5Mileage(인자 이름 점검) · if5F2Ui |
+| IFF5-03 · 04 결제 흐름 · 미처리 복구 | P0 는 스토어 결제 0(`consumeAsync` · `acknowledgePurchase` 0) — 가상 충전뿐. 복구 길은 실결제 연결(F-7 W7) 때 | check_sec2 IF5-z · 미착수(넘김) |
+| IFF5-05 연타 방지 | [쓰기] busy · 버튼 loading · 요청 번호 하나(`newRequestId`) · 같은 번호 재생 | if5F2Ui · if5Mileage |
+| IFF5-06 자동 재시도 0 | 모든 읽기 · 호출이 사용자가 누를 때만 · 실패하면 같은 요청 번호로 다시 | if5F2Ui |
+| IFF5-07 계정 표지 · 08 충전 화면 | 가격 · 수는 서버 응답 · 구독 · 자동 갱신 말 0 · 소모형 한 줄 | if5Mileage · web-mileage |
+| IFF5-09 재촉 0 · 10 보이는 한도 0 | '곧 소진' · 마지막 · 카운트다운 · 남은 횟수 · 대화 화면 숫자 0 | web-mileage · if5F2Ui · check:copy |
+| IFF5-11 부족 화면 | 사실 한 줄 + 충전 한 번 · 매칭 · 등급 말 0 | if5F2Ui |
+| IFF5-12 ~ 14 속도 · 확인 · 점검 | 서버 `rate` 는 조용한 잠금(남은 시간 글 0) · 점검은 `SAJU.status.maint` · 차감 0 · 충전 숨김 · 입력 보존 | aitScreens(기존) · if5F2Ui |
+| IFF5-15 위기 카드 | 고정 글 · 전화 걸기 0 · 상한 없음 · 닫으면 대화 계속 · 차감 0(잔액 0 포함) · 5번째면 세션 닫힘(카드는 계속) · 쓴 글 말풍선에 안 남음 · 캡처 막기 | if5F2Ui · if5Ai · web-mileage |
+| IFF5-16 입력 상한 안내 · 26 이력 필드 0 | 이야기 본문 키는 `text · facts · bundle · precheck` 뿐(이력 · assistant 필드 0) · 가산은 서버가 셈 | if5Ai(키 허용 목록 = 서버) |
+| IFF5-27 평문 표시 | AI 글은 Text 만 · 링크 · 마크다운 · 공유 · 복사 0 | if5Ai 정적 |
+| IFF5-28 예언 표시 | 끝줄은 앱 한 곳(`SAJU.card.footer`) · AI 칸 안 끝줄 0 · 서버가 FOOTER5 안 붙임 · 답마다 'AI가 쓴 글' | if5Ai · if5F2Ui |
+| IFF5-29 홈 호출 0 | 홈 · 사주 마당을 열 때 AI · 예치 호출 0(눌렀을 때만) | if5Ai · if5F2Ui |
+| IFF5-30 푸시 0 | 새 코드에 알림 · 푸시 가져오기 0 | if5Module 정적 |
+| IFF5-31 · 32 로그아웃 · 탈퇴 · 재설치 | `forgetSajuDevice` 가 시각 · 곳 + 동의 기록 + AI 풀이 저장본까지 지움 · 새로 깐 기기는 같은 열쇠 목록(`device.keys.if5`) | if5Saju · 정적 |
+| IFF5-35 번들 | `src/saju5` 에 요청 · 지시문 · 원가 · 대화 모듈 0(mock5 만 — 지시문 아님) · 서버 모듈은 `src/server` 로만 | if5Module · check:ait-bundle 걸린 것 0 |
+| 사실 · 상대 보호(A-2 · A-3) | 상대 쪽은 간지 없는 2단계 — 일간 오행 · 음양 + 시각을 아는지 · 서버가 한 번 더 거절 · 대운 `start_date` · `end_date` · 연-월-일 꼴 날짜 전송 0 | if5Ai |
+| IFF5-02 · 04 · 07 ~ 16 중 서버 몫 | 백엔드 / Edge 시험 몫(앱 시험 아님) | — |
+| AIT 14장 KEEP 한계 ⓑ: 서버 오류 5종 · 던지기 경로 로그 전수 | 코드 없음/틀림/서버 미설정(같은 401) · 잘못된 JSON · 큰 본문 413 · 서명 깨짐 · 걸러진 사실 — 각 경로 로그에 허용 키 외 · 입력 표지 · 접근 코드 · 서명 키 · 스택 0 | if5Ai 로그 전수 · check:ait-server 11/0 |
+
+## IF5-F2 바닥선
+
+| 항목 | 결과 |
+|---|---|
+| tsc | 0 |
+| expo lint | 문제 0 |
+| jest | 123묶음 2,183건 **3회 연속** 통과(시작 120묶음 2,127: +3묶음 +56건 · 기존 기대값 갱신 — 스위치 3키 · 화면 ID 33 · 설정 줄 · F1 상대 시트 CK20) |
+| check:copy | 통과 110 · 실패 0 (AIT 그룹 글 199줄 · IF5 그룹 318키) |
+| check:tokens | 통과 5 · 실패 0 |
+| sync-ait / sync-if5 / gen-if5-copy / gen-ait-copy / gen-if2-assets --check | 모두 같음(IF5 동기: 화면 쪽 15 + 서버 7) |
+| 웹 if2(390) / f7 / lounge(390) | 125 / 0 · 65 / 0 · 73 / 0 |
+| 웹 새 점검 `check:mileage`(360 · 390 · 430) | 35 / 0 · 35 / 0 · 35 / 0 |
+| 웹 `check:saju`(360 · 390 · 430) | 38 / 0 × 3 |
+| check_sec2(`SEC_SKIP_AUDIT=1`) | 178건 = 통과 164 · 실패 0 · 정보 14 |
+| prepush_scan | 확정 0 · 확인 0 |
+| check:ait-bundle · check:ait-server | 걸린 것 0 · 11 / 0 |
+| 새 CRLF | 0(원래 CRLF 이던 flow · screens · routes.test 는 그 줄끝 그대로) |
+
+## IF5-F2 못 한 것 · 확인 못 한 것
+
+- **실서버 쪽 없음(백엔드 넘김)**: CK17D · CK19 · CK20 · CK17A ③④⑤ 항목별 동의는 서버 동의 표에 코드가 없어 이 기기에만 기록. 마일리지 예치 · 확정은 진짜 서버에서는 Edge 몫이라 앱은 데모 전용 `demo_mileage_*` 만 부름(스토어 빌드엔 그 이름이 없어 '준비 중'으로 끝남).
+- **보안 시험 IFS5-72 · 73 · 75 통과 기록 없음**: 법무가 쓰지 말라고 한 '운영 서버에 저장하지 않아요' 줄(CK17D 요약 '우리 쪽' · 전문 6번 끝 문장 · CK19 같은 줄)은 `IF5_KEEP_NOTE_ON=false` 로 숨김 — 통과 기록이 오면 true.
+- **마일리지 충전 잠김(90일 환불 2번)** · **종합 풀이 이름**: 카피에 글 키가 없어 잠김은 점검 한 줄(`SAJU.status.maint`) 재사용, 종합은 서버 차감표의 이름('사주 종합 풀이')을 그대로 씀 → 마케팅 요청.
+- 대화 요약(Haiku 6턴마다)은 live 모드 코드만 있고 시험은 모의(결정적 접기)뿐. 실호출 평가는 본인 승인 거리.
+- 홈 '오늘 하루' 띠 · 기내지 · 매칭 화면에는 마일리지 입구 0(설정 줄 · 사주 마당 머리 · 부족 한 줄 · 내역 [충전하기]뿐).
+- 실기기 · 스크린리더 · 저가 안드로이드 60fps · Pretendard 실글꼴: 미확인. `check:bundle-audit` 는 이번엔 안 돌림(F1 때와 같은 사정 가능).
+
+## IF5-F2 넘김 (팀장 경유)
+
+- 백엔드: 동의 코드 CK17D · CK19 · CK20 + CK17A 항목별(시각 · 곳 · 성별) 기록 칸 · AI Edge 가 mileage_hold/settle/release 를 부르는 길 · 위기 턴 `p_crisis` 와 앱 앞거름의 일치 · 서버 스위치 14키 이름(F1 때와 같음).
+- 마케팅: 종합 풀이 이름 · 충전 잠김 글 · 24장 '앱 반영 전' → '앱 반영(IF5-F2)' 표시(MILEAGE · SAJU.talk · REST_HINT · aiButton 계열 · balanceFailed).
+- 법무: 동의문구 4-18 · 4-19 요약 '우리 쪽' 줄을 켜는 조건(IFS5 통과) · 4-20 CK20 확인을 이 기기에 한 번 기록하는 방식이 '입력칸을 열기 전 한 번'과 맞는지.
+- 디자인: 동의 시트 ③④⑤ 칸이 늘어난 CK17A 시트 높이 · AI 칸 위치(카드 아래 하단 슬롯) · 시안 아이콘 22는 F1b.
+- 보안: AI 서버 핸들러가 `src/server/ait/sajuRoute.ts`(서버 변수 이름 허용 폴더)에 있음 — prepush R11 이 `src/server/saju5` 의 변수 이름을 확인 건으로 잡아 옮김. check_sec2 IF5-aa 는 `persist(` 라는 함수 이름이 저장소 사용 근사에 걸려(저장 열쇠 아님) 이름을 바꿔 풂.
+
+## IF5-F2 척추 대조
+
+- 줄 · 짝 · 순서 · 노출 · 등급 · 탑승권에 0: 마일리지 · 사주 값이 매칭 화면에 닿는 길 0(정적 점검) · 마일리지 보유가 노출에 영향 0 · 서버 읽기는 본인 계산뿐 · 상대 생일은 기기를 떠나지 않고 AI 에는 간지 없는 줄임 사실만.
+- 재촉 · 점수 · 판정 · 겁주기 · 푸시 · 연속 접속 0: 잔액 임박 · 매진 · 보너스 · 할인 · 남은 횟수 말 0 · 대화 화면에 줄어드는 숫자 0 · '쉬어 가요' 한 줄은 한 번 · 막지 않음.
+- 네 질문: ① 줄을 흐리지 않나 — 예 ② 필수 일치를 깨지 않나 — 예 ③ 진지한 사람에게 도움 — 재미 영역(AI 글은 'AI가 쓴 글' · 결정은 내 몫이라고 밝힘) ④ 차분 · 기다림 — 예(재촉 · 중독 장치 0, 위기 말은 AI 보다 먼저 카드).
+- 벗어난 것: 없음.
