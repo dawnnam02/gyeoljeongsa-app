@@ -4,9 +4,9 @@
 //   stage 'fragment' = 우리가 미리 쓴 글(숫자 0 · 거예요 계열 전부 금지 · 한자 0)
 //   stage 'ai'       = 모델이 쓴 글(사실에서 온 숫자는 허용 · 한글(한자) 괄호 한 번은 허용 · 단정 꼴은 AI 용 좁은 표)
 
-import type { Hit } from '../server/ait/rules.ts';
-import { checkText } from '../server/ait/rules.ts';
-import { endsWithHaeyo, splitSentences, charLen } from '../server/ait/text.ts';
+import type { Hit } from './ait/rules.ts';
+import { checkText } from './ait/rules.ts';
+import { endsWithHaeyo, splitSentences, charLen } from './ait/text.ts';
 import { COMPAT_RULES, CHAT5_RULES, SAJU_RULES } from './rules5.ts';
 import { ALLOW_PHRASES5, EXTRA_FRAGMENT5 } from './rules_extra5.ts';
 

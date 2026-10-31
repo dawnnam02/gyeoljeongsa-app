@@ -1,7 +1,7 @@
 // IF5-A · 사주 확장 AI 기능 8개의 출력 모양(한 곳) — 출력 JSON 틀(schemas/*.json)과 검사기가 모두 여기서 나온다.
 // 의존성 0. 같은 ai/AIT/ts 모듈을 읽어 쓴다(고치지 않음).
 
-import type { ModelId } from '../server/ait/types.ts';
+import type { ModelId } from './ait/types.ts';
 
 export type Feature5 = 'reading' | 'compat' | 'daewoon' | 'sinyeon' | 'wolun' | 'daily' | 'taekil' | 'chat' | 'summary';
 export const FEATURES5: readonly Feature5[] = ['reading', 'compat', 'daewoon', 'sinyeon', 'wolun', 'daily', 'taekil', 'chat', 'summary'];

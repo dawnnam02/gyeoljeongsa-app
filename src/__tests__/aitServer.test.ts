@@ -323,12 +323,8 @@ describe('AIT-F 서버 경로 · 정적 점검 (AC-01 · 05 · 11 · 33 · ATS-4
   });
 
   test('src/server 를 가져오는 파일은 API 경로와 src/server 자신뿐 — 화면 · 부품 · lib · features 는 가져오지 않는다 (ATF-16)', () => {
-    // IF5-F1: src/saju5(ai/IF5/ts 복사본 — 기기 안 사주 계산 · 미리 쓴 글)는 순수 글 검사기 둘(rules · text — 정규식 목록뿐, 지시문 · 열쇠 · 업체 호출 0)과 타입(types — 타입 전용)만 가져온다. 화면 · 부품 · lib · features 는 여전히 0
-    const importers = nonTest.filter((f) => /from '(@\/server\/|\.\.?\/(?:\.\.\/)*server\/)/.test(fs.readFileSync(f, 'utf8')) && !rel(f).startsWith('server/') && !rel(f).startsWith('saju5/'));
+    const importers = nonTest.filter((f) => /from '(@\/server\/|\.\.?\/(?:\.\.\/)*server\/)/.test(fs.readFileSync(f, 'utf8')) && !rel(f).startsWith('server/'));
     expect(importers.map(rel)).toEqual(['app/api/ai/[feature]+api.ts']);
-    const fromSaju = new Set<string>();
-    for (const f of nonTest.filter((x) => rel(x).startsWith('saju5/'))) for (const m of fs.readFileSync(f, 'utf8').matchAll(/from '(?:@\/server\/ait\/|\.\.\/server\/ait\/)([a-z_]+)(?:\.ts)?'/g)) fromSaju.add(m[1]);
-    expect([...fromSaju].sort()).toEqual(['rules', 'text', 'types']); // types 는 spec5.ts 의 타입 전용 가져오기(번들에 0)
   });
 
   test('EXPO_PUBLIC_ 변수 이름은 기존 셋뿐 — AIT 가 새로 만들지 않았다 (ATF-02)', () => {

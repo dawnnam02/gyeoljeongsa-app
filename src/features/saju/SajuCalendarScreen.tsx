@@ -123,7 +123,7 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
         ) : taekil.kind === 'fail' ? (
           <ErrorBlock id="saju-cal-error" onRetry={() => setTries((n) => n + 1)} />
         ) : (
-          <View testID="saju-cal-grid">
+          <View style={styles.gridWrap} testID="saju-cal-grid">
             <View style={styles.weekRow}>
               {WEEKDAY_SHORT.map((w) => (
                 <AppText key={w} variant="caption" style={styles.cell}>
@@ -245,6 +245,7 @@ const styles = StyleSheet.create({
   body: { padding: size.screenPadding, paddingBottom: space.s40, gap: space.s12 },
   nav: { minWidth: size.touchMin, minHeight: size.touchMin, alignItems: 'center', justifyContent: 'center' },
   center: { textAlign: 'center' },
+  gridWrap: { marginHorizontal: -space.s12 }, // 360 폭에서도 날짜 칸 가로 49 이상(디자인 CAL — 화면 여백 20 → 8)
   weekRow: { flexDirection: 'row' },
   cell: { flex: 1, minHeight: size.touchMin, textAlign: 'center' },
   day: { alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, gap: space.s4 },

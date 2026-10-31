@@ -2,7 +2,7 @@
 // 근거: 법무 IF5_메모 4-3(되는 꼴 / 안 됨) · 8장(금지어) · 기획 IF5_사주확장_조사 4-2(순화 말) · 설계안 M-14('상담' 0).
 // Rule 꼴은 AIT rules.ts 와 같아서 checkText 를 그대로 쓴다. 의존성은 타입 하나뿐(순환 없음).
 
-import type { Rule } from '../server/ait/rules.ts';
+import type { Rule } from './ait/rules.ts';
 
 function R(id: string, label: string, source: string, flags = ''): Rule {
   return { id, label, re: new RegExp(source, flags), severity: 'block' };

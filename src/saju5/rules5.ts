@@ -2,8 +2,8 @@
 // 선: 단정 · 겁주기 · 건강 · 사고 · 죽음 · 이혼(이별) 예언 0 / 의학 · 법 · 돈 투자 조언 0 / 점수 · 등급 · 판정 0 / 이름 0 / 겁주는 신살 이름 0 / 번역투 · 합쇼체 0.
 // 예언형(올해는 …한 흐름이에요)은 허용한다 — 본인 결정(10-30). 규칙은 AIT 의 rules.ts 와 같은 Rule 꼴이라 checkText 를 그대로 쓴다.
 
-import type { Rule } from '../server/ait/rules.ts';
-import { CHAT_RULES, COMMON } from '../server/ait/rules.ts';
+import type { Rule } from './ait/rules.ts';
+import { CHAT_RULES, COMMON } from './ait/rules.ts';
 import { EXTRA_AI5 } from './rules_extra5.ts';   // IF5-A2: '상담' · 한자 · 미래 단정 꼴 · 시기 단정 · 숫자 점수 · 순화 대상 말
 
 function R(id: string, label: string, source: string, flags = ''): Rule {

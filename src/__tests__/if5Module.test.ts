@@ -21,14 +21,18 @@ const hasCopyDoc = fs.existsSync(path.join(ROOT, '마케팅', '카피.md'));
 const run = (script: string, ...args: string[]) => spawnSync(process.execPath, [path.join(APP, 'scripts', script), ...args], { encoding: 'utf8' });
 
 (hasOrigin ? describe : describe.skip)('IF5-F1 ② 계산 모듈 사본 = 원본 (동기 검사)', () => {
-  test('node scripts/sync-if5.mjs --check 가 같음 · 파일 11개(코드 7 + 데이터 4) · 원본은 읽기만', () => {
+  test('node scripts/sync-if5.mjs --check 가 같음 · 파일 14개(코드 7 + 순수 검사기 3 + 데이터 4) · 원본은 읽기만', () => {
     const r = run('sync-if5.mjs', '--check');
-    expect(r.stdout + r.stderr).toMatch(/IF5 동기 같음: 파일 11개/);
+    expect(r.stdout + r.stderr).toMatch(/IF5 동기 같음: 파일 14개/);
     expect(r.status).toBe(0);
   });
   test('들이지 않은 것: partner5(F2) · AI 요청 · 원가 · 대화 모듈이 앱 소스에 없다(번들에 지시문 0 — IFF5-35)', () => {
     const names = fs.readdirSync(path.join(APP, 'src', 'saju5'));
     for (const n of ['partner5.ts', 'request5.ts', 'generated5.ts', 'cost5.ts', 'chat5.ts', 'input5.ts', 'mock5.ts']) expect(names).not.toContain(n);
+  });
+  test('src/saju5 는 src/server 를 가져오지 않는다 — 검사기 셋은 saju5/ait 에 따로 복사(ATF-16 · 보안 P5-e2)', () => {
+    const walk = (d: string): string[] => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith('.ts') ? [path.join(d, e.name)] : []));
+    for (const f of walk(path.join(APP, 'src', 'saju5'))) expect(fs.readFileSync(f, 'utf8')).not.toMatch(/from '[^']*server\//);
   });
   test('앱 사본의 줄끝은 LF 뿐(새 CRLF 0)', () => {
     for (const f of fs.readdirSync(path.join(APP, 'src', 'saju5'))) if (f.endsWith('.ts')) expect(fs.readFileSync(path.join(APP, 'src', 'saju5', f), 'utf8')).not.toContain('\r');
