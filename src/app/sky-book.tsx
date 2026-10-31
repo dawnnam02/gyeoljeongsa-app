@@ -8,5 +8,5 @@ import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 export default function SkyBookRoute() {
   const { flags, isOn } = useFeatureFlags();
   if (flags.loaded && !isOn('sky_book')) return <Redirect href={'/boarding' as Href} />;
-  return <SkyBookScreen />;
+  return <SkyBookScreen guide={isOn('read_guide')} />;
 }

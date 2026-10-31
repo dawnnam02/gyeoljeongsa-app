@@ -31,6 +31,7 @@ import { Art, artXml, Footnote, if2Styles, tarotXml } from './If2Parts';
 import { Ck17Sheet, PreAnswerSheet } from './If2Sheets';
 import { tx } from './if2Text';
 import type { Ck17Api } from './inflightService';
+import { ReadGuide } from './ReadGuide';
 import { BirthCard, MyWaysFold, SkyWeekCard } from './SkyParts';
 
 // isOn: 3부-카 하늘 읽기 스위치(sky_week · my_ways · birth_card · sky_book). 없으면 모두 꺼짐(실서버 처음값) — 꺼진 칸은 그리지 않는다(정책 PG-93)
@@ -178,6 +179,7 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
           <View style={styles.page} testID="mag-sky">
             <AppText variant="title">{tx('MAGAZINE.page.skyGrain')}</AppText>
             {isOn('sky_week') ? <SkyWeekCard issueDate={issued.issueDate} /> : null}
+            {isOn('read_guide') ? <ReadGuide testID="mag-read-guide" /> : null}
             {issued.sky && issued.grain ? (
               <>
                 <AppText variant="bodyBold">{tx('MAGAZINE.page.sky')}</AppText>

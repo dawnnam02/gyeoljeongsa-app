@@ -3,6 +3,7 @@
 //  · 글은 라이브러리(content/if3Library.json ← ai/IF3/문구_라이브러리3.json) 완결 문장 + 틀 글(카피 22장 앱 사본). 숫자 · 퍼센트 · 달 밝기 · 순위 · 번호 0
 //  · 고르는 규칙(라이브러리 meta '고르는 규칙'): 달 사건 글 변형 v1 · v2 는 하늘표 첫 호부터 센 호 번호의 홀 · 짝 / 사건 없는 주는 목요일 저녁 달 모양 글 / 절기 든 주는 절기 틀 + 그 절기 한 줄
 import lib from '@/content/if3Library.json';
+import daily from '@/content/skyDaily.json';
 import sky from '@/content/skyWeeks.json';
 
 import { fill } from './if2Text';
@@ -102,4 +103,40 @@ export function birthdayQuestions(issueDate: string | null, serverSet?: number |
   if (fromServer === null && !Number.isInteger(year)) return [];
   const set = fromServer ?? (year % 4) + 1;
   return lib.birthdayQuestions.filter((q) => q.set === set).map((q) => q.text);
+}
+
+// ── G-06 만난 날의 하늘(IF5-F1b ⓒ · 카피 22-8) ──────────────────────────────
+// 고른 날 하나의 한 줄: 그날 저녁 달 모양 + 절기(그날이면 '그날은 …', 아니면 그날이 든 주 — 발행 주와 같은 목요일 ~ 수요일)뿐. 별자리 0 · 의미 부여 0 · 숫자 0.
+// 값은 개발 때 AI가 미리 계산한 일별 표(content/skyDaily.json ← ai/IF3/하늘표_2027_2028.json)를 찾기만 한다. 표 밖 날짜는 null(줄을 숨기거나 MEET_SKY.unavailable)
+export const MEET_SKY_RANGE = { first: daily.start, last: new Date(dayNo(daily.start) * DAY + (daily.days - 1) * DAY).toISOString().slice(0, 10) } as const;
+const isoDay = (n: number): string => new Date(n * DAY).toISOString().slice(0, 10);
+// 라이브러리 절기 틀의 '{term}{A/B}' 조사 자리(이었어요/였어요 · 이/가)를 앞 낱말 받침으로 고른다 — 앞 칸은 받침 있을 때, 뒤 칸은 없을 때
+function fillTermFrame(text: string, term: string): string {
+  const code = term.slice(-1).charCodeAt(0) - 0xac00;
+  const jong = code >= 0 && code <= 11171 && code % 28 !== 0;
+  return text.replace(/\{term\}(?:\{([^{}/]+)\/([^{}/]+)\})?/g, (_w, a?: string, b?: string) => (a && b ? term + (jong ? a : b) : term));
+}
+export type MeetSkyLine = { stage: number; moon: string; term: string | null; line: string };
+export function meetSkyOf(iso: string | null): MeetSkyLine | null {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const dn = dayNo(iso);
+  const i = dn - dayNo(daily.start);
+  if (!Number.isInteger(i) || i < 0 || i >= daily.days || isoDay(dn) !== iso) return null;
+  const stage = Number(daily.stage[i]);
+  const altCh = daily.alt[i];
+  const alt = altCh === undefined || altCh === '.' ? null : Number(altCh);
+  let moon = lib.skyDayStage.find((x) => x.stage === stage)?.text ?? '';
+  if (!moon) return null;
+  if (alt !== null && Number.isInteger(alt) && lib.moonAlt[0]) {
+    const [a, b] = [stage, alt].sort((p, q) => p - q);
+    moon = `${moon} ${fill(lib.moonAlt[0].text, { a: moonName(a), b: moonName(b) })}`.trim();
+  }
+  const weekday = new Date(dn * DAY).getUTCDay(); // 0 일 … 6 토
+  const weekStart = dn - ((weekday - 4 + 7) % 7); // 그 주의 목요일
+  const onDay = daily.terms.find((t) => t.date === iso);
+  const inWeek = onDay ? null : daily.terms.find((t) => dayNo(t.date) >= weekStart && dayNo(t.date) <= weekStart + 6);
+  const frame = onDay ? lib.skyDayTerm.find((x) => x.scope === 'day') : inWeek ? lib.skyDayTerm.find((x) => x.scope === 'week') : null;
+  const t = onDay ?? inWeek;
+  const term = frame && t ? fillTermFrame(frame.text, t.name) : null;
+  return { stage, moon, term, line: [moon, term].filter(Boolean).join(' ') };
 }

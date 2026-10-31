@@ -18,10 +18,11 @@ import { if5Consent, useIf5Consent, type If5ConsentStore } from '@/features/cons
 
 import { AiBlock } from './ai/AiBlock';
 import type { AiServices } from './ai/aiService';
-import { matchPartner, partnerAiFacts, type PartnerResult } from './partnerLocal';
+import { matchPartner, partnerAiFacts, partnerRest, type PartnerRest, type PartnerResult } from './partnerLocal';
 import { clockText, sajuStyles, TimePicker } from './SajuParts';
 
-type Props = { visible: boolean; mine: Chart | null; today: () => string; onClose: () => void; consent?: If5ConsentStore; ai?: AiServices; testID?: string };
+// pick: 날짜 고르기 '상대와 합쳐 보기'용(IF5-F1b ⓔ) — 맞춰 보기 카드 대신 상대의 쉬어 가는 날 가르개만 부른 화면에 넘기고 닫는다(mine 필요 없음 · AI 칸 0)
+type Props = { visible: boolean; mine: Chart | null; today: () => string; onClose: () => void; consent?: If5ConsentStore; ai?: AiServices; pick?: (r: Extract<PartnerRest, { kind: 'ok' }>) => void; testID?: string };
 
 export function PartnerSheet(props: Props) {
   const testID = props.testID ?? 'saju-partner';
@@ -35,7 +36,7 @@ export function PartnerSheet(props: Props) {
 
 const LABELS = ['SAJU.partner.result.l1.label', 'SAJU.partner.result.l2.label', 'SAJU.partner.result.l3.label'] as const;
 
-function Body({ mine, today, onClose, consent, ai, testID = 'saju-partner' }: Props) {
+function Body({ mine, today, onClose, consent, ai, pick, testID = 'saju-partner' }: Props) {
   // 상대 값은 모두 이 화면의 메모리뿐 — 시트를 닫으면 Body 가 사라져 값도 사라진다(저장 0). 기기에 남기는 것은 CK20 확인 기록 하나(상대 값 0)
   const store = consent ?? if5Consent();
   const ck20 = useIf5Consent(store).c20 !== null;
@@ -51,8 +52,16 @@ function Body({ mine, today, onClose, consent, ai, testID = 'saju-partner' }: Pr
   }, []);
 
   const go = () => {
-    if (!mine || !ck20 || digits.length !== 8) return;
-    setResult(matchPartner(mine, { birthDigits: digits, time }, today()));
+    if ((!mine && !pick) || !ck20 || digits.length !== 8) return;
+    if (pick) {
+      const r = partnerRest({ birthDigits: digits, time }, today());
+      if (r.kind === 'ok') {
+        pick(r);
+        onClose();
+      } else setResult(r);
+      return;
+    }
+    setResult(matchPartner(mine as Chart, { birthDigits: digits, time }, today()));
   };
   const again = () => setResult(null);
 
@@ -95,7 +104,7 @@ function Body({ mine, today, onClose, consent, ai, testID = 'saju-partner' }: Pr
           <AppText variant="caption" testID={`${testID}-gone`}>
             {IF5_TEXT['SAJU.partner.gone']}
           </AppText>
-          <Button label={IF5_TEXT['SAJU.partner.go']} disabled={!ck20 || digits.length !== 8 || !mine} onPress={go} testID={`${testID}-go`} />
+          <Button label={IF5_TEXT['SAJU.partner.go']} disabled={!ck20 || digits.length !== 8 || (!mine && !pick)} onPress={go} testID={`${testID}-go`} />
         </>
       ) : (
         <ResultBody result={result} onAgain={again} onClose={onClose} testID={testID} aiBlock={ai && mine ? <AiBlock id={`${testID}-compat`} kind="compat" svc={ai} facts={() => partnerAiFacts(mine, { birthDigits: digits, time }, today())} /> : null} />

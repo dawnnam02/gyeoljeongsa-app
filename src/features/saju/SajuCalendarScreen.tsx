@@ -1,17 +1,19 @@
 // IF-SJ-CAL 만세력 달력 · 날짜 고르기(IF5-F1 ③ · F5-07 · 09 · 12 · 디자인 CAL-1 ~ 3 · 정책 PS-35 · PS-36 · PS-71 · PS-72 · 카피 24-6).
 //  · 만세력 달력(mode cal): 한 달 달력(앞 · 뒤 달 이동만 · 무한 스크롤 0) · 날짜 칸에 그날의 글자(한글 간지) + 절기 표시 · 쉬어 가는 날은 모양 + 색(색만으로 전하지 않음) · 날짜를 누르면 아래에 그날 한 장
-//    계산은 공개 규칙이라 서버 호출 0(내 값 0 — CK17A 꺼짐이어도 볼 수 있다). 음력 날짜는 음양력 표가 없어 보여 주지 않는다(AI 쪽 표 필요 — 넘김)
+//    계산은 공개 규칙이라 서버 호출 0(내 값 0 — CK17A 꺼짐이어도 볼 수 있다). 음력 날짜는 음양력 표(saju5/lunar5 · 1960 ~ 2051)로 그날 한 장에 한 줄(IF5-F1b ⓐ) · 표 밖이면 줄 숨김
 //  · 날짜 고르기(mode pick): 용도 일곱(이사 · 개업 · 계약 · 면접 · 여행 · 중요한 대화 · 결혼식) 칩 → 서버 get_taekil(건제 12신 하나 · 점수 0) → 달력에 색 두 가지(고르기 좋은 날 · 쉬어 가는 날 · 그 밖은 색 없음)
-//    의료 · 소송 · 투자 · 대출 용도 0 · 흉 · 점수 0 · 만남 계획 시트와 연결 0 · 상대 합쳐 보기 · AI 설명(마일리지 30)은 F2
+//    의료 · 소송 · 투자 · 대출 용도 0 · 흉 · 점수 0 · 만남 계획 시트와 연결 0 · AI 설명(마일리지 30)은 F2 · 상대와 합쳐 보기(IF5-F1b ⓔ): 두 사람 모두 쉬어 가는 날만 겹쳐 보임(점수 · 판정 · 이름 · 저장 0)
 //  · 사주 값이 아닌 공개 달력이지만 디자인대로 캡처를 막는다. 공유 · 복사 · 알림 · 캘린더 내보내기 0
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { AppState, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Chip } from '@/components/Chip';
 import { Icon } from '@/components/Icon';
+import { Button } from '@/components/Button';
 import { Pressable } from '@/components/Pressable';
+import { Toggle } from '@/components/Toggle';
 import { Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { IF5_TEXT, t5 } from '@/content/if5Copy';
@@ -22,18 +24,22 @@ import { officer_of } from '@/saju5/saju_calc5';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 
 import type { SajuApi, Taekil } from './sajuApi';
-import { addMonths, calendarLine, dnOf, daysInMonth, inSupport, isoOf, monthGrid, nowIso, pickDayCard, USE_PURPOSE, WEEKDAY_SHORT, weekdayOf, SUPPORT_FROM_ISO, SUPPORT_TO_ISO } from './sajuLogic';
+import { addMonths, calendarLine, dnOf, daysInMonth, inSupport, isoOf, lunarOf, monthGrid, nowIso, pickDayCard, USE_PURPOSE, WEEKDAY_SHORT, weekdayOf, SUPPORT_FROM_ISO, SUPPORT_TO_ISO } from './sajuLogic';
 import { sajuServices } from './sajuService';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { AiBlock } from './ai/AiBlock';
 import { taekilFacts } from './ai/aiFacts';
 import { aiServices, type AiServices } from './ai/aiService';
+import type { If5ConsentStore } from '@/features/consent/if5Consent';
+import { If5Icon } from './If5Icon';
+import { PartnerSheet } from './PartnerSheet';
+import type { PartnerRest } from './partnerLocal';
 import { ErrorBlock, RangeBlock, sajuStyles } from './SajuParts';
 
 const REST_OFFICERS = ['위', '폐', '파'];
 type Tone = 'good' | 'neutral' | 'rest';
 
-export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forcedUse, ai: injectedAi }: { api?: Pick<SajuApi, 'taekil'>; now?: () => number; mode?: 'cal' | 'pick'; use?: number | null; ai?: AiServices | null }) {
+export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forcedUse, ai: injectedAi, consent }: { api?: Pick<SajuApi, 'taekil'>; now?: () => number; mode?: 'cal' | 'pick'; use?: number | null; ai?: AiServices | null; consent?: If5ConsentStore }) {
   const ai = useMemo(() => {
     if (injectedAi !== undefined) return injectedAi;
     try {
@@ -56,6 +62,19 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
   const [res, setRes] = useState<{ key: string; ok: Taekil | null }>({ key: '', ok: null });
   const [tries, setTries] = useState(0);
   useAlwaysCaptureBlock(true);
+  // 상대와 합쳐 보기(IF5-F1b ⓔ): 상대 생일은 시트에서만 입력하고 이 화면은 '상대의 쉬어 가는 날 가르개' 하나만 메모리에 둔다(생일 · 기둥 0 · 저장 0 · 서버 전송 0 · 이 화면을 떠나거나 앱이 뒤로 가면 버린다)
+  const [partner, setPartner] = useState<Extract<PartnerRest, { kind: 'ok' }> | null>(null);
+  const [combine, setCombine] = useState(false);
+  const [partnerOpen, setPartnerOpen] = useState(false);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st !== 'active') {
+        setPartner(null);
+        setCombine(false);
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   const first = isoOf(ym.y, ym.m, 1);
   const last = isoOf(ym.y, ym.m, daysInMonth(ym.y, ym.m));
@@ -81,6 +100,7 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
     if (taekil.kind !== 'ready') return null;
     return taekil.data.days.find((d) => d.date === iso)?.tone ?? null;
   };
+  const bothRest = (iso: string): boolean => mode === 'pick' && combine && partner !== null && use !== null && toneOf(iso) === 'rest' && partner.restOn(iso, USE_PURPOSE[use]);
   const back = () => (router.canGoBack() ? router.back() : router.replace('/saju' as Href));
   const weeks = useMemo(() => monthGrid(ym.y, ym.m), [ym]);
   const go = (delta: number) => {
@@ -112,6 +132,30 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
               ))}
             </View>
             {use === null ? <AppText variant="caption" testID="saju-cal-hint">{IF5_TEXT['SAJU.pick.hint']}</AppText> : null}
+            {partner === null ? (
+              <View style={sajuStyles.gapSmall} testID="saju-cal-partner-need">
+                <AppText variant="caption">{IF5_TEXT['SAJU.pick.partner.need']}</AppText>
+                <Button label={IF5_TEXT['SAJU.partner.title']} variant="secondary" onPress={() => setPartnerOpen(true)} testID="saju-cal-partner-open" />
+              </View>
+            ) : (
+              <View style={sajuStyles.gapSmall} testID="saju-cal-partner">
+                <Pressable
+                  accessibilityRole="switch"
+                  accessibilityLabel={IF5_TEXT['SAJU.pick.partner.toggle']}
+                  accessibilityState={{ checked: combine }}
+                  aria-checked={combine}
+                  onPress={() => setCombine(!combine)}
+                  effect="none"
+                  style={({ pressed }) => [sajuStyles.row, styles.toggleRow, pressed && styles.pressed]}
+                  testID="saju-cal-partner-toggle">
+                  <AppText variant="bodyMedium" style={sajuStyles.flex}>
+                    {IF5_TEXT['SAJU.pick.partner.toggle']}
+                  </AppText>
+                  <Toggle on={combine} />
+                </Pressable>
+                <AppText variant="caption">{IF5_TEXT['SAJU.pick.partner.hint']}</AppText>
+              </View>
+            )}
           </>
         ) : (
           <AppText variant="caption" testID="saju-cal-hint">
@@ -150,7 +194,8 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
                   if (!c) return <View key={`e-${wi}-${ci}`} style={styles.cell} />;
                   const t = toneOf(c.iso);
                   const mark = mode === 'pick' ? t : t === 'rest' ? 'rest' : null; // 달력 mode 에선 쉬어 가는 날만 표시
-                  const label = `${ym.m}월 ${c.day}일${c.inRange && mode === 'cal' ? `, ${c.ganji}` : ''}${mark === 'rest' ? `, ${IF5_TEXT['SAJU.pick.rest']}` : mark === 'good' ? `, ${IF5_TEXT['SAJU.pick.good']}` : ''}`;
+                  const both = c.inRange && bothRest(c.iso);
+                  const label = `${ym.m}월 ${c.day}일${c.inRange && mode === 'cal' ? `, ${c.ganji}` : ''}${both ? `, ${IF5_TEXT['SAJU.pick.partner.both']}` : mark === 'rest' ? `, ${IF5_TEXT['SAJU.pick.rest']}` : mark === 'good' ? `, ${IF5_TEXT['SAJU.pick.good']}` : ''}`;
                   return (
                     <Pressable
                       key={c.iso}
@@ -161,14 +206,15 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
                       disabled={!c.inRange}
                       onPress={() => setSel(c.iso)}
                       effect="none"
-                      style={({ pressed }) => [styles.cell, styles.day, mark === 'good' && styles.good, mark === 'rest' && styles.rest, sel === c.iso && styles.picked, pressed && styles.pressed]}
+                      style={({ pressed }) => [styles.cell, styles.day, mark === 'good' && styles.good, mark === 'rest' && styles.rest, both && styles.restBoth, sel === c.iso && styles.picked, pressed && styles.pressed]}
                       testID={`saju-cal-day-${c.day}`}>
                       <AppText variant="smallMedium" style={mark === 'good' ? styles.onAccent : undefined}>
                         {c.day}
                       </AppText>
                       {mode === 'cal' && c.inRange ? <AppText variant="caption" tone="text" importantForAccessibility="no">{c.ganji}</AppText> : null}
                       {mark === 'good' ? <Icon name="check" size={14} color={colors.onAccent} /> : null}
-                      {mark === 'rest' ? <Icon name="moon" size={14} color={colors.accent} /> : null}
+                      {mark === 'rest' && !both ? <Icon name="moon" size={14} color={colors.accent} /> : null}
+                      {both ? <If5Icon name="diamond" size={14} color={colors.accent} testID={`saju-cal-both-${c.day}`} /> : null}
                       {mode === 'cal' && c.jeol ? <Icon name="sun" size={12} color={colors.sub} /> : null}
                     </Pressable>
                   );
@@ -185,6 +231,9 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
                 <View style={sajuStyles.row}><Icon name="sun" size={12} color={colors.sub} /><AppText variant="caption">{IF5_TEXT['SAJU.cal.legend.jeol']}</AppText></View>
               )}
               <View style={sajuStyles.row}><Icon name="moon" size={14} color={colors.accent} /><AppText variant="caption">{IF5_TEXT['SAJU.pick.rest']}</AppText></View>
+              {mode === 'pick' && combine && partner ? (
+                <View style={sajuStyles.row} testID="saju-cal-legend-both"><View style={[styles.legendBoth]}><If5Icon name="diamond" size={14} color={colors.accent} /></View><AppText variant="caption">{IF5_TEXT['SAJU.pick.partner.both']}</AppText></View>
+              ) : null}
             </View>
           </View>
         )}
@@ -196,6 +245,7 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
         <AppText variant="bodyMedium">{IF5_TEXT['SAJU.card.end']}</AppText>
         <Footnote text={IF5_TEXT['SAJU.card.footer']} testID="saju-cal-footer" />
       </ScrollView>
+      {mode === 'pick' ? <PartnerSheet visible={partnerOpen} mine={null} today={() => today} onClose={() => setPartnerOpen(false)} consent={consent} pick={(r) => (setPartner(r), setCombine(true))} testID="saju-cal-partner-sheet" /> : null}
     </Screen>
   );
 }
@@ -244,8 +294,14 @@ function DayCard({ iso, mode, tone, purpose, taekil, toneLabel }: { iso: string;
 function CalDay({ iso }: { iso: string }) {
   const g = monthGrid(Number(iso.slice(0, 4)), Number(iso.slice(5, 7))).flat().find((c) => c?.iso === iso);
   if (!g) return null;
+  const lunar = lunarOf(iso); // 음양력 표 범위(1960 ~ 2051) 밖이면 줄째 숨김 · 경계 달 단서 0
   return (
     <View style={sajuStyles.gapSmall}>
+      {lunar ? (
+        <AppText variant="body" testID="saju-cal-day-lunar">
+          {t5('SAJU.cal.day.lunar', { 월: lunar.month, 일: lunar.day })}
+        </AppText>
+      ) : null}
       <AppText variant="body" testID="saju-cal-day-glyph">
         {t5('SAJU.cal.day.glyph', { 글자: g.ganji })}
       </AppText>
@@ -273,6 +329,9 @@ const styles = StyleSheet.create({
   good: { backgroundColor: colors.accent },
   onAccent: { color: colors.onAccent },
   legendGood: { width: 20, height: 20, borderRadius: radius.sm, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  toggleRow: { minHeight: size.touchMin },
+  legendBoth: { width: 20, height: 20, borderRadius: radius.sm, backgroundColor: colors.accentSoft, borderWidth: 2, borderColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  restBoth: { backgroundColor: colors.accentSoft, borderWidth: 2, borderColor: colors.accent, borderStyle: 'solid' },
   rest: { backgroundColor: colors.accentSoft, borderWidth: 1, borderColor: colors.accent, borderStyle: 'dashed' },
   picked: { borderWidth: 2, borderColor: colors.text },
   pressed: { opacity: alpha.pressed },

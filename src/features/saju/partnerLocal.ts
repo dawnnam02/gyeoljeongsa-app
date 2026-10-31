@@ -2,11 +2,11 @@
 //  · 서버에 보내지 않는다(네트워크 호출 0 — 이 파일은 fetch · rpc 를 부르지 않는다). 저장 0(기기 · 서버 · 로그) · 이름 · 성별 · 별명 칸 0
 //  · 만 19세 미만 상대는 맞춰 보지 않는다(S-9 · PS-25): 계산도 하지 않고 결과가 없다
 //  · 입력 값은 호출한 화면의 메모리에만 있다(시트를 닫으면 사라짐). 이 모듈은 값을 쥐고 있지 않는다(순수 함수)
-import { build_chart, compat, facts_compat } from '@/saju5/saju_calc5';
+import { build_chart, compat, facts_compat, taekil } from '@/saju5/saju_calc5';
 import type { Chart } from '@/saju5/saju_calc5';
 import { pickCard } from '@/saju5/fragments5';
 
-import { ageOn, isRealDate, SUPPORT_FROM_ISO, type CardView } from './sajuLogic';
+import { ageOn, dnOf, isRealDate, SUPPORT_FROM_ISO, type CardView } from './sajuLogic';
 
 export const PARTNER_MIN_AGE = 19; // 만 19세 미만은 맞춰 보지 않는다(법무 확인 줄)
 
@@ -53,4 +53,29 @@ export function partnerAiFacts(mine: Chart, input: PartnerInput, todayIso: strin
   } catch {
     return null;
   }
+}
+
+/** 날짜 고르기 '상대와 합쳐 보기'(IF5-F1b ⓔ · 카피 24-15-1): 상대의 '쉬어 가는 날'을 기기 안에서 가린다.
+ *  · 상대 생일은 화면 메모리에서 이 함수로만 들어오고, 돌려주는 것은 날짜 → 쉬어 가는 날인가 하나뿐이다(기둥 · 간지 · 생일 원값을 밖으로 내지 않는다). 서버 전송 0 · 저장 0 · 이름 0
+ *  · 점수 · 판정 · 순위 0. 만 19세 미만은 계산하지 않는다(PS-25 — 날짜 고르기 합쳐 보기에도 같다) */
+export type PartnerRest = { kind: 'ok'; restOn: (iso: string, purpose: string) => boolean } | { kind: 'minor' } | { kind: 'outOfRange' } | { kind: 'calcError' };
+export function partnerRest(input: PartnerInput, todayIso: string): PartnerRest {
+  const iso = partnerIso(input.birthDigits);
+  if (!iso || !isRealDate(iso) || iso < SUPPORT_FROM_ISO || iso > todayIso) return { kind: 'outOfRange' };
+  if (ageOn(iso, todayIso) < PARTNER_MIN_AGE) return { kind: 'minor' };
+  let theirs: Chart;
+  try {
+    theirs = build_chart({ year: Number(iso.slice(0, 4)), month: Number(iso.slice(5, 7)), day: Number(iso.slice(8, 10)), hour: input.time?.hour ?? null, minute: input.time?.minute ?? null });
+  } catch (e) {
+    return e instanceof Error && e.message === 'out_of_range' ? { kind: 'outOfRange' } : { kind: 'calcError' };
+  }
+  const restOn = (day: string, purpose: string): boolean => {
+    try {
+      const dn = dnOf(day);
+      return taekil(dn, dn, purpose, theirs)[0]?.tone === 'rest';
+    } catch {
+      return false;
+    }
+  };
+  return { kind: 'ok', restOn };
 }

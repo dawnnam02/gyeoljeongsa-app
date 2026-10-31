@@ -1,5 +1,5 @@
 // 데모 모드 모의 서버의 사주 마당 부분(IF5-F1). 이름 · 인자 · 응답 모양 = 서버 0048(backend/R_변경기록.md 16-2 · 16-3):
-//  get_my_saju(p_hour, p_minute, p_place) · get_my_luck(…, p_year) · get_my_day(…, p_date) · get_taekil(p_purpose, p_start, p_end, p_personal, p_hour, p_minute, p_place)
+//  get_my_saju(p_hour, p_minute, p_place) · get_my_luck(…, p_year)(월운에 month_name — 0050) · get_my_day(…, p_date) · get_taekil(p_purpose, p_start, p_end, p_personal, p_hour, p_minute, p_place)
 //  · 계산은 saju5/saju_calc5(ai/IF5 사본 · calc5.py 와 같은 값)로 기기 안에서 한다. 데모 계정의 생년월일만 쓰고(가상 사람) 응답에는 생년월일 원값 0 · 시각 · 곳은 요청 인자(저장 0)
 //  · 스위치 saju_yard 가 꺼지면 feature_off(42501, 서버 require_feature 와 같음) · CK17A 가 꺼져 있으면 {ok:false, code:'consent_required'}
 //  · 성별은 서버가 profiles 에서 읽는다 — 데모 계정은 성별 칸이 없어 여성으로 두고, 이메일 앞부분에 sjm 이 있으면 남성 · sjnog 가 있으면 성별 없음(대운 칸 없음)
@@ -26,6 +26,8 @@ const idxOfName = (name: string): number => {
   for (let i = 0; i < 60; i += 1) if (i % 10 === s && i % 12 === b) return i;
   return 0;
 };
+/** 서버 0050 saju5_wolun 의 month_name 과 같은 꼴: month_k 0 ~ 11 = 인월(입춘) ~ 축월(소한) — 이름의 지지 글자 = BRANCHES[(k + 2) % 12] */
+const monthName = (k: number): string => `${BRANCHES[(k + 2) % 12]}월`;
 const pair = (idx: number | null): { stem: number; branch: number } | null => (idx === null ? null : { stem: idx % 10, branch: idx % 12 });
 
 export function createDemoSaju(o: DemoSajuOptions) {
@@ -95,7 +97,7 @@ export function createDemoSaju(o: DemoSajuOptions) {
           }
         : null,
       seun: luckRow(seun(c, year)),
-      wolun: wolun(c, year).map((w) => luckRow(w)),
+      wolun: wolun(c, year).map((w) => ({ ...luckRow(w), month_name: monthName(w.month_k as number) })),
     });
   }
 

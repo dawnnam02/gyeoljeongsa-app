@@ -278,7 +278,7 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
           <SafeShareSheet visible={sheet === 'share'} partner={null} onClose={() => setSheet('prep')} />
         </>
       ) : null}
-      {memoRoom ? <MemoSheet visible={sheet === 'memo'} roomId={memoRoom} closedAt={n.memos[memoRoom]?.closedAt ?? null} onClose={() => setSheet('none')} onToast={onToast} notes={notes} /> : null}
+      {memoRoom ? <MemoSheet visible={sheet === 'memo'} roomId={memoRoom} closedAt={n.memos[memoRoom]?.closedAt ?? null} onClose={() => setSheet('none')} onToast={onToast} notes={notes} skyOn={isOn('meet_sky')} /> : null}
       {aitOn ? <ConcernChat visible={sheet === 'concern'} onClose={() => setSheet('none')} onSettings={() => (setSheet('none'), nav.settings('ait-code'))} /> : null}
       <HelloWriteSheet visible={sheet === 'hello'} round={round} writable={home.status?.writable === true} onClose={() => setSheet('none')} onToast={onToast} notes={notes} />
       <PreAnswerSheet visible={sheet === 'pre'} round={round} api={deps.api} onClose={() => setSheet('none')} onToast={onToast} notes={notes} />

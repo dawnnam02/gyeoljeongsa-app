@@ -28,8 +28,9 @@ export const IF2_CONSENT_VERSIONS = { CK17A: 'consent-2026.10.31-v1', CK17B: 'co
 // IF5-F2 ⑪(10-31 · 판_관리 2-1): 사주 마당 새 동의 셋 — 판 값만 둔다. 글 = content/if5ConsentContent.ts(gen-if2-assets 가 동의문구 4-18 ~ 4-20 에서 옮김)
 //  CK17D AI 풀이 받기(사주 글자 국외 이전) · CK19 사주 이야기 나누기(자유 입력 국외 이전 + 건강 · 성생활) · CK20 다른 분의 정보를 넣을 때 지킬 점(확인형). 기록은 이 기기에만(features/consent/if5Consent) — 서버 동의 표에 이 코드는 아직 없다(백엔드 넘김)
 export const IF5_CONSENT_VERSIONS = { CK17D: 'consent-2026.10.31-v1', CK19: 'consent-2026.10.31-v1', CK20: 'consent-2026.10.31-v1' } as const;
-/** 법무 4-18 · 4-19 가 '보안 시험(IFS5-72 · 73 · 75) 통과 전에는 앱에 쓰지 않는다'고 한 줄 — 요약 '우리 쪽' 줄 · 전문의 '서버에 저장하지 않습니다' 문장. 통과 기록이 오면 true 로 켠다(팀장 확인) */
-export const IF5_KEEP_NOTE_ON = false;
+/** 법무 4-18 · 4-19 가 '보안 시험(IFS5-72 · 73 · 75) 통과 전에는 앱에 쓰지 않는다'고 한 줄 — 요약 '우리 쪽' 줄 · 전문의 '서버에 저장하지 않습니다' 문장.
+ *  보안 S-F2(보안/IF5_위협.md 15장 · check_sec2 IF5-af · ag)가 사주 AI 서버 경로의 저장 0 · 로그 값 0을 조건부로 인정해 켠다(IF5-F1b ⓙ · 팀장 10-31). 조건이 깨지면(허용 키 필터를 빼거나 저장 길을 더하면) 다시 false */
+export const IF5_KEEP_NOTE_ON = true;
 
 export const CK15_TEXT_VERSION = LATER_CONSENT_VERSIONS.CK15;
 export const CK16_TEXT_VERSION = LATER_CONSENT_VERSIONS.CK16;

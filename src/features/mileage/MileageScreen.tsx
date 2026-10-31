@@ -14,7 +14,10 @@ import { Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextButton } from '@/components/TextButton';
 import { IF5_TEXT, t5 } from '@/content/if5Copy';
+import { SUPPORT } from '@/content/copy';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { If5Icon } from '@/features/saju/If5Icon';
+import { openSettingsPage } from '@/features/settings/settingsIntent';
 import { colors, radius, size, space } from '@/theme/tokens';
 
 import type { MileageProduct } from './mileageApi';
@@ -46,6 +49,7 @@ function Shop({ deps }: { deps: MileageDeps }) {
   const [big, setBig] = useState<MileageProduct | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [lockedNow, setLockedNow] = useState(false); // 충전을 눌렀더니 서버가 잠갔다고 답함(charge_locked) — 잔액을 다시 읽을 때까지 이 화면에서만
   const back = () => (router.canGoBack() ? router.back() : router.replace('/boarding' as Href));
   const charge = async (p: MileageProduct) => {
     if (busy) return; // 연타 0
@@ -54,7 +58,8 @@ function Shop({ deps }: { deps: MileageDeps }) {
     setFailed(false);
     const r = await deps.api.charge(p.sku);
     setBusy(null);
-    if (!r.ok) setFailed(true);
+    if (!r.ok && r.code === 'charge_locked') setLockedNow(true); // 까닭 · 기간은 글에 풀지 않는다(M-F2)
+    else if (!r.ok) setFailed(true);
     else await reload(); // 서버 응답 뒤 잔액을 다시 읽는다(낙관적 증가 0)
   };
   const canCharge = deps.isOn('mileage_charge');
@@ -82,7 +87,10 @@ function Shop({ deps }: { deps: MileageDeps }) {
         {s ? (
           <>
             <View style={styles.card} testID="mileage-balance">
-              <AppText variant="caption">{IF5_TEXT['MILEAGE.shop.balance']}</AppText>
+              <View style={styles.titleRow}>
+                <If5Icon name="coin" size={20} color={colors.accent} />
+                <AppText variant="caption">{IF5_TEXT['MILEAGE.shop.balance']}</AppText>
+              </View>
               <AppText variant="title" testID="mileage-total">
                 {fmt(s.total)}
               </AppText>
@@ -97,7 +105,7 @@ function Shop({ deps }: { deps: MileageDeps }) {
               </AppText>
             </View>
 
-            {canCharge && !s.chargeLocked ? (
+            {canCharge && !s.chargeLocked && !lockedNow ? (
               <View style={styles.card} testID="mileage-products">
                 <AppText variant="bodyBold" accessibilityRole="header">
                   {IF5_TEXT['MILEAGE.shop.head']}
@@ -135,6 +143,14 @@ function Shop({ deps }: { deps: MileageDeps }) {
                   {IF5_TEXT['MILEAGE.shop.noExpire']}
                 </AppText>
               </View>
+            ) : canCharge ? (
+              // 서버가 충전을 잠갔을 때(charge_locked): 사실 한 문장 + 글자 단추 '고객센터'(기존 12 설정 줄 이름 · 새 글 0). 잔액 · 내역 · 쓰기는 그대로 열려 있다
+              <View style={styles.card} testID="mileage-locked">
+                <AppText variant="body" testID="mileage-locked-text">
+                  {IF5_TEXT['MILEAGE.shop.locked']}
+                </AppText>
+                <TextButton label={SUPPORT.rowName} align="start" onPress={() => openSettingsPage(router, 'support')} testID="mileage-locked-support" />
+              </View>
             ) : (
               <View style={styles.card} testID="mileage-maint">
                 <AppText variant="body">{IF5_TEXT['SAJU.status.maint']}</AppText>
@@ -169,6 +185,7 @@ const styles = StyleSheet.create({
   body: { padding: space.s20, gap: space.s16, paddingBottom: space.s32 },
   card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: space.s16, gap: space.s8 },
   gapSmall: { gap: space.s8 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.s8 },
   flex: { flex: 1 },
   product: { minHeight: size.touchMin, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, paddingHorizontal: space.s16, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.bg },
   skel: { height: 14, borderRadius: radius.sm, backgroundColor: colors.line, width: '60%' },

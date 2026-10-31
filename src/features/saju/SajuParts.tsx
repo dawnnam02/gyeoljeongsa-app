@@ -10,21 +10,21 @@ import { Button } from '@/components/Button';
 import { Chip } from '@/components/Chip';
 import { Icon } from '@/components/Icon';
 import { Pressable } from '@/components/Pressable';
+import { IF3_TEXT } from '@/content/if3Copy';
 import { IF5_TEXT, t5 } from '@/content/if5Copy';
 import { FRAGMENTS5 } from '@/saju5/fragments5';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 
+import { If5Icon, type If5IconName } from './If5Icon';
 import { elementWord, type CardView, type ElementBar, type PillarCell } from './sajuLogic';
 
 // ── 한 장 요약 틀 ────────────────────────────────────────────────────────────
-export function SummaryCard({ id, label, sub, one, lines, more, children, labels, top, bottom }: { id: string; label: string; sub?: string; one: string | null; lines: readonly string[]; more?: readonly string[]; children?: ReactNode; labels?: readonly string[]; top?: ReactNode; bottom?: ReactNode }) {
+export function SummaryCard({ id, label, icon, sub, one, lines, more, children, labels, top, bottom }: { id: string; label: string; icon?: If5IconName; sub?: string; one: string | null; lines: readonly string[]; more?: readonly string[]; children?: ReactNode; labels?: readonly string[]; top?: ReactNode; bottom?: ReactNode }) {
   const [open, setOpen] = useState(false); // 펼침은 기억하지 않는다
   const hasMore = (more?.length ?? 0) > 0 || !!children;
   return (
     <View style={styles.card} testID={id}>
-      <AppText variant="bodyBold" accessibilityRole="header" testID={`${id}-label`}>
-        {label}
-      </AppText>
+      <CardTitle label={label} icon={icon} testID={`${id}-label`} />
       {sub ? <AppText variant="caption">{sub}</AppText> : null}
       {top}
       {one ? (
@@ -74,6 +74,17 @@ export function SummaryCard({ id, label, sub, one, lines, more, children, labels
     </View>
   );
 }
+/** 카드 이름 줄: 디자인 아이콘(선택) + 이름. 아이콘은 꾸밈이라 스크린리더가 건너뛴다 */
+export function CardTitle({ label, icon, testID }: { label: string; icon?: If5IconName; testID?: string }) {
+  return (
+    <View style={styles.row}>
+      {icon ? <If5Icon name={icon} size={20} color={colors.accent} /> : null}
+      <AppText variant="bodyBold" accessibilityRole="header" testID={testID}>
+        {label}
+      </AppText>
+    </View>
+  );
+}
 export const cardLines = (v: CardView | null): readonly string[] => v?.three ?? [];
 
 // 접힘 줄 하나(별난 점 카드 · 자세히 보기 표 같은 안쪽 접힘)
@@ -96,7 +107,7 @@ export function FoldRow({ id, title, sub, children }: { id: string; title: strin
 // ── 네 기둥 표(해 · 달 · 날 · 시) ────────────────────────────────────────────
 export function PillarTable({ cells, id }: { cells: readonly PillarCell[]; id: string }) {
   return (
-    <View accessible accessibilityLabel={IF5_TEXT['SAJU.pillars.group']} style={styles.pillars} testID={id}>
+    <View accessible accessibilityLabel={[IF5_TEXT['SAJU.pillars.group'], ...cells.flatMap((c) => (c ? [t5('SAJU.pillars.col.a11y', { '칸 이름': c.posName })] : []))].join(', ')} style={styles.pillars} testID={id}>
       {cells.map((c, i) =>
         c ? (
           <View key={c.pos} style={[styles.pillar, c.pos === 'day' && styles.pillarMe]} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden testID={`${id}-${c.pos}`}>
@@ -107,7 +118,7 @@ export function PillarTable({ cells, id }: { cells: readonly PillarCell[]; id: s
             <AppText variant="caption">{c.branchEl}</AppText>
             {c.alt ? (
               <AppText variant="caption" testID={`${id}-${c.pos}-alt`}>
-                {`${c.alt.stem}${c.alt.branch}`}
+                {`${IF3_TEXT['THREE_PILLARS.cusp.or']} ${c.alt.stem}${c.alt.branch}`}
               </AppText>
             ) : null}
           </View>
@@ -154,7 +165,7 @@ export function ElementBars({ bars, lacking, id, onHelp }: { bars: readonly Elem
 export function HelpButton({ onPress, testID }: { onPress: () => void; testID: string }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={IF5_TEXT['SAJU.card.help']} onPress={onPress} effect="none" style={({ pressed }) => [styles.help, pressed && styles.pressed]} testID={testID}>
-      <Icon name="how_to" size={20} color={colors.accent} />
+      <If5Icon name="help" size={20} color={colors.accent} />
     </Pressable>
   );
 }
@@ -205,7 +216,9 @@ export function GuideSheet({ term, onClose }: { term: (typeof GUIDE_TERMS)[numbe
 // ── 시각 고르기(시 0 ~ 23 · 분 5분 간격) ─────────────────────────────────────
 export const HOURS = Array.from({ length: 24 }, (_, i) => i);
 export const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
-export const clockText = (h: number, m: number): string => `${h}시 ${m}분`; // 숫자 + 단위(시 · 분)만 — 글 키 없음(마케팅 요청)
+export const hourLabel = (h: number): string => t5('SAJU.input.hourUnit', { n: h }); // 카피 24-15-1 `{n}시`(IF5-F1b)
+export const minuteLabel = (m: number): string => t5('SAJU.input.minUnit', { n: m }); // `{n}분`
+export const clockText = (h: number, m: number): string => `${hourLabel(h)} ${minuteLabel(m)}`;
 export function TimePicker({ hour, minute, onPick, id }: { hour: number | null; minute: number | null; onPick: (h: number, m: number) => void; id: string }) {
   const h = hour ?? 0;
   const m = minute ?? 0;
@@ -213,12 +226,12 @@ export function TimePicker({ hour, minute, onPick, id }: { hour: number | null; 
     <View style={styles.gapSmall} testID={id}>
       <View style={styles.wrap}>
         {HOURS.map((x) => (
-          <Chip key={x} label={`${x}시`} variant={hour === x ? 'selected' : 'inactive'} onPress={() => onPick(x, m)} accessibilityLabel={`${x}시`} testID={`${id}-h-${x}`} />
+          <Chip key={x} label={hourLabel(x)} variant={hour === x ? 'selected' : 'inactive'} onPress={() => onPick(x, m)} accessibilityLabel={hourLabel(x)} testID={`${id}-h-${x}`} />
         ))}
       </View>
       <View style={styles.wrap}>
         {MINUTES.map((x) => (
-          <Chip key={x} label={`${x}분`} variant={hour !== null && minute === x ? 'selected' : 'inactive'} onPress={() => onPick(h, x)} accessibilityLabel={`${x}분`} testID={`${id}-m-${x}`} />
+          <Chip key={x} label={minuteLabel(x)} variant={hour !== null && minute === x ? 'selected' : 'inactive'} onPress={() => onPick(h, x)} accessibilityLabel={minuteLabel(x)} testID={`${id}-m-${x}`} />
         ))}
       </View>
     </View>

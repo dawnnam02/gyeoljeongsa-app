@@ -27,9 +27,9 @@ import { inputStore, useInputStore, type InputStore } from './deviceInput';
 import { PartnerSheet } from './PartnerSheet';
 import { SajuInputSheet } from './SajuInputSheet';
 import type { SajuFailCode } from './sajuApi';
-import { chartOf, cuspKind, elementBars, loveCard, monthView, pillarCells, pillarsCard, readingCard, seasonRows, tableCard, tableRows, traitCards, workCard, yearView, nowIso, type CardView, type ReadyChart, type ReadyLuck } from './sajuLogic';
+import { ageSpan, chartOf, cuspKind, hiddenRows, elementBars, loveCard, monthView, pillarCells, pillarsCard, readingCard, seasonRows, tableCard, tableRows, traitCards, workCard, yearView, nowIso, type CardView, type ReadyChart, type ReadyLuck } from './sajuLogic';
 import { sajuServices, type SajuDeps } from './sajuService';
-import { ElementBars, ErrorBlock, FoldRow, GUIDE_TERMS, GuideSheet, HelpButton, LoadingBlock, PillarTable, RangeBlock, SummaryCard, sajuStyles } from './SajuParts';
+import { CardTitle, ElementBars, ErrorBlock, FoldRow, GUIDE_TERMS, GuideSheet, HelpButton, LoadingBlock, PillarTable, RangeBlock, SummaryCard, sajuStyles } from './SajuParts';
 import { useCk17, useSajuData } from './useSajuData';
 import { useIf5Consent } from '@/features/consent/if5Consent';
 import { CK17_EXTRA } from '@/content/if5ConsentContent';
@@ -122,6 +122,7 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
       traits: traitCards(my),
       table: tableCard(my),
       rows: tableRows(my),
+      hidden: hiddenRows(my),
       bars: elementBars(my),
     };
   }, [my, luck, dayReady, chip, today]);
@@ -236,6 +237,7 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
       <SummaryCard
         id="saju-pillars"
         label={IF5_TEXT['SAJU.pillars.title']}
+        icon="pillars"
         sub={IF5_TEXT['SAJU.pillars.lead']}
         one={c?.one ?? null}
         lines={c?.three ?? []}
@@ -286,6 +288,14 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
               {cards.rows.stage.map((row) => (
                 <AppText key={`s-${row.pos}`} variant="body">{`${row.pos} · ${row.text}`}</AppText>
               ))}
+              {cards.hidden.length > 0 ? (
+                <View style={sajuStyles.gapSmall} testID="saju-table-hidden">
+                  <AppText variant="bodyMedium">{IF5_TEXT['SAJU.table.row.hidden']}</AppText>
+                  {cards.hidden.map((row) => (
+                    <AppText key={`h-${row.pos}`} variant="body">{`${row.pos} · ${row.text}`}</AppText>
+                  ))}
+                </View>
+              ) : null}
               <AppText variant="caption">{IF5_TEXT['SAJU.table.neutral']}</AppText>
             </FoldRow>
           </View>
@@ -299,8 +309,8 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
     if (!cards?.year?.year) return null;
     const y = cards.year;
     const months = [
-      y.best.length ? t5('SAJU.year.best', { '달 목록': y.best.map((m) => `${m}월`).join(', ') }) : null,
-      y.rest.length ? t5('SAJU.year.rest', { '달 목록': y.rest.map((m) => `${m}월`).join(', ') }) : null,
+      y.best.length ? t5('SAJU.year.best', { '달 목록': y.best.join(', ') }) : null,
+      y.rest.length ? t5('SAJU.year.rest', { '달 목록': y.rest.join(', ') }) : null,
     ].filter((x): x is string => !!x);
     return (
       <SummaryCard id="saju-year" label={IF5_TEXT['SAJU.year.label']} one={y.year?.one ?? null} lines={y.year?.three ?? []} more={y.year?.more ?? []} bottom={aiBlock('saju-year', 'sinyeon')}>
@@ -388,7 +398,7 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
         {cards.season.map((r) => (
           <View key={r.index} style={[styles.seasonRow, r.current && styles.seasonNow]} testID={`saju-season-${r.index}`}>
             <AppText variant={r.current ? 'bodyBold' : 'body'} style={sajuStyles.flex}>
-              {`${r.ageFrom ?? ''}세 ~ ${r.ageTo ?? ''}세 · ${r.label ?? ''}`}
+              {`${ageSpan(r.ageFrom, r.ageTo)} · ${r.label ?? ''}`}
             </AppText>
           </View>
         ))}
@@ -487,9 +497,7 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
   function pickBlock(): React.ReactNode {
     return (
       <View style={styles.card} testID="saju-pick">
-        <AppText variant="bodyBold" accessibilityRole="header">
-          {IF5_TEXT['SAJU.pick.title']}
-        </AppText>
+        <CardTitle label={IF5_TEXT['SAJU.pick.title']} icon="calendar" />
         <AppText variant="body">{IF5_TEXT['SAJU.pick.lead']}</AppText>
         <View style={sajuStyles.wrap}>
           {([0, 1, 2, 3, 4, 5, 6] as const).map((i) => (
@@ -505,9 +513,7 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
   function partnerBlock(): React.ReactNode {
     return (
       <View style={styles.card} testID="saju-partner-card">
-        <AppText variant="bodyBold" accessibilityRole="header">
-          {IF5_TEXT['SAJU.partner.card']}
-        </AppText>
+        <CardTitle label={IF5_TEXT['SAJU.partner.card']} icon="person" />
         <AppText variant="body">{IF5_TEXT['SAJU.madang.card.pair']}</AppText>
         <Button label={IF5_TEXT['SAJU.partner.title']} variant="secondary" disabled={!my} onPress={() => setSheet('partner')} testID="saju-partner-open" />
       </View>
@@ -516,9 +522,7 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
   function calBlock(): React.ReactNode {
     return (
       <View style={styles.card} testID="saju-cal-card">
-        <AppText variant="bodyBold" accessibilityRole="header">
-          {IF5_TEXT['SAJU.cal.title']}
-        </AppText>
+        <CardTitle label={IF5_TEXT['SAJU.cal.title']} icon="calendar" />
         <AppText variant="body">{IF5_TEXT['SAJU.madang.card.cal']}</AppText>
         <Button label={IF5_TEXT['SAJU.cal.open']} variant="secondary" onPress={() => router.push({ pathname: SAJU_CAL_HREF, params: { mode: 'cal' } } as unknown as Href)} testID="saju-cal-open" />
       </View>
@@ -527,9 +531,7 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
   function guideBlock(): React.ReactNode {
     return (
       <View style={styles.card} testID="saju-guide-card">
-        <AppText variant="bodyBold" accessibilityRole="header">
-          {IF5_TEXT['SAJU.guide.title']}
-        </AppText>
+        <CardTitle label={IF5_TEXT['SAJU.guide.title']} icon="help" />
         <AppText variant="body">{IF5_TEXT['SAJU.guide.lead']}</AppText>
         {GUIDE_TERMS.map((t, i) => (
           <View key={t.key} style={sajuStyles.row}>

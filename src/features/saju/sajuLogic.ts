@@ -6,8 +6,10 @@ import { BIRTH_PLACES, BRANCHES, BRANCH_ELEMENT, ELEMENTS, STAGE_NEUTRAL, STEMS,
 import type { Chart, Rec } from '@/saju5/saju_calc5';
 import { pickCard, quarterTones, type Card5, type PickInput } from '@/saju5/fragments5';
 import { NAMES5 } from '@/saju5/names5';
+import { hiddenStemSipsung } from '@/saju5/jijanggan5';
+import { LunarError, solarToLunar } from '@/saju5/lunar5';
 
-import type { If5Key } from '@/content/if5Copy';
+import { IF5_TEXT, type If5Key } from '@/content/if5Copy';
 import type { LuckItem, MyChart, MyDay, MyLuck, Pair } from './sajuApi';
 
 export type ReadyChart = Extract<MyChart, { state: 'ready' }>;
@@ -40,7 +42,7 @@ export function chartOf(c: ReadyChart, option = 0): Chart | null {
 
 // ── 네 기둥 표 ───────────────────────────────────────────────────────────────
 export type PillarCell = { pos: 'year' | 'month' | 'day' | 'hour'; posName: string; stem: string; branch: string; stemEl: string; branchEl: string; alt: { stem: string; branch: string } | null } | null;
-const POS_NAME = { year: '해', month: '달', day: '날', hour: '시' } as const; // 디자인 시안 표기(카피 24장에는 칸 이름 키가 없다 → 마케팅 요청)
+const POS_NAME = { year: IF5_TEXT['SAJU.pillars.col.year'], month: IF5_TEXT['SAJU.pillars.col.month'], day: IF5_TEXT['SAJU.pillars.col.day'], hour: IF5_TEXT['SAJU.pillars.col.hour'] } as const; // 카피 24-15-1 칸 이름(IF5-F1b)
 export function pillarCells(c: ReadyChart): PillarCell[] {
   const first = c.options[0];
   const second = c.options[1];
@@ -81,6 +83,23 @@ export function tableRows(chart: Chart): { rel: TableRow[]; stage: TableRow[] } 
   return { rel, stage };
 }
 
+/** 숨은 글자 줄(IF5-F1b ⓑ · 카피 `SAJU.table.row.hidden`): 기둥마다 지지가 품은 천간 + 내 날 기준 쉬운 이름. 통설 표 하나만(P0 가안) — 서적별 갈래 표는 화면에 0 · 이 파일은 갈래 함수를 부르지 않는다 */
+export function hiddenRows(chart: Chart): TableRow[] {
+  const ds = chart.pillars.day % 10;
+  const names = NAMES5.sipsung as { code: string; name: string }[];
+  const nameOf = (code: string): string => names.find((n) => n.code === code)?.name ?? '';
+  const rows: TableRow[] = [];
+  for (const pos of ['year', 'month', 'day', 'hour'] as const) {
+    const idx = chart.pillars[pos];
+    if (idx === null) continue;
+    const text = hiddenStemSipsung(ds, idx % 12)
+      .map((h) => `${h.name}(${nameOf(h.sipsung)})`)
+      .join(', ');
+    rows.push({ pos: POS_NAME[pos], text });
+  }
+  return rows;
+}
+
 // ── 별난 점 카드 ─────────────────────────────────────────────────────────────
 export type TraitView = { code: string; title: string; text: string };
 export function traitCards(chart: Chart): TraitView[] {
@@ -114,7 +133,7 @@ export const tableCard = (chart: Chart): CardView | null => safePick('F5-15', { 
 
 const luckOf = (chart: Chart, it: { stem: number; branch: number }): Rec => luck_facts(chart, it.stem, it.branch);
 /** 올해 흐름(F5-06) + 열두 달 한 줄(F5-13 — 한 장에 묶음) + 띠 한 줄(F5-18) */
-export type YearView = { year: CardView | null; months: CardView | null; zodiac: CardView | null; best: number[]; rest: number[] };
+export type YearView = { year: CardView | null; months: CardView | null; zodiac: CardView | null; best: string[]; rest: string[] }; // best · rest = 서버 월운의 절기 달 이름(인월 ~ 축월)
 export function yearView(chart: Chart, luck: ReadyLuck): YearView | null {
   if (!luck.seun) return null;
   const seun = { ...luckOf(chart, luck.seun), samjae_step: luck.seun.sam };
@@ -123,24 +142,22 @@ export function yearView(chart: Chart, luck: ReadyLuck): YearView | null {
   const year = safePick('F5-06', base);
   const months = safePick('F5-13', base);
   const zodiac = safePick('F5-18', { chart, birth_branch: chart.pillars.year % 12, this_year_branch: luck.seun.branch });
-  // 힘 내기 좋은 달 · 쉬어 가는 달: 월운 12개의 12운성 어조(양력 달 번호). 입춘이 든 달 = 2월이므로 월운 k 번째 = (k + 1) 월 근사가 아니라 서버 값이 가진 시작일을 쓸 수 없어(응답에 미포함) 절기 차례로 표시한다
+  // 힘 내기 좋은 달 · 쉬어 가는 달: 월운 12개의 12운성 어조. 달 이름은 서버 get_my_luck 월운의 month_name(0050 · 인월 ~ 축월)을 그대로 쓴다
   const toneOf = (w: { stem: number; branch: number }): string => {
     const stage = String(luckOf(chart, w).stage);
     return ['쉬어 가는 때', '거두는 때', '갈무리하는 때', '비우는 때'].includes(stage) ? 'rest' : ['싹트는 때', '자라나는 때', '자리 잡는 때', '한창인 때'].includes(stage) ? 'up' : 'mid';
   };
-  const best: number[] = [];
-  const rest: number[] = [];
+  const best: string[] = [];
+  const rest: string[] = [];
   luck.wolun.forEach((w) => {
     const t = toneOf(w);
-    const m = monthOfK(w.monthK);
-    if (t === 'up') best.push(m);
-    else if (t === 'rest') rest.push(m);
+    if (!w.monthName) return; // 서버가 달 이름(0050 month_name)을 안 주면 그 달은 목록에 넣지 않는다(절기 근사 0)
+    if (t === 'up') best.push(w.monthName);
+    else if (t === 'rest') rest.push(w.monthName);
   });
   if (!year && !months && !zodiac) return null;
-  return { year, months, zodiac, best: best.sort((a, b) => a - b), rest: rest.sort((a, b) => a - b) };
+  return { year, months, zodiac, best, rest }; // 월운은 입춘 ~ 다음 입춘 차례라 그대로 차례
 }
-/** 절기 차례 k(0 = 입춘 … 11 = 소한) → 대략의 양력 달(입춘 2 · 경칩 3 … 소한 1). 달 이름 표시용 근사(절입이 달 초 4 ~ 8일) */
-export const monthOfK = (k: number): number => ((k + 1) % 12) + 1;
 
 export function monthView(chart: Chart, day: Extract<MyDay, { state: 'ready' }>, monthLuck: { stem: number; branch: number } | null): CardView | null {
   if (!monthLuck) return null;
@@ -169,6 +186,12 @@ export function seasonRows(chart: Chart, luck: ReadyLuck, todayIso: string): Sea
       current: !!from && !!to && from <= todayIso && todayIso < to,
     };
   });
+}
+
+/** 계절표 한 줄의 나이 구간 '{n}세 ~ {n}세'(카피 `SAJU.life.age` 틀 + 부호 '~' 는 앱이 잇는다) */
+export function ageSpan(from: number | null, to: number | null): string {
+  const one = (n: number | null): string => (n === null ? '' : IF5_TEXT['SAJU.life.age'].replace('{n}', String(n)));
+  return `${one(from)} ~ ${one(to)}`;
 }
 
 // ── 날짜 · 달력 ──────────────────────────────────────────────────────────────
@@ -218,6 +241,17 @@ export function calendarLine(iso: string): CardView | null {
   if (!inSupport(iso)) return null;
   const idx = day_idx(dnOf(iso));
   return safePick('F5-12', { jeolgi: jeolOn(iso) ?? undefined, day_element: ELEMENTS[Math.floor((idx % 10) / 2)] });
+}
+/** 음력 날짜(IF5-F1b ⓐ). 음양력 표 범위(1960-01-01 ~ 2051-12-31) 밖이면 null(줄을 숨긴다). 윤달은 달 번호 앞에 '윤'을 붙인다. 경계 달 단서(어느 절기 달인지 등)는 달지 않는다(팀장 정함) */
+export function lunarOf(iso: string): { month: string; day: number } | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  try {
+    const l = solarToLunar(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)), Number(iso.slice(8, 10)));
+    return { month: `${l.leap ? '윤' : ''}${l.month}`, day: l.day };
+  } catch (e) {
+    if (e instanceof LunarError) return null;
+    throw e;
+  }
 }
 /** 홈 '오늘 하루' 띠의 한 줄: 모든 회원에게 같은 글 · 오늘 날짜의 바탕만(내 정보 0 · 서버 호출 0) */
 export function todayBaseLine(iso: string): string | null {

@@ -23,7 +23,7 @@ export type NoteKind = keyof typeof NOTE_KEYS;
 
 export type Postcard = { round: number; line: number; extra: string; at: number };
 export type PreAnswer = { q: string; text: string; at: number };
-export type Memo = { room: string; texts: string[]; at: number; closedAt: number | null };
+export type Memo = { room: string; texts: string[]; at: number; closedAt: number | null; skyDay?: string | null }; // skyDay = G-06 만난 날(yyyy-mm-dd · IF5-F1b) — 메모와 같은 기기 보관 · 방이 닫힌 날 + 30일에 같이 지워짐
 export type Notes = {
   postcard: Postcard | null;
   preAnswers: { round: number; items: PreAnswer[] } | null;

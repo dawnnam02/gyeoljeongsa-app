@@ -88,7 +88,8 @@ export function AiBlock(p: Props) {
   const state = slot.kind === 'ready' ? slot.state : null;
   const feature = COST_FEATURE[p.kind];
   const baseCost = state ? costOf(state, feature) : null;
-  const label = state?.costs.find((c) => c.feature === feature)?.label ?? '';
+  // 종합 풀이 이름은 서버 차감표 글 대신 카피 `SAJU.full.label`(같은 글 · M-F2). 다른 기능 이름은 서버 차감표 label 그대로
+  const label = p.kind === 'full' ? IF5_TEXT['SAJU.full.label'] : state?.costs.find((c) => c.feature === feature)?.label ?? '';
 
   const run = async (): Promise<void> => {
     const code = await p.svc.code();

@@ -1,6 +1,6 @@
 // 사주 마당이 서버와 주고받는 일(IF5-F1 · D-237). 서버 = backend/migrations/0048_mileage_saju.sql(앱 함수 · 응답 모양 = backend/R_변경기록.md 16-2 · 16-3).
 //   get_my_saju(p_hour, p_minute, p_place)                → {ok, state ready, hour_known, day{stem,branch}, hour{stem,branch}|null, options[{year,month}] 한두 개, flags[]} | {ok, state none | out_of_range}
-//   get_my_luck(p_hour, p_minute, p_place, p_year)        → {ok, state ready, daewoon{direction, daewoon_su, start_age{years,months}, approx, items[9]}|null, seun{…}, wolun[12]}
+//   get_my_luck(p_hour, p_minute, p_place, p_year)        → {ok, state ready, daewoon{direction, daewoon_su, start_age{years,months}, approx, items[9]}|null, seun{…}, wolun[12 — 항목마다 month_name 인월 ~ 축월(0050)]}
 //   get_my_day(p_hour, p_minute, p_place, p_date)         → {ok, state ready, date, iljin{…}, wolun{…}, officer} | {ok, state out_of_range}
 //   get_taekil(p_purpose, p_start, p_end, p_personal, p_hour, p_minute, p_place) → {ok, state ready, purpose, days[{date, weekday, stem, branch, officer, tone, label, clash_with_me?, lowered?}]}
 //   오류: {ok:false, code consent_required | invalid_value | invalid_time | not_ready} · DB 오류 forbidden(42501) · feature_off(42501)
@@ -16,6 +16,8 @@ type Rec = Record<string, unknown>;
 const isRecord = (v: unknown): v is Rec => typeof v === 'object' && v !== null && !Array.isArray(v);
 const int = (v: unknown): number | null => (typeof v === 'number' && Number.isInteger(v) ? v : null);
 const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
+/** 월운 달 이름(0050 month_name): 지지 한 글자 + '월'(인월 ~ 축월)만 받는다. 다른 꼴은 null(그 달은 이름 줄에서 뺀다) */
+const monthNameOf = (v: unknown): string | null => (typeof v === 'string' && /^[자축인묘진사오미신유술해]월$/.test(v) ? v : null);
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 
 /** 화면이 가르는 오류 일곱 — 서버 코드 4(consent_required · invalid_value · invalid_time · not_ready) + 스위치 꺼짐 + 로그인 · 계정 + 끊김. 그 밖은 not_ready 로 묶는다 */
@@ -35,7 +37,7 @@ export type MyChart =
 
 export type LuckItem = { stem: number; branch: number; startAgeYears: number | null; startAgeMonths: number | null; startDate: string | null; endDate: string | null };
 export type MyLuck =
-  | { state: 'ready'; daewoon: { forward: boolean; items: LuckItem[]; approx: boolean } | null; seun: { year: number; stem: number; branch: number; sam: number | null; starts: string | null } | null; wolun: { monthK: number; stem: number; branch: number; starts: string | null }[] }
+  | { state: 'ready'; daewoon: { forward: boolean; items: LuckItem[]; approx: boolean } | null; seun: { year: number; stem: number; branch: number; sam: number | null; starts: string | null } | null; wolun: { monthK: number; monthName: string | null; stem: number; branch: number; starts: string | null }[] }
   | { state: 'none' | 'out_of_range' };
 export type MyDay =
   | { state: 'ready'; date: string; stem: number | null; branch: number | null; month: { stem: number; branch: number } | null; officer: string | null }
@@ -89,7 +91,7 @@ export function parseMyLuck(raw: unknown): MyLuck | null {
   if (isRecord(raw.seun) && int(raw.seun.year) !== null && int(raw.seun.stem) !== null && int(raw.seun.branch) !== null) {
     seun = { year: int(raw.seun.year) as number, stem: int(raw.seun.stem) as number, branch: int(raw.seun.branch) as number, sam: int(raw.seun.samjae_step), starts: str(raw.seun.starts) };
   }
-  const wolun = arr(raw.wolun).flatMap((w) => (isRecord(w) && int(w.month_k) !== null && int(w.stem) !== null && int(w.branch) !== null ? [{ monthK: int(w.month_k) as number, stem: int(w.stem) as number, branch: int(w.branch) as number, starts: str(w.starts) }] : []));
+  const wolun = arr(raw.wolun).flatMap((w) => (isRecord(w) && int(w.month_k) !== null && int(w.stem) !== null && int(w.branch) !== null ? [{ monthK: int(w.month_k) as number, monthName: monthNameOf(w.month_name), stem: int(w.stem) as number, branch: int(w.branch) as number, starts: str(w.starts) }] : []));
   return { state: 'ready', daewoon, seun, wolun };
 }
 

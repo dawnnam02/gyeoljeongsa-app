@@ -28,6 +28,7 @@ import type { InflightApi, PairCard, PreQuestions } from './inflightApi';
 import { compatText, questionText, questionsOfDepth, sameLines } from './if2Library';
 import { kstDateText, MEMO_KEEP_MS } from './inflightLogic';
 import { Footnote, if2Styles, MarkButton, SheetHead } from './If2Parts';
+import { MeetSky } from './MeetSky';
 import { tx, txList } from './if2Text';
 
 const count = (t: string) => Array.from(t).length;
@@ -496,7 +497,7 @@ export function MeetPrepSheet({ visible, roomId, shareOn, onClose, onShare, onGu
 export const SAFE_SHARE_ENTRY = '만남 계획 공유';
 
 // ── IF-MEMO 돌아보기 메모(PF-72): 질문 틀 3 · 칸마다 100자 · 기기에만 · 방이 닫힌 날 + 30일 ─────────────────
-type MemoProps = { visible: boolean; roomId: string; closedAt: number | null; onClose: () => void; onToast: (t: string) => void; notes?: DeviceNotes; testID?: string };
+type MemoProps = { visible: boolean; roomId: string; closedAt: number | null; onClose: () => void; onToast: (t: string) => void; notes?: DeviceNotes; skyOn?: boolean; now?: () => number; testID?: string };
 export function MemoSheet(props: MemoProps) {
   const testID = props.testID ?? 'if2-memo';
   return (
@@ -505,18 +506,19 @@ export function MemoSheet(props: MemoProps) {
     </FullSheet>
   );
 }
-function MemoBody({ roomId, closedAt, onClose, onToast, notes = deviceNotes(), testID = 'if2-memo' }: MemoProps) {
+function MemoBody({ roomId, closedAt, onClose, onToast, notes = deviceNotes(), skyOn = false, now, testID = 'if2-memo' }: MemoProps) {
   const n = useDeviceNotes(notes);
   const prompts = txList('MEET_MEMO.prompt');
   const memo = n.memos[roomId] ?? null;
   const [texts, setTexts] = useState<string[]>(() => prompts.map((_, i) => memo?.texts[i] ?? ''));
   const [ask, setAsk] = useState(false);
+  const [skyDay, setSkyDay] = useState<string | null>(() => (typeof memo?.skyDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(memo.skyDay) ? memo.skyDay : null)); // G-06: 고른 날은 메모를 저장할 때 기기에 같이 남는다
   const tooLong = texts.some((t) => count(t) > MEMO_LEN);
   const closed = closedAt ?? memo?.closedAt ?? null;
   const save = () => {
     if (tooLong) return;
     try {
-      notes.set('memos', { ...n.memos, [roomId]: { room: roomId, texts: texts.map((t) => t.trim()), at: Date.now(), closedAt: closed } });
+      notes.set('memos', { ...n.memos, [roomId]: { room: roomId, texts: texts.map((t) => t.trim()), at: Date.now(), closedAt: closed, skyDay: skyOn ? skyDay : memo?.skyDay ?? null } });
       onToast(tx('MEET_MEMO.saved'));
       onClose();
     } catch {
@@ -546,6 +548,7 @@ function MemoBody({ roomId, closedAt, onClose, onToast, notes = deviceNotes(), t
             testID={`${testID}-field-${i}`}
           />
         ))}
+        {skyOn ? <MeetSky day={skyDay} onChange={setSkyDay} now={now} testID={`${testID}-sky`} /> : null}
         <Button label={tx('MEET_MEMO.save')} dimmed={tooLong} onPress={save} testID={`${testID}-save`} />
         {memo ? <TextButton label={tx('MEET_MEMO.delete')} onPress={() => setAsk(true)} testID={`${testID}-delete`} /> : null}
         <Footnote text={tx('MEET_MEMO.note')} testID={`${testID}-note`} />
