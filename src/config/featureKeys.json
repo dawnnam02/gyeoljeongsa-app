@@ -139,6 +139,24 @@
     { "key": "my_ways", "group": "IF3", "id": "G-04", "live": false },
     { "key": "three_pillars", "group": "IF3", "id": "G-05", "live": false },
     { "key": "meet_sky", "group": "IF3", "id": "G-06", "live": false },
-    { "key": "birth_card", "group": "IF3", "id": "G-07", "live": false }
+    { "key": "birth_card", "group": "IF3", "id": "G-07", "live": false },
+
+    { "key": "saju_yard", "group": "IF5", "id": "F5-00", "live": false },
+    { "key": "saju_home", "group": "IF5", "id": "F5-08h", "live": false },
+    { "key": "saju_reading", "group": "IF5", "id": "F5-02", "live": false },
+    { "key": "saju_season", "group": "IF5", "id": "F5-05", "live": false },
+    { "key": "saju_year", "group": "IF5", "id": "F5-06", "live": false },
+    { "key": "saju_calendar", "group": "IF5", "id": "F5-07", "live": false },
+    { "key": "saju_today", "group": "IF5", "id": "F5-08", "live": false },
+    { "key": "saju_pickday", "group": "IF5", "id": "F5-09", "live": false },
+    { "key": "saju_partner", "group": "IF5", "id": "F5-10", "live": false },
+    { "key": "pair_card_saju", "group": "IF5", "id": "F5-11", "live": false },
+    { "key": "saju_ai", "group": "IF5", "id": "F5-AI", "live": false, "demo": false },
+    { "key": "saju_talk", "group": "IF5", "id": "F5-17", "live": false, "demo": false },
+    { "key": "mileage", "group": "IF5", "id": "ML-01", "live": false },
+    { "key": "mileage_spend", "group": "IF5", "id": "ML-02", "live": false },
+    { "key": "mileage_charge", "group": "IF5", "id": "ML-03", "live": false, "demo": false },
+    { "key": "mileage_gift", "group": "IF5", "id": "ML-04", "live": false },
+    { "key": "rest_hint", "group": "IF5", "id": "ML-05", "live": false }
   ]
 }
