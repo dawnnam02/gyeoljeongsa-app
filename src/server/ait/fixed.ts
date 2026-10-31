@@ -6,7 +6,7 @@
 // 쓰지 않는 말(법무 17-2): 무료 · 전문 상담사 · 곧 연결 · 비밀 완전 보장 — 공식 쪽에서 확인하지 못했거나 자격 · 응대를 약속하는 말이라서.
 
 export interface FixedCard {
-  id: 'crisis' | 'violence' | 'misuse' | 'minor' | 'session_end' | 'limit_note';
+  id: 'crisis' | 'violence' | 'harm_intent' | 'misuse' | 'minor' | 'session_end' | 'limit_note';
   lines: readonly string[];
   /** 사용자가 고를 수 있는 버튼(앱이 그린다) */
   options: ReadonlyArray<'continue' | 'end'>;
@@ -14,6 +14,8 @@ export interface FixedCard {
   charge: 0;
   /** 확정이 남은 곳 */
   pending: readonly string[];
+  /** 겹침 카드(safety.ts): 이 카드에 확정 줄을 덧붙인 다른 갈래 카드 id(위기 + 폭력이면 ['violence']) */
+  also?: readonly FixedCard['id'][];
 }
 
 export const PENDING_NOTE = '번호 글은 법무 17장 확정(켜는 달 다시 확인) · 위로 문구는 마케팅 확정 대기';
@@ -52,6 +54,25 @@ export const VIOLENCE_CARD: FixedCard = {
   charge: 0,
   pending: [NUMBER_PENDING, '위로 문구 — 마케팅'],
 };
+
+/** 가해 의도 카드(법무 17-3 Q4 · 마케팅 23-13-4 `CONCERN_CARD.harm`): 자기 뜻으로 해치고 싶다는 말. 112 + 109만 쓰고 1366(피해자용)과 폭력 카드 4번째 줄('상대를 이해하려고 …')은 넣지 않는다 */
+export const HARM_INTENT_CARD: FixedCard = {
+  id: 'harm_intent',
+  lines: [
+    '지금 마음이 많이 격해졌나 봐요',
+    '잠깐 그 자리에서 벗어나 숨을 고르셔도 돼요.',
+    LINE_112,
+    LINE_109,
+    '저희가 전화 상담을 대신하지 않아요.',
+  ],
+  options: ['continue', 'end'],
+  charge: 0,
+  pending: [NUMBER_PENDING, '글 확정 — 마케팅 23-13-4(법무 확인: 상담 아님 앞 문장만으로 조건 #5)'],
+};
+
+/** 겹침 카드 위로 줄(마케팅 23-13-4): 덧붙는 확정 번호 줄 바로 위에 한 줄 */
+export const BRIDGE_VIOLENCE = '함께 말씀해 주신 일이 걱정돼서, 아래 안내도 같이 드려요.';
+export const BRIDGE_MINOR = '여기서 이야기를 이어 가기는 어려워서, 도움받을 곳을 하나 더 알려 드려요.';
 
 export const MISUSE_CARD: FixedCard = {
   id: 'misuse',

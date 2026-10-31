@@ -9,8 +9,9 @@ import type { ApiMessage, ChatSlots, Kind, ModelFlag, StageId } from './types.ts
 import { KINDS, MODEL_FLAGS } from './types.ts';
 import type { ResponseCode } from './codes.ts';
 import { charLen, endsWithHaeyo, hasResidualPii, maskText, quoteInSource, sanitize, wrapState, wrapTurn } from './text.ts';
-import { classifyHit, hasDiagnosisAsk, hasDiagnosisRequest, hasInjectionShape, hasMoneyHint, hasVerdictRequest } from './lexicon.ts';
+import { classifyHits, hasDiagnosisAsk, hasDiagnosisRequest, hasInjectionShape, hasMoneyHint, hasVerdictRequest } from './lexicon.ts';
 import type { FixedCard } from './fixed.ts';
+import { composeSafety, composeSafetyFromFlags } from './safety.ts';
 import {
   ALWAYS_LINE, CARD_NOTE, CHAT_FOOTER, CHAT_GUESS_NOTE, CRISIS_CARD, MINOR_CARD, MISUSE_CARD, MONEY_CAUTION,
   PRACTICAL_LABEL, SESSION_END_CARD, SOFT_HELP_LINES, VIOLENCE_CARD, WEAK_LABEL,
@@ -315,22 +316,26 @@ export function prepareTurn(envIn: ChatEnvelope, input: ChatInput): Prepared {
 
   // 1) 위기 · 폭력 · 오용 · 미성년 — 업체를 부르기 전. 걸리면 글은 버린다(이력 · 로그 0).
   //    위기 · 폭력 카드는 세션이 이미 끝났어도 먼저 보인다(안전이 먼저)
-  const hit = classifyHit(askerRaw + '\n' + partnerRaw);
-  if (hit === 'crisis_db' || hit === 'crisis_ext') {
+  //    A-QF2: 한 글에 갈래가 둘 이상 걸리면(위기 + 폭력 · 위기 + 미성년 …) 가장 먼저 처리할 카드 하나에 다른 갈래의 확정 번호 줄만 덧붙이고(safety.ts),
+  //    미성년이 끼어 있으면 세션을 마친다. 가해 의도('죽이고 싶어요')는 위기 카드처럼 매번 카드로 막는다(위기 카드 횟수에 센다).
+  const hits = classifyHits(askerRaw + '\n' + partnerRaw);
+  const safe = composeSafety(hits);
+  if (safe && (safe.kinds[0] === 'crisis' || safe.kinds[0] === 'harm_intent')) {
     st.crisisCards += 1;
-    if (st.crisisCards >= CHAT_LIMITS.maxCrisisCards) st.ended = true;
-    return { kind: 'card', code: 'crisis', card: CRISIS_CARD, env };
+    if (st.crisisCards >= CHAT_LIMITS.maxCrisisCards || safe.endSession) st.ended = true;
+    return { kind: 'card', code: 'crisis', card: safe.card, env };
   }
-  if (hit === 'violence' && !st.safety) {
+  if (safe && safe.kinds[0] === 'violence' && !st.safety) {
     st.safety = true;
-    return { kind: 'card', code: 'crisis', card: VIOLENCE_CARD, env };
+    if (safe.endSession) st.ended = true;
+    return { kind: 'card', code: 'crisis', card: safe.card, env };
   }
   if (st.ended) {
     return { kind: 'end', code: 'ok', env, display: summaryCard(env) };
   }
   if (!askerRaw && !partnerRaw && !input.chip) return { kind: 'reject', code: 'bad_request', why: 'empty' };
-  if (hit === 'misuse') return { kind: 'card', code: 'refused_intent', card: MISUSE_CARD, env };
-  if (hit === 'minor') { st.ended = true; return { kind: 'card', code: 'refused_intent', card: MINOR_CARD, env }; }
+  if (hits.includes('misuse')) return { kind: 'card', code: 'refused_intent', card: MISUSE_CARD, env };
+  if (hits.includes('minor')) { st.ended = true; return { kind: 'card', code: 'refused_intent', card: MINOR_CARD, env }; }
 
   // 2) 길이 (정규화 뒤)
   if (charLen(askerRaw) > CHAT_LIMITS.askerMax || charLen(partnerRaw) > CHAT_LIMITS.partnerMax) return { kind: 'reject', code: 'too_long', why: 'length' };
@@ -612,13 +617,14 @@ export function finishTurn(prep: Extract<Prepared, { kind: 'call' }>, resp: ApiR
 
   // 모델 표지: 위기 · 폭력 · 미성년이면 응답 전체를 고정 카드로 바꾼다(이력에 이번 말을 넣지 않는다)
   const flagged = ev.flags;
-  if (flagged.includes('crisis')) {
-    const e = cloneEnv(env); e.state.crisisCards += 1; if (e.state.crisisCards >= CHAT_LIMITS.maxCrisisCards) e.state.ended = true;
-    return { kind: 'card', code: 'crisis', card: CRISIS_CARD, env: e };
+  const flagSafe = composeSafetyFromFlags(flagged);            // A-QF2: 표지가 둘 이상이면 확정 번호 줄만 합친다(safety.ts)
+  if (flagSafe && (flagSafe.kinds[0] === 'crisis' || flagSafe.kinds[0] === 'harm_intent')) {     // 가해 의도 표지도 위기 카드처럼 매번 카드(횟수에 셈)
+    const e = cloneEnv(env); e.state.crisisCards += 1; if (e.state.crisisCards >= CHAT_LIMITS.maxCrisisCards || flagSafe.endSession) e.state.ended = true;
+    return { kind: 'card', code: 'crisis', card: flagSafe.card, env: e };
   }
-  if ((flagged.includes('violence') || flagged.includes('stalking')) && !env.state.safety) {
-    const e = cloneEnv(env); e.state.safety = true;
-    return { kind: 'card', code: 'crisis', card: VIOLENCE_CARD, env: e };
+  if (flagSafe && flagSafe.kinds[0] === 'violence' && !env.state.safety) {
+    const e = cloneEnv(env); e.state.safety = true; if (flagSafe.endSession) e.state.ended = true;
+    return { kind: 'card', code: 'crisis', card: flagSafe.card, env: e };
   }
   if (flagged.includes('minor')) {
     const e = cloneEnv(env); e.state.ended = true;

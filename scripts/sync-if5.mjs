@@ -2,7 +2,7 @@
 //  · 복사 대상: 계산 saju_calc5 · 조각 고르기 fragments5 · 이름표 names5 · 검사기 check_text5 · 규칙 rules5 · rules_extra5 · 타입 spec5(rules5 가 타입만 부름)
 //  · IF5-F1c: pair5.ts(ai/IF5/ts) 를 클라이언트 복사 대상에 더했다 — 순수 함수(saju_calc5 만 가져옴)라 AI 요청 · 지시문 · 네트워크가 없다
 //    + 데이터 data/jie5.json · sun5.json · fragments5.json · neutral_names5.json (모두 기기 안 계산 · 네트워크 0)
-//  · 순수 글 검사기 셋도 같이 복사한다: ai/AIT/ts 의 rules.ts · text.ts · types.ts(정규식 목록 · 타입뿐, 지시문 · 열쇠 · 업체 호출 0) + lexicon.ts(IF5-QF · 낱말 사전 — 가져오는 것 0) → src/saju5/ait/. 앱 서버 사본(src/server/ait)을 가져오지 않는 까닭: 화면 쪽 코드가 src/server 를 가져오면 안 된다(시험 aitServer ATF-16 · 보안 check_sec2 P5-e2)
+//  · 순수 글 검사기 셋도 같이 복사한다: ai/AIT/ts 의 rules.ts · text.ts · types.ts(정규식 목록 · 타입뿐, 지시문 · 열쇠 · 업체 호출 0) + lexicon.ts(IF5-QF · 낱말 사전 — 가져오는 것 0) + fixed.ts · safety.ts(IF5-QF2 · 고정 카드 · 겹침 합치기 — 같은 폴더 안만 가져옴) → src/saju5/ait/. 앱 서버 사본(src/server/ait)을 가져오지 않는 까닭: 화면 쪽 코드가 src/server 를 가져오면 안 된다(시험 aitServer ATF-16 · 보안 check_sec2 P5-e2)
 //  · 들이지 않는 것(src/saju5 쪽): AI 요청 · 지시문 · 원가 · 대화 모듈 전부(IFF5-35 번들 점검). 그 모듈은 서버 폴더 src/server/saju5 로만 간다 — IF5-F2 ⑯:
 //    request5 · chat5 · ai_facts5 · partner5(상대 간지 없는 2단계 문 guardCompatFacts) · generated5(지시문 · 출력 틀) · input5 · validate5. (mock5 = 미리 만든 모의 글이라 src/saju5 쪽 — 코드 없는 데모 글에도 쓰인다) 원본의 AIT 상대 경로는 '../ait/'(앱 서버 사본) ·
 //    같은 폴더에 있던 계산 모듈(spec5 · saju_calc5 · names5 · rules5)은 '../../saju5/' 로 바꾼다. 화면 쪽 코드는 이 서버 폴더를 가져오지 않는다(시험 if5Ai · aitServer ATF-16)
@@ -21,7 +21,7 @@ export const AIT_SRC_DIR = path.resolve(appDir, '..', 'ai', 'AIT', 'ts');
 export const DEST_DIR = path.join(appDir, 'src', 'saju5');
 export const TS_FILES = ['saju_calc5.ts', 'fragments5.ts', 'names5.ts', 'check_text5.ts', 'rules5.ts', 'rules_extra5.ts', 'spec5.ts', 'mock5.ts', 'lunar5.ts', 'jijanggan5.ts', 'pair5.ts']; // IF5-F1c: pair5 = 날짜 고르기 '상대와 함께 보기'(함께 무난한 날 — 상대는 일지 숫자 하나 · 네트워크 · 저장 0) / IF5-F1b: lunar5 = 음양력 바꾸기(1960 ~ 2051) · jijanggan5 = 숨은 글자(통설 표 · P0 가안) / mock5 = 미리 만든 모의 글(지시문 · 요청 0) — 코드 없는 데모 글과 서버 모의 모드가 같이 쓴다
 export const DATA_FILES = ['data/jie5.json', 'data/sun5.json', 'data/fragments5.json', 'data/neutral_names5.json', 'data/lunar5.json', 'data/jijanggan5.json'];
-export const AIT_FILES = ['ait/rules.ts', 'ait/text.ts', 'ait/types.ts', 'ait/lexicon.ts']; // IF5-QF: lexicon = 위기 · 폭력 · 오용 · 미성년 낱말 사전(서버와 한 벌 — 데모 · 코드 없는 길의 위기 앞거름이 같은 사전을 쓴다. 가져오는 것 0 · 순수 함수)
+export const AIT_FILES = ['ait/rules.ts', 'ait/text.ts', 'ait/types.ts', 'ait/lexicon.ts', 'ait/fixed.ts', 'ait/safety.ts']; // IF5-QF: lexicon = 위기 · 폭력 · 오용 · 미성년 낱말 사전(서버와 한 벌 — 데모 · 코드 없는 길의 위기 앞거름이 같은 사전을 쓴다. 가져오는 것 0 · 순수 함수) / IF5-QF2: fixed = 고정 카드 · 확정 번호 줄(가져오는 것 0) · safety = 갈래 겹침 합치기 composeSafety(lexicon · fixed 만 가져옴) — 화면 쪽 앞거름이 서버와 같은 카드를 그리게 한 벌로 둔다
 /** IF5-F2 ⑯: AI 요청 쪽 서버 전용 모듈 — src/server/saju5 로 간다 */
 export const SERVER_DEST_DIR = path.join(appDir, 'src', 'server', 'saju5');
 export const SERVER_FILES = ['request5.ts', 'chat5.ts', 'ai_facts5.ts', 'partner5.ts', 'generated5.ts', 'input5.ts', 'validate5.ts'];

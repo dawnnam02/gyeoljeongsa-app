@@ -1,8 +1,9 @@
 // IF5-A · 입력 허용 목록. 출생 정보(본인 · 상대) 검사와 대화 글 준비. 업체를 부르지 않는다.
 // 상대 생일: 키는 생년월일 · 시각 · (성별 · 출생지는 선택)뿐. 이름 · 별명 · 메모 · 연락처 키가 있으면 거절한다(이름 0 · 저장 0은 구조로).
 
-import { classifyHit } from '../ait/lexicon.ts';
-import { CRISIS_CARD, MINOR_CARD, MISUSE_CARD, VIOLENCE_CARD } from '../ait/fixed.ts';
+import { classifyHits } from '../ait/lexicon.ts';
+import { composeSafety } from '../ait/safety.ts';
+import { MISUSE_CARD } from '../ait/fixed.ts';
 import type { FixedCard } from '../ait/fixed.ts';
 import { charLen, hasResidualPii, maskText, sanitize } from '../ait/text.ts';
 
@@ -70,11 +71,12 @@ export function prepareChatText(raw: unknown): ChatPrep5 {
   if (typeof raw !== 'string') return { kind: 'reject', code: 'bad_request', why: 'type' };
   const clean = sanitize(raw).trim();
   if (!clean) return { kind: 'reject', code: 'bad_request', why: 'empty' };
-  const hit = classifyHit(clean);
-  if (hit === 'crisis_db' || hit === 'crisis_ext') return { kind: 'card', code: 'crisis', card: CRISIS_CARD, endSession: false };
-  if (hit === 'violence') return { kind: 'card', code: 'crisis', card: VIOLENCE_CARD, endSession: false };
-  if (hit === 'misuse') return { kind: 'card', code: 'refused_intent', card: MISUSE_CARD, endSession: false };
-  if (hit === 'minor') return { kind: 'card', code: 'refused_intent', card: MINOR_CARD, endSession: true };
+  // A-QF2: 한 글에 갈래가 둘 이상 걸리면 가장 먼저 처리할 카드 하나에 다른 갈래의 확정 번호 줄만 덧붙이고, 미성년이 끼어 있으면 세션을 마친다(safety.ts)
+  const hits = classifyHits(clean);
+  const safe = composeSafety(hits);
+  if (safe && safe.kinds[0] !== 'minor') return { kind: 'card', code: 'crisis', card: safe.card, endSession: safe.endSession };
+  if (hits.includes('misuse')) return { kind: 'card', code: 'refused_intent', card: MISUSE_CARD, endSession: false };
+  if (safe) return { kind: 'card', code: safe.code, card: safe.card, endSession: true };
   if (charLen(clean) > CHAT5_LIMITS.textMax) return { kind: 'reject', code: 'too_long', why: 'length' };
   const m = maskText(clean);
   if (hasResidualPii(m.text)) return { kind: 'reject', code: 'bad_request', why: 'residual_pii' };

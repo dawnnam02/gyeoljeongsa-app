@@ -20,7 +20,7 @@ const text = (minS: number, maxS: number, max: number, extra: { empty?: boolean;
 const list = (min: number, max: number, of: FieldSpec): FieldSpec => ({ t: 'list', min, max, of });
 const obj = (fields: Record<string, FieldSpec>): FieldSpec => ({ t: 'obj', fields });
 
-export const CHAT_FLAGS = ['crisis', 'medical', 'legal', 'invest', 'minor', 'off_topic'] as const;
+export const CHAT_FLAGS = ['crisis', 'medical', 'legal', 'invest', 'minor', 'off_topic', 'violence', 'harm_intent'] as const;   // A-QF2: violence · harm_intent 추가(사전이 놓친 폭력 · 가해 의도 호소를 모델 표지로 잡는 두 번째 그물)
 
 export const SPEC5: Readonly<Record<Feature5, FieldSpec>> = {
   reading: obj({

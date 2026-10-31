@@ -7,7 +7,8 @@ import type { ResponseCode } from './codes.ts';
 import type { FixedCard } from './fixed.ts';
 import { COACH_NOTE, COMPAT_NOTE, CRISIS_CARD, FUN_FOOTER, MINOR_CARD } from './fixed.ts';
 import { charLen, endsWithHaeyo, hasResidualPii, maskText, quoteInSource, sanitize, splitSentences } from './text.ts';
-import { classifyHit } from './lexicon.ts';
+import { classifyHits } from './lexicon.ts';
+import { composeSafety } from './safety.ts';
 import { COACH_RULES, RULESETS, checkText, contactHit, newDigitRuns } from './rules.ts';
 
 export type Effort = 'low' | 'medium' | 'high';
@@ -149,9 +150,10 @@ export function prepareCoach(raw: unknown): OneShotPrep {
   if (!isRecord(raw) || !onlyKeys(raw, ['field', 'text']) || typeof raw.field !== 'string' || typeof raw.text !== 'string') return { kind: 'reject', code: 'bad_request', why: 'shape' };
   if (!(COACH_FIELDS as readonly string[]).includes(raw.field)) return { kind: 'reject', code: 'bad_request', why: 'field' };
   const text = sanitize(raw.text).trim();
-  const hit = classifyHit(text);
-  if (hit === 'crisis_db' || hit === 'crisis_ext') return { kind: 'card', code: 'crisis', card: CRISIS_CARD };
-  if (hit === 'minor') return { kind: 'card', code: 'refused_intent', card: MINOR_CARD };
+  const hits = classifyHits(text);
+  const safe = composeSafety(hits);                               // A-QF2: 위기 + 폭력 · 위기 + 미성년이면 확정 번호 줄을 합친 카드
+  if (safe && safe.kinds[0] === 'crisis') return { kind: 'card', code: 'crisis', card: safe.card };
+  if (hits.includes('minor')) return { kind: 'card', code: 'refused_intent', card: MINOR_CARD };
   const n = charLen(text);
   if (n < ONE_SHOT_LIMITS.coachTextMin) return { kind: 'reject', code: 'bad_request', why: 'short' };
   if (n > ONE_SHOT_LIMITS.coachTextMax) return { kind: 'reject', code: 'too_long', why: 'length' };

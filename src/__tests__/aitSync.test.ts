@@ -19,9 +19,9 @@ const hasCopyDoc = fs.existsSync(path.join(ROOT, '마케팅', '카피.md'));
 const run = (script: string, ...args: string[]) => spawnSync(process.execPath, [path.join(APP, 'scripts', script), ...args], { encoding: 'utf8' });
 
 (hasOrigin ? describe : describe.skip)('AIT-F ② 서버 모듈 복사본 = 원본 (동기 검사)', () => {
-  test('node scripts/sync-ait.mjs --check 가 같음 · 원본은 읽기만(파일 수 19)', () => {
+  test('node scripts/sync-ait.mjs --check 가 같음 · 원본은 읽기만(파일 수 20)', () => {
     const r = run('sync-ait.mjs', '--check');
-    expect(r.stdout + r.stderr).toMatch(/AIT 동기 같음: 파일 19개/);
+    expect(r.stdout + r.stderr).toMatch(/AIT 동기 같음: 파일 20개/);
     expect(r.status).toBe(0);
   });
 });

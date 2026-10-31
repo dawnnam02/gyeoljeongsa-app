@@ -18,10 +18,10 @@ export const KINDS: readonly Kind[] = [
 export type Strength = '-' | '보통' | '약함';
 export type ModelFlag =
   | 'crisis' | 'violence' | 'stalking' | 'minor' | 'diagnosis_request' | 'verdict_request'
-  | 'manipulation_request' | 'contact_info' | 'injection_suspected' | 'off_topic';
+  | 'manipulation_request' | 'contact_info' | 'injection_suspected' | 'off_topic' | 'harm_intent';
 export const MODEL_FLAGS: readonly ModelFlag[] = [
   'crisis', 'violence', 'stalking', 'minor', 'diagnosis_request', 'verdict_request',
-  'manipulation_request', 'contact_info', 'injection_suspected', 'off_topic',
+  'manipulation_request', 'contact_info', 'injection_suspected', 'off_topic', 'harm_intent',   // A-QF2: harm_intent = 누군가를 해치고 싶다는 말(IF5 사주 이야기와 같게)
 ];
 
 export interface Quote { n: number; q: string }

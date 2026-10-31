@@ -53,13 +53,13 @@ module.exports = defineConfig([
   {
     // AIT-F ②: src/server/ait 의 파일은 ai/AIT/ts 원본을 scripts/sync-ait.mjs 로 그대로 복사한 것이라 앱 쪽 스타일 규칙을 걸지 않는다(원본 수정 0 — 고칠 게 있으면 AI 직원에게 넘김)
     files: ['src/server/ait/**/*.ts'],
-    rules: { 'import/export': 'off', '@typescript-eslint/array-type': 'off' },
+    rules: { 'import/export': 'off', '@typescript-eslint/array-type': 'off', '@typescript-eslint/no-unused-vars': 'off' }, // IF5-QF2: 원본이 안 쓰는 가져오기(CRISIS_CARD 등)가 남은 채 복사돼도 경고를 내지 않는다(원본 수정 0)
   },
   {
     // IF5-F1: src/saju5 의 파일은 ai/IF5/ts 원본을 scripts/sync-if5.mjs 로 복사한 것이라(경로 · JSON 가져오기 꼴만 바꿈) 앱 쪽 스타일 규칙을 걸지 않는다(원본 수정 0 — 고칠 게 있으면 AI 직원에게 넘김)
     // IF5-F2 ⑯: src/server/saju5 도 같은 원본 복사본(서버 전용 AI 요청 모듈) — handler5.ts 는 앱이 따로 쓰는 파일이지만 같은 규칙을 얹는다
     files: ['src/saju5/**/*.ts', 'src/server/saju5/**/*.ts'],
-    rules: { 'import/export': 'off', 'import/first': 'off', '@typescript-eslint/array-type': 'off', '@typescript-eslint/no-explicit-any': 'off' },
+    rules: { 'import/export': 'off', 'import/first': 'off', '@typescript-eslint/array-type': 'off', '@typescript-eslint/no-explicit-any': 'off', '@typescript-eslint/no-unused-vars': 'off' },
     linterOptions: { reportUnusedDisableDirectives: 'off' },
   },
   {

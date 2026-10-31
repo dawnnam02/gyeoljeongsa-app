@@ -38,7 +38,7 @@ export async function checkAccessCode(provided: unknown, expected: unknown): Pro
 /** 최종 안전망은 콘솔 작업 공간 월 지출 상한(약 $7 ≈ 1만 원). 서버 카운터는 이 값을 강제하지 않는다. */
 export const BUDGET = { monthlyWon: 10000 } as const;
 /** 원가 계산이 전제하는 챗봇 시스템 지시문 글자 수(카드 포함, 실제 지시문이 이보다 길어지면 시험이 깨진다) */
-export const ASSUMED_CHAT_SYSTEM_CHARS = 9500;
+export const ASSUMED_CHAT_SYSTEM_CHARS = 9600;   // A-QF2: 실제 9,537자(harm_intent 표지 한 줄 추가로 9,500을 넘어 100자 올림)
 const CHAT_SYSTEM_TOKENS = (k: number) => ASSUMED_CHAT_SYSTEM_CHARS * k + 500;   // + 출력 틀(grammar) 약 500토큰
 
 function chatSessionWon(model: ModelId, scenario: 'base' | 'high', warm = false): number {

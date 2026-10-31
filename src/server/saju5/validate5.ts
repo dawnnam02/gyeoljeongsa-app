@@ -4,7 +4,7 @@
 import type { Hit } from '../ait/rules.ts';
 import { checkText, contactHit, newDigitRuns } from '../ait/rules.ts';
 import { charLen, endsWithHaeyo, splitSentences } from '../ait/text.ts';
-import { CRISIS_CARD, MINOR_CARD } from '../ait/fixed.ts';
+import { composeSafetyFromFlags } from '../ait/safety.ts';
 import type { FixedCard } from '../ait/fixed.ts';
 import type { FieldSpec, Feature5 } from '../../saju5/spec5.ts';
 import { SPEC5 } from '../../saju5/spec5.ts';
@@ -118,7 +118,7 @@ function walk(spec: FieldSpec, v: unknown, path: string, ctx: Ctx): unknown {
 // ---------------------------------------------------------------- 결과
 export type Done5 =
   | { kind: 'ok'; code: 'ok'; display: Record<string, unknown>; notes: readonly string[] }
-  | { kind: 'card'; code: 'crisis' | 'refused_intent'; card: FixedCard }
+  | { kind: 'card'; code: 'crisis' | 'refused_intent'; card: FixedCard; endSession?: boolean }
   | { kind: 'redirect'; code: 'ok'; line: string; flag: keyof typeof REDIRECT_LINES }
   | { kind: 'blocked'; code: 'blocked_output'; reasons: string[] };
 
@@ -144,8 +144,9 @@ export function finish5(feature: Feature5, resp: ApiResultLike, opts: FinishOpts
   // 채팅: 서버가 아는 위기 · 미성년 · 의료 · 법 · 투자 신호는 풀이 글보다 먼저 고정 안내로
   if (feature === 'chat') {
     const flags = display.flags as string[];
-    if (flags.includes('crisis')) return { kind: 'card', code: 'crisis', card: CRISIS_CARD };
-    if (flags.includes('minor')) return { kind: 'card', code: 'refused_intent', card: MINOR_CARD };
+    // A-QF2: AIT chat.ts 와 같은 꼴 — 위기 · 폭력(스토킹) · 가해 의도 · 미성년 표지는 고정 카드로, 둘 이상이면 확정 번호 줄만 합친다(safety.ts). 미성년이 끼면 세션을 마친다
+    const safe = composeSafetyFromFlags(flags);
+    if (safe) return { kind: 'card', code: safe.code, card: safe.card, endSession: safe.endSession };
     for (const f of ['medical', 'legal', 'invest', 'off_topic'] as const) if (flags.includes(f)) return { kind: 'redirect', code: 'ok', line: REDIRECT_LINES[f], flag: f };
   }
 
