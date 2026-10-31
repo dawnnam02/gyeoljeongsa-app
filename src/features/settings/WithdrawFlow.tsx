@@ -15,7 +15,9 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextButton } from '@/components/TextButton';
 import { TextField } from '@/components/TextField';
 import { SIGN_IN } from '@/content/copy';
+import { IF5_TEXT, t5 } from '@/content/if5Copy';
 import { WITHDRAW } from '@/content/settingsCopy';
+import { fmt } from '@/features/mileage/mileageLogic';
 import { formatMmSs, OTP_LENGTH, secondsLeft } from '@/lib/otpClock';
 import type { SettingsApi } from '@/lib/settingsApi';
 import { colors, size, space } from '@/theme/tokens';
@@ -23,15 +25,24 @@ import { colors, size, space } from '@/theme/tokens';
 import { onlyDigits, withdrawConfirmError, withdrawStartError } from './settingsLogic';
 
 type Step = 'confirm' | 'otp';
+
+/** 탈퇴 확인창 마일리지 줄: 잔액 → (산 분이 있으면) 환불을 요청할 수 있고 정산 날짜 규칙 → (받은 무료분이 있으면) 탈퇴하면 사라진다. 숫자 강조 · 재촉 0 */
+export function mileageLines(m: { total: number; paid: number; free: number } | null | undefined): string[] {
+  if (!m || m.total <= 0) return [];
+  return [t5('MILEAGE.free.leave.bal', { N: fmt(m.total) }), ...(m.paid > 0 ? [IF5_TEXT['MILEAGE.free.leave.refund']] : []), ...(m.free > 0 ? [IF5_TEXT['MILEAGE.free.leave.freeGone']] : [])];
+}
 type Props = {
   visible: boolean;
   api: Pick<SettingsApi, 'startWithdraw' | 'confirmWithdraw'>;
   now: () => number;
+  /** IF5-F2: 탈퇴 확인창 마일리지 줄(23-13-3 · 법무 5-9 M7). 마일리지를 켜고 잔액이 있을 때만 — 없으면 줄 0 */
+  mileage?: { total: number; paid: number; free: number } | null;
+  onRefund?: () => void; // [환불 요청] — 고객센터 안내로
   onCancel: () => void; // 탈퇴하지 않고 12 로
   onDone: () => Promise<void> | void; // 탈퇴 확정됨 — 부모가 로그인 정보를 지우고 01 로
 };
 
-export function WithdrawFlow({ visible, api, now, onCancel, onDone }: Props) {
+export function WithdrawFlow({ visible, api, now, mileage, onRefund, onCancel, onDone }: Props) {
   const [step, setStep] = useState<Step>('confirm');
   const [sentAt, setSentAt] = useState<number | null>(null);
   const [code, setCode] = useState('');
@@ -133,7 +144,10 @@ export function WithdrawFlow({ visible, api, now, onCancel, onDone }: Props) {
         title={WITHDRAW.title}
         body={WITHDRAW.body}
         sub={WITHDRAW.sub}
-        note={{ text: [WITHDRAW.credit, WITHDRAW.rejoinNote].join('\n') }} // 크레딧 줄 + 바로 아래 '다시 가입' 한 줄(카피.md 12-Q WITHDRAW.credit · rejoinNote(M8, 3부-사) · v5엔 구독 안내 NV36 없음, QP-A)
+        note={{
+          text: [WITHDRAW.credit, WITHDRAW.rejoinNote, ...mileageLines(mileage)].join('\n'),
+          action: mileage && mileage.paid > 0 && onRefund ? { label: IF5_TEXT['MILEAGE.free.leave.refundBtn'], onPress: onRefund } : undefined,
+        }} // 크레딧 줄 + 바로 아래 '다시 가입' 한 줄(카피.md 12-Q WITHDRAW.credit · rejoinNote(M8, 3부-사) · v5엔 구독 안내 NV36 없음, QP-A)
         confirmLabel={WITHDRAW.confirm}
         cancelLabel={WITHDRAW.cancel}
         busy={busy}

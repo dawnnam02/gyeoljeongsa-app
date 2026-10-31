@@ -1,6 +1,6 @@
 // IF-SJ-PARTNER 상대 생일 시트 — 둘이 맞춰 보기(F5-10 · IF5-F1 ② ③ · 디자인 PT-1 ~ 4 · PR-1 · 정책 PS-21 ~ PS-26 · 카피 24-7).
 //  · 입력은 생년월일 칸 하나 + 선택 시각뿐 — 이름 · 성별 · 별명 · 관계 · 연락처 · 사진 · 링크 칸 0 · 자동완성 · 자동수정 끔
-//  · CK20 확인 한 번 전에는 입력칸이 안 열린다(미리 체크 0) · 계산은 기기 안(partnerLocal — 네트워크 0) · 저장 0(기기 · 서버 · 로그) · 시트를 닫으면 값이 사라진다
+//  · CK20 확인(동의문구 4-20 — features/consent/If5ConsentSheets Ck20Block · 확인은 이 기기에 한 번 기록) 전에는 입력칸이 잠긴다(미리 체크 0) · 계산은 기기 안(partnerLocal — 네트워크 0) · 저장 0(기기 · 서버 · 로그) · 시트를 닫으면 값이 사라진다
 //  · 만 19세 미만이면 맞춰 보지 않는다(부드러운 한 줄 · 결과 0 · 다른 생일을 권하는 말 0) · 점수 · 판정 · 순위 0 · 앱이 뒤로 가면 입력을 가린다 · 캡처 막기
 import { useEffect, useState } from 'react';
 import { AppState, ScrollView, View } from 'react-native';
@@ -8,19 +8,20 @@ import { AppState, ScrollView, View } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/Button';
-import { CheckBox } from '@/components/CheckBox';
 import { Chip } from '@/components/Chip';
-import { Pressable } from '@/components/Pressable';
 import { TextField } from '@/components/TextField';
 import { IF5_TEXT } from '@/content/if5Copy';
 import { useAlwaysCaptureBlock } from '@/lib/captureBlock';
 import type { Chart } from '@/saju5/saju_calc5';
-import { space } from '@/theme/tokens';
+import { Ck20Block } from '@/features/consent/If5ConsentSheets';
+import { if5Consent, useIf5Consent, type If5ConsentStore } from '@/features/consent/if5Consent';
 
-import { matchPartner, type PartnerResult } from './partnerLocal';
+import { AiBlock } from './ai/AiBlock';
+import type { AiServices } from './ai/aiService';
+import { matchPartner, partnerAiFacts, type PartnerResult } from './partnerLocal';
 import { clockText, sajuStyles, TimePicker } from './SajuParts';
 
-type Props = { visible: boolean; mine: Chart | null; today: () => string; onClose: () => void; testID?: string };
+type Props = { visible: boolean; mine: Chart | null; today: () => string; onClose: () => void; consent?: If5ConsentStore; ai?: AiServices; testID?: string };
 
 export function PartnerSheet(props: Props) {
   const testID = props.testID ?? 'saju-partner';
@@ -34,9 +35,11 @@ export function PartnerSheet(props: Props) {
 
 const LABELS = ['SAJU.partner.result.l1.label', 'SAJU.partner.result.l2.label', 'SAJU.partner.result.l3.label'] as const;
 
-function Body({ mine, today, onClose, testID = 'saju-partner' }: Props) {
-  // 모든 값은 이 화면의 메모리뿐 — 시트를 닫으면 Body 가 사라져 값도 사라진다(저장 0)
-  const [ck20, setCk20] = useState(false);
+function Body({ mine, today, onClose, consent, ai, testID = 'saju-partner' }: Props) {
+  // 상대 값은 모두 이 화면의 메모리뿐 — 시트를 닫으면 Body 가 사라져 값도 사라진다(저장 0). 기기에 남기는 것은 CK20 확인 기록 하나(상대 값 0)
+  const store = consent ?? if5Consent();
+  const ck20 = useIf5Consent(store).c20 !== null;
+  const setCk20 = (on: boolean) => void (on ? store.agreeC20() : store.revoke('c20'));
   const [digits, setDigits] = useState('');
   const [time, setTime] = useState<{ hour: number; minute: number } | null>(null);
   const [timeOpen, setTimeOpen] = useState(false);
@@ -66,12 +69,7 @@ function Body({ mine, today, onClose, testID = 'saju-partner' }: Props) {
 
       {result === null ? (
         <>
-          <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ck20 }} aria-checked={ck20} accessibilityLabel={IF5_TEXT['SAJU.partner.ck20']} onPress={() => setCk20(!ck20)} effect="none" style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: space.s12 }} testID={`${testID}-ck20`}>
-            <CheckBox checked={ck20} />
-            <AppText variant="body" style={sajuStyles.flex}>
-              {IF5_TEXT['SAJU.partner.ck20']}
-            </AppText>
-          </Pressable>
+          <Ck20Block checked={ck20} onToggle={() => setCk20(!ck20)} testID={`${testID}-ck20`} />
           <TextField
             label={IF5_TEXT['SAJU.partner.birth']}
             value={digits}
@@ -100,13 +98,13 @@ function Body({ mine, today, onClose, testID = 'saju-partner' }: Props) {
           <Button label={IF5_TEXT['SAJU.partner.go']} disabled={!ck20 || digits.length !== 8 || !mine} onPress={go} testID={`${testID}-go`} />
         </>
       ) : (
-        <ResultBody result={result} onAgain={again} onClose={onClose} testID={testID} />
+        <ResultBody result={result} onAgain={again} onClose={onClose} testID={testID} aiBlock={ai && mine ? <AiBlock id={`${testID}-compat`} kind="compat" svc={ai} facts={() => partnerAiFacts(mine, { birthDigits: digits, time }, today())} /> : null} />
       )}
     </ScrollView>
   );
 }
 
-function ResultBody({ result, onAgain, onClose, testID }: { result: PartnerResult; onAgain: () => void; onClose: () => void; testID: string }) {
+function ResultBody({ result, onAgain, onClose, testID, aiBlock }: { result: PartnerResult; onAgain: () => void; onClose: () => void; testID: string; aiBlock?: React.ReactNode }) {
   if (result.kind === 'minor') {
     // 만 19세 미만 — 계산 · 결과 0. 이 분의 나이를 되묻거나 다른 생일을 권하는 말 0
     return (
@@ -166,6 +164,7 @@ function ResultBody({ result, onAgain, onClose, testID }: { result: PartnerResul
           ))}
         </View>
       ) : null}
+      {aiBlock}
       <AppText variant="caption" testID={`${testID}-result-gone`}>
         {IF5_TEXT['SAJU.partner.result.gone']}
       </AppText>

@@ -87,7 +87,7 @@ describe('스위치 키 한 목록(K19 2-5) · 앱이 87키를 읽는다', () =>
   });
 
   test('demo 처음값: review_required · prelaunch 만 꺼짐(테스트 웹은 지금 동작 · 심사를 끈 데모, 정책 1-2 7번) · avoid_org · vouch 켜짐(K20 4-3) · 목록 밖은 꺼짐', () => {
-    expect(FEATURE_KEYS.filter((k) => !isPendingKey(k) && !demoDefault(k))).toEqual(['review_required', 'prelaunch', ...V5_KEYS, ...R_KEYS, 'type_card_share', 'pair_card_ai', 'saju_ai', 'saju_talk', 'mileage_charge']); // V5: 숨긴 v4 화면은 데모에서도 꺼짐(v4on 장면만 켜짐) · R: chat_push 데모도 꺼짐 · IF2: 바깥 공유 · AI판은 데모도 꺼짐(PF-91)
+    expect(FEATURE_KEYS.filter((k) => !isPendingKey(k) && !demoDefault(k))).toEqual(['review_required', 'prelaunch', ...V5_KEYS, ...R_KEYS, 'type_card_share', 'pair_card_ai']); // V5: 숨긴 v4 화면은 데모에서도 꺼짐(v4on 장면만 켜짐) · R: chat_push 데모도 꺼짐 · IF2: 바깥 공유 · AI판은 데모도 꺼짐(PF-91)
     expect(demoDefault('avoid_org')).toBe(true);
     expect(demoDefault('vouch')).toBe(true);
     expect(demoDefault('rude_warn')).toBe(true); // 넣고 꺼 둔 키(live 꺼짐) — 데모 시드처럼 켜짐

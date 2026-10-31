@@ -7,6 +7,7 @@
 //  · 응답 머리 anthropic-workspace-id 가 AIT_WORKSPACE_ID 와 다르면 그 격리는 잠그고(live 호출 0) 그 응답은 버린다(AC-08, 첫 응답 확인 방식)
 import Anthropic from '@anthropic-ai/sdk';
 
+import { handleSaju5 } from '../saju5/handler5.ts';
 import { createCounters, GUARD, handleAi, MAX_BODY_BYTES, replyError } from './index.ts';
 import type { Counters, HandlerDeps, HttpReply, MessagesBody, ModelResult, UpstreamFailure } from './index.ts';
 
@@ -133,7 +134,9 @@ export function createAitRoute(opts: RouteOptions): (request: Request) => Promis
       const declared = Number(request.headers.get('content-length'));
       // 너무 큰 본문은 읽지 않는다 — 코드 검사 뒤에 handler 가 같은 413 으로 답하게 상한을 넘긴 자리 글을 넘긴다
       const bodyText = Number.isFinite(declared) && declared > MAX_BODY_BYTES ? ' '.repeat(MAX_BODY_BYTES + 1) : await request.text();
-      const res = await handleAi({ method: request.method, headers: Object.fromEntries(request.headers), bodyText }, deps);
+      // IF5-F2: 사주 AI 맞춤(feature 가 s5_ 로 시작)은 같은 문 순서를 따르는 사주 핸들러로 — 접근 코드가 먼저라 코드 없는 요청은 어느 쪽이든 같은 401
+      const isSaju = /"feature"\s*:\s*"s5_/.test(bodyText);
+      const res = await (isSaju ? handleSaju5 : handleAi)({ method: request.method, headers: Object.fromEntries(request.headers), bodyText }, deps);
       return toResponse(res);
     } catch {
       return toResponse(replyError('upstream', 'mock')); // 던져진 오류는 어디에도 내보내지 않는다(Crashes · 로그 0)

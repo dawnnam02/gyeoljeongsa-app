@@ -64,6 +64,7 @@ export type SettingsDeps = SupportDeps & {
   requestPush: () => Promise<PushStatus>; // 시스템 권한 창(서비스 알림을 켤 때, 안내 글을 먼저 보인 뒤)
   contact?: () => ContactPorts; // 12-5 지인 차단 기기 연결(주소록 · 해시, 3부-바). 없으면 지인 차단 줄은 '준비 중'
   boarded?: () => Promise<boolean>; // 3부-아: 판매 마감 전 · 이번 회차 탑승권이 있나(동의 관리 CK4 · CK15 끄기 확인창 한 줄). 없으면 그 줄 없음
+  mileage?: () => boolean; // IF5-F2: 12-1 '마일리지' 줄(스위치 mileage 가 켜졌을 때만). 없으면 줄 없음
   sajuYard?: () => boolean; // IF5-F1: 12-1 '사주 마당' 줄(스위치 saju_yard 가 켜졌을 때만). 없으면 줄 없음
   skyBook?: () => boolean; // IF3-F: 정보 묶음 '하늘 도감' 줄(스위치 sky_book 이 켜졌을 때만). 없으면 줄 없음
   ait?: () => boolean; // AIT-F ⑤: 시험용 AI 코드 줄(데모 판에서만 참 — 실서버 판엔 줄 0). 없으면 줄 없음
@@ -84,6 +85,7 @@ export function defaultSettingsDeps(): SettingsDeps {
     ck17: ck17Now,
     skyBook: skyBookNow,
     sajuYard: sajuYardNow,
+    mileage: mileageNow,
     ait: aitEnabled,
     copyText: copyToClipboard,
     openMail: async (email) => {
@@ -113,6 +115,15 @@ function sajuYardNow(): boolean {
   const { isOn } = require('@/lib/featureFlagsApi') as typeof import('@/lib/featureFlagsApi');
   /* eslint-enable @typescript-eslint/no-require-imports */
   return isOn(appFlagsStore().get(), 'saju_yard');
+}
+
+// IF5-F2: 마일리지 줄은 스위치 mileage 가 켜졌을 때만(처음값 꺼짐 — 실서버엔 줄 0)
+function mileageNow(): boolean {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const { appFlagsStore } = require('@/hooks/useFeatureFlags') as typeof import('@/hooks/useFeatureFlags');
+  const { isOn } = require('@/lib/featureFlagsApi') as typeof import('@/lib/featureFlagsApi');
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  return isOn(appFlagsStore().get(), 'mileage');
 }
 
 // IF3-F: 하늘 도감 줄은 스위치 sky_book 이 켜졌을 때만(스위치 처음값 꺼짐 — 실서버엔 줄 0)
@@ -149,6 +160,18 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
   const [page, setPage] = useState<SettingsPage>('list');
   const [legalOpen, setLegalOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  // IF5-F2: 탈퇴 확인창 마일리지 줄 — 스위치 mileage 가 켜졌을 때만 열 때 한 번 읽는다(저장 0)
+  const [withdrawMileage, setWithdrawMileage] = useState<{ total: number; paid: number; free: number } | null>(null);
+  useEffect(() => {
+    if (!withdrawOpen || deps.mileage?.() !== true) return undefined;
+    let live = true;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { mileageServices } = require('@/features/mileage/mileageService') as typeof import('@/features/mileage/mileageService');
+    void mileageServices().api.state().then((r) => live && setWithdrawMileage(r.ok ? { total: r.data.total, paid: r.data.paid, free: r.data.free } : null));
+    return () => {
+      live = false;
+    };
+  }, [withdrawOpen, deps]);
   const [toast, setToast] = useState<string | null>(null);
   const [push, setPush] = useState<PushStatus>('undetermined');
   const [loggingOut, setLoggingOut] = useState(false);
@@ -212,6 +235,9 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
         return;
       case 'saju':
         go('/saju' as Href, false);
+        return;
+      case 'mileage':
+        go('/mileage' as Href, false);
         return;
       case 'credits':
         router.push('/credits' as unknown as Href); // T5(탭 위에 열리는 화면)
@@ -308,7 +334,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
     }
   })();
 
-  const main = [...SETTINGS_ROWS.filter((r) => r.group === 'main' && (r.key !== 'saju-yard' || deps.sajuYard?.() === true)), ...(deps.ait?.() === true ? [AIT_ROW] : [])];
+  const main = [...SETTINGS_ROWS.filter((r) => r.group === 'main' && (r.key !== 'saju-yard' || deps.sajuYard?.() === true) && (r.key !== 'mileage' || deps.mileage?.() === true)), ...(deps.ait?.() === true ? [AIT_ROW] : [])];
   const info = SETTINGS_ROWS.filter((r) => r.group === 'info' && (r.key !== 'business-info' || bizRows !== null) && (r.key !== 'sky-book' || deps.skyBook?.() === true));
 
   return (
@@ -346,6 +372,11 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
         visible={withdrawOpen}
         api={deps.api}
         now={deps.now}
+        mileage={withdrawOpen ? withdrawMileage : null}
+        onRefund={() => {
+          setWithdrawOpen(false);
+          setPage('support'); // [환불 요청] — 고객센터 안내로(P0: 결제 · 환불 호출 0)
+        }}
         onCancel={() => setWithdrawOpen(false)}
         onDone={leaveToStart}
       />

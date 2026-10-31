@@ -5,6 +5,7 @@ import { act, type ReactTestRenderer } from 'react-test-renderer';
 import { demoDefault, FEATURE_KEYS } from '@/config/featureKeys';
 import { IF5_TEXT } from '@/content/if5Copy';
 import { createDemoSaju } from '@/demo/sajuDemo';
+import { createIf5ConsentStore } from '@/features/consent/if5Consent';
 import type { Ck17Api } from '@/features/inflight/inflightService';
 import { rpcOf } from '@/features/inflight/inflightApi';
 import { createInputStore, INPUT_KEYS, memoryInputStorage, type InputStore } from '@/features/saju/deviceInput';
@@ -62,7 +63,10 @@ function rig(opts: { birth?: string | null; ck17?: boolean; flags?: Record<strin
     revoke: jest.fn(async () => ({ ok: true as const })),
   };
   const isOn = (k: string) => flags[k] === true;
-  const deps: SajuDeps = { api, ck17, isOn, now: () => NOW, birthDate: async () => '1994-03-14' };
+  // IF5-F2: 시각 · 곳 · 성별은 CK17A ③ ④ ⑤ 에 동의한 분만 쓴다 — 이 시험의 사람은 셋 다 동의한 것으로 둔다
+  const consent = createIf5ConsentStore();
+  void consent.setItems({ time: true, place: true, gender: true });
+  const deps: SajuDeps = { api, ck17, isOn, now: () => NOW, birthDate: async () => '1994-03-14', consent };
   return { user, demo, calls, api, ck17, deps, isOn, flags };
 }
 const freshStore = (answered = false): InputStore => {
@@ -208,9 +212,13 @@ describe('IF5-F1 ② ③ 상대 생일 — 늘 기기 계산 · 서버 전송 0 
     expect(matchPartner(mine, { birthDigits: '1992', time: null }, '2027-03-20').kind).toBe('outOfRange');
   });
 
+  let pConsent = createIf5ConsentStore(); // CK20 확인 기록은 이 기기에 한 번(시험마다 새 메모리 저장소)
+  beforeEach(() => {
+    pConsent = createIf5ConsentStore();
+  });
   const sheet = async (mineChart: ReturnType<typeof build_chart> | null = mine) => {
     const closed = jest.fn();
-    const tree = keep(await mount(<PartnerSheet visible mine={mineChart} today={() => '2027-03-20'} onClose={closed} />));
+    const tree = keep(await mount(<PartnerSheet visible mine={mineChart} today={() => '2027-03-20'} onClose={closed} consent={pConsent} />));
     return { tree, closed };
   };
   test('시트: CK20 확인 전엔 입력칸이 잠김 · 이름 · 성별 · 별명 · 연락처 칸 0 · 자동완성 · 자동수정 끔', async () => {
@@ -232,7 +240,7 @@ describe('IF5-F1 ② ③ 상대 생일 — 늘 기기 계산 · 서버 전송 0 
   test('확인 → 8자리 → [맞춰 보기] → 결과 · 네트워크 호출 0 · 닫으면 값이 사라진다(다시 열면 빈 칸)', async () => {
     const fetchSpy = jest.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('{}'));
     const { tree } = await sheet();
-    await press(tree, 'saju-partner-ck20');
+    await press(tree, 'saju-partner-ck20-check');
     await typeInto(tree, 'saju-partner-birth', '1992-08-02'); // 숫자만 남긴다
     expect(must(tree, 'saju-partner-birth').props.value).toBe('19920802');
     await press(tree, 'saju-partner-go');
@@ -242,14 +250,14 @@ describe('IF5-F1 ② ③ 상대 생일 — 늘 기기 계산 · 서버 전송 0 
     expect(mockForced).toHaveBeenCalledWith(true); // 캡처 막기
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
-    await act(async () => tree.update(<PartnerSheet visible={false} mine={mine} today={() => '2027-03-20'} onClose={() => undefined} />));
-    await act(async () => tree.update(<PartnerSheet visible mine={mine} today={() => '2027-03-20'} onClose={() => undefined} />));
+    await act(async () => tree.update(<PartnerSheet visible={false} mine={mine} today={() => '2027-03-20'} onClose={() => undefined} consent={pConsent} />));
+    await act(async () => tree.update(<PartnerSheet visible mine={mine} today={() => '2027-03-20'} onClose={() => undefined} consent={pConsent} />));
     expect(must(tree, 'saju-partner-birth').props.value).toBe('');
     expect(has(tree, 'saju-partner-result')).toBe(false);
   });
   test('만 19세 미만 → 부드러운 한 줄만 · 결과 0 · 다른 생일을 권하는 단추 0', async () => {
     const { tree, closed } = await sheet();
-    await press(tree, 'saju-partner-ck20');
+    await press(tree, 'saju-partner-ck20-check');
     await typeInto(tree, 'saju-partner-birth', '20100101');
     await press(tree, 'saju-partner-go');
     expect(has(tree, 'saju-partner-minor')).toBe(true);
@@ -261,7 +269,7 @@ describe('IF5-F1 ② ③ 상대 생일 — 늘 기기 계산 · 서버 전송 0 
   });
   test('1961-08-10 이전 → 범위 한 줄 + [생일 다시 넣기] · 계산 실패 칸은 값 보존(다시 넣기 누르면 입력 화면)', async () => {
     const { tree } = await sheet();
-    await press(tree, 'saju-partner-ck20');
+    await press(tree, 'saju-partner-ck20-check');
     await typeInto(tree, 'saju-partner-birth', '19500505');
     await press(tree, 'saju-partner-go');
     expect(allTexts(tree)).toContain(IF5_TEXT['SAJU.range.partner']);
@@ -383,7 +391,7 @@ describe('IF5-F1 ③ 사주 마당 한 화면 — 상태 5종(빈 · 불러오�
     expect([...new Set(order)]).toEqual(ids);
     const texts = allTexts(tree).join(' ');
     expect(texts).not.toMatch(/재회|점수|순위|판정|퍼센트|\d+\s*%|무제한|상담(?!이나)/);
-    expect(texts).not.toContain('마일리지');
+    expect(texts).not.toMatch(/잔액|마일리지 ?\d/); // 잔액 · 숫자는 마일리지 화면에만(머리 [마일리지] 입구는 F2)
     expect(allTexts(tree)).toContain(IF5_TEXT['SAJU.card.fun']);
     expect(allTexts(tree)).toContain(IF5_TEXT['SAJU.card.end']);
     expect(allTexts(tree)).toContain(IF5_TEXT['SAJU.madang.notUsed']);
@@ -506,7 +514,7 @@ describe('IF5-F1 ③ 만세력 달력 · 날짜 고르기', () => {
     expect(has(tree, 'saju-cal-day-card')).toBe(true);
     expect(textOf(tree, 'saju-cal-day-tone')).toMatch(/고르기 좋은 날|무난해요|쉬어 가는 날/);
     expect(allTexts(tree)).toContain(IF5_TEXT['SAJU.pick.scope']);
-    expect(allTexts(tree).join(' ')).not.toMatch(/흉|점수|마일리지/);
+    expect(allTexts(tree).join(' ')).not.toMatch(/흉|점수|잔액/);
   });
   test('날짜 고르기 오류 → 다시 시도(사용자가 눌러야) · 지원 범위 밖 달은 범위 한 줄 · 서버 호출 0', async () => {
     let n = 0;

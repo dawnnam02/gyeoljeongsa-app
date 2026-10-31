@@ -12,6 +12,8 @@ export type SajuDeps = {
   isOn: (key: string) => boolean;
   birthDate?: () => Promise<string | null>; // 입력 시트에 읽기만 보여 줄 저장된 생년월일(프로필 읽기 — 이 화면은 쥐고 있지 않는다)
   now?: () => number;
+  consent?: import('@/features/consent/if5Consent').If5ConsentStore; // IF5-F2: ③ ④ ⑤ 동의 기록(시험은 넣어 준다)
+  ai?: import('./ai/aiService').AiServices; // IF5-F2: AI 맞춤 연결 묶음(시험은 넣어 준다)
 };
 
 let made: { api: SajuApi; ck17: Ck17Api; birthDate: () => Promise<string | null> } | null = null;

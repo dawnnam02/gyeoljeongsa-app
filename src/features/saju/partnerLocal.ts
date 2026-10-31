@@ -2,7 +2,7 @@
 //  · 서버에 보내지 않는다(네트워크 호출 0 — 이 파일은 fetch · rpc 를 부르지 않는다). 저장 0(기기 · 서버 · 로그) · 이름 · 성별 · 별명 칸 0
 //  · 만 19세 미만 상대는 맞춰 보지 않는다(S-9 · PS-25): 계산도 하지 않고 결과가 없다
 //  · 입력 값은 호출한 화면의 메모리에만 있다(시트를 닫으면 사라짐). 이 모듈은 값을 쥐고 있지 않는다(순수 함수)
-import { build_chart, compat } from '@/saju5/saju_calc5';
+import { build_chart, compat, facts_compat } from '@/saju5/saju_calc5';
 import type { Chart } from '@/saju5/saju_calc5';
 import { pickCard } from '@/saju5/fragments5';
 
@@ -39,5 +39,18 @@ export function matchPartner(mine: Chart, input: PartnerInput, todayIso: string)
     return { kind: 'ok', hourUnknown: theirs.pillars.hour === null, card: { feature: card.feature, one: card.one?.text ?? null, day: null, row: null, three: card.three.map((p) => p.text), more: card.more.map((p) => p.text) } };
   } catch {
     return { kind: 'calcError' };
+  }
+}
+
+/** AI 맞춤(둘이 맞춰 보기)으로 보낼 사실 — 상대 쪽은 **간지 없는 2단계**(일간의 오행 · 음양 + 시각을 아는지뿐)로 줄인다(설계안 A-3 · 법무 4-18 · 서버 partner5 guardCompatFacts 가 다시 본다).
+ *  상대 생일 원값 · 기둥 · 간지는 이 함수 밖으로 나가지 않는다(상대 차트는 이 안에서만 만들고 버린다). 만 19세 미만 · 범위 밖이면 null(보내지 않는다). */
+export function partnerAiFacts(mine: Chart, input: PartnerInput, todayIso: string): Record<string, unknown> | null {
+  const iso = partnerIso(input.birthDigits);
+  if (!iso || !isRealDate(iso) || iso < SUPPORT_FROM_ISO || iso > todayIso || ageOn(iso, todayIso) < PARTNER_MIN_AGE) return null;
+  try {
+    const theirs = build_chart({ year: Number(iso.slice(0, 4)), month: Number(iso.slice(5, 7)), day: Number(iso.slice(8, 10)), hour: input.time?.hour ?? null, minute: input.time?.minute ?? null });
+    return facts_compat(mine, theirs, 2);
+  } catch {
+    return null;
   }
 }

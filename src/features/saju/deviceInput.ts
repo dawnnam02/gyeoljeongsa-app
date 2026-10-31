@@ -6,6 +6,10 @@
 //  · 상대 생일은 여기에 오지 않는다(저장 0 — partnerLocal.ts)
 import { useEffect, useSyncExternalStore } from 'react';
 
+import { forgetIf5Consent } from '@/features/consent/if5Consent';
+
+import { forgetAiResults } from './ai/aiResults';
+
 export const INPUT_KEYS = { time: 'my.time.v1', place: 'my.spot.v1', answered: 'my.asked.v1' } as const;
 
 export type TimeValue = { hour: number; minute: number };
@@ -117,12 +121,15 @@ export function setInputStoreForTest(store: InputStore | null): void {
 }
 
 // 로그아웃 · 탈퇴 — 같은 기기를 다른 계정이 쓸 때 남지 않게
-export function forgetSajuDevice(): Promise<void> {
+export async function forgetSajuDevice(): Promise<void> {
   try {
-    return inputStore().clearAll();
+    await inputStore().clearAll();
   } catch {
-    return Promise.resolve(); // 기기 저장소를 못 쓰는 환경(시험 등)
+    // 기기 저장소를 못 쓰는 환경(시험 등)
   }
+  // IF5-F2: 이 기기에 둔 동의 기록(③ ④ ⑤ · CK17D · CK19 · CK20)과 AI 풀이 저장본도 함께 지운다(IFF5-31)
+  await forgetIf5Consent();
+  await forgetAiResults();
 }
 
 export function useInputStore(store?: InputStore): DeviceInput {

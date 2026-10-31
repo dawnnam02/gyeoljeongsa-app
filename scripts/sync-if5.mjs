@@ -3,7 +3,7 @@
 //    + 데이터 data/jie5.json · sun5.json · fragments5.json · neutral_names5.json (모두 기기 안 계산 · 네트워크 0)
 //  · 순수 글 검사기 셋도 같이 복사한다: ai/AIT/ts 의 rules.ts · text.ts · types.ts(정규식 목록 · 타입뿐, 지시문 · 열쇠 · 업체 호출 0) → src/saju5/ait/. 앱 서버 사본(src/server/ait)을 가져오지 않는 까닭: 화면 쪽 코드가 src/server 를 가져오면 안 된다(시험 aitServer ATF-16 · 보안 check_sec2 P5-e2)
 //  · 들이지 않는 것(src/saju5 쪽): AI 요청 · 지시문 · 원가 · 대화 모듈 전부(IFF5-35 번들 점검). 그 모듈은 서버 폴더 src/server/saju5 로만 간다 — IF5-F2 ⑯:
-//    request5 · chat5 · ai_facts5 · partner5(상대 간지 없는 2단계 문 guardCompatFacts) · generated5(지시문 · 출력 틀) · input5 · validate5 · mock5. 원본의 AIT 상대 경로는 '../ait/'(앱 서버 사본) ·
+//    request5 · chat5 · ai_facts5 · partner5(상대 간지 없는 2단계 문 guardCompatFacts) · generated5(지시문 · 출력 틀) · input5 · validate5. (mock5 = 미리 만든 모의 글이라 src/saju5 쪽 — 코드 없는 데모 글에도 쓰인다) 원본의 AIT 상대 경로는 '../ait/'(앱 서버 사본) ·
 //    같은 폴더에 있던 계산 모듈(spec5 · saju_calc5 · names5 · rules5)은 '../../saju5/' 로 바꾼다. 화면 쪽 코드는 이 서버 폴더를 가져오지 않는다(시험 if5Ai · aitServer ATF-16)
 //  · 바꾸는 것은 두 가지뿐: ① 원본의 AIT 상대 경로 '../../AIT/ts/' → 이 폴더의 './ait/' ② JSON 가져오기 꼴 `with { type: 'json' }` 지움(앱 번들러가 그대로 읽음). 그 밖은 한 글자도 안 바꾼다
 //  · 줄끝: 원본은 CRLF 라 복사본은 LF 로 바꿔 쓴다(앱 저장소의 '새 CRLF 0')
@@ -18,12 +18,12 @@ const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const SRC_DIR = path.resolve(appDir, '..', 'ai', 'IF5', 'ts');
 export const AIT_SRC_DIR = path.resolve(appDir, '..', 'ai', 'AIT', 'ts');
 export const DEST_DIR = path.join(appDir, 'src', 'saju5');
-export const TS_FILES = ['saju_calc5.ts', 'fragments5.ts', 'names5.ts', 'check_text5.ts', 'rules5.ts', 'rules_extra5.ts', 'spec5.ts'];
+export const TS_FILES = ['saju_calc5.ts', 'fragments5.ts', 'names5.ts', 'check_text5.ts', 'rules5.ts', 'rules_extra5.ts', 'spec5.ts', 'mock5.ts']; // mock5 = 미리 만든 모의 글(지시문 · 요청 0) — 코드 없는 데모 글과 서버 모의 모드가 같이 쓴다
 export const DATA_FILES = ['data/jie5.json', 'data/sun5.json', 'data/fragments5.json', 'data/neutral_names5.json'];
 export const AIT_FILES = ['ait/rules.ts', 'ait/text.ts', 'ait/types.ts'];
 /** IF5-F2 ⑯: AI 요청 쪽 서버 전용 모듈 — src/server/saju5 로 간다 */
 export const SERVER_DEST_DIR = path.join(appDir, 'src', 'server', 'saju5');
-export const SERVER_FILES = ['request5.ts', 'chat5.ts', 'ai_facts5.ts', 'partner5.ts', 'generated5.ts', 'input5.ts', 'validate5.ts', 'mock5.ts'];
+export const SERVER_FILES = ['request5.ts', 'chat5.ts', 'ai_facts5.ts', 'partner5.ts', 'generated5.ts', 'input5.ts', 'validate5.ts'];
 const SERVER_LOCAL = ['spec5', 'saju_calc5', 'names5', 'rules5'];
 export const FILES = [...TS_FILES, ...AIT_FILES, ...DATA_FILES];
 // 원본 경로: ait/ 는 ai/AIT/ts, 나머지는 ai/IF5/ts

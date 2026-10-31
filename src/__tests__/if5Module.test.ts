@@ -21,14 +21,14 @@ const hasCopyDoc = fs.existsSync(path.join(ROOT, '마케팅', '카피.md'));
 const run = (script: string, ...args: string[]) => spawnSync(process.execPath, [path.join(APP, 'scripts', script), ...args], { encoding: 'utf8' });
 
 (hasOrigin ? describe : describe.skip)('IF5-F1 ② 계산 모듈 사본 = 원본 (동기 검사)', () => {
-  test('node scripts/sync-if5.mjs --check 가 같음 · 파일 14개(코드 7 + 순수 검사기 3 + 데이터 4) · 원본은 읽기만', () => {
+  test('node scripts/sync-if5.mjs --check 가 같음 · 파일 15개(코드 8 + 순수 검사기 3 + 데이터 4) + 서버 7개 · 원본은 읽기만', () => {
     const r = run('sync-if5.mjs', '--check');
-    expect(r.stdout + r.stderr).toMatch(/IF5 동기 같음: 파일 14개/);
+    expect(r.stdout + r.stderr).toMatch(/IF5 동기 같음: 파일 15개\(src\/saju5\) \+ 7개\(src\/server\/saju5\)/);
     expect(r.status).toBe(0);
   });
   test('들이지 않은 것: partner5(F2) · AI 요청 · 원가 · 대화 모듈이 앱 소스에 없다(번들에 지시문 0 — IFF5-35)', () => {
     const names = fs.readdirSync(path.join(APP, 'src', 'saju5'));
-    for (const n of ['partner5.ts', 'request5.ts', 'generated5.ts', 'cost5.ts', 'chat5.ts', 'input5.ts', 'mock5.ts']) expect(names).not.toContain(n);
+    for (const n of ['partner5.ts', 'request5.ts', 'generated5.ts', 'cost5.ts', 'chat5.ts', 'input5.ts']) expect(names).not.toContain(n);
   });
   test('src/saju5 는 src/server 를 가져오지 않는다 — 검사기 셋은 saju5/ait 에 따로 복사(ATF-16 · 보안 P5-e2)', () => {
     const walk = (d: string): string[] => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith('.ts') ? [path.join(d, e.name)] : []));
@@ -142,8 +142,8 @@ describe('IF5-F1 ⑤ 스위치 20키 (기획/IF5_스위치.md — 서버 이름 
     expect(new Set(keys).size).toBe(keys.length);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'IF5')).toHaveLength(17);
   });
-  test('데모에서는 켬 — 실제 AI 를 부를 수 있는 saju_ai · saju_talk 와 실제 결제를 부를 수 있는 mileage_charge 만 데모도 꺼짐', () => {
-    for (const k of [...NEW17, ...KEEP3]) expect(demoDefault(k)).toBe(!['saju_ai', 'saju_talk', 'mileage_charge'].includes(k));
+  test('데모에서는 켬(IF5-F2: 마일리지 · AI 맞춤 · 사주 이야기가 생겨 saju_ai · saju_talk · mileage_charge 도 데모 켬 — 실호출 · 실결제는 접근 코드 · 가상 잔액 뒤에서만)', () => {
+    for (const k of [...NEW17, ...KEEP3]) expect(demoDefault(k)).toBe(true);
   });
   test('check_sec2 IF5-m2: 서버 스위치 3키(saju_yard · mileage · mileage_charge)가 앱 목록에 있다', () => {
     const flat = JSON.stringify(JSON.parse(fs.readFileSync(path.join(APP, 'src', 'config', 'featureKeys.json'), 'utf8')));

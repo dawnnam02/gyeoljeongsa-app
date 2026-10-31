@@ -24,12 +24,25 @@ import { alpha, colors, radius, size, space } from '@/theme/tokens';
 import type { SajuApi, Taekil } from './sajuApi';
 import { addMonths, calendarLine, dnOf, daysInMonth, inSupport, isoOf, monthGrid, nowIso, pickDayCard, USE_PURPOSE, WEEKDAY_SHORT, weekdayOf, SUPPORT_FROM_ISO, SUPPORT_TO_ISO } from './sajuLogic';
 import { sajuServices } from './sajuService';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { AiBlock } from './ai/AiBlock';
+import { taekilFacts } from './ai/aiFacts';
+import { aiServices, type AiServices } from './ai/aiService';
 import { ErrorBlock, RangeBlock, sajuStyles } from './SajuParts';
 
 const REST_OFFICERS = ['위', '폐', '파'];
 type Tone = 'good' | 'neutral' | 'rest';
 
-export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forcedUse }: { api?: Pick<SajuApi, 'taekil'>; now?: () => number; mode?: 'cal' | 'pick'; use?: number | null }) {
+export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forcedUse, ai: injectedAi }: { api?: Pick<SajuApi, 'taekil'>; now?: () => number; mode?: 'cal' | 'pick'; use?: number | null; ai?: AiServices | null }) {
+  const ai = useMemo(() => {
+    if (injectedAi !== undefined) return injectedAi;
+    try {
+      return aiServices();
+    } catch {
+      return null;
+    }
+  }, [injectedAi]);
+
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string; use?: string }>();
   const mode: 'cal' | 'pick' = forced ?? (params.mode === 'pick' ? 'pick' : 'cal');
@@ -178,12 +191,20 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
 
         {picked ? <DayCard iso={picked} mode={mode} tone={pickedTone} purpose={use === null ? null : USE_PURPOSE[use]} taekil={taekil.kind === 'ready' ? taekil.data : null} toneLabel={toneLabel(pickedTone)} /> : mode === 'pick' && use !== null ? <AppText variant="caption">{IF5_TEXT['SAJU.pick.tap']}</AppText> : null}
 
+        {mode === 'pick' && ai && use !== null && taekil.kind === 'ready' && taekil.data.days.length > 0 ? <PickAi ai={ai} purpose={USE_PURPOSE[use]} taekil={taekil.data} /> : null}
         {mode === 'pick' ? <AppText variant="caption">{IF5_TEXT['SAJU.pick.scope']}</AppText> : null}
         <AppText variant="bodyMedium">{IF5_TEXT['SAJU.card.end']}</AppText>
         <Footnote text={IF5_TEXT['SAJU.card.footer']} testID="saju-cal-footer" />
       </ScrollView>
     </Screen>
   );
+}
+
+/** 날짜 설명(AI 맞춤 · 마일리지 30 · 확인 시트 0) — 스위치 saju_ai 가 켜졌을 때만. 스위치 훅은 AI 연결이 있을 때만 이 칸이 부른다 */
+function PickAi({ ai, purpose, taekil }: { ai: AiServices; purpose: string; taekil: Taekil }) {
+  const { isOn } = useFeatureFlags();
+  if (!isOn('saju_ai')) return null;
+  return <AiBlock id="saju-pick" kind="taekil" svc={ai} buttonLabel={IF5_TEXT['SAJU.pick.ai']} facts={() => taekilFacts(purpose, taekil)} />;
 }
 
 function DayCard({ iso, mode, tone, purpose, taekil, toneLabel }: { iso: string; mode: 'cal' | 'pick'; tone: Tone | null; purpose: string | null; taekil: Taekil | null; toneLabel: string }) {

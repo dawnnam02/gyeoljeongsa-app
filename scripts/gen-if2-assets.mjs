@@ -228,6 +228,122 @@ export function buildCk17(file = CONSENT_DOC) {
   ].join('\n');
 }
 
+// ⑥ src/content/if5ConsentContent.ts — 사주 마당 동의 시트 글(IF5-F2 ⑪). 원본 = 법무/동의문구.md 4-17 새 칸 ③ ④ ⑤ · 4-18 CK17D · 4-19 CK19 · 4-20 CK20 '화면 문구' · 전문(글자 그대로 · 마크다운 표시만 걷음)
+export const IF5_CONSENT_OUT = path.join(appDir, 'src', 'content', 'if5ConsentContent.ts');
+export function buildIf5Consent(file = CONSENT_DOC) {
+  const doc = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+  const secOf = (n) => {
+    const from = doc.search(new RegExp(`^### 4-${n}\. `, 'm'));
+    if (from < 0) throw new Error(`동의문구 4-${n} 절을 찾지 못했어요`);
+    const rest = doc.slice(from + 5);
+    const next = rest.search(/^#{2,3} /m);
+    return (next >= 0 ? doc.slice(from, from + 5 + next) : doc.slice(from)).split('\n');
+  };
+  const tick = (l) => (l === undefined ? null : (/`([^`]+)`/.exec(l) ?? [])[1] ?? null);
+  const ticks = (l) => [...(l ?? '').matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+  const idx = (lines, re, from = 0) => {
+    for (let i = from; i < lines.length; i += 1) if (re.test(lines[i])) return i;
+    return -1;
+  };
+  const summaryOf = (lines) => {
+    const iS = idx(lines, /^- 요약\(보기 ›\):/);
+    const out = [];
+    for (let i = iS + 1; iS >= 0 && i < lines.length && lines[i].startsWith('  - '); i += 1) if (!/전문 보기 ›/.test(lines[i])) out.push(lines[i].slice(4).trim());
+    return out;
+  };
+  const fullOf = (lines) => {
+    const f = idx(lines, /^\*\*전문 \(합니다체\)\*\*/);
+    const out = [];
+    for (let i = f + 1; f >= 0 && i < lines.length && (lines[i].startsWith('>') || lines[i].trim() === ''); i += 1) {
+      const t = lines[i].replace(/^>\s?/, '').replace(/\*\*/g, '').trim();
+      if (t) out.push(t);
+    }
+    return out;
+  };
+  const need = (name, o) => {
+    for (const [k, v] of Object.entries(o)) if (v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0)) throw new Error(`동의문구 ${name} 에서 ${k} 를 읽지 못했어요`);
+    return o;
+  };
+  // 4-17 새 칸 ③ ④ ⑤ + 동의하지 않을 때 안내 줄
+  const l17 = secOf(17);
+  const box = (mark) => {
+    const i = idx(l17, new RegExp(`^- 체크 ${mark}:`));
+    return { check: tick(l17[i]), why: tick(l17[i + 1]), note: tick(l17[i + 2]) };
+  };
+  const ck17extra = need('4-17', {
+    time: box('③'),
+    place: box('④'),
+    gender: box('⑤'),
+    noHour: tick(l17[idx(l17, /^- 동의하지 않으면\(시주 칸\):/)]),
+    noPlace: tick(l17[idx(l17, /^- 동의하지 않으면\(태어난 곳\):/)]),
+    noLuck: tick(l17[idx(l17, /^- 동의하지 않으면\(대운 칸\):/)]),
+  });
+  for (const k of ['time', 'place', 'gender']) need(`4-17 ${k}`, ck17extra[k]);
+  // 4-18 CK17D
+  const l18 = secOf(18);
+  const b18 = ticks(l18[idx(l18, /^- 버튼:/)]);
+  const full18 = fullOf(l18);
+  const ck17d = need('4-18', {
+    title: tick(l18[idx(l18, /^- 제목\(시트 위\):/)]),
+    lead: tick(l18[idx(l18, /^- 첫 줄:/)]),
+    check: tick(l18[idx(l18, /^- 체크 문구:/)]),
+    why: tick(l18[idx(l18, /^- 왜 필요한지:/)]),
+    note: tick(l18[idx(l18, /^- 덧붙이는 안내:/)]),
+    summary: summaryOf(l18),
+    yes: b18[0],
+    no: b18[1],
+    declined: tick(l18[idx(l18, /^- 동의하지 않으면:/)]),
+    fullTitle: full18[0],
+    full: full18.slice(1),
+  });
+  // 4-19 CK19
+  const l19 = secOf(19);
+  const b19 = ticks(l19[idx(l19, /^- 버튼:/)]);
+  const iA = idx(l19, /^- 체크 ①:/);
+  const iB = idx(l19, /^- 체크 ②:/);
+  const full19 = fullOf(l19);
+  const ck19 = need('4-19', {
+    title: tick(l19[idx(l19, /^- 제목\(시트 위\):/)]),
+    lead: tick(l19[idx(l19, /^- 첫 줄:/)]),
+    checkA: tick(l19[iA]),
+    whyA: tick(l19[iA + 1]),
+    checkB: tick(l19[iB]),
+    whyB: tick(l19[iB + 1]),
+    noteB: tick(l19[iB + 2]),
+    summary: summaryOf(l19),
+    yes: b19[0],
+    no: b19[1],
+    declined: tick(l19[idx(l19, /^- 동의하지 않으면:/)]),
+    fullTitle: full19[0],
+    full: full19.slice(1),
+  });
+  // 4-20 CK20
+  const l20 = secOf(20);
+  const full20 = fullOf(l20);
+  const ck20 = need('4-20', {
+    check: tick(l20[idx(l20, /^- 체크 문구:/)]),
+    why: tick(l20[idx(l20, /^- 왜 필요한지:/)]),
+    note: tick(l20[idx(l20, /^- 덧붙이는 안내:/)]),
+    summary: summaryOf(l20),
+    notChecked: tick(l20[idx(l20, /^- 확인하지 않으면:/)]),
+    fullTitle: full20[0],
+    full: full20.slice(1),
+  });
+  return [
+    '// 생성 파일 — 손으로 고치지 않는다. 다시 만들기: node scripts/gen-if2-assets.mjs (IF5-F2 ⑪ · 사주 마당 동의 시트)',
+    '// 원본: 법무/동의문구.md 4-17 새 칸 ③ ④ ⑤ · 4-18 CK17D · 4-19 CK19 · 4-20 CK20 화면 문구 · 전문(글자 그대로). 판 = config/laterConsent IF5_CONSENT_VERSIONS (판_관리 2-1)',
+    '',
+    `export const CK17_EXTRA = ${JSON.stringify(ck17extra, null, 2)} as const;`,
+    '',
+    `export const CK17D = ${JSON.stringify(ck17d, null, 2)} as const;`,
+    '',
+    `export const CK19 = ${JSON.stringify(ck19, null, 2)} as const;`,
+    '',
+    `export const CK20 = ${JSON.stringify(ck20, null, 2)} as const;`,
+    '',
+  ].join('\n');
+}
+
 const render = (o) => `${JSON.stringify(o, null, 1)}\n`;
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
@@ -238,6 +354,7 @@ if (isMain) {
     [SAFETY_OUT, buildSafetyWords()],
     [ICON_OUT, buildIcons()],
     [CK17_OUT, buildCk17()],
+    [IF5_CONSENT_OUT, buildIf5Consent()],
   ];
   if (process.argv.includes('--check')) {
     const stale = files.filter(([f, t]) => !fs.existsSync(f) || fs.readFileSync(f, 'utf8').replace(/\r\n/g, '\n') !== t).map(([f]) => path.relative(appDir, f));

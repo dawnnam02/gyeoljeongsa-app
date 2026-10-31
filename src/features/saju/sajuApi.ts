@@ -35,7 +35,7 @@ export type MyChart =
 
 export type LuckItem = { stem: number; branch: number; startAgeYears: number | null; startAgeMonths: number | null; startDate: string | null; endDate: string | null };
 export type MyLuck =
-  | { state: 'ready'; daewoon: { forward: boolean; items: LuckItem[]; approx: boolean } | null; seun: { year: number; stem: number; branch: number; sam: number | null } | null; wolun: { monthK: number; stem: number; branch: number }[] }
+  | { state: 'ready'; daewoon: { forward: boolean; items: LuckItem[]; approx: boolean } | null; seun: { year: number; stem: number; branch: number; sam: number | null; starts: string | null } | null; wolun: { monthK: number; stem: number; branch: number; starts: string | null }[] }
   | { state: 'none' | 'out_of_range' };
 export type MyDay =
   | { state: 'ready'; date: string; stem: number | null; branch: number | null; month: { stem: number; branch: number } | null; officer: string | null }
@@ -87,9 +87,9 @@ export function parseMyLuck(raw: unknown): MyLuck | null {
   }
   let seun: Extract<MyLuck, { state: 'ready' }>['seun'] = null;
   if (isRecord(raw.seun) && int(raw.seun.year) !== null && int(raw.seun.stem) !== null && int(raw.seun.branch) !== null) {
-    seun = { year: int(raw.seun.year) as number, stem: int(raw.seun.stem) as number, branch: int(raw.seun.branch) as number, sam: int(raw.seun.samjae_step) };
+    seun = { year: int(raw.seun.year) as number, stem: int(raw.seun.stem) as number, branch: int(raw.seun.branch) as number, sam: int(raw.seun.samjae_step), starts: str(raw.seun.starts) };
   }
-  const wolun = arr(raw.wolun).flatMap((w) => (isRecord(w) && int(w.month_k) !== null && int(w.stem) !== null && int(w.branch) !== null ? [{ monthK: int(w.month_k) as number, stem: int(w.stem) as number, branch: int(w.branch) as number }] : []));
+  const wolun = arr(raw.wolun).flatMap((w) => (isRecord(w) && int(w.month_k) !== null && int(w.stem) !== null && int(w.branch) !== null ? [{ monthK: int(w.month_k) as number, stem: int(w.stem) as number, branch: int(w.branch) as number, starts: str(w.starts) }] : []));
   return { state: 'ready', daewoon, seun, wolun };
 }
 

@@ -1,7 +1,7 @@
 // IF5-A · 모의 업체 응답. 사실 묶음(facts)에서 검사기를 통과하는 고정 꼴 글을 만든다.
 // 목적: 서버 함수 · 검사기를 실호출 없이 끝까지 돌려 보기(글 품질을 재는 용도가 아님). 단어는 사실에서 가져온다.
 
-import type { Feature5 } from '../../saju5/spec5.ts';
+import type { Feature5 } from './spec5.ts';
 
 type Rec = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 

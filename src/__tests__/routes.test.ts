@@ -34,8 +34,8 @@ function routeFiles(dir: string, base = ''): string[] {
 
 describe('화면 ID 16개 = 라우트 16개 (F-1)', () => {
   test('화면 ID는 01~16 열여섯 개 + V5 새 화면 T1 · T3 · T5 · T4 · T4R + 16G(내 등급, D-200 ②) + T6(탑승객 라운지, D-220 LG-F)이고 겹치지 않는다', () => {
-    expect(SCREEN_IDS).toHaveLength(30); // + IF2-F 기내지 · 내 여행 타입 · 짝에게 보이는 내 모습(D-223) + IF3-F 하늘 도감(3부-카) + IF5-F1 사주 마당 · 달력 · 오늘 하루
-    expect(new Set(SCREENS.map((s) => s.id)).size).toBe(30);
+    expect(SCREEN_IDS).toHaveLength(33); // + IF2-F 기내지 · 내 여행 타입 · 짝에게 보이는 내 모습(D-223) + IF3-F 하늘 도감(3부-카) + IF5-F1 사주 마당 · 달력 · 오늘 하루
+    expect(new Set(SCREENS.map((s) => s.id)).size).toBe(33);
     expect(SCREENS.map((s) => s.id)).toEqual([...SCREEN_IDS]);
   });
 
@@ -43,14 +43,14 @@ describe('화면 ID 16개 = 라우트 16개 (F-1)', () => {
     const files = routeFiles(APP_DIR).sort();
     const registry = SCREENS.map((s) => s.route).sort();
     expect(files).toEqual(registry);
-    expect(files).toHaveLength(30);
+    expect(files).toHaveLength(33);
   });
 
   test('13 · 14 · 15 는 09 · 11 · 02 의 상태이고, 나머지 13개는 K2 화면이다(16 상점 포함)', () => {
     expect(screenById('13').stateOf).toBe('09');
     expect(screenById('14').stateOf).toBe('11');
     expect(screenById('15').stateOf).toBe('02');
-    expect(SCREENS.filter((s) => !s.stateOf)).toHaveLength(27); // K2 13 + V5 T1 · T3 · T5 · T4 · T4R + 16G + T6(LG-F) + IF-MAG · IF-TYPE · IF-PREVIEW(IF2-F) + IF-BOOK(IF3-F) + IF-MADANG · IF-SJ-CAL · IF-SJ-TODAY(IF5-F1)
+    expect(SCREENS.filter((s) => !s.stateOf)).toHaveLength(30); // K2 13 + V5 T1 · T3 · T5 · T4 · T4R + 16G + T6(LG-F) + IF-MAG · IF-TYPE · IF-PREVIEW(IF2-F) + IF-BOOK(IF3-F) + IF-MADANG · IF-SJ-CAL · IF-SJ-TODAY(IF5-F1)
   });
 
   test('탭바는 추천 · 호감 · 상점 · 설정 4개이고 탭 화면은 09 · 11 · 16 · 12 (그리고 상태 13 · 14). 08 내 프로필은 탭 밖 화면이다(F11)', () => {

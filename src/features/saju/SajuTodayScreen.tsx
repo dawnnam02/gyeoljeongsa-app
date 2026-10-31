@@ -20,6 +20,7 @@ import { chartOf, nowIso, todayBaseLine, todayView } from './sajuLogic';
 import { sajuServices, type SajuDeps } from './sajuService';
 import { ErrorBlock, LoadingBlock, sajuStyles } from './SajuParts';
 import { useCk17, useSajuData } from './useSajuData';
+import { useIf5Consent } from '@/features/consent/if5Consent';
 
 export function SajuTodayScreen({ deps, store }: { deps?: SajuDeps; store?: InputStore }) {
   return deps ? <Today svc={deps} store={store} /> : <TodayWithDefaults />;
@@ -43,7 +44,7 @@ function Today({ svc, store: injectedStore }: { svc: SajuDeps; store?: InputStor
   }, [store]);
   const ck = useCk17(svc);
   const enabled = ck.slot.kind === 'on' && loaded && input.answered;
-  const data = useSajuData(svc, input, enabled);
+  const data = useSajuData(svc, input, enabled, useIf5Consent(svc.consent).items);
   const nowFn = svc.now ?? Date.now;
   const today = nowIso(nowFn());
   const base = todayBaseLine(today);

@@ -25,5 +25,11 @@ export const LATER_CONSENT_VERSIONS: Readonly<Record<LaterConsentCode, string>> 
 //  새 항목 ③ 태어난 시각 · ④ 태어난 곳 · ⑤ 성별(대운)의 시트 칸과 CK17D · CK19 · CK20 시트는 IF5-F 몫 — 이번에는 판 번호만 맞추고 시트에 칸을 만들지 않는다
 export const IF2_CONSENT_VERSIONS = { CK17A: 'consent-2026.10.31-v1', CK17B: 'consent-2026.10.28-v3' } as const;
 
+// IF5-F2 ⑪(10-31 · 판_관리 2-1): 사주 마당 새 동의 셋 — 판 값만 둔다. 글 = content/if5ConsentContent.ts(gen-if2-assets 가 동의문구 4-18 ~ 4-20 에서 옮김)
+//  CK17D AI 풀이 받기(사주 글자 국외 이전) · CK19 사주 이야기 나누기(자유 입력 국외 이전 + 건강 · 성생활) · CK20 다른 분의 정보를 넣을 때 지킬 점(확인형). 기록은 이 기기에만(features/consent/if5Consent) — 서버 동의 표에 이 코드는 아직 없다(백엔드 넘김)
+export const IF5_CONSENT_VERSIONS = { CK17D: 'consent-2026.10.31-v1', CK19: 'consent-2026.10.31-v1', CK20: 'consent-2026.10.31-v1' } as const;
+/** 법무 4-18 · 4-19 가 '보안 시험(IFS5-72 · 73 · 75) 통과 전에는 앱에 쓰지 않는다'고 한 줄 — 요약 '우리 쪽' 줄 · 전문의 '서버에 저장하지 않습니다' 문장. 통과 기록이 오면 true 로 켠다(팀장 확인) */
+export const IF5_KEEP_NOTE_ON = false;
+
 export const CK15_TEXT_VERSION = LATER_CONSENT_VERSIONS.CK15;
 export const CK16_TEXT_VERSION = LATER_CONSENT_VERSIONS.CK16;

@@ -27,6 +27,7 @@ import { createDemoV4 } from './v4Demo';
 import { createDemoBoarding } from '@/demo/boardingDemo';
 import { createDemoLounge } from '@/demo/loungeDemo';
 import { createDemoInflight } from '@/demo/inflightDemo';
+import { createDemoMileage } from '@/demo/mileageDemo';
 import { createDemoSaju } from '@/demo/sajuDemo';
 import { demoShared } from '@/demo/inflightShared';
 
@@ -225,6 +226,16 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
     account: (u) => {
       const a = accountOf(u.id);
       return { birthDate: a?.birthDate ?? null, consentOn: (code: string) => consentOn(a, code) };
+    },
+  });
+  // IF5-F2 마일리지 장부(get_mileage · list_mileage_history · get_mileage_cost + 데모 전용 demo_mileage_*) — 기기 안 가상 잔액, 결제 호출 0 · 서버 요청 0
+  const mileage = createDemoMileage({
+    flags: flagsOf,
+    boardedRounds: async (u) => {
+      inflight.sceneOf(u); // 탑승권 데모의 장면을 먼저 정해 둔다(홈 위 탑승권 칸과 같은 장면)
+      const r = await boarding.rpc(u, 'list_ticket_history', {});
+      const d = r.data as { tickets?: unknown } | null;
+      return Array.isArray(d?.tickets) ? d.tickets.length : 0;
     },
   });
   demoShared.setFlags((userId) => {
@@ -792,6 +803,11 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
       if (saju.handles(name)) {
         const account = me();
         return account ? saju.rpc({ id: account.id, email: account.email }, name, args) : Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
+      }
+      // IF5-F2 마일리지(get_mileage · list_mileage_history · get_mileage_cost · demo_mileage_charge · demo_mileage_hold · demo_mileage_settle · demo_mileage_release)
+      if (mileage.handles(name)) {
+        const account = me();
+        return account ? mileage.rpc({ id: account.id, email: account.email }, name, args) : Promise.resolve({ data: null, error: { code: '42501', message: 'forbidden' } });
       }
       // LG-F 탑승객 라운지(lounge_state · agree · take_seat · get_post · post · empathy · hide · report · pick · delete + 데모 줄 demo_lounge_scene)
       if (lounge.handles(name)) {

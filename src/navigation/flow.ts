@@ -191,6 +191,19 @@ const FLOW_MAIN: readonly Arrow[] = [
   a('IF-MADANG', 'entry', '‹', '화면 요구 IF-MADANG'),
   a('IF-MADANG', 'stay', '내 정보 시트 · 상대 생일 시트 · 낱말 풀이 시트 · 재미 정보 동의 시트 · 카드 펼침', '화면 요구 IF5 이동'),
   a('IF-SJ-CAL', 'entry', '‹', '화면 요구 IF-SJ-CAL'),
+  // IF5-F2 마일리지(D-237) — 들어오는 길은 사주 마당 머리 [마일리지] · 12 설정 '마일리지' 줄 · 잔액 부족 [충전하러 가기]뿐(상점 탭 0 · 탑승권 · T1 ~ T5 · 10 · 매칭 화면 입구 0)
+  a('IF-MADANG', 'IF-MILE', '머리 [마일리지]', '화면 요구 IF-MILE 들어오는 곳'),
+  a('12', 'IF-MILE', '줄 마일리지(크레딧 · 구매 내역 바로 아래)', '카피 24-10 MILEAGE.shop.settingsRow · PS-42'),
+  a('IF-MILE', 'IF-MILE-LOG', '[내역 보기]', '카피 24-10 MILEAGE.shop.history'),
+  a('IF-MILE-LOG', 'IF-MILE', '[충전하기]', '카피 24-10 MILEAGE.log.charge'),
+  a('IF-MILE', 'entry', '‹', '화면 요구 IF-MILE'),
+  a('IF-MILE-LOG', 'entry', '‹', '화면 요구 IF-MILE-LOG'),
+  a('IF-MILE', 'stay', '큰 충전 확인 시트 한 줄', '화면 요구 IF-MILE-OK ③'),
+  a('IF-MADANG', 'IF-SJ-TALK', '맨 위 입구 · 각 결과 끝 [이어서 물어보기]', '카피 24-9 SAJU.talk.entry'),
+  a('IF-SJ-TALK', 'IF-MILE', '잔액 부족 [충전하러 가기]', '카피 24-10 MILEAGE.low.go'),
+  a('IF-SJ-TALK', 'entry', '‹', '화면 요구 IF-SJ-TALK'),
+  a('IF-SJ-TALK', 'stay', '시작 시트 한 번 · 동의 시트 · 위기 카드 · 쉬어 가요 한 줄', '화면 요구 IF-SJ-TALK · IF-MILE-OK ②'),
+  a('IF-MADANG', 'stay', 'AI 맞춤 확인 시트(300 이상) · AI 동의 시트(CK17D) · 상대 확인(CK20)', '화면 요구 IF-MILE-OK ① · 법무 4-18 · 4-20'),
 
   // 어느 화면에서든
   a('ANY', '02', '로그인 풀림(세션 만료 · 다른 기기 로그인)', '2-2 ⑦', 7),

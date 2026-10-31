@@ -19,6 +19,7 @@ export type RowAction =
   | { kind: 'soon' } // 인증 서류 제출: 이동 없음, "준비 중이에요"
   | { kind: 'legal' } // 이용약관 · 개인정보 처리방침 읽기(03 과 같은 시트)
   | { kind: 'credits' } // 크레딧 · 구매 내역(카피.md 12-Q, 옛 NV35 '구매 · 등급 구독' 자리) → T5 크레딧 · 내역. 상점이 꺼져도 보인다
+  | { kind: 'mileage' } // 마일리지(IF5-F2 · 12-1 줄 · 스위치 mileage 가 켜졌을 때만 · 크레딧 · 구매 내역 바로 아래) → /mileage
   | { kind: 'saju' } // 사주 마당(IF5-F1 · 12-1 줄 · 스위치 saju_yard 가 켜졌을 때만) → /saju
   | { kind: 'skyBook' } // 하늘 도감(IF3-F · G-03 · 정책 PG-32): 스위치 sky_book 이 켜졌을 때만 보이는 정보 줄 → /sky-book
   | { kind: 'grade' }; // 내 등급(D-200 ② · 정책 P3-10) → 16-G(/grade, 상점 밖에서 여는 화면)
@@ -35,6 +36,7 @@ const ALL_ROWS: readonly RowDef[] = [
   { key: 'preferences', label: SETTINGS.rows.preferences, action: { kind: 'preferences' }, group: 'main', icon: 'how_to' },
   { key: 'verification', label: SETTINGS.rows.verification, action: { kind: 'soon' }, group: 'main', right: SETTINGS.verificationSoon, icon: 'doc_verify' },
   { key: 'credits', label: SETTINGS.rows.credits, action: { kind: 'credits' }, group: 'main', icon: 'credit' },
+  { key: 'mileage', label: IF5_TEXT['MILEAGE.shop.settingsRow'], action: { kind: 'mileage' }, group: 'main', icon: 'credit' }, // 12-1 '마일리지' 줄(숫자 · 새 점 0) — 스위치 mileage 꺼짐이면 SettingsScreen 이 거른다
   { key: 'blocked', label: SETTINGS.rows.blocked, action: { kind: 'page', page: 'blocked-list' }, group: 'main', icon: 'block' },
   { key: 'reports', label: SETTINGS.rows.reports, action: { kind: 'page', page: 'report-history' }, group: 'main', icon: 'report' },
   { key: 'security', label: SETTINGS.rows.security, action: { kind: 'page', page: 'security' }, group: 'main', icon: 'security' },

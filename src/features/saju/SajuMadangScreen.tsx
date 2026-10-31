@@ -2,7 +2,8 @@
 //  · 새 탭 0 · 탭 밖 화면. 위에서 아래: 머리 → 내 네 기둥 → 내 결 읽기 → 올해 · 이번 달 → 인연 이야기 → 일 · 돈 · 사람 → 인생 계절표 → 날짜 고르기 → 둘이 맞춰 보기 → 만세력 달력 → 읽는 법 → 끝줄
 //  · 판단 차례: 스위치 → CK17A → 내 정보 → 범위 → 시각. 범위 밖 · 시각 모름은 그 카드 안에서만 처리(화면 전체를 막지 않음). '시각 모름'은 오류가 아니다 — 경고 색 · 느낌표 0 · 재촉 0
 //  · 점수 · 퍼센트 · 판정 · 순위 · 숫자 배지 · 깜빡임 · 무한 스크롤 · 진행 막대 · 새 점 · 공유 · 복사 0. 재회 갈래 0. 결과는 짝 · 줄에 쓰이지 않는다
-//  · 마일리지 · AI 호출 0(F2) — 'AI 맞춤' 자리와 사주 이야기 나누기 입구는 이 묶음에 없다. 사주 값이 보이는 동안은 캡처 · 녹화를 막는다(useAlwaysCaptureBlock · 공유 · 복사 단추를 그리지 않는다)
+//  · IF5-F2: 머리 오른쪽 [마일리지] · 맨 위 '사주 이야기 나누기' 입구 · 결 읽기 / 올해 / 인생 계절표(대운) 카드 아래 [AI 맞춤 풀이 받기] · 종합 한 칸 — 스위치 saju_ai · saju_talk · mileage 가 켜졌을 때만. AI 는 사용자가 눌렀을 때만(열기 · 홈에서 호출 0)
+//    사주 값이 보이는 동안은 캡처 · 녹화를 막는다(useAlwaysCaptureBlock · 공유 · 복사 단추를 그리지 않는다)
 import { Redirect, useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -30,6 +31,12 @@ import { chartOf, cuspKind, elementBars, loveCard, monthView, pillarCells, pilla
 import { sajuServices, type SajuDeps } from './sajuService';
 import { ElementBars, ErrorBlock, FoldRow, GUIDE_TERMS, GuideSheet, HelpButton, LoadingBlock, PillarTable, RangeBlock, SummaryCard, sajuStyles } from './SajuParts';
 import { useCk17, useSajuData } from './useSajuData';
+import { useIf5Consent } from '@/features/consent/if5Consent';
+import { CK17_EXTRA } from '@/content/if5ConsentContent';
+import { MILEAGE_HREF } from '@/features/mileage/MileageScreen';
+import { AiBlock } from './ai/AiBlock';
+import { daewoonFacts, readingFacts, sinyeonFacts } from './ai/aiFacts';
+import { aiServices, type AiServices } from './ai/aiService';
 
 export const SAJU_HREF = '/saju';
 export const SAJU_CAL_HREF = '/saju-calendar';
@@ -38,7 +45,15 @@ export const SAJU_CAL_HREF = '/saju-calendar';
 export function useSajuDeps(): SajuDeps {
   const { isOn } = useFeatureFlags();
   const svc = sajuServices();
-  return useMemo(() => ({ ...svc, isOn }), [svc, isOn]);
+  return useMemo(() => {
+    let ai: AiServices | undefined;
+    try {
+      ai = aiServices();
+    } catch {
+      ai = undefined; // 기기 저장소 · 서버 연결을 못 만드는 환경(시험 등)은 AI 칸 없이
+    }
+    return { ...svc, isOn, ai };
+  }, [svc, isOn]);
 }
 
 export function SajuMadangScreen({ deps: injected, store }: { deps?: SajuDeps; store?: InputStore }) {
@@ -69,7 +84,8 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
   }, [store]);
   const ck = useCk17(deps);
   const enabled = ck.slot.kind === 'on' && loaded && input.answered;
-  const data = useSajuData(deps, input, enabled);
+  const consent = useIf5Consent(deps.consent);
+  const data = useSajuData(deps, input, enabled, consent.items);
   const [sheet, setSheet] = useState<'none' | 'in' | 'ck17' | 'partner'>('none');
   const [term, setTerm] = useState<(typeof GUIDE_TERMS)[number] | null>(null);
   const [birthDate, setBirthDate] = useState<string | null>(null);
@@ -110,6 +126,28 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
     };
   }, [my, luck, dayReady, chip, today]);
 
+  // ── AI 맞춤(IF5-F2): 스위치 saju_ai + 연결이 있을 때만. 사실은 눌렀을 때 만든다(서버 읽기 응답 + saju5 계산 — 생일 원값 0) ──────
+  const aiOn = on('saju_ai') && !!deps.ai;
+  const factsOf = (kind: 'reading' | 'daewoon' | 'sinyeon'): Record<string, unknown> | null => {
+    if (!my) return null;
+    if (kind === 'reading') return readingFacts(my);
+    if (!luck) return null;
+    if (kind === 'sinyeon') return sinyeonFacts(my, luck);
+    return consent.items.gender ? daewoonFacts(my, luck, today) : null; // 대운은 ⑤ 성별 동의가 있을 때만
+  };
+  function aiBlock(id: string, kind: 'reading' | 'daewoon' | 'sinyeon'): React.ReactNode {
+    if (!aiOn || !deps.ai || !my) return null;
+    // 대운 칸: ⑤ 동의가 없으면 안내 한 줄(법무 4-17 — 대운은 성별을 대운 계산에 쓰는 데 동의한 분께만 보여요)
+    if (kind === 'daewoon' && !consent.items.gender) {
+      return luck?.daewoon ? (
+        <AppText variant="caption" tone="text" testID="saju-luck-off">
+          {CK17_EXTRA.noLuck}
+        </AppText>
+      ) : null;
+    }
+    return <AiBlock id={id} kind={kind} svc={deps.ai} facts={() => factsOf(kind)} store={{ feature: kind, tag: kind === 'sinyeon' ? String(luck?.seun?.year ?? '') : 'v1' }} />;
+  }
+
   // ── 개인 카드 묶음 ────────────────────────────────────────────────────────
   const personal = (): React.ReactNode => {
     if (ck.slot.kind === 'loading' || (ck.slot.kind === 'on' && !loaded)) return <LoadingBlock id="saju-loading" />;
@@ -146,13 +184,26 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
     return (
       <>
         {on('three_pillars') ? pillarsBlock(ready) : null}
-        {on('saju_reading') && cards.reading ? <SummaryCard id="saju-kyeol" label={IF5_TEXT['SAJU.kyeol.label']} one={cards.reading.one} lines={cards.reading.three} more={cards.reading.more} /> : null}
+        {on('saju_reading') && cards.reading ? <SummaryCard id="saju-kyeol" label={IF5_TEXT['SAJU.kyeol.label']} one={cards.reading.one} lines={cards.reading.three} more={cards.reading.more} bottom={aiBlock('saju-kyeol', 'reading')} /> : null}
         {(on('saju_year') && luck !== null) || (on('saju_calendar') && dayReady) ? <AppText variant="bodyBold" accessibilityRole="header">{IF5_TEXT['SAJU.madang.group.flow']}</AppText> : null}
         {on('saju_year') ? yearBlock() : null}
         {on('saju_calendar') && cards.month ? <SummaryCard id="saju-month" label={IF5_TEXT['SAJU.month.label']} one={cards.month.one} lines={cards.month.three} more={cards.month.more} /> : null}
         {on('saju_reading') && cards.love ? loveBlock(cards.love) : null}
         {on('saju_reading') ? workBlock() : null}
         {on('saju_season') ? seasonBlock() : null}
+        {aiOn && deps.ai && luck?.daewoon && consent.items.gender ? (
+          <View style={styles.card} testID="saju-full-card">
+            <AiBlock
+              id="saju-full"
+              kind="full"
+              svc={deps.ai}
+              showLabel
+              facts={() => readingFacts(my)}
+              fullFacts={() => (luck ? { reading: readingFacts(my), daewoon: daewoonFacts(my, luck, today), sinyeon: sinyeonFacts(my, luck) } : null)}
+              store={{ feature: 'full', tag: String(luck.seun?.year ?? '') }}
+            />
+          </View>
+        ) : null}
       </>
     );
   };
@@ -252,7 +303,7 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
       y.rest.length ? t5('SAJU.year.rest', { '달 목록': y.rest.map((m) => `${m}월`).join(', ') }) : null,
     ].filter((x): x is string => !!x);
     return (
-      <SummaryCard id="saju-year" label={IF5_TEXT['SAJU.year.label']} one={y.year?.one ?? null} lines={y.year?.three ?? []} more={y.year?.more ?? []}>
+      <SummaryCard id="saju-year" label={IF5_TEXT['SAJU.year.label']} one={y.year?.one ?? null} lines={y.year?.three ?? []} more={y.year?.more ?? []} bottom={aiBlock('saju-year', 'sinyeon')}>
         {y.zodiac?.one ? <AppText variant="body">{y.zodiac.one}</AppText> : null}
         {months.length > 0 ? (
           <View style={sajuStyles.gapSmall}>
@@ -341,13 +392,20 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
             </AppText>
           </View>
         ))}
+        {aiBlock('saju-season', 'daewoon')}
       </View>
     );
   }
 
   return (
     <Screen edges={['top']} testID="screen-saju">
-      <ScreenHeader title={IF5_TEXT['SAJU.madang.title']} onBack={back} testID="saju-header" />
+      <ScreenHeader
+        title={IF5_TEXT['SAJU.madang.title']}
+        onBack={back}
+        rightLabel={on('mileage') ? IF5_TEXT['MILEAGE.shop.name'] : undefined}
+        onRight={on('mileage') ? () => router.push(MILEAGE_HREF as Href) : undefined}
+        testID="saju-header"
+      />
       <ScrollView contentContainerStyle={styles.body} testID="saju-scroll">
         <View style={sajuStyles.row}>
           <AppText variant="caption" tone="text" style={sajuStyles.flex} testID="saju-fun">
@@ -371,6 +429,8 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
             {IF5_TEXT['SAJU.card.capture']}
           </AppText>
         ) : null}
+
+        {on('saju_talk') && ck.slot.kind === 'on' && ready && deps.ai ? talkEntry() : null}
 
         {personal()}
 
@@ -396,7 +456,7 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
           data.reload();
         }}
       />
-      <PartnerSheet visible={sheet === 'partner'} mine={my} today={() => nowIso(nowFn())} onClose={() => setSheet('none')} />
+      <PartnerSheet visible={sheet === 'partner'} mine={my} today={() => nowIso(nowFn())} onClose={() => setSheet('none')} consent={deps.consent} ai={aiOn ? deps.ai : undefined} />
       <Ck17Sheet
         visible={sheet === 'ck17'}
         onClose={() => setSheet('none')}
@@ -413,6 +473,17 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
     </Screen>
   );
 
+  function talkEntry(): React.ReactNode {
+    return (
+      <View style={styles.card} testID="saju-talk-card">
+        <AppText variant="bodyBold" accessibilityRole="header">
+          {IF5_TEXT['SAJU.talk.entry.title']}
+        </AppText>
+        <AppText variant="body">{IF5_TEXT['SAJU.talk.entry.body']}</AppText>
+        <Button label={IF5_TEXT['SAJU.talk.entry.btn']} variant="secondary" onPress={() => router.push('/saju-talk' as Href)} testID="saju-talk-open" />
+      </View>
+    );
+  }
   function pickBlock(): React.ReactNode {
     return (
       <View style={styles.card} testID="saju-pick">

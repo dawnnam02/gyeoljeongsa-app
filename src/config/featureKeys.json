@@ -151,11 +151,11 @@
     { "key": "saju_pickday", "group": "IF5", "id": "F5-09", "live": false },
     { "key": "saju_partner", "group": "IF5", "id": "F5-10", "live": false },
     { "key": "pair_card_saju", "group": "IF5", "id": "F5-11", "live": false },
-    { "key": "saju_ai", "group": "IF5", "id": "F5-AI", "live": false, "demo": false },
-    { "key": "saju_talk", "group": "IF5", "id": "F5-17", "live": false, "demo": false },
+    { "key": "saju_ai", "group": "IF5", "id": "F5-AI", "live": false },
+    { "key": "saju_talk", "group": "IF5", "id": "F5-17", "live": false },
     { "key": "mileage", "group": "IF5", "id": "ML-01", "live": false },
     { "key": "mileage_spend", "group": "IF5", "id": "ML-02", "live": false },
-    { "key": "mileage_charge", "group": "IF5", "id": "ML-03", "live": false, "demo": false },
+    { "key": "mileage_charge", "group": "IF5", "id": "ML-03", "live": false },
     { "key": "mileage_gift", "group": "IF5", "id": "ML-04", "live": false },
     { "key": "rest_hint", "group": "IF5", "id": "ML-05", "live": false }
   ]

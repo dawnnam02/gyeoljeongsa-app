@@ -1,9 +1,11 @@
 // 사주 마당이 서버에서 받는 값 묶음(IF5-F1 ②): 동의(CK17A) 한 번 + 내 네 기둥 · 올해 운 · 오늘(이번 달) 셋.
 //  · 열 때 계산 한 번(서버 즉석 · 응답 no-store) — 시각 · 곳은 기기 값을 요청 인자로만 싣는다. 앱 자동 재시도 0(실패하면 사용자가 [다시 시도]를 눌러야 다시 부른다 — IFF5-06)
 //  · 값은 이 화면의 메모리뿐(저장 0). 입력이 바뀌면 다시 받는다. 불러오는 중 · 쉬는 상태는 '이번 요청의 답이 아직 없음'으로 끌어낸다(효과 안에서 상태를 먼저 바꾸지 않는다)
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { Ck17State } from '@/features/inflight/inflightService';
+
+import type { Ck17Items } from '@/features/consent/if5Consent';
 
 import { requestInputOf, type DeviceInput } from './deviceInput';
 import type { MyChart, MyDay, MyLuck, SajuFailCode, SajuResult } from './sajuApi';
@@ -35,7 +37,13 @@ const toSlot = <T,>(r: SajuResult<T>): Slot<T> => (r.ok ? { kind: 'ready', data:
 
 type Done = { runKey: string; chart?: Slot<MyChart>; luck?: Slot<MyLuck>; day?: Slot<MyDay> };
 
-export function useSajuData(deps: Pick<SajuDeps, 'api' | 'now'>, input: DeviceInput, enabled: boolean): { chart: Slot<MyChart>; luck: Slot<MyLuck>; day: Slot<MyDay>; reload: () => void } {
+/** CK17A 항목별 동의(③ 시각 · ④ 곳)가 없으면 그 값은 요청에 싣지 않는다(법무 4-17 — 태어난 시각 · 곳은 동의한 분께만). items 가 없으면(동의 기록을 아직 못 읽음) 싣지 않는 쪽 */
+export function consentedInput(input: DeviceInput, items: Ck17Items | undefined): DeviceInput {
+  return { ...input, time: items?.time ? input.time : null, place: items?.place ? input.place : null };
+}
+
+export function useSajuData(deps: Pick<SajuDeps, 'api' | 'now'>, rawInput: DeviceInput, enabled: boolean, items?: Ck17Items): { chart: Slot<MyChart>; luck: Slot<MyLuck>; day: Slot<MyDay>; reload: () => void } {
+  const input = useMemo(() => consentedInput(rawInput, items), [rawInput, items]);
   const [done, setDone] = useState<Done>({ runKey: '' });
   const [tries, setTries] = useState(0);
   const req = requestInputOf(input);

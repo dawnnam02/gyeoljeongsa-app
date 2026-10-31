@@ -290,7 +290,7 @@ try {
 
   // ── K. 게시되는 글에 작업 표시가 없는가 ─────────────────────────────
   const published = [];
-  for (const file of ['consentContent.ts', 'legalTerms.ts', 'legalPrivacy.ts', 'ck17Content.ts']) {
+  for (const file of ['consentContent.ts', 'legalTerms.ts', 'legalPrivacy.ts', 'ck17Content.ts', 'if5ConsentContent.ts']) {
     const body = fs.readFileSync(path.join(contentDir, file), 'utf8').split('\n').filter((l) => !l.startsWith('//')).join('\n');
     published.push([file, body]);
   }
@@ -697,7 +697,7 @@ try {
   const marksS = shopStrings.filter(([, t]) => /▲W|\bW\d{1,2}\b|\bNV\d|\bB1[01]\b|D-\d\d/.test(t)).map(([where, t]) => `${where}: "${t.slice(0, 40)}"`);
   check('S', '작업 표시(▲W# · NV 번호 · B10 · D-번호)가 앱 글로 새지 않는다', marksS.length === 0, marksS.join('\n'));
   // 등급 · 점수 말은 허용 구역 글 파일에만(카피 16-J): 이 글 파일(shopCopy · productCopy)과 법무 게시본(consentContent · legalPrivacy · legalTerms) 밖의 content 파일에는 없다
-  const zoneFiles = fs.readdirSync(contentDir).filter((f) => f.endsWith('.ts') && !['shopCopy.ts', 'productCopy.ts', 'consentContent.ts', 'legalPrivacy.ts', 'legalTerms.ts', 'ck17Content.ts', 'types.ts', 'fillIns.ts'].includes(f)); // IF2-F: ck17Content = 동의문구 4-17 게시본
+  const zoneFiles = fs.readdirSync(contentDir).filter((f) => f.endsWith('.ts') && !['shopCopy.ts', 'productCopy.ts', 'consentContent.ts', 'legalPrivacy.ts', 'legalTerms.ts', 'ck17Content.ts', 'if5ConsentContent.ts', 'types.ts', 'fillIns.ts'].includes(f)); // IF2-F: ck17Content = 동의문구 4-17 게시본
   const leaked = zoneFiles.filter((f) => /등급|점수/.test(fs.readFileSync(path.join(contentDir, f), 'utf8').split('\n').filter((l) => !l.trim().startsWith('//') && !/^\s*whyNote:/.test(l)).map((l) => (/^\s*'CHAT\.A06\.why':/.test(l) ? l.replace(/\/\/.*$/, '').split('등급에는 쓰지 않아요.').join('') : /^\s*grade: '내 등급',/.test(l) ? '' : l.split('외모를 평가하거나 점수를 매기지 않아요.').join(''))).join('\n'))); // 예외: CHAT.A06.why(기획 QPP) · 12 설정 줄 '내 등급'(SETTINGS.rows.grade, D-200 ② — 허용 구역 '12 설정 줄') · 05 법무 5-4 '외모를 평가하거나 점수를 매기지 않아요.'(하지 않는다는 안내)
   check('S', `등급 · 점수 말은 허용 구역 글 파일(16 상점 · 09/10 배지 · 12 설정 줄)에만 있고 그 밖 글 파일(${zoneFiles.length}개)에는 없다(카피 16-J. 예외 하나: 10 상자 whyNote "추천 점수는 보여주지 않아요.", 법무 L10 W1 확정)`, leaked.length === 0, leaked.join(', '));
   // R1 C①(D-123 ④): 설문 v2 글(features/surveyV2 의 copy.ts · questionCopy.ts)도 같은 점검에 넣는다. 등급 말은 카피 16-J L-7 세 자리만(declineHint · A06 도움말 · 세부사항 머리), 점수 말 0
@@ -1109,8 +1109,12 @@ try {
       for (const w of BAN5) if (t.includes(w)) diffsIF5.push(`${key}: 금지 낱말 '${w}'`);
       if (t.includes('상담') && key !== 'SAJU.card.footer') diffsIF5.push(`${key}: '상담'은 끝줄 부정문 한 곳만`);
     }
-    const ALLOWED5 = ['features/inflight/InflightHome.tsx', 'features/settings/SettingsScreen.tsx', 'features/settings/settingsLogic.ts'];
+    const ALLOWED5 = ['features/inflight/InflightHome.tsx', 'features/settings/SettingsScreen.tsx', 'features/settings/settingsLogic.ts', 'features/settings/WithdrawFlow.tsx'];
+    // IF5-F2: 마일리지 · AI 맞춤 · 동의 화면(아래 폴더 · 파일)은 F2 몫 글을 부른다. 무료 층(F1) 화면 파일만 못 부른다
+    const F2_FILES = (rel) => rel.startsWith('features/mileage/') || rel.startsWith('features/saju/ai/') || rel === 'features/saju/SajuTalkScreen.tsx' || rel.startsWith('features/consent/');
     const F2_KEY = /['"`](MILEAGE\.|REST_HINT\.|SAJU\.talk\.|SAJU\.card\.(aiButton|costTag|reopenFree|askMore)|SAJU\.status\.(maint|aiRunning|aiBlocked|sendFailed|balanceFailed)|SAJU\.pick\.ai)/;
+    // F2 가 다리를 놓은 F1 화면 파일(AI 칸 · 머리 [마일리지] · 날짜 설명 · 상대 시트 AI 연결 한두 곳 — 글은 키로 부른다)
+    const F2_HOOKED = ['features/saju/SajuMadangScreen.tsx', 'features/saju/SajuCalendarScreen.tsx'];
     const importers5 = [];
     const walk5 = (dir) => {
       for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -1120,14 +1124,14 @@ try {
           const text = fs.readFileSync(f, 'utf8');
           const rel = path.relative(path.join(APP_DIR, 'src'), f).split(path.sep).join('/');
           if (/content\/if5Copy/.test(text)) importers5.push(rel);
-          if (rel.startsWith('features/saju/') && F2_KEY.test(text)) diffsIF5.push(`${rel}: F2 몫 글(마일리지 · 쉬어 가요 · 사주 이야기 · AI 맞춤)을 F1 화면이 부름`);
+          if (rel.startsWith('features/saju/') && !F2_FILES(rel) && F2_KEY.test(text) && !F2_HOOKED.includes(rel)) diffsIF5.push(`${rel}: F2 몫 글(마일리지 · 쉬어 가요 · 사주 이야기 · AI 맞춤)을 F1 화면이 부름`);
           for (const m of text.matchAll(/(?:IF5_TEXT\[|\bt5\()\s*['"`]([A-Za-z0-9_.]+)['"`]/g)) if (!rows5.has(m[1])) diffsIF5.push(`${rel}: 카피 24장에 없는 키 ${m[1]}`);
         }
       }
     };
     walk5(path.join(APP_DIR, 'src'));
-    for (const f of importers5) if (!(f.startsWith('features/saju/') || ALLOWED5.includes(f))) diffsIF5.push(`${f}: 24장 글(if5Copy)을 허용 밖 화면에서 부름`);
-    check('IF5', `사주 마당 · 마일리지 글 ${rows5.size}줄(카피 24장 24-2 ~ 24-11)이 if5Copy.ts 와 같고 · 느낌표 · 금지 낱말 0 · 앱이 쓰는 키는 모두 24장에 있고 · F1 화면은 F2 몫 글을 안 부른다`, rows5.size === gen5.IF5_KEY_COUNT && diffsIF5.length === 0, diffsIF5.join('\n') || `표 ${rows5.size}줄 · 부르는 파일 ${importers5.length}개`);
+    for (const f of importers5) if (!(f.startsWith('features/saju/') || F2_FILES(f) || ALLOWED5.includes(f))) diffsIF5.push(`${f}: 24장 글(if5Copy)을 허용 밖 화면에서 부름`);
+    check('IF5', `사주 마당 · 마일리지 글 ${rows5.size}줄(카피 24장 24-2 ~ 24-11)이 if5Copy.ts 와 같고 · 느낌표 · 금지 낱말 0 · 앱이 쓰는 키는 모두 24장에 있고 · 무료 층 화면은 F2 몫 글을 안 부르고 F2 화면(마일리지 · AI 맞춤 · 동의)만 부른다`, rows5.size === gen5.IF5_KEY_COUNT && diffsIF5.length === 0, diffsIF5.join('\n') || `표 ${rows5.size}줄 · 부르는 파일 ${importers5.length}개`);
   }
 
   // ── IF2. 기내 서비스 · 연애 기능(IF2-F · D-223 — 카피.md 21장 '앱 반영' 뒤 대조) ──
@@ -1224,6 +1228,7 @@ try {
     if (!same(assets.SAFETY_OUT, assets.buildSafetyWords())) diffsIF.push('content/moneySafetyWords.ts 가 서버 거르기 사전과 다름');
     if (!same(assets.ICON_OUT, assets.buildIcons())) diffsIF.push('if2IconPaths.ts 가 디자인 원본 아이콘과 다름');
     if (!same(assets.CK17_OUT, assets.buildCk17())) diffsIF.push('content/ck17Content.ts 가 동의문구 4-17 과 다름 → node scripts/gen-if2-assets.mjs');
+    if (!same(assets.IF5_CONSENT_OUT, assets.buildIf5Consent())) diffsIF.push('content/if5ConsentContent.ts 가 동의문구 4-17 새 칸 · 4-18 ~ 4-20 과 다름 → node scripts/gen-if2-assets.mjs');
     check('IF2', `기내 서비스 · 연애 기능 글 ${built.map.size}개(카피 21장 키 줄 ${rows21.length}) = 앱 사본 · 앱이 부르는 글 키 ${calls}곳이 모두 21장에 있고 · 사본 밖 글 0 · 느낌표 · 숫자 · 금지 낱말 · 상대 화면 별자리 · 일간 0 · 동의 시트 = 4-17 · 생성 파일 = 원본`, diffsIF.length === 0, diffsIF.join('\n') || `21장 ${rows21.length}줄`);
   }
 

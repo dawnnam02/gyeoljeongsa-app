@@ -106,6 +106,7 @@ describe('12 설정 규칙', () => {
       '아는 분 피하기',
       '인증 서류 제출',
       '크레딧 · 구매 내역',
+      '마일리지', // IF5-F2: 크레딧 · 구매 내역 바로 아래(스위치 mileage 가 켜졌을 때만 그려짐)
       '차단 목록',
       '신고 내역',
       '보안',
@@ -154,7 +155,7 @@ describe('12 목록 화면', () => {
     const { deps } = setup();
     const tree = await show(deps);
     expect(hasText(tree, SETTINGS.headerTitle)).toBe(true);
-    for (const row of SETTINGS_ROWS) expect(has(tree, `settings-row-${row.key}`)).toBe(row.key !== 'business-info' && row.key !== 'sky-book' && row.key !== 'saju-yard');
+    for (const row of SETTINGS_ROWS) expect(has(tree, `settings-row-${row.key}`)).toBe(row.key !== 'business-info' && row.key !== 'sky-book' && row.key !== 'saju-yard' && row.key !== 'mileage');
     expect(textIn(tree, 'settings-info-label')).toBe('정보');
     expect(hasText(tree, '준비 중')).toBe(true);
     expect(hasText(tree, '로그아웃')).toBe(true);
