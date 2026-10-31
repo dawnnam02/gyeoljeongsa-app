@@ -1084,19 +1084,19 @@
 |---|---|
 | tsc | 0 |
 | expo lint | 0 |
-| jest | RESULT_JEST |
+| jest | 125묶음 2,228건 **3회 연속** 통과(시작 124묶음 2,208건: +1묶음 +20건 · 기존 기대값 갱신 — 동기 20파일 · 334키 · 잠김 글 · 윤달 · 함께 보기) |
 | check:copy | 통과 110 · 실패 0 |
 | check:tokens | 통과 5 · 실패 0 |
 | sync-if5 / sync-ait `--check` | 같음(IF5 화면 쪽 20 + 서버 7 · AIT 19) · gen-if5-copy · gen-if3-copy · gen-if3-assets · gen-if5-assets · gen-ait-copy · gen-if2-assets `--check` 모두 최신 |
 | 웹 `check:saju`(360 · 390 · 430) | 42 / 0 × 3 |
 | 웹 `check:mileage`(360 · 390 · 430) | 35 / 0 × 3 |
-| 웹 if2(390) / f7 / lounge(390) | RESULT_WEB |
+| 웹 if2(390) / f7 / lounge(390) | 125 / 0 · 65 / 0 · 73 / 0 |
 | check_sec2 | 183건 = 통과 169 · 실패 0 · 정보 14 (`SEC_SKIP_AUDIT=1`). 환경 변수 없이 돌리면 F-05s(npm audit, 레지스트리 권고 날짜 의존: 높음 5 — @expo/cli · decode-uri-component · expo-router · query-string · zod, 전부 간접 의존 · 이번 변경과 무관 · package.json 변경 0) 1건만 실패 — 10-27 D204 결과에서도 같은 항목이 실패 |
 | 보안 s5_route_probe | 10 / 10 (import 꼴 안 바꿈) |
-| prepush_scan | RESULT_PREPUSH |
+| prepush_scan | 확정 0 · 확인 0(커밋 3개 범위) |
 | 새 CRLF | 0 |
 | 의존성 변경 | 0 |
-| 끝 node 프로세스 | RESULT_NODE |
+| 끝 node 프로세스 | 1 |
 
 ## IF5-F1c 못 한 것 · 확인 못 한 것
 
