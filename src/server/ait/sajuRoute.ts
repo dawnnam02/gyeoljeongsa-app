@@ -95,13 +95,32 @@ export function guardFacts(feature: S5Feature, facts: unknown): { ok: true } | {
 
 type Emit = (extra: Record<string, unknown>) => void;
 
+// ---------------------------------------------------------------- 로그 한 줄 (AC-11: 허용 키만 · 값 0) — limits.ts logRecord 의 사주 판
+// 허용 키는 t f in out ms code mode rid 뿐. 숫자와 열거형만 남기고 문자열은 40자로 자른다. 입력 글 · 사실 · 접근 코드 · 서명 키 · 생일은 이 함수로 들어올 수 없다.
+// (limits.ts 는 AIT 원본 사본이라 f 가 AIT 기능 넷뿐 — 사주 여섯 + s5_unknown 을 받는 판을 이 파일이 따로 둔다)
+export interface LogRecord5 { t: number; f: S5Feature | 's5_unknown'; in?: number; out?: number; ms?: number; code?: string; mode?: 'mock' | 'live'; rid?: string }
+export function logRecord5(raw: Record<string, unknown>): LogRecord5 {
+  const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : undefined);
+  const out: LogRecord5 = { t: num(raw.t) ?? 0, f: isS5Feature(raw.f) ? raw.f : 's5_unknown' };
+  const i = num(raw.in);
+  if (i !== undefined) out.in = i;
+  const o = num(raw.out);
+  if (o !== undefined) out.out = o;
+  const ms = num(raw.ms);
+  if (ms !== undefined) out.ms = ms;
+  if (typeof raw.code === 'string') out.code = raw.code.slice(0, 40);
+  if (raw.mode === 'mock' || raw.mode === 'live') out.mode = raw.mode;
+  if (typeof raw.rid === 'string') out.rid = raw.rid.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
+  return out;
+}
+
 export async function handleSaju5(req: HandlerRequest, deps: HandlerDeps): Promise<HttpReply> {
   const t0 = deps.now();
   const h = lower(req.headers);
   const mode: Mode = deps.env.AIT_MODE === 'live' && deps.liveReady && !deps.lock?.live ? 'live' : 'mock';
   let feature: S5Feature | 's5_unknown' = 's5_unknown';
   // 로그: 허용 키(t f ms code mode in out)뿐 — 입력 · 사실 · 코드 값 0
-  const emit: Emit = (extra) => deps.log({ t: t0, f: feature, ms: deps.now() - t0, mode, ...extra } as never);
+  const emit: Emit = (extra) => deps.log(logRecord5({ t: t0, f: feature, ms: deps.now() - t0, mode, ...extra }) as never); // 런타임 방어선: 허용 키 필터를 반드시 거친다(AIT handler 의 logRecord 와 같은 꼴 — IF5-F1b ⓙ)
 
   // 1) 방법 · 출처
   if (req.method !== 'POST') return replyError('bad_request', 'mock', { status: 405 });
