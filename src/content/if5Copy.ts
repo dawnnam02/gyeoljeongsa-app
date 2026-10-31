@@ -318,7 +318,7 @@ export const IF5_TEXT = {
   'MILEAGE.free.signup': '가입 선물로 1,000 마일리지를 드렸어요. 내역에서 볼 수 있어요.',
   'MILEAGE.free.boarding': '탑승한 회차마다 200 마일리지가 쌓여요. 앱을 열었을 때 내역에서 볼 수 있어요.',
   'MILEAGE.free.leave.bal': '마일리지 잔액 {N}',
-  'MILEAGE.free.leave.refund': '쓰지 않은 유료 마일리지는 환불을 요청할 수 있어요.',
+  'MILEAGE.free.leave.refund': '남은 유료 마일리지는 환불을 요청할 수 있어요. 탈퇴 확인일부터 30일 뒤 계정을 지울 때 정산하고, 그날부터 30일 안에 고객센터로 알려 주세요.',
   'MILEAGE.free.leave.refundBtn': '환불 요청',
   'MILEAGE.free.leave.freeGone': '받은 무료 마일리지는 탈퇴하면 사라져요',
   'SAJU.status.loadLab': '불러오고 있어요',
