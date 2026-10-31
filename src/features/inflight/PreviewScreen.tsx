@@ -14,6 +14,10 @@ import { Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { CANDIDATE, SAFETY } from '@/content/copy';
 import { BOARDING } from '@/features/boarding/boardingCopy';
+import { aitEnabled } from '@/features/ait/aitEnabled';
+import { ait } from '@/features/ait/aitText';
+import { CoachSheet } from '@/features/ait/CoachSheet';
+import { openSettingsPage } from '@/features/settings/settingsIntent';
 import { MarriageViews } from '@/features/recs/MarriageViews';
 import { PhotoBox } from '@/features/recs/PhotoBox';
 import { PromptCards } from '@/features/recs/PromptCards';
@@ -29,6 +33,7 @@ import { tx } from './if2Text';
 export function PreviewScreen({ api: given }: { api?: Pick<InflightApi, 'preview'> }) {
   const router = useRouter();
   const api = given ?? inflightServices().api;
+  const [coach, setCoach] = useState(false); // AIT-F: 문장 다듬기 시트(데모 판에서만 입구)
   const [data, setData] = useState<{ profile: CandidateData; ck17b: boolean; sameHobby: boolean } | 'loading' | 'failed'>('loading');
   const fetchPreview = useCallback(() => {
     void api.preview().then((r) => {
@@ -70,6 +75,8 @@ export function PreviewScreen({ api: given }: { api?: Pick<InflightApi, 'preview
           </AppText>
         ) : null}
         <Button label={tx('PREVIEW_ME.edit')} onPress={() => router.push('/profile' as Href)} testID="preview-edit" />
+        {aitEnabled() ? <Button label={ait('COACH.name')} variant="secondary" onPress={() => setCoach(true)} testID="preview-coach" /> : null}
+        {aitEnabled() ? <CoachSheet visible={coach} onClose={() => setCoach(false)} onSettings={() => (setCoach(false), openSettingsPage(router, 'ait-code'))} /> : null}
       </ScrollView>
     </Screen>
   );

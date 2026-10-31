@@ -2,7 +2,7 @@
 //  · 나만 쓰는 글 · 표시는 기기에만(deviceNotes — SecureStore · 웹은 메모리) · 서버 0 · 로그 0
 //  · 숫자 · 개수 · '아직' · 판정 0(PF-02 · PF-03) · 쪽 · 카드마다 끝줄(PF-04) · 글은 IF2 글(tx · 카피 21장)과 기존 키(12 안전 안내 · 만남 계획 공유)만
 //  · 궁합 카드 시트는 캡처 막기 대상(P6-11 · IFF-15 — 12 보안 '상대 화면 캡처 차단'이 켜져 있을 때) · 상대 이름 · 사진 · 나이 · 별자리 이름 · 일간 · 띠 0(IFF-01)
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
@@ -302,14 +302,16 @@ function PreAnswerBody({ round, api, onToast, notes = deviceNotes(), testID = 'i
 }
 
 // ── IF-PAIR 궁합 카드(PF-42 ~ PF-46): ① 두 분 다 ② 사주로 보면 ③ 별자리로 보면 · 서버가 공개 때 만든 한 장을 읽기만 ──────
-export function PairCardSheet(props: { visible: boolean; roomId: string; api: Pick<InflightApi, 'pairCard'>; overlap: boolean; onClose: () => void; onChat: () => void; onTalk: () => void; onCk17: () => void; testID?: string }) {
+// extra: 카드 맨 아래(끝줄 위)에 더하는 칸 — AIT-F 궁합 카드 AI판(데모 판에서만 넘어온다). 카드를 받은 뒤에만 그린다
+type PairExtra = { extra?: (card: PairCard) => ReactNode };
+export function PairCardSheet(props: PairExtra & { visible: boolean; roomId: string; api: Pick<InflightApi, 'pairCard'>; overlap: boolean; onClose: () => void; onChat: () => void; onTalk: () => void; onCk17: () => void; testID?: string }) {
   return (
     <BottomSheet visible={props.visible} onClose={props.onClose} testID={props.testID ?? 'if2-pair'}>
       {props.visible ? <PairCardBody {...props} /> : null}
     </BottomSheet>
   );
 }
-function PairCardBody({ roomId, api, overlap, onClose, onChat, onTalk, onCk17, testID = 'if2-pair' }: { roomId: string; api: Pick<InflightApi, 'pairCard'>; overlap: boolean; onClose: () => void; onChat: () => void; onTalk: () => void; onCk17: () => void; testID?: string }) {
+function PairCardBody({ roomId, api, overlap, onClose, onChat, onTalk, onCk17, extra, testID = 'if2-pair' }: PairExtra & { roomId: string; api: Pick<InflightApi, 'pairCard'>; overlap: boolean; onClose: () => void; onChat: () => void; onTalk: () => void; onCk17: () => void; testID?: string }) {
   useCaptureBlock(); // 시트가 열린 동안만(12 보안 '상대 화면 캡처 차단'이 켜져 있을 때 · 웹은 없음)
   const [card, setCard] = useState<PairCard | 'loading' | 'failed' | 'gone'>('loading');
   const fetchCard = useCallback(() => {
@@ -378,6 +380,7 @@ function PairCardBody({ roomId, api, overlap, onClose, onChat, onTalk, onCk17, t
             <AppText variant="caption">{tx('PAIR_CARD.topics.note')}</AppText>
             <Button label={tx('PAIR_CARD.topics.go')} variant="secondary" onPress={onChat} testID={`${testID}-chat`} />
             {overlap ? <TextButton label={tx('PAIR_CARD.talkLink')} align="start" onPress={onTalk} testID={`${testID}-talk`} /> : null}
+            {extra ? extra(card) : null}
             <Footnote text={tx('PAIR_CARD.footer')} testID={`${testID}-footer`} />
           </>
         ) : null}

@@ -1183,6 +1183,61 @@ try {
     check('IF2', `기내 서비스 · 연애 기능 글 ${built.map.size}개(카피 21장 키 줄 ${rows21.length}) = 앱 사본 · 앱이 부르는 글 키 ${calls}곳이 모두 21장에 있고 · 사본 밖 글 0 · 느낌표 · 숫자 · 금지 낱말 · 상대 화면 별자리 · 일간 0 · 동의 시트 = 4-17 · 생성 파일 = 원본`, diffsIF.length === 0, diffsIF.join('\n') || `21장 ${rows21.length}줄`);
   }
 
+  // ── AIT. AI 시험판 글(AIT-F · 카피 23-2 ~ 23-9 표 193키): 앱 사본(content/aitCopy.ts)이 표와 한 글자씩 같고 · 서버 고정 문구(src/server/ait/fixed.ts)와 겹치는 줄이 같고 ·
+  //       느낌표 · 숫자(법무 확정 번호 줄 예외) · 법무 8장 금지어 · 재촉 · 업체 이름 0 · 화면 코드(features/ait · settings/AitCodePage)에 사본 밖 한글 글 0
+  {
+    const genAit = await load(path.join(APP_DIR, 'scripts', 'gen-ait-copy.mjs'));
+    const table = genAit.readRows();
+    const aitMod = await load(path.join(APP_DIR, 'src', 'content', 'aitCopy.ts'));
+    const AT = aitMod.AIT_TEXT;
+    const diffsAit = [];
+    if (table.keyCount !== genAit.AIT_KEY_COUNT || table.rows.size !== genAit.AIT_TEXT_COUNT) diffsAit.push(`카피 23장 표의 키 ${table.keyCount} · 글 ${table.rows.size} (기대 ${genAit.AIT_KEY_COUNT} · ${genAit.AIT_TEXT_COUNT})`);
+    for (const [k, v] of table.rows) if (AT[k] !== v) diffsAit.push(`${k}: 카피 "${v.slice(0, 24)}" ≠ 앱 "${String(AT[k]).slice(0, 24)}"`);
+    for (const k of Object.keys(AT)) if (!table.rows.has(k)) diffsAit.push(`${k}: 카피 23장 표에 없는 키`);
+    for (const k of table.noText) if (!aitMod.NO_TEXT_KEYS.includes(k)) diffsAit.push(`${k}: 글 없는 키인데 사본 NO_TEXT_KEYS 에 없음`);
+    // 법무 17-2 확정 번호 줄 · 법무 4-6-1 끝줄 · 고정 줄: 서버 fixed.ts 와 글자까지 같아야 한다(번호는 서버 한 곳 — 법무 17-3)
+    const fx = await load(path.join(APP_DIR, 'src', 'server', 'ait', 'fixed.ts'));
+    const chat = await load(path.join(APP_DIR, 'src', 'server', 'ait', 'chat.ts'));
+    const pairs = [
+      ['CONCERN_CARD.crisis.l2', fx.LINE_109], ['CONCERN_CARD.crisis.l3', fx.LINE_112_119], ['CONCERN_CARD.violence.l2', fx.LINE_1366], ['CONCERN_CARD.violence.l3', fx.LINE_112], ['CONCERN_CARD.minor.l2', fx.LINE_1388],
+      ['CONCERN.always', fx.ALWAYS_LINE], ['CONCERN.footer', fx.CHAT_FOOTER], ['CONCERN.guessNote', fx.CHAT_GUESS_NOTE], ['CONCERN.weak', fx.WEAK_LABEL], ['CONCERN.practical', fx.PRACTICAL_LABEL], ['CONCERN.money', fx.MONEY_CAUTION],
+      ['COACH.note', fx.COACH_NOTE], ['PAIR_AI.note', fx.COMPAT_NOTE], ['STAR_AI.footer', fx.FUN_FOOTER],
+    ];
+    for (const [k, s] of pairs) if (AT[k] !== s) diffsAit.push(`${k}: 서버 고정 문구와 다름`);
+    for (const [code, label] of Object.entries(chat.CHIP_LABEL)) if (AT[`CONCERN.chip.${code}`] !== label) diffsAit.push(`CONCERN.chip.${code}: 서버 칩 글과 다름`);
+    // 서버 가안과 카피 확정이 아직 다른 줄(화면은 카피를 쓴다) — 실패가 아니라 참고
+    const drift = [];
+    if (fx.CRISIS_CARD.lines[0] !== AT['CONCERN_CARD.crisis.l1']) drift.push('crisis.l1');
+    if (fx.VIOLENCE_CARD.lines[0] !== AT['CONCERN_CARD.violence.l1']) drift.push('violence.l1');
+    if (fx.MISUSE_CARD.lines[0] !== AT['CONCERN_CARD.misuse.l1']) drift.push('misuse.l1');
+    if (fx.STORAGE_NOTE !== AT['AIT.privacy.keep']) drift.push('AIT.privacy.keep(받은 날부터)');
+    if (fx.CARD_NOTE !== AT['CONCERN.cardNote']) drift.push('CONCERN.cardNote');
+    if (drift.length) note(`AIT: 서버 가안(ai/AIT/ts/fixed.ts)과 카피 23장이 아직 다른 줄 ${drift.length}개 — ${drift.join(' · ')} — 화면은 카피 글을 쓰고 서버 문장은 보이지 않는다(AI직원이 fixed.ts 를 카피에 맞출 때까지)`);
+    // 글 규칙(카피 23-10 점검과 같은 뜻)
+    const DIGIT_OK = new Set(['CONCERN.always', 'CONCERN_CARD.crisis.l2', 'CONCERN_CARD.crisis.l3', 'CONCERN_CARD.violence.l2', 'CONCERN_CARD.violence.l3', 'CONCERN_CARD.minor.l2', 'CONCERN_CARD.violence.l3b', 'CONCERN_CARD.body.l1', 'AIT.privacy.keep']);
+    const WORD_OK = { 상담: ['CONCERN.footer', 'CONCERN.intro.notCounsel', 'CONCERN_CARD.crisis.l4', 'CONCERN_CARD.crisis.l2'], 진단: ['CONCERN.footer'], 치료: ['CONCERN.footer'], 전문: ['CONCERN.footer'] };
+    const BAN = ['무제한', '평생', '구독', '자동 갱신', '남은 횟수', '서두르', '오늘만', '한정', '카운트다운', 'Claude', 'Anthropic', '해결책', '솔루션', '속마음', '검증된', '과학적', '무료', '곧 연결', '완전히 보장', '1577', '1393', '내 편', '언제든', '24시간 내 곁', '코치', '운명', '천생연분', '성사율', '대신 써', '자동 답장'];
+    for (const [k, v] of Object.entries(AT)) {
+      const s = v.replace(/\{[^{}]+\}/g, '');
+      if (/[!！]/.test(s)) diffsAit.push(`${k}: 느낌표`);
+      if (/\d/.test(s) && !DIGIT_OK.has(k)) diffsAit.push(`${k}: 숫자`);
+      for (const w of BAN) if (s.includes(w)) diffsAit.push(`${k}: 금지 낱말 '${w}'`);
+      for (const [w, ok] of Object.entries(WORD_OK)) if (s.includes(w) && !ok.includes(k)) diffsAit.push(`${k}: 허용 줄 밖 '${w}'`);
+    }
+    // 화면 코드에 사본 밖 한글 글 0 (글은 모두 ait() 로만)
+    const aitDirs = [path.join(APP_DIR, 'src', 'features', 'ait'), path.join(APP_DIR, 'src', 'features', 'settings', 'AitCodePage.tsx')];
+    const aitFiles = aitDirs.flatMap((d) => (fs.statSync(d).isDirectory() ? fs.readdirSync(d).map((n) => path.join(d, n)) : [d])).filter((f) => /\.(ts|tsx)$/.test(f));
+    const stripAit = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    // 허용: {자리 이름}(카피 표의 자리 이름 그대로) · 서버 고정 줄을 알아보는 앞부분(서버 문장은 화면에 보이지 않고 카피 글로 바꿔 보인다)
+    const AIT_LIT_OK = new Set(['문구 조각', '짚은 말', '단계 이름', '편 이름', 'AI의 추측이에요', '돈을 보내 달라는', '이 설명은 일반적인']);
+    for (const f of aitFiles) {
+      const src = stripAit(fs.readFileSync(f, 'utf8'));
+      for (const m of src.matchAll(/'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`/g)) if (/[가-힣]/.test(m[0]) && !AIT_LIT_OK.has(m[0].slice(1, -1))) diffsAit.push(`${rel(f)}: 사본 밖 한글 글 ${m[0].slice(0, 30)}`);
+      for (const m of src.matchAll(/>\s*([^<>{}\n]*[가-힣][^<>{}\n]*?)\s*</g)) diffsAit.push(`${rel(f)}: JSX 한글 글 ${m[1].slice(0, 30)}`);
+    }
+    check('AIT', `AI 시험판 글 ${table.rows.size}줄(카피 23-2 ~ 23-9 · 193키 중 글 있는 키) = 앱 사본 · 서버 고정 문구 ${pairs.length + Object.keys(chat.CHIP_LABEL).length}줄 같음 · 느낌표 · 숫자 · 금지 낱말 0 · 화면 코드 ${aitFiles.length}개에 사본 밖 한글 글 0`, diffsAit.length === 0, diffsAit.join('\n') || `표 ${table.rows.size}줄`);
+  }
+
   // R1 A⑦ T04 · K11: 오류 · 안내 문구 규칙(카피.md 1-1)과 v4 글 대조(카피.md 7장). 규칙 본문은 check-copy-rules.mjs
   runCopyRules({ check, note, appDir: APP_DIR });
 

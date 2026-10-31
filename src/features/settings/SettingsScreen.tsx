@@ -42,9 +42,13 @@ import { AvoidPage } from './AvoidPage';
 import { ConsentManagePage } from './ConsentManagePage';
 import { forgetInflightNotes } from '@/features/inflight/deviceNotes';
 import type { Ck17Api } from '@/features/inflight/inflightService';
+import { AitCodePage } from './AitCodePage';
+import { aitStore } from '@/features/ait/aitStore';
+import { aitEnabled } from '@/features/ait/aitEnabled';
 import { GradeSwitches } from './GradeSwitches';
 import { GroupLabel, NavRow, OutlineButton, RowGroup } from './SettingsParts';
-import { SETTINGS_ROWS, type RowDef, type SettingsPage } from './settingsLogic';
+import { AIT_ROW, SETTINGS_ROWS, type RowDef, type SettingsPage } from './settingsLogic';
+
 import { takeSettingsPage } from './settingsIntent';
 import { WithdrawFlow } from './WithdrawFlow';
 
@@ -60,6 +64,7 @@ export type SettingsDeps = SupportDeps & {
   contact?: () => ContactPorts; // 12-5 지인 차단 기기 연결(주소록 · 해시, 3부-바). 없으면 지인 차단 줄은 '준비 중'
   boarded?: () => Promise<boolean>; // 3부-아: 판매 마감 전 · 이번 회차 탑승권이 있나(동의 관리 CK4 · CK15 끄기 확인창 한 줄). 없으면 그 줄 없음
   skyBook?: () => boolean; // IF3-F: 정보 묶음 '하늘 도감' 줄(스위치 sky_book 이 켜졌을 때만). 없으면 줄 없음
+  ait?: () => boolean; // AIT-F ⑤: 시험용 AI 코드 줄(데모 판에서만 참 — 실서버 판엔 줄 0). 없으면 줄 없음
   ck17?: () => Ck17Api | null; // IF2-F: 동의 관리 '재미 정보' 줄(기내지 · 궁합 카드 스위치가 켜졌을 때만). 없거나 null 이면 줄 없음
 };
 
@@ -76,6 +81,7 @@ export function defaultSettingsDeps(): SettingsDeps {
     boarded: boardedNow,
     ck17: ck17Now,
     skyBook: skyBookNow,
+    ait: aitEnabled,
     copyText: copyToClipboard,
     openMail: async (email) => {
       try {
@@ -208,6 +214,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
     forgetMyFace(); // 다음에 로그인하는 사람에게 이 사람의 원형 사진이 남지 않게(F11)
     forgetMeetScenes(); // D46: 만남 장면을 본 방 기록(기기)도 지운다 — 같은 기기를 다른 계정이 쓸 때(K27 상황 21)
     resetCrisisCards(); // 3부-차: 위기 도움 카드 하루 3번 셈(화면 메모리)도 비운다 — 다음 계정에 넘어가지 않게
+    await aitStore.forget(); // AIT-F: 시험용 AI 코드 · 시험자 동의 기록도 지운다(다음 사람에게 넘어가지 않게)
     await forgetInflightNotes(); // IF2-F: 나만 쓰는 글 9종(엽서 · 미리 답 · 표시 · 메모 · 고른 짐 · 본 기록 · 띠 · 접힘)도 지운다(정책 PF-10 · IFF-03)
     const target = resolveDest('01');
     if (target.kind === 'href') {
@@ -264,6 +271,8 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
         return <LicensesPage onBack={toList} />;
       case 'image-credit':
         return <ImageCreditPage onBack={toList} />;
+      case 'ait-code':
+        return <AitCodePage onBack={toList} onToast={showToast} />;
       case 'avoid':
         return <AvoidPage api={deps.api} onBack={toList} onToast={showToast} contact={deps.contact} />;
       case 'business-info':
@@ -283,7 +292,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
     }
   })();
 
-  const main = SETTINGS_ROWS.filter((r) => r.group === 'main');
+  const main = [...SETTINGS_ROWS.filter((r) => r.group === 'main'), ...(deps.ait?.() === true ? [AIT_ROW] : [])];
   const info = SETTINGS_ROWS.filter((r) => r.group === 'info' && (r.key !== 'business-info' || bizRows !== null) && (r.key !== 'sky-book' || deps.skyBook?.() === true));
 
   return (

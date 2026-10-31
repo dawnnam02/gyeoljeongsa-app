@@ -17,6 +17,9 @@ import { Toast } from '@/components/Toast';
 import { SIGN_CUSP, t3 } from '@/content/if3Copy';
 import type { BoardingState } from '@/features/boarding/boardingApi';
 import { BOARDING } from '@/features/boarding/boardingCopy';
+import { aitEnabled } from '@/features/ait/aitEnabled';
+import { StarAiBlock } from '@/features/ait/StarAiBlock';
+import { openSettingsPage } from '@/features/settings/settingsIntent';
 import { Rise, TOAST_MS } from '@/motion';
 import { if2Look } from '@/theme/if2Look';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
@@ -209,6 +212,7 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
                   <AppText variant="body">{stemIntro(issued.grain.stem) ?? ''}</AppText>
                   <AppText variant="body">{sajuText(issued.grain.saju) ?? ''}</AppText>
                 </View>
+                {aitEnabled() ? <StarAiBlock signs={issued.sky.signs} stem={issued.grain.stem} onSettings={() => openSettingsPage(router, 'ait-code')} /> : null}
                 {isOn('my_ways') && waysApi ? <MyWaysFold api={{ myWays: waysApi }} onAgree={() => setSheet('ck17')} /> : null}
               </>
             ) : (

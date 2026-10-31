@@ -6,6 +6,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
 import { env } from '@/config/env';
+import { aitStore } from '@/features/ait/aitStore';
 import { forgetInflightNotes } from '@/features/inflight/deviceNotes';
 
 import { createDemoClient } from './demoClient';
@@ -36,6 +37,7 @@ export async function purgeStaleSessionOnFreshInstall(): Promise<void> {
   if (await AsyncStorage.getItem(INSTALL_MARKER)) return;
   await supabase.auth.signOut({ scope: 'local' });
   await forgetInflightNotes(); // 실패해도 던지지 않는다(저장소를 못 쓰는 환경) — 표식은 그래도 남긴다
+  await aitStore.forget(); // AIT-F: 시험용 AI 코드 · 시험자 동의 기록(같은 키체인)도 비운다
   await forgetStaleDeviceStorage(); // 설문 임시 저장 · 피할 회사 · 학교 원문 — 위와 같다
   await AsyncStorage.setItem(INSTALL_MARKER, '1');
 }

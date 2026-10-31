@@ -24,6 +24,7 @@ type Props = Pick<
   | 'onSubmitEditing'
   | 'autoFocus'
   | 'inputMode'
+  | 'secureTextEntry' // AIT-F: 시험용 AI 코드 칸(입력한 글자를 가린다)
 > & {
   label: string; // 스크린리더가 읽는 칸 이름
   value: string;

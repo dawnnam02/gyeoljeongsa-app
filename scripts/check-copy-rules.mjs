@@ -26,6 +26,10 @@ const ALLOW = {
   K11: {
     'CHILD_SAFETY.policy': "예외: 아동 안전 정책 고지(N35)의 '법적 조치'는 위협이 아니라 법정 안내다",
   },
+  // K11-43 은 '서버'를 기술 말로 본다. AI 시험판 저장 안내는 법무 16-3 필수 문장('운영 서버에는 저장하지 않아요')이라 서버라는 말을 빼면 사실이 달라진다
+  K11_43: {
+    'AIT_TEXT.AIT.privacy.keep': "예외: 법무 16-3 · 16-4 #7 필수 문장 — 저장하지 않는 곳을 '운영 서버'로 한정해 밝힌다(AI 업체 30일 보관과 함께 읽는 사실 문장)",
+  },
 };
 
 const isV4 = (s) => V4_ROOTS.includes(s.key.split('.')[0]);
@@ -108,7 +112,7 @@ export function evaluateCopyRules({ contentDir = path.join(APP_DIR, 'src', 'cont
   // ── K11: K13 문구 다듬기 묶음 중 잴 수 있는 것(법무 생성 파일 제외) ──
   const k1 = where(plain, /심사|검수|합격|불합격|판정/);
   rule('K11', 'K11-28', "시험 · 심사 느낌 낱말 0(심사 · 검수 · 합격 · 판정 → '확인')", k1);
-  rule('K11', 'K11-43', '원인을 기술 말로 돌리지 않는다(서버 · 네트워크 · 에러 · 오류 코드 0)', where(plain, /서버|네트워크|에러|오류 코드/));
+  rule('K11', 'K11-43', '원인을 기술 말로 돌리지 않는다(서버 · 네트워크 · 에러 · 오류 코드 0)', where(plain, /서버|네트워크|에러|오류 코드/), ALLOW.K11_43);
   rule('K11', 'K11-52', '공포 · 위협 말 0(불이익 · 큰일 · 영구 정지 · 법적 조치)', where(plain, /불이익|큰일|영구 정지|법적 조치/), ALLOW.K11);
   notes.push('K11-22 한 화면 한 일 · K11-23 권한 이유 먼저 · K11-53 다음 화면 예상 · 군더더기는 기계로 재지 못해 사람 검토(C① 문구 주인 · 디자인)');
   return { results, notes, counts: { all: all.length, v4: v4.length, temp: temp.length } };

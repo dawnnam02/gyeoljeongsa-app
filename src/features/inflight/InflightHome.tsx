@@ -15,6 +15,10 @@ import { Icon } from '@/components/Icon';
 import { Pressable } from '@/components/Pressable';
 import { BOARDING } from '@/features/boarding/boardingCopy';
 import type { BoardingState } from '@/features/boarding/boardingApi';
+import { aitEnabled } from '@/features/ait/aitEnabled';
+import { CompatAiBlock } from '@/features/ait/CompatAiBlock';
+import { ConcernChat } from '@/features/ait/ConcernChat';
+import { ait } from '@/features/ait/aitText';
 import { SafeShareSheet } from '@/features/safeShare/SafeShareSheet';
 import { if2Look } from '@/theme/if2Look';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
@@ -35,15 +39,16 @@ export type InflightHomeDeps = {
   isOn: (key: string) => boolean;
   notes?: DeviceNotes;
   now?: () => number;
+  ait?: boolean; // AIT-F: AI 시험판 입구(홈 B6 셋째 칸 · 궁합 카드 AI판)를 그릴지. 없으면 데모 판일 때만(features/ait/aitEnabled)
 };
 export type InflightHomeNav = {
   open: (href: Href) => void;
   chat: (roomId: string, draft?: string) => void;
-  settings: (page: 'avoid' | 'safety' | 'consent-management') => void;
+  settings: (page: 'avoid' | 'safety' | 'consent-management' | 'ait-code') => void;
   profileSameHobby: () => void;
 };
 
-type Sheet = 'none' | 'hello' | 'pre' | 'pair' | 'talk' | 'prep' | 'memo' | 'share' | 'ck17';
+type Sheet = 'none' | 'hello' | 'pre' | 'pair' | 'talk' | 'prep' | 'memo' | 'share' | 'ck17' | 'concern';
 
 export function useInflightHome(deps: InflightHomeDeps | undefined) {
   const [home, setHome] = useState<HomeState | null>(null);
@@ -72,6 +77,7 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
   const [typeId, setTypeId] = useState<string | null>(null); // 내 여행 타입 id(서버 값이 생기기 전엔 데모만)
   const [memoRoom, setMemoRoom] = useState<string | null>(null);
   const isOn = deps.isOn;
+  const aitOn = deps.ait ?? aitEnabled();
   const round = boarding.ticket?.roundNo ?? boarding.round?.no ?? 0;
   const roomId = home.pair?.roomId ?? null;
 
@@ -171,8 +177,9 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
       case 'B6': {
         const cells = (home.me?.cells ?? []).filter((c) => c !== 'type' || !!type);
         if (cells.length === 0) return null;
+        const names = cells.map((c) => (c === 'type' ? tx('TYPE_CARD.home.name') : tx('PREVIEW_ME.home.name')));
         return (
-          <HomeBlock key={b} title={tx('HOME.me.title')} cellNames={cells.map((c) => (c === 'type' ? tx('TYPE_CARD.home.name') : tx('PREVIEW_ME.home.name')))} testID={`${testID}-B6`}>
+          <HomeBlock key={b} title={tx('HOME.me.title')} cellNames={aitOn ? [...names, ait('CONCERN.name')] : names} testID={`${testID}-B6`}>
             {cells.map((c) =>
               c === 'type' ? (
                 <HomeCell key={c} icon="suitcase" name={tx('TYPE_CARD.home.name')} line={type && packed ? tx('TYPE_CARD.home.line', { '타입 이름': type.name }) : tx('TYPE_CARD.home.lineNone')} onPress={() => nav.open('/type-card' as Href)} testID={`${testID}-B6-type`} />
@@ -180,6 +187,7 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
                 <HomeCell key={c} icon="postmark" name={tx('PREVIEW_ME.home.name')} line={tx('PREVIEW_ME.home.line')} onPress={() => nav.open('/preview-me' as Href)} testID={`${testID}-B6-preview`} />
               ),
             )}
+            {aitOn ? <HomeCell icon="memo" name={ait('CONCERN.name')} line={ait('CONCERN.home.line')} onPress={() => setSheet('concern')} testID={`${testID}-B6-concern`} /> : null}
           </HomeBlock>
         );
       }
@@ -239,13 +247,14 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
 
       {roomId ? (
         <>
-          <PairCardSheet visible={sheet === 'pair'} roomId={roomId} api={deps.api} overlap={home.stage === 'overlap'} onClose={() => setSheet('none')} onChat={() => (setSheet('none'), nav.chat(roomId))} onTalk={() => setSheet('talk')} onCk17={() => setSheet('ck17')} />
+          <PairCardSheet visible={sheet === 'pair'} roomId={roomId} api={deps.api} overlap={home.stage === 'overlap'} extra={aitOn ? (card) => <CompatAiBlock same={card.same} onSettings={() => (setSheet('none'), nav.settings('ait-code'))} /> : undefined} onClose={() => setSheet('none')} onChat={() => (setSheet('none'), nav.chat(roomId))} onTalk={() => setSheet('talk')} onCk17={() => setSheet('ck17')} />
           <MustTalkSheet visible={sheet === 'talk'} roomId={roomId} onClose={() => setSheet('none')} onUseOpener={(t) => (setSheet('none'), nav.chat(roomId, t))} notes={notes} />
           <MeetPrepSheet visible={sheet === 'prep'} roomId={roomId} shareOn={isOn('safe_share')} onClose={() => setSheet('none')} onShare={() => setSheet('share')} onGuide={() => (setSheet('none'), nav.settings('safety'))} notes={notes} />
           <SafeShareSheet visible={sheet === 'share'} partner={null} onClose={() => setSheet('prep')} />
         </>
       ) : null}
       {memoRoom ? <MemoSheet visible={sheet === 'memo'} roomId={memoRoom} closedAt={n.memos[memoRoom]?.closedAt ?? null} onClose={() => setSheet('none')} onToast={onToast} notes={notes} /> : null}
+      {aitOn ? <ConcernChat visible={sheet === 'concern'} onClose={() => setSheet('none')} onSettings={() => (setSheet('none'), nav.settings('ait-code'))} /> : null}
       <HelloWriteSheet visible={sheet === 'hello'} round={round} writable={home.status?.writable === true} onClose={() => setSheet('none')} onToast={onToast} notes={notes} />
       <PreAnswerSheet visible={sheet === 'pre'} round={round} api={deps.api} onClose={() => setSheet('none')} onToast={onToast} notes={notes} />
       <Ck17Sheet

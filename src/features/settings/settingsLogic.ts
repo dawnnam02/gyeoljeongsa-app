@@ -3,12 +3,13 @@ import type { IconName } from '@/components/Icon';
 import { PREFERENCES_EDIT_ENABLED } from '@/config/flags';
 import { COMMON, SIGN_IN } from '@/content/copy';
 import { REPORTS, SETTINGS, WITHDRAW } from '@/content/settingsCopy';
+import { AIT_TEXT } from '@/content/aitCopy';
 import { IF3_TEXT } from '@/content/if3Copy';
 import { SUPPORT_CONTACT, type SupportContact } from '@/content/supportContact';
 import type { WithdrawConfirmFailure, WithdrawStartFailure } from '@/lib/settingsApi';
 
 // 하위 화면(navigation/flow.ts 의 sub:* 와 같은 이름. 'safety' 는 flow.ts 에 아직 없다 — 2단계에서 더한다)
-export type SettingsPage = 'list' | 'notifications' | 'security' | 'consent-management' | 'blocked-list' | 'report-history' | 'support' | 'safety' | 'licenses' | 'image-credit' | 'business-info' | 'avoid';
+export type SettingsPage = 'list' | 'notifications' | 'security' | 'consent-management' | 'blocked-list' | 'report-history' | 'support' | 'safety' | 'licenses' | 'image-credit' | 'business-info' | 'avoid' | 'ait-code';
 
 export type RowAction =
   | { kind: 'page'; page: Exclude<SettingsPage, 'list'> }
@@ -45,6 +46,9 @@ const ALL_ROWS: readonly RowDef[] = [
   { key: 'business-info', label: SETTINGS.rows.businessInfo, action: { kind: 'page', page: 'business-info' }, group: 'info', icon: 'document' }, // 값 6개가 모두 있을 때만(SettingsScreen 이 거른다)
 ];
 export const SETTINGS_ROWS: readonly RowDef[] = ALL_ROWS.filter((r) => PREFERENCES_EDIT_ENABLED || r.key !== 'preferences');
+
+// AIT-F ⑤: 시험용 AI 코드 줄(데모 판에서만 — SettingsScreen 이 deps.ait 가 참일 때 목록 끝에 더한다. 카피 23-6 `AIT_SET.row`)
+export const AIT_ROW: RowDef = { key: 'ait-code', label: AIT_TEXT['AIT_SET.row'], right: undefined, action: { kind: 'page', page: 'ait-code' }, group: 'main', icon: 'how_to' };
 
 const KST_MS = 9 * 3_600_000;
 const kstParts = (ms: number) => {
