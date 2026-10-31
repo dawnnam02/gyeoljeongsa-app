@@ -152,7 +152,7 @@ describe('IF5-F1 ⑤ 스위치 20키 (기획/IF5_스위치.md — 서버 이름 
 });
 
 (hasCopyDoc ? describe : describe.skip)('IF5-F1 ⑦ 글 사본 = 카피 (생성기 --check)', () => {
-  test('gen-if5-copy --check (if5Copy.ts = 카피 24장 332키 = 318 + 24-15-1 새 키 12 + 24-16-1 새 키 2)', () => {
+  test('gen-if5-copy --check (if5Copy.ts = 카피 24장 334키 = 318 + 24-15-1 새 키 12 + 24-16-1 새 키 2 + F1c 새 키 2)', () => {
     const r = run('gen-if5-copy.mjs', '--check');
     expect(r.stdout + r.stderr).toContain('if5Copy.ts 최신');
     expect(r.status).toBe(0);
@@ -164,8 +164,8 @@ describe('IF5-F1 ⑤ 스위치 20키 (기획/IF5_스위치.md — 서버 이름 
 });
 
 describe('IF5-F1 ⑦ 글 사본 틀', () => {
-  test('332키 · 값 틀 자리 채우기 · 조사', () => {
-    expect(Object.keys(IF5_TEXT)).toHaveLength(332);
+  test('334키 · 값 틀 자리 채우기 · 조사', () => {
+    expect(Object.keys(IF5_TEXT)).toHaveLength(334);
     expect(t5('SAJU.cal.month', { 년: 2027, 월: 3 })).toBe('2027년 3월');
     expect(t5('SAJU.guide.help.title', { 낱말: '다섯 기운' })).toBe('다섯 기운 이 뭐예요?');
   });

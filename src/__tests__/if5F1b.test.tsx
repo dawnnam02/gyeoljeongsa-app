@@ -218,10 +218,10 @@ describe('IF5-F1b ⓔ 날짜 고르기 상대와 합쳐 보기', () => {
     const keys = ['SAJU.pillars.col.year', 'SAJU.pillars.col.month', 'SAJU.pillars.col.day', 'SAJU.pillars.col.hour', 'SAJU.pillars.col.a11y', 'SAJU.input.hourUnit', 'SAJU.input.minUnit', 'SAJU.life.age', 'SAJU.pick.partner.toggle', 'SAJU.pick.partner.hint', 'SAJU.pick.partner.both', 'SAJU.pick.partner.need'] as const;
     expect(keys).toHaveLength(12);
     for (const k of keys) expect(typeof IF5_TEXT[k]).toBe('string');
-    expect(Object.keys(IF5_TEXT)).toHaveLength(332);
+    expect(Object.keys(IF5_TEXT)).toHaveLength(334);
     expect([IF5_TEXT['SAJU.pillars.col.year'], IF5_TEXT['SAJU.pillars.col.month'], IF5_TEXT['SAJU.pillars.col.day'], IF5_TEXT['SAJU.pillars.col.hour']]).toEqual(['해', '달', '날', '시']);
     expect(ageSpan(10, 20)).toBe('10세 ~ 20세');
-    expect(IF5_TEXT['MILEAGE.shop.locked']).toBe('지금은 마일리지를 충전할 수 없어요.');
+    expect(IF5_TEXT['MILEAGE.shop.locked']).toBe('최근 스토어 환불이 여러 번 있어서 지금은 충전이 멈춰 있어요.');
     expect(IF5_TEXT['SAJU.full.label']).toBe('사주 종합 풀이');
   });
   test('partnerRest: 기기 계산 · 만 19세 미만 · 범위 밖 · 쉬어 가는 날만 가른다(생일 · 기둥을 돌려주지 않는다) · 네트워크 · 저장 0(정적)', () => {

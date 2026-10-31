@@ -1,7 +1,7 @@
 // IF5-F1(사주 마당 · 마일리지): 화면 글의 앱 사본을 만든다. 읽기는 마케팅/카피.md 24장, 쓰기는 src/content/if5Copy.ts 하나.
 //  · 24장 24-2 ~ 24-11 표 가운데 첫 칸 끝에 키(`SAJU.…` · `MILEAGE.…` · `REST_HINT.…`)가 있는 줄의 둘째 칸 글을 한 글자도 바꾸지 않고 옮긴다(마크다운 ** · ` 만 걷음). 318키
 //  · 24-15-2 표의 새 글은 같은 키를 덮는다(SAJU.status.balanceFailed 마침표 — 앱과 같은 커밋)
-//  · IF5-F1b: 24-15-1 표의 새 키 12(네 기둥 칸 이름 5 · {n}시 · {n}분 · {n}세 · 상대와 합쳐 보기 4)를 24-4 ~ 24-6 표 키와 똑같이 읽어 키 수 330 으로 더하고, 24-16-1(M-F2)의 `MILEAGE.shop.locked` · `SAJU.full.label` 둘로 332.
+//  · IF5-F1b: 24-15-1 표의 새 키 12(네 기둥 칸 이름 5 · {n}시 · {n}분 · {n}세 · 상대와 합쳐 보기 4)를 24-4 ~ 24-6 표 키와 똑같이 읽어 키 수 330 으로 더하고, 24-16-1(M-F2)의 `MILEAGE.shop.locked` · `SAJU.full.label` 둘로 332, IF5-F1c 에서 윤달 `SAJU.cal.day.lunarLeap` · 충전 잠김 둘째 줄 `MILEAGE.shop.lockedKeep` 둘을 더해 334.
 //    카피 파일은 앱이 고치지 않으므로(마케팅 몫) 표를 24-4 ~ 24-6 으로 옮기는 일은 기다리지 않는다 — 마케팅이 옮겨도(같은 키 · 같은 글) 키 수는 그대로다
 //  · 24-12(금지어) · 24-13(디자인 시안 대응표 — 첫 칸이 '시안 `키`' 꼴) · 24-14 는 읽지 않는다
 //  · {…} 자리는 앱이 채운다(if5Copy.t5). 글이 {…} 하나뿐인 줄(40개)은 AI 라이브러리 · 서버 값이 들어오는 자리라 앱 글이 아니다 — 사본에는 틀 그대로 두되 화면은 값을 넣어 쓴다
@@ -18,7 +18,7 @@ export const IF5_COPY_FILE = path.join(appDir, 'src', 'content', 'if5Copy.ts');
 const COPY_DOC = process.env.CHECK_COPY_DOC ?? path.join(root, '마케팅', '카피.md');
 
 export const IF5_PREFIXES = ['SAJU', 'MILEAGE', 'REST_HINT'];
-export const IF5_KEY_COUNT = 332; // 318(24-2 ~ 24-11) + 24-15-1 새 키 12(IF5-F1b) + 24-16-1 새 키 2(M-F2)
+export const IF5_KEY_COUNT = 334; // 318(24-2 ~ 24-11) + 24-15-1 새 키 12(IF5-F1b) + 24-16-1 새 키 2(M-F2) + F1c 새 키 2(윤달 SAJU.cal.day.lunarLeap · 충전 잠김 둘째 줄 MILEAGE.shop.lockedKeep)
 
 const NL = String.fromCharCode(10);
 const cellsOf = (line) => {
