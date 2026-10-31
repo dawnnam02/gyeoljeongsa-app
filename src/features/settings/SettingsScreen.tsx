@@ -161,7 +161,13 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
   const [legalOpen, setLegalOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   // IF5-F2: 탈퇴 확인창 마일리지 줄 — 스위치 mileage 가 켜졌을 때만 열 때 한 번 읽는다(저장 0)
+  //  IF5-QF F-07: 열 때마다 비워 두고 서버(마일리지 화면과 같은 읽기 get_mileage)에서 새로 읽는다 — 지난번 열었을 때의 값이 먼저 비치지 않는다.
+  //  (검수 긴 순서의 3,500 ≠ 3,300 은 이 캐시가 아니라 데모 장면 단추가 탑승 회차를 늘려 읽는 순간 '탑승 적립 +200'이 붙은 것 — 같은 시점에서는 두 화면이 같다. 변경기록 IF5-QF)
   const [withdrawMileage, setWithdrawMileage] = useState<{ total: number; paid: number; free: number } | null>(null);
+  const openWithdraw = () => {
+    setWithdrawMileage(null);
+    setWithdrawOpen(true);
+  };
   useEffect(() => {
     if (!withdrawOpen || deps.mileage?.() !== true) return undefined;
     let live = true;
@@ -356,7 +362,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
             </RowGroup>
             {deps.grade ? <GradeSwitches grade={deps.grade} onToast={showToast} /> : null}
             <OutlineButton label={SETTINGS.logout} icon="logout" busy={loggingOut} onPress={() => void logout()} testID="settings-logout" />
-            <TextButton label={SETTINGS.withdraw} icon="withdraw" onPress={() => setWithdrawOpen(true)} testID="settings-withdraw" />
+            <TextButton label={SETTINGS.withdraw} icon="withdraw" onPress={openWithdraw} testID="settings-withdraw" />
             {reportLine ? (
               <AppText variant="caption" tone="sub" style={styles.reportLine} testID="settings-report-no">
                 {reportLine}

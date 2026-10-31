@@ -416,6 +416,35 @@ describe('AIT-F ⑥ 연애 고민 정리 (카피 23-4 · 23-5 · ATF-12 ~ 15 · 
     expect(f).not.toHaveBeenCalled();
   });
 
+  test('IF5-QF F-01 · F-12 위기 앞거름이 먼저: 접근 코드가 없거나 동의 전이어도 낱말 사전으로 카드 · 요청 0 · 쓴 글 0 · 상시 줄 그대로', async () => {
+    const f = serve();
+    const tree = await open(); // 코드 없음
+    await typeInto(tree, 'concern-mine', '요즘 죽고 싶어요 CANARY');
+    await press(tree, 'concern-send');
+    await flush();
+    expect(has(tree, 'concern-item-0-crisis-l1')).toBe(true);
+    expect(has(tree, 'concern-nocode')).toBe(false); // 코드 안내가 카드를 가리지 않는다
+    expect(allTexts(tree).join('')).not.toContain('CANARY');
+    expect(must(tree, 'concern-mine').props.value).toBe('');
+    expect(textOf(tree, 'concern-always')).toBe(AIT_TEXT['CONCERN.always']);
+    expect(f).not.toHaveBeenCalled();
+    tree.unmount();
+    await grant(false); // 코드는 있고 동의 전
+    const t2 = await open();
+    await typeInto(t2, 'concern-mine', '남자친구가 저를 때렸어요');
+    await press(t2, 'concern-send');
+    await flush();
+    expect(isOpen(t2, 'concern-consent')).toBe(false); // 동의 시트가 먼저 뜨지 않는다
+    expect(has(t2, 'concern-item-0-violence-l1')).toBe(true);
+    expect(f).not.toHaveBeenCalled();
+    // 평범한 글은 예전 그대로: 동의 시트가 먼저
+    await typeInto(t2, 'concern-mine', '요즘 상대의 답이 늦어져서 마음이 쓰여요');
+    await press(t2, 'concern-send');
+    await flush();
+    expect(isOpen(t2, 'concern-consent')).toBe(true);
+    expect(f).not.toHaveBeenCalled();
+  });
+
   test('한 턴: 본문 키 · 서명 묶음 그대로 돌려보냄 · 답 글 · 근거 눌러 열기 · 약한 근거 · 고정 줄은 카피 글 · 모르는 줄은 안 보임', async () => {
     await grant(false);
     const BUNDLE = { payload: 'p-1', mac: 'm-1' };

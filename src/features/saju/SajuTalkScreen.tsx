@@ -1,6 +1,6 @@
 // IF-SJ-TALK 사주 이야기 나누기(IF5-F2 ⑩ · F5-17 · 화면 요구 IF-SJ-TALK · 정책 PS-38 · PS-45 ~ PS-53 · 디자인 CH-1 ~ 3 · 카피 24-9 · 설계안 M-13 · S-10 · A-8).
 //  순서: (처음) CK17D 동의 → CK19 동의 → **시작 시트 한 번**('한 번 말할 때마다 N 마일리지를 써요') → 말풍선 대화. 이후 턴은 시트 0 · 자동 차감. **대화 화면에 줄어드는 숫자 · 남은 횟수 · 글자 수 카운터 0**
-//  · 턴마다: 위기 앞거름(차감 0 · 잔액이 0이어도 카드) → 예치 → 서버 호출(접근 코드가 있으면 실제 · 없으면 데모 글) → 확정 / 해제. 부족하면 그 턴만 멈추고 한 줄 + [충전하러 가기](쓰던 글 그대로)
+//  · 턴마다: 위기 앞거름(차감 0 · 잔액이 0이어도 · **동의 전이어도 · 접근 코드가 없어도** 카드 — IF5-QF F-01: 낱말 사전을 동의 · 잔액 · 코드 확인보다 먼저 본다) → 예치 → 서버 호출(접근 코드가 있으면 실제 · 없으면 데모 글) → 확정 / 해제. 부족하면 그 턴만 멈추고 한 줄 + [충전하러 가기](쓰던 글 그대로)
 //  · 위기 카드: 고정 글 · 전화 걸기 0 · 상한 없음 · 닫으면(이어서 하기) 대화로 돌아감. **한 세션에서 5번째 위기 카드가 나오면 세션이 닫힌다**(카드 · 번호는 계속 보임, 입력 닫힘 · [새로 시작])
 //  · AI 답 **30번째 뒤 '쉬어 가요' 한 줄을 한 번** — 막지 않음 · 숫자 0 · 닫으면 다시 안 뜸. 긴 이야기는 서버가 앞부분을 요약해 이어 가고 화면에는 '앞부분은 요약해서 이어 가요' 한 줄뿐
 //  · 이력은 이 기기에만(서명 묶음 + 말풍선 — aiResults) · 서버 저장 0. 캡처 막기 · 공유 · 복사 0 · 먼저 말 걸기 · 푸시 0. 끝줄은 앱 한 곳(SAJU.card.footer)에서만 · 답마다 'AI가 쓴 글' 표시
@@ -16,7 +16,9 @@ import { TextButton } from '@/components/TextButton';
 import { TextField } from '@/components/TextField';
 import { IF5_TEXT } from '@/content/if5Copy';
 import { AitCardView, cardKind } from '@/features/ait/AitParts';
+import { ait } from '@/features/ait/aitText';
 import type { AitCard } from '@/features/ait/aitTypes';
+import { localPrecheckCard } from '@/features/ait/localPrecheck';
 import { Ck17dSheet, Ck19Sheet } from '@/features/consent/If5ConsentSheets';
 import { useIf5Consent } from '@/features/consent/if5Consent';
 import { Footnote } from '@/features/inflight/If2Parts';
@@ -155,9 +157,32 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
     return true;
   };
 
+  /** 고정 카드 한 장을 대화에 붙인다(위기 · 폭력 · 거절 · 미성년) — 차감 0 · 쓴 글은 말풍선 · 입력 칸에 남기지 않는다(위기 글 저장 0) */
+  const takeCard = (card: AitCard, newBundle?: unknown): void => {
+    reqId.current = null;
+    if (newBundle) bundle.current = newBundle;
+    const n = card.id === 'crisis' ? crisis + 1 : crisis;
+    const next = [...msgs, { id: seq.current++, role: 'card' as const, text: '', card }];
+    setText('');
+    setNotice('none');
+    setLow(null);
+    setCrisis(n);
+    const close = n >= CRISIS_CLOSE_AT || card.id === 'minor';
+    if (close) setClosed(true);
+    setMsgs(next);
+    saveSession({ msgs: next, crisis: n, closed: close });
+    setTimeout(() => scroll.current?.scrollToEnd?.({ animated: false }), 0);
+  };
+
   const send = async (): Promise<void> => {
     const t = text.trim();
     if (!ai || !t || busy || closed || !my) return;
+    // 위기 앞거름이 제일 먼저(IF5-QF F-01) — 동의 전이어도 · 잔액 0이어도 · 접근 코드가 없어도 카드. 서버 요청 0 · 마일리지 0
+    const early = localPrecheckCard(t);
+    if (early) {
+      takeCard(early);
+      return;
+    }
     if (!(await gate())) return;
     const facts = chatFacts(my, luck, today);
     if (!facts) {
@@ -171,13 +196,12 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
     const code = await ai.code();
     const out = await runAi({ edge: ai.edge, code: () => code, post: ai.post }, { kind: 'chat', requestId: id, chars: Array.from(t).length, text: t, bundle: bundle.current ?? undefined, facts });
     setBusy(false);
-    let next = msgs;
     if (out.kind === 'ok') {
       reqId.current = null;
       const d = out.display as { reply?: string; ask?: string; summarized?: boolean };
       if (out.bundle) bundle.current = out.bundle;
       const reply = [d.reply, d.ask].filter((x) => typeof x === 'string' && x).join(' ');
-      next = [...msgs, { id: seq.current++, role: 'me', text: t }, { id: seq.current++, role: 'ai', text: reply }];
+      const next = [...msgs, { id: seq.current++, role: 'me' as const, text: t }, { id: seq.current++, role: 'ai' as const, text: reply }];
       setText('');
       const n = answers + 1;
       setAnswers(n);
@@ -189,16 +213,7 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
       setMsgs(next);
       saveSession({ msgs: next, answers: n, restShown: restShown || n >= REST_AFTER_ANSWERS });
     } else if (out.kind === 'card') {
-      reqId.current = null;
-      if (out.bundle) bundle.current = out.bundle;
-      const n = out.card.id === 'crisis' ? crisis + 1 : crisis;
-      next = [...msgs, { id: seq.current++, role: 'card', text: '', card: out.card }]; // 말풍선에 쓴 글을 남기지 않는다(위기 글 저장 0)
-      setText('');
-      setCrisis(n);
-      const close = n >= CRISIS_CLOSE_AT || out.card.id === 'minor';
-      if (close) setClosed(true);
-      setMsgs(next);
-      saveSession({ msgs: next, crisis: n, closed: close });
+      takeCard(out.card, out.bundle);
     } else if (out.kind === 'low') setLow({ need: out.need, have: out.have });
     else if (out.kind === 'blocked') setNotice('blocked');
     else if (out.kind === 'failed') setNotice('failed');
@@ -323,6 +338,9 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
           {IF5_TEXT['SAJU.card.end']}
         </AppText>
         <Footnote text={IF5_TEXT['SAJU.card.footer']} testID="saju-talk-footer" />
+        <AppText variant="caption" testID="saju-talk-always">
+          {ait('CONCERN.always')}
+        </AppText>
       </ScrollView>
 
       <Ck17dSheet

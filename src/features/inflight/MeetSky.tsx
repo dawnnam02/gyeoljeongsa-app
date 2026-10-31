@@ -91,38 +91,40 @@ export function MeetSky({ day, onChange, now = Date.now, testID = 'meet-sky' }: 
               <Icon name="chevron" size={24} color={colors.text} />
             </Pressable>
           </View>
-          <View style={styles.weekRow}>
-            {WEEKDAY_SHORT.map((w) => (
-              <AppText key={w} variant="caption" style={styles.cell}>
-                {w}
-              </AppText>
+          <View style={styles.grid}>
+            <View style={styles.weekRow}>
+              {WEEKDAY_SHORT.map((w) => (
+                <AppText key={w} variant="caption" style={styles.cell}>
+                  {w}
+                </AppText>
+              ))}
+            </View>
+            {weeks.map((wk, wi) => (
+              <View key={wi} style={styles.weekRow}>
+                {wk.map((d, ci) => {
+                  if (d === null) return <View key={`e-${wi}-${ci}`} style={styles.cell} />;
+                  const iso = isoOf(ym.y, ym.m, d);
+                  const future = iso > today; // 만난 날은 지난 날
+                  const chosen = iso === day;
+                  return (
+                    <Pressable
+                      key={iso}
+                      accessibilityRole="button"
+                      accessibilityLabel={mdText(iso)}
+                      accessibilityState={{ selected: chosen, disabled: future }}
+                      aria-selected={chosen}
+                      disabled={future}
+                      onPress={() => pick(d)}
+                      effect="none"
+                      style={({ pressed }) => [styles.cell, styles.day, chosen && styles.chosen, pressed && styles.pressed]}
+                      testID={`${testID}-day-${d}`}>
+                      <AppText variant="smallMedium" tone={future ? 'sub' : 'text'}>{d}</AppText>
+                    </Pressable>
+                  );
+                })}
+              </View>
             ))}
           </View>
-          {weeks.map((wk, wi) => (
-            <View key={wi} style={styles.weekRow}>
-              {wk.map((d, ci) => {
-                if (d === null) return <View key={`e-${wi}-${ci}`} style={styles.cell} />;
-                const iso = isoOf(ym.y, ym.m, d);
-                const future = iso > today; // 만난 날은 지난 날
-                const chosen = iso === day;
-                return (
-                  <Pressable
-                    key={iso}
-                    accessibilityRole="button"
-                    accessibilityLabel={mdText(iso)}
-                    accessibilityState={{ selected: chosen, disabled: future }}
-                    aria-selected={chosen}
-                    disabled={future}
-                    onPress={() => pick(d)}
-                    effect="none"
-                    style={({ pressed }) => [styles.cell, styles.day, chosen && styles.chosen, pressed && styles.pressed]}
-                    testID={`${testID}-day-${d}`}>
-                    <AppText variant="smallMedium" tone={future ? 'sub' : 'text'}>{d}</AppText>
-                  </Pressable>
-                );
-              })}
-            </View>
-          ))}
         </View>
       ) : null}
 
@@ -139,8 +141,10 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', alignItems: 'center', gap: space.s12, flexWrap: 'wrap' },
   nav: { minWidth: size.touchMin, minHeight: size.touchMin, alignItems: 'center', justifyContent: 'center' },
   center: { textAlign: 'center' },
+  // IF5-QF F-06: 360폭에서 칸이 46이었다(시트 좌우 여백 20씩 → 320 ÷ 7). 날짜 칸 줄이 여백으로 12씩 나와 344 ÷ 7 = 49 — 터치 48 이상(390 · 430은 더 넓다). 7칸 같은 너비(14.2857%) — 고른 칸의 테두리가 칸을 넓히지 않는다(IF5-F1c 와 같은 방식)
+  grid: { marginHorizontal: -space.s12, gap: space.s8 },
   weekRow: { flexDirection: 'row' },
-  cell: { flex: 1, minHeight: size.touchMin, textAlign: 'center' },
+  cell: { width: '14.2857%', minHeight: size.touchMin, textAlign: 'center' },
   day: { alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
   chosen: { borderWidth: 2, borderColor: colors.accent, backgroundColor: colors.accentSoft },
   pressed: { opacity: alpha.pressed },

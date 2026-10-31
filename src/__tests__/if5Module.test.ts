@@ -21,9 +21,9 @@ const hasCopyDoc = fs.existsSync(path.join(ROOT, '마케팅', '카피.md'));
 const run = (script: string, ...args: string[]) => spawnSync(process.execPath, [path.join(APP, 'scripts', script), ...args], { encoding: 'utf8' });
 
 (hasOrigin ? describe : describe.skip)('IF5-F1 ② 계산 모듈 사본 = 원본 (동기 검사)', () => {
-  test('node scripts/sync-if5.mjs --check 가 같음 · 파일 20개(코드 11 + 순수 검사기 3 + 데이터 6) + 서버 7개 · 원본은 읽기만', () => {
+  test('node scripts/sync-if5.mjs --check 가 같음 · 파일 21개(코드 11 + 순수 검사기 4 + 데이터 6) + 서버 7개 · 원본은 읽기만', () => {
     const r = run('sync-if5.mjs', '--check');
-    expect(r.stdout + r.stderr).toMatch(/IF5 동기 같음: 파일 20개\(src\/saju5\) \+ 7개\(src\/server\/saju5\)/);
+    expect(r.stdout + r.stderr).toMatch(/IF5 동기 같음: 파일 21개\(src\/saju5\) \+ 7개\(src\/server\/saju5\)/);
     expect(r.status).toBe(0);
   });
   test('들이지 않은 것: partner5(F2) · AI 요청 · 원가 · 대화 모듈이 앱 소스에 없다(번들에 지시문 0 — IFF5-35)', () => {

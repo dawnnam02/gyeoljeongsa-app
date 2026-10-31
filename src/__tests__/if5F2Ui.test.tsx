@@ -28,6 +28,10 @@ import { Ck17Sheet } from '@/features/inflight/If2Sheets';
 import featureKeysJson from '@/config/featureKeys.json';
 import { IF5_CONSENT_VERSIONS, IF5_KEEP_NOTE_ON } from '@/config/laterConsent';
 import type { AitResult } from '@/features/ait/aitTypes';
+import { AIT_TEXT } from '@/content/aitCopy';
+import { newRequestId, runAi } from '@/features/saju/ai/aiRun';
+import { classifyHit as classifyHitClient } from '@/saju5/ait/lexicon';
+import { classifyHit as classifyHitServer } from '@/server/ait/lexicon';
 
 import { allTexts, has, isOpen, mount, must, press, textOf, typeInto } from './renderHelpers';
 
@@ -407,12 +411,14 @@ describe('IF5-F2 ⑩ AI 맞춤 칸 (사주 마당 결 읽기)', () => {
     await low.consent.agreeD();
     const t3 = await open(low);
     await press(t3, 'saju-year-ai-btn');
-    await wait(60);
-    await press(t3, 'saju-year-ok-check');
-    await press(t3, 'saju-year-ok-go');
     await wait(80);
+    // IF5-QF F-04: 잔액이 모자라면 확인 시트를 열지 않고 바로 부족 줄 — 시트의 '쓰고 나면' 숫자가 틀리게 나오는 길 0
+    expect(isOpen(t3, 'saju-year-ok')).toBe(false);
+    expect(has(t3, 'saju-year-ok-bal')).toBe(false);
     expect(textOf(t3, 'saju-year-ai-low-need')).toBe('필요한 건 1,500, 지금 가진 건 100이에요.');
+    expect(has(t3, 'saju-year-ai-low-go')).toBe(true);
     expect(low.posts).toHaveLength(0);
+    expect((await low.ai.mileage.state()).ok && (await low.ai.mileage.state())).toMatchObject({ data: { total: 100 } }); // 차감 0
   });
   test('③ 시각 · ⑤ 성별 동의가 없으면 시각은 요청에 안 실리고 대운 칸은 안내 한 줄뿐(AI 칸 0)', async () => {
     const r = aiRig({ code: 'ait-code', items: false });
@@ -527,5 +533,156 @@ describe('IF5-F2 ⑩ 사주 이야기 나누기 (IF-SJ-TALK)', () => {
     const tree = await talk(r);
     expect(textOf(tree, 'saju-talk-norange')).toBe(IF5_TEXT['SAJU.talk.noRange']);
     expect(has(tree, 'saju-talk-input')).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// IF5-QF 검수 찾은 것 고치기 — F-01 위기 앞거름이 동의 · 잔액 · 접근 코드 확인보다 먼저 / F-02 상시 한 줄 / F-04 잔액 부족 시트 전 부족 줄 / 데모 위기 사전
+describe('IF5-QF F-01 · F-02 사주 이야기: 위기 앞거름이 먼저 · 상시 한 줄', () => {
+  const talk = async (r: ReturnType<typeof aiRig>) => {
+    const tree = keep(await mount(<SajuTalkScreen deps={r.deps} store={answered()} />));
+    await wait(150);
+    return tree;
+  };
+  const say = async (tree: ReactTestRenderer, text: string) => {
+    await typeInto(tree, 'saju-talk-input', text);
+    await press(tree, 'saju-talk-send');
+    await wait(80);
+  };
+  const totalOf = async (r: ReturnType<typeof aiRig>) => {
+    const s = await r.ai.mileage.state();
+    return s.ok ? s.data.total : -1;
+  };
+  const holds = (r: ReturnType<typeof aiRig>) => r.calls.filter((c) => c.fn === 'demo_mileage_hold');
+
+  test('동의 전 · 잔액 0 · 접근 코드 없음: 위기 말 → 동의 시트 없이 바로 카드 · 쓴 글 0 · 차감 0 · 서버 요청 0 · 예치 호출 0', async () => {
+    const r = aiRig({ code: null, email: 'mzero@email.com' }); // 동의를 하나도 안 했다(CK17D · CK19 둘 다 없음)
+    const tree = await talk(r);
+    await say(tree, '요즘 죽고 싶어요');
+    expect(has(tree, 'saju-talk-cardview-crisis')).toBe(true);
+    expect(isOpen(tree, 'saju-talk-ck17d')).toBe(false);
+    expect(isOpen(tree, 'saju-talk-ck19')).toBe(false);
+    expect(isOpen(tree, 'saju-talk-start')).toBe(false);
+    expect(allTexts(tree).join(' ')).not.toContain('죽고 싶어요');
+    expect(must(tree, 'saju-talk-input').props.value).toBe('');
+    expect(r.posts).toHaveLength(0);
+    expect(holds(r)).toHaveLength(0);
+    expect(await totalOf(r)).toBe(0);
+    expect(r.consent.get().d).toBeFalsy(); // 카드 때문에 동의가 켜지지도 않는다
+  });
+  test('접근 코드가 있어도 동의 전이면 서버 요청 0 · 카드(예전엔 동의 시트가 먼저 떴다)', async () => {
+    const r = aiRig({ code: 'ait-code' });
+    const tree = await talk(r);
+    await say(tree, '자살하고 싶다는 생각이 나요');
+    expect(has(tree, 'saju-talk-cardview-crisis')).toBe(true);
+    expect(isOpen(tree, 'saju-talk-ck17d')).toBe(false);
+    expect(r.posts).toHaveLength(0); // 동의 전에는 위기 앞거름 호출도 없다 — 사전은 화면 쪽 사본
+    expect(await totalOf(r)).toBe(1000);
+  });
+  test('평범한 글은 그대로 동의 시트가 먼저(순서가 앞서는 것은 위기 · 폭력 · 오용 · 미성년 글뿐)', async () => {
+    const r = aiRig({ code: null });
+    const tree = await talk(r);
+    await say(tree, '올해 일이 잘 풀릴까요?');
+    expect(isOpen(tree, 'saju-talk-ck17d')).toBe(true);
+    expect(has(tree, 'saju-talk-cardview-crisis')).toBe(false);
+  });
+  test('폭력 · 미성년 카드도 같은 자리에서 — 폭력은 계속 이어 갈 수 있고 미성년은 세션이 닫힌다(차감 0)', async () => {
+    const r = aiRig({ code: null, email: 'mzero@email.com' });
+    const tree = await talk(r);
+    await say(tree, '남자친구가 어제 저를 때렸어요');
+    expect(has(tree, 'saju-talk-cardview-violence')).toBe(true);
+    expect(has(tree, 'saju-talk-input')).toBe(true);
+    await say(tree, '저는 고등학생이에요');
+    expect(has(tree, 'saju-talk-cardview-minor')).toBe(true);
+    expect(has(tree, 'saju-talk-closed')).toBe(true);
+    expect(has(tree, 'saju-talk-input')).toBe(false);
+    expect(await totalOf(r)).toBe(0);
+    expect(allTexts(tree).join(' ')).not.toMatch(/때렸|고등학생/);
+  });
+  test('동의 전 위기 5번 → 5번째에 세션이 닫힌다(카드 · 번호는 계속 보임)', async () => {
+    const r = aiRig({ code: null, email: 'mzero@email.com' });
+    const tree = await talk(r);
+    for (let i = 0; i < 5; i += 1) await say(tree, i % 2 === 0 ? '죽고 싶어요' : '사라지고 싶어요');
+    expect(has(tree, 'saju-talk-closed')).toBe(true);
+    expect(has(tree, 'saju-talk-cardview-crisis')).toBe(true);
+    expect(allTexts(tree).filter((t) => t === AIT_TEXT['CONCERN.always'])).toHaveLength(1);
+  });
+  test('F-02 상시 한 줄(CONCERN.always)이 어느 상태에서도 보인다 — 대화 · 카드 · 범위 밖', async () => {
+    const r = aiRig({ code: null });
+    const tree = await talk(r);
+    expect(textOf(tree, 'saju-talk-always')).toBe(AIT_TEXT['CONCERN.always']);
+    await say(tree, '죽고 싶어요');
+    expect(textOf(tree, 'saju-talk-always')).toBe(AIT_TEXT['CONCERN.always']);
+    const range = aiRig({ code: 'ait-code', birth: '1950-05-05' });
+    const t2 = await talk(range);
+    expect(has(t2, 'saju-talk-norange')).toBe(true);
+    expect(textOf(t2, 'saju-talk-always')).toBe(AIT_TEXT['CONCERN.always']);
+    expect(allTexts(t2).filter((t) => t === IF5_TEXT['SAJU.card.footer'])).toHaveLength(1); // 끝줄은 여전히 한 곳
+  });
+});
+
+describe('IF5-QF 데모 위기 사전: 서버 사전 사본을 쓴다(예전 5낱말 목록 대신)', () => {
+  const demo = (email = 'mzero@email.com') => aiRig({ code: null, email });
+  test('예전 5낱말에 없던 서버 사전 낱말도 코드 없는 길에서 카드(위기 확장 · 폭력 · 오용 · 미성년)', async () => {
+    const cases: [string, string][] = [
+      ['더 이상 살고 싶지 않아요', 'crisis'],
+      ['세상을 떠나고 싶어요', 'crisis'],
+      ['남자친구가 저를 때렸어요', 'violence'],
+      ['그 사람 휴대폰을 몰래 보고 싶어요', 'misuse'],
+      ['저는 고등학생이에요', 'minor'],
+    ];
+    for (const [text, id] of cases) {
+      const r = demo();
+      const out = await runAi({ edge: r.ai.edge, code: () => null }, { kind: 'chat', requestId: newRequestId(), chars: 10, text, facts: {} });
+      expect(out.kind).toBe('card');
+      if (out.kind === 'card') expect(out.card.id).toBe(id);
+    }
+  });
+  test('일상 말투는 카드가 아니다 — 데모 글이 나간다', async () => {
+    const r = demo('sj@email.com');
+    const out = await runAi({ edge: r.ai.edge, code: () => null }, { kind: 'chat', requestId: newRequestId(), chars: 10, text: '배고파 죽겠어요 점심 뭐 먹을까요', facts: {} });
+    expect(out.kind).toBe('ok');
+  });
+  test('화면 쪽 사전 사본 = 서버 사전(같은 함수 · 같은 결과)', () => {
+    const samples = ['죽고 싶어요', '때렸어요', '몰래 따라가고 싶어요', '만 15세예요', '평범한 하루였어요', '자해', '번개탄', '죽겠어요 배고파서'];
+    for (const s of samples) expect(classifyHitClient(s)).toBe(classifyHitServer(s));
+  });
+});
+
+describe('IF5-QF F-04 AI 맞춤: 잔액이 모자라면 확인 시트 전에 부족 줄', () => {
+  const open = async (r: ReturnType<typeof aiRig>) => {
+    const tree = keep(await mount(<SajuMadangScreen deps={r.deps} store={answered()} />));
+    await wait(120);
+    return tree;
+  };
+  test('잔액 100 · 풀이 800: 시트가 열리지 않고 부족 줄 · 차감 0 · 서버 요청 0 / 잔액이 충분하면 시트에 정확한 숫자', async () => {
+    const low = aiRig({ code: 'ait-code', email: 'mlow@email.com' });
+    await low.consent.agreeD();
+    const t = await open(low);
+    await press(t, 'saju-kyeol-ai-btn');
+    await wait(80);
+    expect(isOpen(t, 'saju-kyeol-ok')).toBe(false);
+    expect(textOf(t, 'saju-kyeol-ai-low-need')).toBe('필요한 건 800, 지금 가진 건 100이에요.');
+    expect(low.posts).toHaveLength(0);
+    expect(low.calls.some((c) => c.fn === 'demo_mileage_hold')).toBe(false);
+    await press(t, 'saju-kyeol-ai-low-go');
+    expect(mockRouter.push).toHaveBeenCalledWith('/mileage');
+
+    const ok = aiRig({ code: 'ait-code' }); // 가입 선물 1,000
+    await ok.consent.agreeD();
+    const t2 = await open(ok);
+    await press(t2, 'saju-kyeol-ai-btn');
+    await wait(80);
+    expect(isOpen(t2, 'saju-kyeol-ok')).toBe(true);
+    expect(textOf(t2, 'saju-kyeol-ok-bal')).toBe('지금 1,000 · 쓰고 나면 200');
+  });
+  test('빈 잔액(0)도 같다', async () => {
+    const zero = aiRig({ code: null, email: 'mzero@email.com' });
+    await zero.consent.agreeD();
+    const t = await open(zero);
+    await press(t, 'saju-kyeol-ai-btn');
+    await wait(80);
+    expect(isOpen(t, 'saju-kyeol-ok')).toBe(false);
+    expect(textOf(t, 'saju-kyeol-ai-low-need')).toBe('필요한 건 800, 지금 가진 건 0이에요.');
   });
 });

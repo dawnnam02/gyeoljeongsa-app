@@ -1,5 +1,6 @@
 // AI 맞춤 한 칸(IF5-F2 ⑩ · 화면 요구 IF-SJ-CARD 'AI 맞춤 추가 상태' · 디자인 SUM-2 · 3 · 카피 24-2 `SAJU.card.ai*` · `SAJU.status.ai*`).
 //  결과 한 장 아래에 이어 붙는다: [AI 맞춤 풀이 받기 · 마일리지 N](**숫자는 이 버튼 옆 한 곳**) → (처음이면) CK17D 동의 시트 → (300 이상이면) 확인 시트 → 만드는 중 → 'AI가 쓴 글' + 글.
+//  · 잔액이 모자라면 확인 시트를 열지 않고 사실 한 줄(필요 · 지금 가진 수) + [충전하러 가기](IF5-QF F-04)
 //  · 동의 → 마일리지 → 사용 순서: 동의하기 전에는 마일리지가 쓰이지 않고 서버도 부르지 않는다. 같은 결과를 다시 열면 저장본 재열람 무료('다시 열어도 마일리지는 들지 않아요') · '다시 뽑기' 0
 //  · 검사 탈락 · 끊김은 차감 0('이번엔 글을 만들지 못했어요. 마일리지는 쓰이지 않았어요.') + [다시 시도](같은 요청 번호). 잔액 부족은 사실 한 줄 + [충전하러 가기]. 점검(장부 꺼짐)은 한 줄 · 차감 0
 //  · 평문만(마크다운 · 링크 해석 0) · 공유 · 복사 단추 0 · 점수 · 퍼센트 · 숫자 막대 0. 끝줄은 앱 한 곳(SAJU.card.footer)에서만 — 여기서는 붙이지 않는다
@@ -131,6 +132,11 @@ export function AiBlock(p: Props) {
     const b = await p.svc.mileage.state();
     if (!b.ok) {
       set({ k: 'balanceFailed' });
+      return;
+    }
+    const need = c.data.base + c.data.extra;
+    if (b.data.total < need) {
+      set({ k: 'low', need, have: b.data.total }); // IF5-QF F-04: 모자라면 확인 시트를 열지 않는다 — '쓰고 나면 0' 같은 틀린 숫자 길 0 · 바로 부족 줄 + [충전하러 가기]
       return;
     }
     set({ k: 'confirm', cost: c.data, balance: b.data.total });

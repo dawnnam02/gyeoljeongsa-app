@@ -3,8 +3,8 @@
 //  · 위기 카드는 차감 0 · 잔액이 0이어도 나온다(예치 전에 거른다). 검사 탈락(blocked_output) · 시간 초과 · 끊김 · 오류는 모두 해제 — 마일리지는 쓰이지 않았어요
 //  · 종합 풀이는 풀이 · 대운 · 올해 세 번을 이어 부르고 한 예치로 묶는다(하나라도 못 받으면 전부 해제)
 //  · 앱 자동 재시도 0 — 사용자가 다시 누르면 같은 요청 번호로 다시 예치한다. 결제 호출(consumeAsync …) 0 · 금액 인자 0
-import { demoHelpHit } from '@/demo/crisisWords';
 import type { AitCard, AitResult } from '@/features/ait/aitTypes';
+import { localPrecheckCard } from '@/features/ait/localPrecheck';
 import type { LedgerEdge } from '@/features/mileage/ledgerEdge';
 import { mockOutput5 } from '@/saju5/mock5';
 import type { Feature5 } from '@/saju5/spec5';
@@ -45,12 +45,12 @@ export type AiRequest = {
 
 export const newRequestId = (): string => `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 6)}`;
 
-const DEMO_CRISIS_CARD: AitCard = { id: 'crisis', lines: [], options: ['continue', 'end'] };
-
-/** 위기 앞거름 — 서버가 아는 위기 · 폭력 · 거절 · 미성년을 예치 전에 본다. 코드가 없으면 데모 낱말 목록뿐 */
+/** 위기 앞거름 — 서버가 아는 위기 · 폭력 · 거절 · 미성년을 예치 전에 본다. 화면 쪽 사본(서버와 한 벌인 낱말 사전 · IF5-QF — 예전 5낱말 목록 대신)을 먼저 보고, 코드가 있으면 서버에도 묻는다 */
 async function precheck(d: AiDeps, text: string): Promise<AitCard | null> {
+  const local = localPrecheckCard(text); // 서버와 한 벌인 사전을 먼저 — 요청 0
+  if (local) return local;
   const code = d.code();
-  if (!code) return demoHelpHit(text) ? DEMO_CRISIS_CARD : null;
+  if (!code) return null;
   const res = await (d.post ?? postSaju5)('chat', { text, precheck: true }, code);
   return res.kind === 'reply' && !res.reply.ok && res.reply.card ? res.reply.card : null; // 닿지 못해도(offline) 예치 단계에서 걸러진다 — 업체 호출은 서버가 다시 거른다
 }

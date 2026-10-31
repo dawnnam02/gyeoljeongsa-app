@@ -19,6 +19,7 @@ import { colors, radius, space } from '@/theme/tokens';
 import { AitAiLabel, AitCardView, AitConsentSheet, AitError, AitHead, AitLoading, AitNoCode, AitPaper, AitPrivacyLines, cardKind, isErrorCode, type AitErrorCode, type CardKind } from './AitParts';
 import { AIT_REST_AFTER_ANSWERS } from './aitConfig';
 import { postAit } from './aitClient';
+import { localPrecheckCard } from './localPrecheck';
 import { aitStore, hasConsent } from './aitStore';
 import { ait, type AitKey } from './aitText';
 import { parseChatDisplay, type AitChatDisplay, type AitRef, type AitSentence } from './aitTypes';
@@ -178,6 +179,22 @@ function ChatBody({ onClose, onSettings, testID }: { onClose: () => void; onSett
       if (len(asker) > ASKER_MAX) return setError('too_long');
       if (len(partner) > PARTNER_MAX) return setInputMsg('CONCERN.partner.tooLong');
       await aitStore.load();
+      // 위기 앞거름이 먼저(IF5-QF F-01 · F-12): 접근 코드가 없거나 동의 전이어도 서버와 한 벌인 낱말 사전으로 본다 — 걸리면 안내 카드 · 요청 0 · 쓴 글은 남기지 않는다.
+      //  코드와 동의가 모두 있으면 서버가 같은 일을 세션 상태와 함께 한다(위기 카드 횟수 · 폭력 안전 길)
+      if (!aitStore.get().code || !hasConsent(aitStore.get())) {
+        const early = localPrecheckCard(`${asker}
+${partner}`);
+        const kind = early ? cardKind(early) : null;
+        if (early && kind) {
+          setAsker('');
+          setPartner('');
+          setError(null);
+          setInputMsg(null);
+          setNoCode(false);
+          setItems((xs) => [...xs.filter((x) => !(x.t === 'card' && x.kind === 'soft')), { t: 'card', kind, options: early.options }]);
+          return;
+        }
+      }
       if (!aitStore.get().code) return setNoCode(true); // 코드 없음 → 서버 요청 0
       if (!hasConsent(aitStore.get())) {
         pending.current = { chip };
