@@ -13,6 +13,7 @@ import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Pressable } from '@/components/Pressable';
 import { Screen } from '@/components/Screen';
+import { COMMON } from '@/content/copy';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { if2Look } from '@/theme/if2Look';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
@@ -21,7 +22,8 @@ import { deviceNotes, useDeviceNotes, type DeviceNotes } from './deviceNotes';
 import { Art, artXml, Footnote, if2Styles } from './If2Parts';
 import { isPacked, PACK_COUNT, PACK_QUIZ, packedItems, packItemLabel, travelTypeOf, type TravelTypeLib } from './if2Library';
 import { tx, txSeq } from './if2Text';
-import { inflightServices, type TypeSource } from './inflightService';
+import { inflightServices } from './inflightService';
+import { typeStateOf, type TypeSource, type TypeState } from './typeApi';
 
 // 엽서 앞면 칸(320 × 200)에 소품을 놓는 자리 — 디자인 타입소재 목록 '엽서 앞면에 올려 본 모습': 가운데 타입 소재 하나 · 왼쪽 셋 · 오른쪽 셋 · 아래 가운데 하나(문항 차례)
 const SLOTS: readonly { left: `${number}%`; top: `${number}%` }[] = [
@@ -133,11 +135,18 @@ export function TypeCardScreen({ source, notes }: { source?: TypeSource; notes?:
   const store = notes ?? deviceNotes();
   const bag = useDeviceNotes(store).typeBag;
   const [loaded, setLoaded] = useState(store.ready());
-  const [typeId, setTypeId] = useState<string | null | 'loading'>('loading');
+  const [typeState, setTypeState] = useState<TypeState | 'loading'>('loading');
+  const [tries, setTries] = useState(0);
   const [side, setSide] = useState<'front' | 'back'>('front');
   useEffect(() => {
-    void src.mine().then(setTypeId);
-  }, [src]);
+    let alive = true;
+    void typeStateOf(src)
+      .catch((): TypeState => ({ state: 'not_ready' }))
+      .then((s) => alive && setTypeState(s));
+    return () => {
+      alive = false;
+    };
+  }, [src, tries]);
   useEffect(() => {
     let alive = true;
     void store.load().then(() => alive && setLoaded(true));
@@ -146,8 +155,10 @@ export function TypeCardScreen({ source, notes }: { source?: TypeSource; notes?:
     };
   }, [store]);
   const back = () => (router.canGoBack() ? router.back() : router.replace('/boarding' as Href));
-  const type = typeId === 'loading' ? null : travelTypeOf(typeId);
-  const wait = typeId === 'loading' || !loaded;
+  // 서버 상태 다섯(0047): ready 면 id 로 라이브러리 글을 찾는다 · 나머지 넷은 타입 없음 화면(숫자 0)
+  const type = typeState === 'loading' || typeState.state !== 'ready' ? null : travelTypeOf(typeState.type);
+  const wait = typeState === 'loading' || !loaded;
+  const stateKey = typeState === 'loading' ? 'loading' : typeState.state === 'ready' && !type ? 'not_ready' : typeState.state;
   const packed = isPacked(bag);
   const items = packedItems(bag);
   const itemNames = items.map((c) => (c ? packItemLabel(c) : null)).filter((x): x is string => !!x);
@@ -155,9 +166,12 @@ export function TypeCardScreen({ source, notes }: { source?: TypeSource; notes?:
   let body = null;
   if (!wait && !type) {
     body = (
-      <AppText variant="body" tone="sub" testID="type-none">
-        {tx('TYPE_CARD.loadFailed')}
-      </AppText>
+      <View style={if2Styles.gap} testID={`type-state-${stateKey}`}>
+        <AppText variant="body" tone="sub" testID="type-none">
+          {tx('TYPE_CARD.loadFailed')}
+        </AppText>
+        {stateKey === 'not_ready' ? <Button label={COMMON.retry} variant="secondary" onPress={() => (setTypeState('loading'), setTries((n) => n + 1))} testID="type-retry" /> : null}
+      </View>
     );
   } else if (!wait && type && !packed) {
     body = <PackQuiz notes={store} onLater={back} />;

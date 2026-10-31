@@ -2,7 +2,7 @@
 //  · 홈 · 기내지 · 카드 · 미리 답 질문 · 미리보기 · 궁합 카드 = lib/supabase 클라이언트(데모 모드면 메모리 모의 서버 demo/inflightDemo)
 //  · 대화방 칸 = features/chat/chatService inflightChatApi(데모면 데모 채팅)
 //  · 재미 정보 동의 CK17A · CK17B(동의문구 4-17 · 판 IF2_CONSENT_VERSIONS): 기록 = consents 넣기(받은 곳 feature_sheet | settings) · 거두기 = revoke_consent(0043 — A 를 거두면 B 도)
-//  · 내 여행 타입(F-19): 서버에 타입 계산이 아직 없다(backend 11-5 'R48 ② 서버에 없음') → 실서버는 타입 없음(칸 0). 데모만 계산명세 10-1 식(fun_calc.travel_type)으로 정한 타입 id. 이름 · 설명 · 노선 글은 라이브러리(열두 타입)
+//  · 내 여행 타입(F-19): 실서버 = get_my_travel_type()(0047 · 상태 ready / none / not_ready / feature_off / forbidden · 앱 안 계산 0). 데모만 계산명세 10-1 식(fun_calc.travel_type)으로 정한 타입 id. 이름 · 설명 · 노선 글은 라이브러리(열두 타입)
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { IF2_CONSENT_VERSIONS } from '@/config/laterConsent';
@@ -12,6 +12,9 @@ import { safeLog } from '@/lib/log';
 import { readDbFailure } from '@/lib/serverError';
 
 import { createInflightApi, rpcOf, type InflightApi } from './inflightApi';
+import { createTypeSource, type TypeSource } from './typeApi';
+
+export type { TypeSource, TypeState } from './typeApi';
 
 export type Ck17State = { a: boolean; b: boolean };
 export type Ck17Api = {
@@ -49,8 +52,7 @@ export function createCk17Api(client: SupabaseClient, appVersion: string): Ck17A
   };
 }
 
-// 내 여행 타입 id('tt-01' ~ 'tt-12') — 이름 · 앞면 한 줄 · 설명 · 노선 두 역은 라이브러리가 id 로 가진다(서버 값이 생기면 이 id 만 받는다)
-export type TypeSource = { mine(): Promise<string | null> };
+// 내 여행 타입 id('tt-01' ~ 'tt-12') — 이름 · 앞면 한 줄 · 설명 · 노선 두 역은 라이브러리가 id 로 가진다. 실서버는 get_my_travel_type(0047) 응답 id 만 받는다(typeApi.ts)
 
 let made: { api: InflightApi; ck17: Ck17Api; type: TypeSource } | null = null;
 export function inflightServices(): { api: InflightApi; ck17: Ck17Api; type: TypeSource } {
@@ -59,7 +61,7 @@ export function inflightServices(): { api: InflightApi; ck17: Ck17Api; type: Typ
     const { env } = require('@/config/env') as typeof import('@/config/env');
     const { supabase } = require('@/lib/supabase') as typeof import('@/lib/supabase');
     const { APP_VERSION } = require('@/lib/appVersion') as typeof import('@/lib/appVersion');
-    const type: TypeSource = env.demoMode ? (require('@/demo/typeDemo') as typeof import('@/demo/typeDemo')).demoTypeSource : { mine: async () => null };
+    const type: TypeSource = env.demoMode ? (require('@/demo/typeDemo') as typeof import('@/demo/typeDemo')).demoTypeSource : createTypeSource(rpcOf(supabase));
     /* eslint-enable @typescript-eslint/no-require-imports */
     made = { api: createInflightApi(rpcOf(supabase)), ck17: createCk17Api(supabase, APP_VERSION), type };
   }
