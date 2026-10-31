@@ -64,7 +64,7 @@ export const sceneOfEmail = (email: string): DemoChatScene => {
 
 type Who = () => Promise<{ id: string; email: string } | null>;
 type RoomState = { room: Room; messages: Message[]; theirExtend: boolean; gone: boolean; replied: boolean; failOnce: boolean };
-type State = { scene: DemoChatScene; rooms: RoomState[]; reports: { room: string; reason: string }[]; startedAt: number; help: { day: string; n: number } };
+type State = { scene: DemoChatScene; rooms: RoomState[]; reports: { room: string; reason: string }[]; startedAt: number; crisis: { day: string; n: number } };
 
 let seq = 0;
 const nextId = () => String((seq += 1));
@@ -146,7 +146,7 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
   const seed = (key: string, email: string, scene: DemoChatScene): State => {
     const p = kinOrder(poolFor(email), 4, myReligionOf(email))[0] ?? demoPerson(4);
     const rooms = scene === 'empty' || !p ? [] : [seedRoom(p, email, scene)];
-    const s: State = { scene, rooms, reports: [], startedAt: clock(), help: { day: '', n: 0 } };
+    const s: State = { scene, rooms, reports: [], startedAt: clock(), crisis: { day: '', n: 0 } };
     states.set(key, s);
     return s;
   };
@@ -157,12 +157,12 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
   };
   const nowOf = (s: State) => SCENE_NOW[s.scene] + shiftOf(s.scene) + (clock() - s.startedAt);
   // 위기 도움 카드(정책 P4-29 ~ 36): 서버가 보내기 응답에 참/거짓 한 칸을 싣는 흉내 — 위기 낱말(라운지 데모와 같은 목록)이 있으면 참, 한 계정이 하루 3번까지(방을 합쳐), 4번째부터 거짓. 글 표 · 열 0(메모리 셈)
-  const helpOf = (s: State, text: string): boolean => {
+  const crisisOf = (s: State, text: string): boolean => {
     if (!demoHelpHit(text)) return false;
     const day = new Date(nowOf(s) + 9 * 3_600_000).toISOString().slice(0, 10);
-    if (s.help.day !== day) s.help = { day, n: 0 };
-    if (s.help.n >= DEMO_HELP_PER_DAY) return false;
-    s.help.n += 1;
+    if (s.crisis.day !== day) s.crisis = { day, n: 0 };
+    if (s.crisis.n >= DEMO_HELP_PER_DAY) return false;
+    s.crisis.n += 1;
     return true;
   };
   const notify = (id: string) => listeners.get(id)?.forEach((f) => f());
@@ -219,9 +219,9 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
       void me().then((u) => demoShared.markRoom(u.id, id, 'gone'));
     },
     blocked: (text) => BLOCKED_WORDS.some((w) => text.replace(/\s+/g, '').includes(w)),
-    help: (text) => {
+    crisis: (text) => {
       const s = states.values().next().value as State | undefined;
-      return s ? helpOf(s, text) : false;
+      return s ? crisisOf(s, text) : false;
     },
     newId: nextId,
     replyMs,
@@ -275,7 +275,7 @@ export function createDemoChatApi(options: { who: Who; photoUri?: (key: string) 
           push(r, msg(false, 'text', out.kind === 'text' && out.body.includes('데모안전') ? MONEY_REPLY : REPLY, nowOf(s)));
         }, replyMs);
       }
-      return { ok: true, data: out.kind === 'text' && helpOf(s, out.body) ? { ...m, help: true as const } : { ...m } }; // 위기 표시는 보내기 응답에만(목록 글에는 0)
+      return { ok: true, data: out.kind === 'text' && crisisOf(s, out.body) ? { ...m, crisis: true as const } : { ...m } }; // 위기 표시는 보내기 응답에만(목록 글에는 0)
     },
     async markRead(id) {
       const s = await stateOf();

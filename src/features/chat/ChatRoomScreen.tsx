@@ -172,10 +172,10 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
     const r = await api.send(id, out);
     if (!alive.current) return;
     if (r.ok) {
-      const { help, ...sent } = r.data; // 위기 표시는 보내기 응답에만 — 글 목록 상태에는 넣지 않는다(저장 0)
+      const { crisis, ...sent } = r.data; // 위기 표시는 보내기 응답에만 — 글 목록 상태에는 넣지 않는다(저장 0)
       setPending((cur) => cur.filter((p) => p.clientId !== out.clientId));
       setMessages((cur) => (cur.some((m) => m.id === sent.id) ? cur : [...cur, sent]));
-      if (help && out.kind === 'text') showCrisis(sent.id);
+      if (crisis && out.kind === 'text') showCrisis(sent.id);
       const mid = r.data.mediaId;
       if (out.kind !== 'text' && out.localUri && mid) setUrls((cur) => ({ ...cur, [mid]: cur[mid] ?? out.localUri ?? null }));
       return;

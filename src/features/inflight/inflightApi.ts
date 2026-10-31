@@ -9,9 +9,9 @@
 //   opener_chips(p_room)                   → {ok, show, chips[{id ct-.. | ch-.., hobby?{code | group}}]}
 //   talk_topics(p_room)                    → {ok, depths[light · taste · life · values], questions[그날 10 id], together_used} | {ok:false, code not_found | room_closed | not_ready}
 //   send_chat_card(p_room, p_tag, p_body, p_ref) → {ok, message(+ left)} | {ok:false, code text_blocked(codes) | invalid_tag | invalid_ref | too_long | not_first | not_today | already_sent | not_found | room_closed}
-//   together_send(p_room, p_question, p_body, p_answer) · together_answer(p_card, p_answer) · together_withdraw(p_card) → {ok, (opened,) message, help?} | {ok:false, code …}
+//   together_send(p_room, p_question, p_body, p_answer) · together_answer(p_card, p_answer) · together_withdraw(p_card) → {ok, (opened,) message, crisis} | {ok:false, code …}
 //        0045: 오늘 거르기 횟수 30 이상이면 together_send · together_answer 모두 {ok:false, code:'rate_limited'}(전엔 DB 오류 또는 상한 없음) — 화면은 채팅 limited 글. together_answer opened:false = 열기 직전 검사에 걸림(응답 모양 그대로 — 화면은 '기다려요' 그대로)
-//        help = 위기 도움 카드 참/거짓 한 칸(내 답이 보내진 직후 응답에만 · 저장 0 · 정책 P4-29) — 백엔드 0047 뒤. 응답에 칸이 없으면 0
+//        crisis = 위기 도움 카드 참/거짓 한 칸(내 답이 보내진 직후 응답에만 · 저장 0 · 정책 P4-29, 백엔드 0047 15장). 칸이 없거나 거짓이면 0. (라운지 lounge_post 만 이름이 help)
 //   오류: 스위치 꺼짐 feature_off(42501) · 로그인 아님 forbidden → 'off'
 //  · 앱은 아는 키만 읽는다 — 상대 이름 · 사진 · 나이 · 별자리 이름 · 일간 · 띠 · 좌석 · 회차 번호 키는 응답에 와도 버린다(IFF-01 · IFF-04 · 정책 PF-08 · PF-12)
 //  · 카드 · 칩 계산은 서버 몫(앱 계산 0, IFF-10). 앱은 결과 번호 · 라이브러리 id 만 받아 미리 쓴 글로 그린다
@@ -168,8 +168,8 @@ export type InflightApi = {
   openerChips(roomId: string): Promise<If2Result<OpenerChips>>;
   topics(roomId: string): Promise<If2Result<TalkTopics>>;
   sendCard(roomId: string, tag: CardTag, body: string, ref: string): Promise<{ ok: true; message: Message | null; left: boolean } | If2Fail>;
-  togetherSend(roomId: string, questionId: string, body: string, answer: string): Promise<{ ok: true; message: Message | null; help?: true } | If2Fail>;
-  togetherAnswer(cardId: string, answer: string): Promise<{ ok: true; opened: boolean; message: Message | null; help?: true } | If2Fail>;
+  togetherSend(roomId: string, questionId: string, body: string, answer: string): Promise<{ ok: true; message: Message | null; crisis?: true } | If2Fail>;
+  togetherAnswer(cardId: string, answer: string): Promise<{ ok: true; opened: boolean; message: Message | null; crisis?: true } | If2Fail>;
   togetherWithdraw(cardId: string): Promise<{ ok: true; message: Message | null } | If2Fail>;
 };
 
@@ -202,7 +202,7 @@ export function createInflightApi(call: RpcCall): InflightApi {
     return v === null ? { ok: false, code: 'server' } : { ok: true, data: v };
   }
   const messageOf = (data: unknown): Message | null => (isRecord(data) ? parseMessage(data.message) : null);
-  const helpOf = (data: unknown): { help?: true } => (isRecord(data) && data.help === true ? { help: true } : {}); // 위기 표시 한 칸(보내기 응답에만 · 없으면 0)
+  const crisisOf = (data: unknown): { crisis?: true } => (isRecord(data) && data.crisis === true ? { crisis: true } : {}); // 위기 표시 한 칸(보내기 응답에만 · 없으면 0)
 
   return {
     home: () => read('get_home_state', {}, parseHomeState, 'if2.home.fail'),
@@ -258,12 +258,12 @@ export function createInflightApi(call: RpcCall): InflightApi {
     async togetherSend(roomId, questionId, body, answer) {
       const { data, error } = await rpc('together_send', { p_room: roomId, p_question: questionId, p_body: body, p_answer: answer });
       if (error) return failOf(error, 'if2.together.send.fail');
-      return inner(data) ?? { ok: true, message: messageOf(data), ...helpOf(data) };
+      return inner(data) ?? { ok: true, message: messageOf(data), ...crisisOf(data) };
     },
     async togetherAnswer(cardId, answer) {
       const { data, error } = await rpc('together_answer', { p_card: Number(cardId), p_answer: answer });
       if (error) return failOf(error, 'if2.together.answer.fail');
-      return inner(data) ?? { ok: true, opened: isRecord(data) && data.opened === true, message: messageOf(data), ...helpOf(data) };
+      return inner(data) ?? { ok: true, opened: isRecord(data) && data.opened === true, message: messageOf(data), ...crisisOf(data) };
     },
     async togetherWithdraw(cardId) {
       const { data, error } = await rpc('together_withdraw', { p_card: Number(cardId) });

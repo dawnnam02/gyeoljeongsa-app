@@ -177,7 +177,7 @@ describe('대화방 위기 도움 카드(정책 P4-29 ~ 36) — 보낸 직후 ·
     expect(has(tree, 'chat-crisis')).toBe(true);
     await press(tree, 'chat-crisis-close');
     expect(has(tree, 'chat-crisis')).toBe(false);
-    // 닫지 않은 채 방을 다시 여는 경우도: 새 화면은 목록(help 칸 없음)에서 읽으니 카드 0
+    // 닫지 않은 채 방을 다시 여는 경우도: 새 화면은 목록(crisis 칸 없음)에서 읽으니 카드 0
     await send(tree, '사라지고 싶은 마음이 또 들어요');
     expect(has(tree, 'chat-crisis')).toBe(true);
     const again = await mountRoom();
@@ -185,7 +185,7 @@ describe('대화방 위기 도움 카드(정책 P4-29 ~ 36) — 보낸 직후 ·
     expect(allTexts(again)).toContain(HELP_TEXT); // 글은 목록에 그대로 있다
     expect(has(again, 'chat-crisis')).toBe(false);
     const list = await chat.listMessages(id);
-    expect(list.ok && list.data.some((m) => 'help' in m)).toBe(false); // 목록 응답에는 위기 표시 칸이 없다
+    expect(list.ok && list.data.some((m) => 'crisis' in m)).toBe(false); // 목록 응답에는 위기 표시 칸이 없다
   });
   test('새 카드가 뜨면 앞 카드는 걷힘(한 번에 한 장) · 글이 걸러져 못 보내면 카드 0 · 보통 글에도 0', async () => {
     const { tree } = await room('cr3@email.com');
@@ -217,7 +217,7 @@ describe('대화방 위기 도움 카드(정책 P4-29 ~ 36) — 보낸 직후 ·
   });
   test('서버 칸과 따로 앱 셈도 막는다(서버가 계속 참을 줘도 화면은 하루 3번) — 라운지에서 쓴 장수까지 합쳐', async () => {
     takeCrisisCard(); // 라운지에서 이미 한 장 보였다고 치면
-    const force = (api: ChatApi): ChatApi => ({ ...api, send: async (rid, out) => { const r = await api.send(rid, out); return r.ok ? { ok: true, data: { ...r.data, help: true as const } } : r; } });
+    const force = (api: ChatApi): ChatApi => ({ ...api, send: async (rid, out) => { const r = await api.send(rid, out); return r.ok ? { ok: true, data: { ...r.data, crisis: true as const } } : r; } });
     const { tree } = await room('cr5@email.com', force);
     const seen: boolean[] = [];
     for (const t of ['첫 글', '둘째 글', '셋째 글', '넷째 글']) {
@@ -228,7 +228,7 @@ describe('대화방 위기 도움 카드(정책 P4-29 ~ 36) — 보낸 직후 ·
     expect(seen).toEqual([true, true, false, false]); // 앞서 1장 + 이 방 2장 = 3
   });
   test('보내기 응답에 칸이 없으면(백엔드 0047 전) 카드 0 · 글은 그대로', async () => {
-    const strip = (api: ChatApi): ChatApi => ({ ...api, send: async (rid, out) => { const r = await api.send(rid, out); if (!r.ok) return r; const { help: _help, ...rest } = r.data; void _help; return { ok: true, data: rest as Message }; } });
+    const strip = (api: ChatApi): ChatApi => ({ ...api, send: async (rid, out) => { const r = await api.send(rid, out); if (!r.ok) return r; const { crisis: _crisis, ...rest } = r.data; void _crisis; return { ok: true, data: rest as Message }; } });
     const { tree } = await room('cr6@email.com', strip);
     await send(tree, HELP_TEXT);
     expect(has(tree, 'chat-crisis')).toBe(false);
@@ -256,17 +256,17 @@ describe('대화방 위기 도움 카드(정책 P4-29 ~ 36) — 보낸 직후 ·
 });
 
 // ── 실서버 응답 읽기(0045 · 0047 칸) ─────────────────────────────────────────
-describe('응답 읽기: send_chat_message help 한 칸 · together_send / together_answer rate_limited(0045) · opened:false', () => {
+describe('응답 읽기: send_chat_message · together 응답 crisis 한 칸(0047, 라운지만 help) · together_send / together_answer rate_limited(0045) · opened:false', () => {
   const msg = { id: 9, mine: true, kind: 'text', body: '안녕', created_at: '2026-12-24T01:00:00Z' };
   const clientOf = (answer: (name: string) => { data: unknown; error: { code?: string; message: string } | null }) => ({ rpc: async (name: string) => answer(name) }) as unknown as SupabaseClient;
 
-  test('send_chat_message: help 가 참일 때만 help true · 칸이 없거나 거짓이면 키 자체가 없다(0)', async () => {
+  test('send_chat_message: crisis 가 참일 때만 crisis true · 칸이 없거나 거짓이면 키 자체가 없다(0) · 옛 이름 help 는 읽지 않는다', async () => {
     const mk = (data: unknown) => createChatApi(clientOf(() => ({ data, error: null })));
-    const t = await mk({ ok: true, message: msg, help: true }).send('r1', { clientId: 'c1', kind: 'text', body: '안녕' });
-    expect(t.ok && t.data.help).toBe(true);
-    for (const data of [{ ok: true, message: msg }, { ok: true, message: msg, help: false }, { ok: true, message: msg, help: 'yes' }]) {
+    const t = await mk({ ok: true, message: msg, crisis: true }).send('r1', { clientId: 'c1', kind: 'text', body: '안녕' });
+    expect(t.ok && t.data.crisis).toBe(true);
+    for (const data of [{ ok: true, message: msg }, { ok: true, message: msg, crisis: false }, { ok: true, message: msg, crisis: 'yes' }, { ok: true, message: msg, help: true }]) {
       const r = await mk(data).send('r1', { clientId: 'c1', kind: 'text', body: '안녕' });
-      expect(r.ok && 'help' in r.data).toBe(false);
+      expect(r.ok && ('crisis' in r.data || 'help' in r.data)).toBe(false);
     }
   });
   test('together_send / together_answer: {ok:false, code:rate_limited} 를 그대로 · DB 오류 rate_limited(send_chat_card 등 P0001)도 같은 코드', async () => {
@@ -283,10 +283,16 @@ describe('응답 읽기: send_chat_message help 한 칸 · together_send / toget
     const r = await api.togetherAnswer('21', '내 답');
     expect(r.ok && r.opened).toBe(false);
     expect(r.ok && r.message?.together).toEqual({ state: 'waiting', myAnswer: '내 답', canWithdraw: false });
-    expect(r.ok && 'help' in r).toBe(false);
-    const helped = createInflightApi((async () => ({ data: { ok: true, opened: false, message: waiting, help: true }, error: null })) as never);
+    expect(r.ok && 'crisis' in r).toBe(false);
+    const helped = createInflightApi((async () => ({ data: { ok: true, opened: false, message: waiting, crisis: true }, error: null })) as never);
     const h = await helped.togetherAnswer('21', '내 답');
-    expect(h.ok && h.help).toBe(true);
+    expect(h.ok && h.crisis).toBe(true);
+    for (const data of [{ ok: true, opened: false, message: waiting, crisis: false }, { ok: true, opened: false, message: waiting, help: true }]) {
+      const x = await createInflightApi((async () => ({ data, error: null })) as never).togetherAnswer('21', '내 답');
+      expect(x.ok && "crisis" in x).toBe(false); // 거짓 · 옛 이름 help 는 카드를 못 띄운다
+    }
+    const sent = await createInflightApi((async () => ({ data: { ok: true, message: waiting, crisis: true }, error: null })) as never).togetherSend('r1', 'q-1-01', '질문', '답');
+    expect(sent.ok && sent.crisis).toBe(true);
   });
 });
 

@@ -185,7 +185,7 @@ function TopicsBody({ roomId, deps, onClose, onPlaced, onGive, testID = 'if2-top
     const r = await deps.api.togetherSend(roomId, q, questionText(q) ?? '', answer.trim());
     setBusy(false);
     if (r.ok) {
-      onPlaced(r.help && r.message ? r.message.id : undefined); // 위기 표시가 참이면 그 질문 카드 아래에 도움 카드(화면이 하루 3번을 센다)
+      onPlaced(r.crisis && r.message ? r.message.id : undefined); // 위기 표시가 참이면 그 질문 카드 아래에 도움 카드(화면이 하루 3번을 센다)
       onClose();
     } else setError(r.code === 'daily_used' ? tx('OPEN_TOGETHER.dailyUsed') : r.code === 'not_today' ? tx('TOPICS.notToday') : r.code === 'too_long' ? tx('OPEN_TOGETHER.tooLong', { n: String(ANSWER_MAX) }) : failText(r));
   };
@@ -376,7 +376,7 @@ export function TogetherCard({ message, answers, roomOpen, deps, onChanged, test
     setBusy(false);
     if (r.ok) {
       setSheet(false);
-      onChanged(r.help ? message.id : undefined); // opened:false(열기 직전 검사에 걸림)도 같은 화면 — 카드가 '내 답을 써 뒀어요' 그대로
+      onChanged(r.crisis ? message.id : undefined); // opened:false(열기 직전 검사에 걸림)도 같은 화면 — 카드가 '내 답을 써 뒀어요' 그대로
     } else setError(r.code === 'too_long' ? tx('OPEN_TOGETHER.tooLong', { n: String(ANSWER_MAX) }) : r.code === 'text_blocked' ? CHAT.send.blocked : r.code === 'rate_limited' ? CHAT.send.limited : tx('OPEN_TOGETHER.failed'));
   };
   const withdraw = async () => {
