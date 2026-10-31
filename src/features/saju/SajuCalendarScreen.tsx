@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   gridWrap: { marginHorizontal: -space.s12 }, // 360 폭에서도 날짜 칸 가로 49 이상(디자인 CAL — 화면 여백 20 → 8)
   weekRow: { flexDirection: 'row' },
-  cell: { flex: 1, minHeight: size.touchMin, textAlign: 'center' },
+  cell: { width: '14.2857%', minHeight: size.touchMin, textAlign: 'center' }, // 7칸 같은 너비 — flex:1 이면 테두리(2px · 1px)가 있는 칸이 그만큼 넓어져 테두리 없는 칸이 48 아래로 줄어든다(IF5-F1c 함께 보기)
   day: { alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, gap: space.s4 },
   good: { backgroundColor: colors.accent },
   onAccent: { color: colors.onAccent },
