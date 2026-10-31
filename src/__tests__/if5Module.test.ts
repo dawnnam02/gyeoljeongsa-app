@@ -174,3 +174,24 @@ describe('IF5-F1 ⑦ 글 사본 틀', () => {
     for (const [k, v] of Object.entries(IF5_TEXT)) if (k.startsWith('SAJU.')) expect(v).not.toMatch(/점수|퍼센트|순위|판정|%/);
   });
 });
+
+describe('IF5-F1 앱 시험 IFF5-21 · 30 · 33 정적 점검 — 공유 · 복사 0 · 푸시 0 · 매칭 화면에 사주 표시 0', () => {
+  const walk = (d: string): string[] => (fs.existsSync(d) ? fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : /\.(ts|tsx)$/.test(e.name) ? [path.join(d, e.name)] : [])) : []);
+  const src = (...p: string[]) => path.join(APP, 'src', ...p);
+  const sajuFiles = [...walk(src('features', 'saju')), ...walk(src('demo')).filter((f) => f.endsWith('sajuDemo.ts'))];
+  test('사주 화면 · 모의 서버는 클립보드 · 공유 · 알림 · 푸시 · 파일 쓰기를 부르지 않는다(IFF5-21 · 30)', () => {
+    expect(sajuFiles.length).toBeGreaterThan(8);
+    for (const f of sajuFiles) {
+      const t = fs.readFileSync(f, 'utf8').replace(/\/\/.*$/gm, '');
+      expect(t).not.toMatch(/expo-clipboard|expo-sharing|Share\.share|expo-notifications|scheduleNotification|expo-file-system|fetch\(|XMLHttpRequest|localStorage|sessionStorage|AsyncStorage/);
+    }
+  });
+  test('줄 · 짝 · 노출 · 등급 · 탑승권 화면(추천 · 상대 프로필 · 호감 · 등급 · 채팅 · 탑승권)은 사주 모듈을 가져오지 않는다(IFF5-33 · 척추 해석 한 줄)', () => {
+    for (const dir of ['recs', 'likes', 'grade', 'chat', 'boarding', 'shop', 'featured']) {
+      for (const f of walk(src('features', dir))) expect(fs.readFileSync(f, 'utf8')).not.toMatch(/features\/saju|saju5|if5Copy|SAJU\./);
+    }
+  });
+  test('계산 모듈 saju5 는 화면 · 저장소 · 네트워크를 모른다(순수 계산 · 글 고르기)', () => {
+    for (const f of walk(src('saju5'))) expect(fs.readFileSync(f, 'utf8').replace(/\/\/.*$/gm, '')).not.toMatch(/from 'react|from 'expo|from '@\/|fetch\(|AsyncStorage|SecureStore|supabase/);
+  });
+});

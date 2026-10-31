@@ -399,6 +399,19 @@ describe('IF5-F1 ③ 사주 마당 한 화면 — 상태 5종(빈 · 불러오�
     expect(has(tree, 'saju-talk')).toBe(false);
     expect(tree.root.findAll((n) => /share|copy|공유|복사/i.test(String(n.props.testID ?? ''))).length).toBe(0);
   });
+  test('접근성: 네 기둥 표는 이름만 읽고 칸 글자(사주 값)는 숨긴다 · 오행 막대 라벨에 값 0 · 날 기둥 굵은 테두리 안내', async () => {
+    const r = rig();
+    const tree = await hub(r, freshStore(true));
+    const table = must(tree, 'saju-pillar-table');
+    expect(table.props.accessible).toBe(true);
+    expect(table.props.accessibilityLabel).toBe(IF5_TEXT['SAJU.pillars.group']);
+    expect(must(tree, 'saju-pillar-table-day').props.importantForAccessibility).toBe('no-hide-descendants');
+    expect(must(tree, 'saju-bars-목').props.importantForAccessibility).toBe('no-hide-descendants');
+    const labels = tree.root.findAll((n) => typeof n.props.accessibilityLabel === 'string').map((n) => String(n.props.accessibilityLabel));
+    const chart = await r.api.chart({ hour: null, minute: null, place: null });
+    if (!chart.ok || chart.data.state !== 'ready') throw new Error('x');
+    for (const l of labels) expect(l).not.toContain(pairText(chart.data.day)); // 날 기둥 글자가 어떤 읽기 이름에도 없다
+  });
   test('[?] 낱말 풀이 시트: 다섯 기운 → 제목 틀 + 쉬운 말 풀이 · 한자 0', async () => {
     const r = rig();
     const tree = await hub(r, freshStore(true));

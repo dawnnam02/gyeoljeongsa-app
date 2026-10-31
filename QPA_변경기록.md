@@ -768,3 +768,105 @@
 - 푸시 · 재촉 0(먼저 말 걸기 · 남은 횟수 숫자 · 카운트다운 · 하루 횟수 한도 문구 0 · 끝은 사용자가 '충분해요'로 · 위기 낱말은 AI 부르기 전에 고정 카드 · 상시 번호 줄)
 - 네 질문: ① 줄을 흐리지 않나 — 예 ② 필수 일치를 깨지 않나 — 예 ③ 진지한 사람에게 도움 — 예(위기 · 폭력 · 미성년 카드 먼저, 상대 분석 허용은 본인 예외 D-234 그대로) ④ 차분 · 기다림을 즐겁게 — 예(중독 장치 0)
 - 벗어난 것: 없음
+
+# IF5-F1 (D-237 · 10-31 ~) — 사주 마당 무료 층: 입력 시트 · 계산 길 · 한 화면 · 달력 · 상대 생일(기기 계산) · 홈 입구 · 미리 쓴 글 · 스위치 · 캡처 막기 · 카피 사본 · 3부-카 넘김 · 법무 재생성
+
+- 세부청사진 `팀장/세부청사진/IF5-F_앱.md` 1장 ① ~ ⑧-2 · 3장 바닥선. 마일리지 · AI 호출 · 결제 · 푸시 0(F2 몫). 시작 `1e2ec2e`(jest 116묶음 2,060건) → 끝 아래 커밋. 실호출 0 · `.env` 안 열음.
+- 커밋: `6db4d17`(⑤ ⑦ ⑧-2) · `22ffd29`(① ② ③ ④ ⑥ ⑧) · `677c34d`(시험) · `443a510`(saju5 → server 가져오기 0 · 달력 49 · f7) · `0956740`(CRLF 4파일 되돌림) · 이 절 커밋.
+
+## IF5-F1 세부청사진 ↔ 만든 것
+
+| # | 조건 | 만든 것 |
+|---|---|---|
+| ① | 입력 시트 · 서버 저장 0 · 새 저장소 withKeyIndex · 열쇠 이름에 birth · partner · saju · mileage 0 | `features/saju/SajuInputSheet.tsx`(시각 '모름' 처음값 · 시 0 ~ 23 + 분 5분 간격 · 지점 23곳 목록 + 모름 + 한국 밖 · 성별은 읽기 안내 · 저장 칸 둘 미리 체크 0 · 비워도 저장) · `deviceInput.ts`(저장 칸 켠 항목만 기기 저장 · 끈 칸은 메모리) · `lib/secureStorage.ts` `if5Storage = withKeyIndex(chunkedStorage(secureStore), 'device.keys.if5')` + `forgetStaleIf5Storage`(새 기기 비움) · `forgetSajuDevice`(로그아웃 · 탈퇴 · 새로 깐 기기) |
+| ② | 계산 길: 실서버 0048 4함수 · 데모 기기 계산 · 상대 늘 기기 · 오류 7종 · 상대 네트워크 0 | `sajuApi.ts`(get_my_saju · get_my_luck · get_my_day · get_taekil — 시각 · 곳은 요청 인자만, 오류 7종 consent_required · invalid_value · invalid_time · not_ready · feature_off · forbidden · network) · `demo/sajuDemo.ts`(0048 응답 모양 모의 서버 — 계산은 `src/saju5`) · `partnerLocal.ts`(순수 함수 · 서버 호출 0 · 저장 0 · 만 19세 미만은 계산 전에 거름) · 계산 모듈 동기 `scripts/sync-if5.mjs`(+ `--check`, 14파일: saju_calc5 · fragments5 · names5 · check_text5 · rules5 · rules_extra5 · spec5 + 순수 검사기 rules · text · types + 데이터 4) |
+| ③ | 사주 마당 한 화면 · 요약 틀 · 달력 두 색 · 날짜 고르기 · 상대 시트 · 오늘 하루 · 홈 입구 · F5-16 · 01 · 12 | `SajuMadangScreen.tsx`(카드: 내 네 기둥 · 내 결 · 올해 흐름 + 열두 달 + 띠 · 이번 달 · 인연 · 일 · 돈 · 사람 · 인생 계절표 · 날짜 고르기 · 둘이 맞춰 보기 · 만세력 달력 · 읽는 법 · 끝줄) · `SajuParts.tsx`(한 장 요약 틀 · 네 기둥 표 · 오행 막대 길이만 · [?] 풀이 시트 · 상태 줄) · `PartnerSheet.tsx` · `SajuCalendarScreen.tsx`(만세력 달력 / 날짜 고르기, 모양 + 색) · `SajuTodayScreen.tsx` · 홈 `InflightHome`(B6 칸 · B7 줄 · 오늘 하루 띠) · 12 설정 '사주 마당' 줄 · 화면 ID 3(IF-MADANG · IF-SJ-CAL · IF-SJ-TODAY) + 라우트 3 + flow 화살표 |
+| ④ | 조각 478 · neutral_names5 판 .3 · check_text5 · 옛 label 0 · 관계 말 화면 말 | `src/saju5/data/fragments5.json` · `neutral_names5.json`(둘 다 판 2026-10-31.3) · 시험 `if5Module`: 조각 478칸(글 있는 칸 471 + 일부러 빈 칸 7) 전수 `checkText5` 통과 · 옛 label(육충 · 지지충 · 천간충 · 삼형 · 원진 · 상충 · 형살) 0 · '부딪히기 쉬운 결' · '엇갈리기 쉬운 결' 있음 · 이름표 검사 빈 목록 · calc5.py 정답 벡터 3,300건 기둥 · 플래그 같음 |
+| ⑤ | `featureKeys.json` 20키 live:false · 데모 켬 · check_sec2 IF5-m2 | 새 17키(그룹 IF5) + 이어 쓰는 IF3 3키(three_pillars · read_guide · meet_sky) = 20. 서버 이름을 따라 saju_yard · mileage · mileage_charge 사용(기획 가안 saju_madang · mileage_view · mileage_topup과 다름 — 아래 넘김). 데모 꺼짐: saju_ai · saju_talk · mileage_charge. check_sec2 IF5-m2 정보 → 통과(3/3) |
+| ⑥ | 사주 값 화면 `useAlwaysCaptureBlock` · 공유 · 복사 0 | 허브(사주 값이 보이는 동안) · 오늘 하루 · 달력 · 상대 시트(열려 있는 동안) 훅 호출 시험(mockForced) · 공유 · 복사 · 알림 · 파일 쓰기 호출 정적 점검 0 |
+| ⑦ | 카피 24장 318키 + 22장 남은 36 + 22-14 4키 → 사본 생성기 · check:copy | `scripts/gen-if5-copy.mjs`(`src/content/if5Copy.ts` 318키 — 24-2 ~ 24-11 표, 24-12 이후는 안 읽음) · `gen-if3-copy.mjs` 확장(`if3Copy.ts` 41 → 81키: READ_GUIDE 5 · THREE_PILLARS 22 · MEET_SKY 9 · TYPE_CARD.state.* 3 · MY_WAYS.loadFailed 1) · check:copy 그룹 `IF5`(24장 한 글자씩 · 느낌표 · 법무 금지 낱말 · 앱이 쓰는 키가 24장에 있나 · F1 화면이 F2 몫 글을 안 부르나) · IF3 그룹 설명 갱신 · R5 허용 목록에 `SAJU.status.balanceFailed`(마침표 없이 확정된 24-11 글 — F2 몫 키) · '앱 반영' 표시는 마케팅에 넘김 |
+| ⑧ | 3부-카 넘김: TypeCardScreen · SkyParts · 시험 4곳 · birthdayQuestions set | `TypeCardScreen` stateKey별 글(none · featureOff · forbidden 사실 한 문장 · 단추 0 / not_ready만 `TYPE_CARD.loadFailed` + [다시 시도]) · `SkyParts` G-04 failed → `MY_WAYS.loadFailed` · 시험 iffInflightUi · s3jaFun · s3kaType · s3kaSky 기대값 · `BirthWeek.set`(1 ~ 4, 0049 응답 꼴: 참이면 set, 거짓이면 set 키 없음 · 범위 밖 값은 버림) → `birthdayQuestions(issueDate, serverSet)`가 서버 값 우선 · 없으면 (발행 해 mod 4) + 1 · 데모 모의 서버도 같은 꼴(참일 때만 set — 윤일 · 해 넘김 규칙 포함) |
+| ⑧-2 | 법무 재생성 · 지문 기록 | 팀장 '법무 반영 끝' 메시지(약관 17:56 · 처리방침 17:51 · 동의문구 수정 0) 뒤 `npm run gen:legal -- --fingerprints`: **바뀐 것 = `legalTerms.ts` · `legalPrivacy.ts` · `consent.ts` 지문 terms `744bd43ff8a4` → `20c57ceb8492` · privacy `32ff0ee6e8f4` → `efa323055ed0` 둘뿐**, `consentContent.ts` · 동의 지문 · 판 13개 변화 0. `gen-if2-assets --check` 같음. 그 사이 check:copy 107/2(A · I)였던 것이 풀려 실패 0 |
+
+## IF5-F1 화면 × 상태 5종 (기획/화면_요구사항.md IF5 셈표)
+
+| 화면 · 칸 | 빈 | 불러오는 중 | 오류 | 범위 밖 | 시각 모름 | 시험 |
+|---|---|---|---|---|---|---|
+| IF-MADANG 사주 마당 | CK17A 꺼짐: `FUN.ck17.offBody` + [동의하고 보기] / 내 정보 없음: `SAJU.madang.empty` + [내 정보 넣기] (개인 카드 0 · 서버 호출 0 · 날짜 고르기 · 달력 · 읽는 법은 보임) | `saju-loading` 정지 뼈대 + `SAJU.status.loadLab` | 코드별 칸 7종(동의 안내 · 내 정보 다시 · 다시 시도 · 다시 시도 없음) | `SAJU.range.before`(칸째, 나머지 카드 그대로) | 넷째 칸 점선 + `SAJU.hour.unknown` + [시각 넣기] (막지 않음) | if5Saju |
+| 홈 '오늘 하루' 띠 · B6 입구 | 스위치 · 동의 꺼짐 → 칸째 0 | 해당 없음(홈은 새로 안 부름 — 동의 읽기만) | 해당 없음(못 읽으면 칸째 0) | 해당 없음(띠는 오늘 날짜만 — 범위 밖 날짜면 띠째 0) | 해당 없음 | if5Home |
+| IF-SJ-IN 입력 시트 | 시각 '모름' · 곳 비움 처음값 | 저장 버튼 `loading`(연타 막힘) | `SAJU.status.errBody` + 값 보존 | 한국 밖 → `SAJU.range.abroad`(저장은 눌림) | 시각 모름 → `SAJU.hour.unknown`, 23 ~ 01시 → `SAJU.input.zi` | if5Saju |
+| IF-SJ-PARTNER 상대 생일 시트 | CK20 확인 전 입력칸 잠김 | 해당 없음(기기 계산이 즉시 — [맞춰 보기] 한 번 = 계산 한 번) | `calcError` 한 줄 + [생일 다시 넣기] | `outOfRange`(1961-08-10 이전 · 없는 날 · 미래) / `minor`(만 19세 미만 — 결과 0 · 다른 생일 권하는 말 0) | 시각 모름 → `SAJU.partner.hourUnknown` | if5Saju |
+| IF-SJ-CARD 결과 한 장(허브 안 카드) | 계산값 없음 → `SAJU.status.empty` | 카드 뼈대 | 칸별 `ErrorBlock` + [다시 시도] | 칸째 범위 줄 | 네 기둥 표 점선 칸 · 시주 필요한 줄만 빠짐 | if5Saju |
+| IF-SJ-CAL 달력 · 날짜 고르기 | 용도 안 고름: 달력만 + `SAJU.pick.hint` | `loading`(색 0) | `ErrorBlock` + [다시 시도] | 지원 범위 밖 달 → `SAJU.status.rangeBody` | 해당 없음(날짜 고르기는 시각을 안 씀 — 개인 맞춤 `p_personal` false) | if5Saju |
+| IF-SJ-TALK · IF-MILE · IF-MILE-LOG · IF-MILE-OK · 잔액 부족 | F2 몫 — 이번 묶음에 없음 | | | | | |
+
+## IF5-F1 `보안/IF5_위협.md` 앱 줄 중 F1 몫
+
+| 번호 | 대응 | 근거 |
+|---|---|---|
+| IFF5-17 시각 입력 | 선택 · '모름' 처음값 · 미리 체크 0 · 정오로 채우기 0 · 모름이면 시주 칸 점선 | if5Saju(입력 시트) · 웹 점검 |
+| IFF5-18 출생지 | 목록 23곳만 · 자유 글 0 · 위치 권한 0 · 지점 이름이 로그에 0 | 시험 · check_sec2 IF5-ab 통과 |
+| IFF5-19 상대 입력 | 이름 · 성별 · 별명 · 연락처 칸 0 · 칸 하나(생년월일) + 선택 시각 · 자동완성 · 자동수정 끔 · CK20 확인 | PartnerSheet 시험(TextInput 속성) |
+| IFF5-20 상대 값 로컬 저장 0 | 값은 시트 메모리뿐 · 닫으면 사라짐(다시 열면 빈 칸) · 앱이 뒤로 가면 입력 가림 · 저장소 · 네트워크 호출 0 정적 점검 | if5Saju · if5Module |
+| IFF5-21 클립보드 · 공유 | 공유 · 복사 단추 0 · expo-clipboard · expo-sharing 가져오기 0 | if5Module 정적 |
+| IFF5-22 캡처 막기 | 허브 · 오늘 하루 · 달력 · 상대 시트에 `useAlwaysCaptureBlock` | if5Saju(훅 인자) |
+| IFF5-23 공유 카드 | 공유 카드 자체 없음 | — |
+| IFF5-24 로그 | `console.*` 0 · `safeLog` 인자에 입력 값 0 | check_sec2 IF5-ab 통과(92곳) |
+| IFF5-25 오류 리포트 | 오류 리포트에 입력 상태 0(로그는 이벤트 이름 + 코드만) | sajuApi |
+| IFF5-28 예언 표시 | '재미로 보는 이야기예요' · 끝줄 '결정은 내 몫이에요' · 법무 끝줄 · '쉬어 가는 날' | 웹 점검 · check:copy IF5 |
+| IFF5-29 홈 호출 0 | 홈을 열 때 서버 호출 = 홈 상태 + 동의 읽기뿐(get_my_* 0 · AI 0) | if5Home |
+| IFF5-30 푸시 0 | 알림 · 푸시 가져오기 0 | if5Module 정적 |
+| IFF5-31 로그아웃 · 탈퇴 | `forgetSajuDevice()`를 두 곳(`lib/supabase` 로그아웃 정리 · 설정 `leaveToStart`)에 | 코드 · deviceInput 시험 |
+| IFF5-32 재설치 뒤 | `forgetStaleIf5Storage`(열쇠 목록대로) | if5Storage 시험 |
+| IFF5-33 매칭 화면 | 추천 · 호감 · 등급 · 채팅 · 탑승권 · 상점 코드가 사주 모듈을 가져오지 않음 | if5Module 정적 |
+| IFF5-34 접근성 라벨 | 네 기둥 표는 이름만 읽고 칸 글자는 숨김 · 오행 막대 숫자 라벨 0 | if5Saju |
+| IFF5-35 번들 | `src/saju5` 에 AI 요청 · 지시문 · 원가 · 차감표 모듈 0 · `check:ait-bundle` 걸린 것 0 | if5Module · check:ait-bundle |
+| IFF5-01 · 03 · 05 · 06 | SDK 새로 0(package.json 의존성 변경 0) · consumeAsync 0 · 연타 방지(저장 버튼 `busy`) · 자동 재시도 0(다시 시도는 사용자가 누름) | check_sec2 IF5-z 통과 · if5Saju |
+| IFF5-02 · 04 · 07 ~ 16 | F2 몫(마일리지 · 결제 · AI · 위기 · 대화) | — |
+
+## IF5-F1 바닥선
+
+| 항목 | 결과 |
+|---|---|
+| tsc | 0 |
+| expo lint | 문제 0 |
+| jest | 120묶음 2,123건 — **3회 연속** 통과(시작 116묶음 2,060건: +4묶음 +63건) |
+| check:copy | 통과 110 · 실패 0(IF5 그룹 · IF3 그룹 포함) |
+| check:tokens | 통과 5 · 실패 0 |
+| check-a11y | A1 ~ A3 통과 |
+| sync-ait --check / sync-if5 --check / gen-if5-copy --check / gen-if3-copy --check | 모두 같음 |
+| 웹 if2(390) / f7 / lounge(390) | 125 / 0 · 65 / 0 · 73 / 0 |
+| 웹 새 점검 `check:saju`(360 · 390 · 430) | 38 / 0 · 38 / 0 · 38 / 0 |
+| check_sec2(`SEC_SKIP_AUDIT=1`) | 178건 = 통과 164 · 실패 0 · 정보 14(IF5-m2 정보 → 통과) |
+| prepush_scan | 확정 0 · 확인 0 |
+| 새 CRLF | 0(원래 CRLF 이던 파일 4개 — routes.test · secureStorage · flow · screens — 는 그 줄끝 그대로) |
+| check:bundle-audit | 실패 1(번들 안 `decode-uri-component` 높음 — 패키지 의존성을 안 바꿨고, 권고 목록 날짜 의존으로 보임. 시작 커밋에서도 같은지는 **안 돌려 봄(미확인)**) |
+| 끝 node 프로세스 | 1 |
+
+## IF5-F1 못 한 것 · 확인 못 한 것
+
+- **음력 날짜**: 계산 모듈에 음양력 표가 없어(계산명세5 '다음 단계') 달력에 음력 줄을 안 만듦. 그런데 카피 `SAJU.cal.hint`는 '그날의 글자 · 절기 · 음력을 볼 수 있어요'라고 약속함 → 마케팅 확인.
+- **G-06 만난 날의 하늘(메모 줄)**: 카피 `MEET_SKY.*` 9키는 사본에 들어왔지만 화면은 안 만듦 — 앱 사본 하늘 라이브러리(if3Library.json · skyWeeks.json)에 `sky_day_stage` · `sky_day_term` · 일별 표가 없음(gen-if3-assets 확장 필요). 달력 날짜 고르기 UI를 메모에서 공유하는 일은 미완.
+- **G-01 읽는 법의 기내지 ① 쪽 · 하늘 도감 머리 접힘 칸**: 허브의 '읽는 법' 카드 + [?] 시트(조각 F5-16, 낱말 8 → 칩 9)는 만들었으나 `READ_GUIDE.*` 5키(기내지 접힘 칸용)는 사본에만 있고 화면 연결 0. **G-05** `THREE_PILLARS.*` 22키는 F5-01 카드로 대체되어 경계 날 안내 둘(`cusp.ipchun` · `cusp.month`)만 씀.
+- **숨은 글자(지장간) 줄**: `SAJU.table.row.hidden` 은 표 자료(지장간 전부)가 모듈에 없어 줄을 안 만듦(관계의 결 · 기운의 단계 둘만). **'어디서 왔나요'(`SAJU.card.source`)** 줄도 근거 자료가 없어 0.
+- **날짜 고르기 '상대 생일 합쳐 보기' 스위치**: 24장에 글 키가 없어 0. 개인 맞춤(`p_personal`)은 서버가 지원하지만 F1은 늘 false(시각 · 곳도 안 보냄).
+- **성별 값**: 서버가 profiles 에서 읽으며 앱은 값이 없음 → 입력 시트는 칸 이름 + 안내만(값 표시 0). **인생 계절표 현재 계절 표시**는 시작일 비교로 굵은 글 + 테두리(글 키 없음).
+- **partner5**: F2 AI 맞춤 몫이라 동기 대상에서 뺌(request5 · generated5 지시문이 번들에 들어옴).
+- 디자인 아이콘 22개는 안 씀(기존 앱 아이콘만) · 실기기 · 스크린리더 · Pretendard 실글꼴 · 저가 안드로이드 60fps — 미확인(헤드리스 브라우저 점검뿐).
+- `check:bundle-audit` 위 항목. 실호출 0 · 실결제 0 · 푸시 0.
+
+## IF5-F1 넘김 (팀장 경유)
+
+- 백엔드: ① 서버 스위치 목록에는 `saju_yard` · `mileage` · `mileage_charge` 셋뿐 — 앱 키 17개 가운데 나머지 14(saju_home · saju_reading · saju_season · saju_year · saju_calendar · saju_today · saju_pickday · saju_partner · pair_card_saju · saju_ai · saju_talk · mileage_spend · mileage_gift · rest_hint)를 서버가 모르면 앱은 live 값(꺼짐)을 써서 실서버에선 `saju_yard`를 켜도 하위 카드가 안 보임 → 등록 · 이름 확정 필요 ② `get_my_luck` 월운 응답에 달 이름이 없어 앱이 절기 차례(k)로 근사(입춘 = 2월) ③ 0049 `set` 반영 완료(앱은 있으면 쓰고 없으면 발행 해 규칙).
+- 기획: 스위치 가안 이름(saju_madang · mileage_view · mileage_topup)을 서버 이름으로 고쳐 주기 · 대표 지점 목록 23곳 · 시각 입력 방식(앱은 시 0 ~ 23 + 분 5분 간격 칩 — 디자인의 12시진 칸 대신) 확인.
+- 마케팅: ① 새 글 요청 — 네 기둥 칸 이름 '해 · 달 · 날 · 시'(디자인 시안 표기) · 시 · 분 단위 '{n}시' · '{n}분' · 계절표 나이 '{n}세 ~ {n}세' ② `SAJU.cal.hint` 음력 약속 ③ `SAJU.status.balanceFailed` 마침표 ④ `SAJU.today.line` 값 틀 자리에 앱이 쓰는 글(조각 F5-12의 '이날 글자의 바탕은 …' 줄 — '오늘' 아님) 괜찮은지 ⑤ 카피 22-14 · 24장 '앱 반영 전' 표시를 '앱 반영'으로(F1 몫 키: 24장 SAJU.* 중 F1 화면이 쓰는 키, 22-14 4키).
+- AI: ① 상대 궁합 줄임 문(partner5)은 F2에서 동기 대상으로 더함 ② 음양력 표 · 지장간 표가 있으면 달력 음력 줄 · '숨은 글자' 줄을 켤 수 있음 ③ `names5` 별난 점 이름이 화면에 나오는 글이 괜찮은지 확인.
+- 보안: `P5-e2`(서버 폴더 가져오기)를 피하려 `ai/AIT/ts` 의 rules · text · types 를 `src/saju5/ait/` 에 따로 복사함(정규식 · 타입뿐) — 이 복사 위치를 보안이 허용하는지 · `IF5-aa` 가 `src/saju5/**` 안 문자열도 보게 되는지.
+- 법무: 입력 시트의 시각 · 곳 저장 칸이 CK17A 항목별 동의(기기 안 저장 선택)와 일치하는지 — 서버 쪽 CK17A 확장 기록(항목별 시각 · 곳)은 F2 ⑪ 동의 시트 몫이라 F1은 기기 칸으로만 둠.
+
+## IF5-F1 척추 대조
+
+- 줄 · 짝 · 순서 · 노출 · 등급 · 탑승권에 0: 사주 결과를 내보내는 코드 · 매칭 화면이 사주 모듈을 가져오는 길 0(정적 점검) · 서버 호출은 본인 계산 읽기뿐 · 상대 생일은 기기를 안 떠남.
+- 점수 · 퍼센트 · 판정 · 순위 · 숫자 배지 · 깜빡임 · 푸시 · 연속 접속 표시 0 · 재회운 0 · 겁주기 0('쉬어 가는 날' · '부딪히기 쉬운 결' 화면 말).
+- 네 질문: ① 줄을 흐리지 않나 — 예 ② 필수 일치를 깨지 않나 — 예 ③ 진지한 사람에게 도움 — 예(재미 영역, 결과는 짝 · 줄에 안 쓰임을 화면에 밝힘) ④ 차분 · 기다림 즐겁게 — 예(펼침 기억 0 · 끝이 있는 한 화면 · 재촉 · 중독 장치 0).
+- 벗어난 것: 없음.
