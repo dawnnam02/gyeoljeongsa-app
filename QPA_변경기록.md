@@ -661,3 +661,110 @@
 - 푸시 0 · 숫자 배지 0 · 새 표시 · 본 표시 · 열람 기록 · 모으기 · 연속 0(도감 펼침도 기기에 기억하지 않음) · 저장 0(G-04 응답은 접으면 비움 · G-07 은 읽기만) · 공유 · 복사 0 · 캡처 막기 기본 켬 · 경계 '두 별자리 함께' 0(금성 · 수성은 하나씩 + 같은 안내 한 줄)
 - 네 질문: ① 줄을 흐리지 않나 — 예(영향 0) ② 필수 일치를 깨지 않나 — 예 ③ 진지한 사람에게 도움 — 예(위기 카드가 대화방에서 `crisis` 로 정확히 뜸 · 재미 칸은 줄 · 짝에 0) ④ 차분 · 기다림을 즐겁게 — 예(끝 있음: 도감은 여기까지 · 엽서는 이번 호까지 · 접힘은 닫힌 채 시작 · 재촉 · 압박 · 중독 장치 0)
 - 벗어난 것: 없음
+
+# AIT-F (D-233 · D-236 · 10-31 ~) — 테스트 웹 실제 AI 시험 연결 앱 쪽: 서버 함수 · 접근 코드 칸 · 네 기능 · 동의 시트 · 모의 시험 · 상태 저장(멈춰도 이어감)
+
+- 기준: 팀장 지시 `팀장/세부청사진/AIT-F_앱.md` ① ~ ⑦ · `팀장/세부청사진/AIT_실제AI_시험연결.md` · `ai/AIT/README.md` 1 · 2 · 7장 · `보안/AIT_위협.md`(서버 52 · 앱 29 · 배포 전 20) · 카피 23장(193키) · 법무 `IF4_메모.md` 16 · 17장
+- 지킨 선: **실호출 0**(시험은 모의 · 가짜 업체, 진짜 Anthropic 호출 0 · 유료 0) · 열쇠 · 코드 · 서명 키 값 0(소스 · 로그 · 응답 · 시험 고정값, 시험 값은 실행 때 조립) · `EXPO_PUBLIC_` 새로 0 · `.env` 열기 · 만들기 0 · `eas env:*` 0 · 푸시 0 · 배포 0 · `npm audit fix --force` 0 · `ai/AIT/` · `카피.md` · `법무/` · `backend/` 수정 0 · 마일리지 · IF5 사주 새 기능 0 · 새 CRLF 0
+- 시작 상태: HEAD `6ca4aca` · jest 111묶음 1,953건
+
+## AIT-F 세부청사진 ↔ 만든 것
+
+| # | 할 일 | 만든 것 |
+|---|---|---|
+| ① 서버 판 설정 | 정적 데모(`web.output "single"`)는 그대로 · 서버 판은 따로 | `app.config.js`: `AIT_SERVER_EXPORT=1` 일 때만 `web.output "server"`(기본은 app.json 그대로) · `scripts/export-ait.mjs`(`npm run check:web:ait` → `dist-ait/`, `dist-*/` 라 저장소 밖 · check_sec2 의 dist · dist-demo 와 섞이지 않음) · 정적 데모 export · `deploy_demo.ps1 -SkipBuild` 흐름은 그대로(건드린 파일 0) |
+| ② API 경로 · 동기 | `/api/ai/*` → `handleAi` · `ai/AIT/ts` 복사 + `--check` | `src/app/api/ai/[feature]+api.ts`(얇은 문 · 모든 방법 → 같은 문) · `src/server/ait/`(원본 19파일 복사 + 앱 전용 `route.ts`) · `scripts/sync-ait.mjs`(복사 · `--check` · 줄끝만 CRLF → LF · 앱 전용 파일 · 원본에서 사라진 파일 처리) · `npm run ait:sync` · `ait:check` · `tsconfig`: `allowImportingTsExtensions`(원본이 `./x.ts` 로 가져오므로) · eslint: `src/server/ait/**` 는 원본 복사라 `import/export` · `array-type` 만 끔 |
+| ③ 업체 호출 | 공식 SDK · 모델 · max_tokens · effort 서버 상수 · mock 에서 호출 0 · 키 없으면 not_ready | `@anthropic-ai/sdk` **0.135.0**(정확한 판 고정 · 2026-10-15 공개 · 16일 됨) · `route.ts` `anthropicUpstream`: `maxRetries 0` · 60초 `AbortSignal` · 도구 0 · 요청 꼴은 `request.ts` 그대로 · 모델 id 도 `request.ts` · 실패는 `UpstreamError`(상태 · 이름 · 앞 40자 · timeout 만) · `AIT_MODE` 가 live + 키 + 작업 공간 ID(`AIT_WORKSPACE_ID`)가 있을 때만 live(아니면 모의 — 업체 호출 0) · 응답 머리 `anthropic-workspace-id` 가 다르거나 없으면 응답을 버리고 그 격리를 잠금(AC-08 첫 응답 확인 방식) |
+| ④ 열쇠 | 서버 `process.env` 에서만 · 값 0 | `route.ts` 한 곳에서 요청마다 읽음(`ANTHROPIC_API_KEY` · `AI_ACCESS_CODE` · `AIT_SIGN_KEY` + `AIT_MODE` · `AIT_CHAT_MODEL` · `AIT_WORKSPACE_ID`) · 로그 출구는 `sink` 한 곳(handler 의 `logRecord` 허용 키만) · 최상위 try/catch(던져진 오류는 어디에도 안 나감) · 응답 머리 `no-store` · `nosniff` · `noindex` · `no-referrer` · CORS 머리 0 · 큰 본문은 읽지 않고 413 |
+| ⑤ 코드 칸 | 설정 '시험용 AI 코드' · 네이티브 SecureStore · 웹 메모리만 · 지우기 | `features/settings/AitCodePage.tsx`(카피 23-6 17키 · 가려 입력 `secureTextEntry` — `TextField` 에 한 줄 더함 · 자동완성 끔 · 저장해도 서버 호출 0 · 입력 칸 비움) · `features/ait/aitStore.ts`(코드 + 시험자 동의 판 · 시각 기록 — 웹 메모리 · 네이티브 `secureStore`) · 로그아웃 · 재설치 비움에 `aitStore.forget()` · 입구는 데모 판에서만(`aitEnabled` = 기존 `EXPO_PUBLIC_DEMO_MODE`) |
+| ⑥ 네 기능 화면 | 코드 있으면 실제 · 없으면 데모 글 · 동의 시트 · 카피 23장 그대로 | 홈 B6 셋째 칸 → `ConcernChat`(전체 시트: 첫 화면 · 입력 · 다섯 단계 이름(숫자 0) · 칩 · 근거 눌러 열기 · 약한 근거 · 위기 · 폭력 · 거절 · 미성년 카드 · 끝 화면 · 턴 상한 0) · 궁합 카드 시트 안 `CompatAiBlock` · 기내지 ① 쪽 `StarAiBlock`(경계 날 AI 호출 0) · 미리보기 화면 [문장 다듬기] → `CoachSheet` · `AitConsentSheet`(체크 → 동의 · 미리 체크 0) · 글은 `content/aitCopy.ts`(생성기 `scripts/gen-ait-copy.mjs` — 189키 + 글 없는 4키) · `check:copy` AIT 그룹 |
+| ⑦ 시험 | 서버 경로 · 앱 · 대응표 | 새 시험 5개 파일(aitServer · aitClient · aitScreens · aitEntry · aitSync) · 아래 대응표 · `scripts/check-ait-bundle.mjs` · `smoke-ait-server.mjs` · `web-ait.mjs` |
+
+## AIT-F 앱 시험 ATF-01 ~ 29 대응표 (`보안/AIT_위협.md` 7장)
+
+| ATF | 시험 이름(파일) |
+|---|---|
+| 01 | aitServer '서버 비밀 변수 이름은 src/server 안에서만 쓰인다' · '소스에 열쇠 · 접근 코드 완성 꼴이 없다' (+ check_sec2 P5-e · P5-e2) — 예외 경로는 팀장 지시대로 `src/server/` 하나(API 경로 파일은 이름을 쓰지 않음) |
+| 02 | aitServer 'EXPO_PUBLIC_ 변수 이름은 기존 셋뿐' |
+| 03 | aitClient '웹에서는 안전 저장도 쓰지 않는다' · '코드 보관 소스: 브라우저 저장소 · 쿠키 … 0' · web-ait B '저장소 · 쿠키가 비어 있다' |
+| 04 | aitClient '넣기 · 읽기 · 지우기 · 동의 기록'(네이티브 저장소 경로) · 소스 `AsyncStorage` 0 — `WHEN_UNLOCKED_THIS_DEVICE_ONLY` 는 기존 `secureStorage.ts` 값 그대로(P7-f 표식 3곳 불변) |
+| 05 | aitScreens '코드 칸 … 가려 입력 · 자동완성 끔' · '코드 넣기 … CANARY'(화면 모든 속성에 코드 값 0) · web-ait A · B |
+| 06 | aitScreens 네 기능 각각 '코드 없음 → 서버 요청 0'(궁합 · 별자리 · 문장 다듬기 · 챗봇) · aitEntry '코드 없이 열어도 서버 요청 0' · web-ait D |
+| 07 | aitScreens 오류 `auth` — 코드 칸 단추만(다시 시도 0) · 서버 문장 안 씀 · aitClient '틀린 코드는 auth' |
+| 08 | aitClient '본문은 허용 키만' · '네 기능의 앱 본문이 서버 허용 목록을 통과한다(bad_request 0)' |
+| 09 | aitClient '요청 꼴: … 코드는 x-ait-code 머리에만 · credentials omit · no-store' |
+| 10 | aitClient '코드 보관 소스: … console · safeLog 0' · aitScreens CANARY (앱 로그 규칙은 기존 `lib/log.ts` 그대로) |
+| 11 | aitClient 소스 검사(`AsyncStorage` · `Clipboard` · 공유 0) · 상태는 화면 state 뿐(챗봇 '이 대화 지우기' = 상태 비움) — 새로 고침 · 재설치 · 시트 닫힘으로 사라짐(자동 시험은 소스 검사까지) |
+| 12 | aitScreens '공유 · 복사 · 내보내기 · 딥링크 · 마크다운 해석 0'(정적) — 결과는 `Text` 로만 |
+| 13 | aitScreens 결과 칸 `AIT.aiLabel` · 시험판 알약 · 시험 안내 · `PAIR_AI.demo` · 챗봇 끝줄 상시 — **데모 ↔ 실제 별도 표식은 없음**(미리 쓴 글은 `AIT.demo.note` 로, AI 글은 'AI가 쓴 글이에요'로 가름 · 카피에 '실제' 표시 키 없음) |
+| 14 | aitScreens '입력 화면: 안내 · 칸 둘 + 호칭 칸' · '빈 글은 서버 없이 안내' — 글자 수 숫자는 카피 규칙(숫자 0)대로 보이지 않고 상한은 칸 `maxLength` + `CONCERN.partner.tooLong` |
+| 15 | aitScreens '한 턴 …' (호칭 칸 → 매 턴 `partner_alias`) |
+| 16 | aitScreens '채팅 · 가입 필수 AI와 분리'(정적) |
+| 17 | aitScreens '채팅 쪽 현재 상태 고정' (`chatApi` 서버 함수 = chat-media · photo) |
+| 18 | aitScreens '요청에 상대 정보 필드 0' · aitEntry '궁합 … 방 id · 회원 정보 없이' |
+| 19 | aitScreens '채팅 · 가입 필수 AI와 분리' · '가입 필수 AI … AIT 코드 · 경로를 참조하지 않는다' |
+| 20 | aitClient '챗봇 두 턴: 서명 묶음을 그대로 돌려보내면 이어지고 … 고친 묶음은 거절' · aitScreens '한 턴 … bundle 그대로' — 화면 상태로만 들고 닫으면 사라짐 |
+| 21 | aitScreens '끝: … 남은 횟수 숫자 0' · '화면 글에 … 재촉 · 카운트다운 말이 없다' · 푸시 · 먼저 말 걸기 코드 0 |
+| 22 | aitScreens '위기 카드 …' · aitClient '위기 글은 서버가 먼저 고정 카드로' — 말풍선 · 입력 칸에 그 글 0 · 낱말 로그 0 |
+| 23 | aitScreens '문장 다듬기 … 복사 · 공유 단추 0' · 정적 '공유 · 복사 … 0' |
+| 24 | aitScreens 오류 코드 아홉 + 닿지 못함 → 각각 `AIT.code.*` 고정 글(서버 문장 안 보임) |
+| 25 | aitScreens `spend_limit` · `limit` → 다시 시도 0 + 미리 쓴 글 안내(`AIT.code.fallback`) |
+| 26 | aitScreens 네 기능 코드 없음 · 거절 · 한도 경로 — 미리 쓴 글이 있는 기능(궁합 · 별자리)은 안내 + 위의 미리 쓴 글, **미리 쓴 글이 없는 기능(챗 · 문장 다듬기)은 안내 한 줄**(카피 23-3 이 챗 · 코치는 미리 쓴 글 없다고 정함) · 빈 화면 · 깨짐 0 |
+| 27 | aitEntry '궁합 카드 시트 안에 AI 칸 …' · '앱의 취미 코드는 모두 서버 허용 사전에 있다' |
+| 28 | aitScreens '별자리 · 사주 … 생년월일 꼴 0' · `horoscopeBody` · 문장 다듬기는 칸 이름 + 문구뿐 |
+| 29 | `npm run check:copy` AIT 그룹(189줄 · 서버 고정 문구 30줄 · 느낌표 · 숫자 · 금지 낱말 · 화면 코드 한글 글 0) |
+| 대응 못 한 줄 | 없음(줄 11 · 13 · 14 · 26 은 위에 적은 한계 — 자동 시험이 닿는 범위까지) |
+
+## AIT-F 번들 키 grep · SDK · Workers
+
+| 항목 | 결과 |
+|---|---|
+| 정적 판(`dist-demo`) | `node scripts/check-ait-bundle.mjs --dirs dist-demo`: 서버 변수 이름 · 열쇠 꼴 · 접근 코드 꼴 · JWT · 서버 모듈 글(작업 공간 머리 · 업체 오류 이름 · SDK · 지시문 첫 문장) **0건** · 클라이언트에는 `x-ait-code`(머리 이름) · `/api/ai/` 주소만 있음 |
+| 서버 판 클라이언트(`dist-ait/client` · 화면 html · 화면 js) | 같은 검사 **0건**(서버 폴더 밖) |
+| 서버 판 서버 함수(`dist-ait/server/_expo/functions/api/ai/[feature]+api.js` 757KB · 모듈 302개) | 열쇠 꼴 · 접근 코드 꼴 · JWT **0건** · 변수 이름을 읽는 파일 1개(허용 — 서버 폴더 js) · `node:` 모듈 요구 0 |
+| SDK | `@anthropic-ai/sdk@0.135.0` 고정(npm 시간 표: 0.135.0 = 10-15, 최신 1.3.0 = 10-23 이라 2주 안 됨 → 2주 넘은 가장 새 0.x 판) · 새로 들어온 패키지: `@opentelemetry/api` · `@stablelib/base64` · `fast-sha256` · `json-schema-to-ts` · `standardwebhooks` · `ts-algebra` + SDK · `npm audit` 54건은 SDK 관련 0 |
+| Workers 번들 | Metro 서버 번들이 SDK 를 그대로 묶음(302모듈) · `node:` 요구 0 · `smoke-ait-server.mjs`(번들을 Node 에서 불러 모의로 11가지 점검 · 네트워크 호출 0 · 로그에 값 0)가 통과 → **`upstream.ts` fetch 로 바꾸지 않음**. 다만 `upstream.ts` 에는 fetch 호출이 없고 오류 분류뿐이라, 바꿀 일이 생기면 fetch 부분은 새로 써야 함 |
+| 미확인 | 실제 Cloudflare Workers(EAS Hosting) 실행 · `crypto.subtle` 동작(Web Crypto 는 Workers 표준이지만 이 환경에서 못 돌림) · CPU · 시간 한도 · 격리 사이 메모리 공유 — 배포 뒤 AIT-W · AIT-Q 가 확인 |
+
+## AIT-F 바닥선 (끝 · 부하 없이 하나씩)
+
+| 항목 | 숫자 |
+|---|---|
+| tsc | 0 |
+| eslint(`npm run lint`) | 0 |
+| jest(`--maxWorkers=3`) 3회 연속 | 116묶음 2,060 / 2,060 × 3회(200 · 115 · 124초) — 시작 111묶음 1,953에서 +5묶음 +107건 |
+| check:copy | 통과 109 · 실패 0(AIT 그룹 1줄 더) |
+| check:tokens | 통과 5 · 실패 0 |
+| AIT 동기 검사 | `node scripts/sync-ait.mjs --check` 같음 · 파일 19개 · 지문 59eafd3b540a(끝에 다시 동기해도 같음 — 작업 중 바뀐 원본 text.ts 는 중간 동기에서 반영) |
+| 번들 키 grep | 0건(위 표) |
+| 웹 점검(dist-demo 다시 만든 뒤) | f7 65/0 · AIT 22/0(새) · f1 76/0 · w6 36/0 · if2 125/0 · lounge 73/0(폭 390) — f7 는 설정 줄이 16 → 17줄이 돼 기대값을 고침 |
+| check_sec2(`SEC_SKIP_AUDIT=1`) | 178건 = 통과 163 · 실패 0 · 정보 15(보안이 P5-e · P5-e2 · P7-a 를 좁게 넓힌 뒤) |
+| prepush_scan | 확정 0 · 확인 3(`src/server/ait/generated.ts` 457 · 649 · 1334줄 — 근거 카드의 공개 책 출처 주소 조각, 비밀 아님 · 보안이 이 파일의 R6 허용을 좁게 더해야 함) |
+| 새 CRLF | 0(바꾼 파일은 원래 줄끝 그대로 · 새 파일 CR 0) |
+
+## AIT-F 못 한 것 · 확인 못 한 것
+
+- 진짜 업체 호출 · 진짜 Workers 실행 · 실기기 · EAS 배포 — 0(범위 밖). 네이티브 판은 서버 주소(`expo-router` `origin`)를 아직 안 줘서 상대 경로 호출이 닿지 못하면 '사용할 수 없음' 글로 내려감(웹 테스트 웹이 목표)
+- 프로필 08 화면에는 [문장 다듬기] 입구를 넣지 않음 — 08 에는 글을 쓰는 칸이 없고(설문 답으로 채워짐), 카피가 말한 두 입구 중 홈 B6 '짝에게 보이는 내 모습'(미리보기) 쪽만 만듦
+- 신고 단추(`AIT.report.*` · `CONCERN.report.*`) 연결 0 — 서버에 'AI 문장' 신고 대상이 없어 눌러도 갈 곳이 없음(백엔드 · 법무 판단)
+- `CONCERN.ref.basis`('이 설명의 바탕: {개념 이름}') 줄 0 — 서버가 개념 이름을 따로 주지 않음(출처 글 · 한계만 줌)
+- `CONCERN.rest`('잠깐 쉬어 가요')는 AI 답 8번째부터 한 번 — 뜨는 때는 기획 확정 전 가정
+- `AIT.privacy.keep`(운영 서버에는 저장하지 않아요 …)은 '보안 서버 시험 통과 기록이 있을 때만' 조건이라, 서버 시험(aitServer · 저장 모듈 0 · 로그 값 0)이 통과해 `aitConfig.AIT_KEEP_NOTE_ON = true` 로 켬 — 법무 16-4 #7 이 시험 시작 조건이라 끌 수 없음. 보안이 같은 기록으로 인정하는지 팀장 확인 필요
+- 작업 공간 확인(AC-08)은 비용 없는 사전 호출(`GET /v1/models`) 없이 **첫 응답 머리 확인**만 — 불일치면 응답을 버리고 잠금(한 번은 업체가 처리함, 문서의 대체 방식)
+- 시험은 모두 모의 · 가짜 업체라 **모델이 만든 글의 품질 · 검사기가 걸러 내는 비율은 못 봄**(실호출 평가는 횟수 · 금액을 적어 따로 승인 필요)
+
+## AIT-F 넘김 (팀장 경유)
+
+- 마케팅: ① 카피 23-12 '앱 반영 전' 표시를 '앱 반영'으로 바꾸는 일(내가 `카피.md` 를 못 고침) ② `AIT.privacy.keep` 이 법무 16-3 · 서버 `STORAGE_NOTE` 의 '받은 날부터'를 뺀 글 — 맞춰 달라 ③ 시험자 동의 시트 전용 글이 없어 재사용: 제목 = `AIT.badge` + `AIT.testNote`, 체크 줄 = `AIT.privacy.send`, 단추 = 각 기능 단추 글(`CONCERN.send` · `PAIR_AI.button` · `COACH.send` · `STAR_AI.button`), 닫기 = 4장 닫기 → `AIT.consent.*` 키 요청 ④ 코드 없을 때 챗 · 문장 다듬기에 보일 글이 없어 `AIT_SET.rowLine` 재사용 → 전용 글 요청 ⑤ `AIT.code.limit` 은 '오늘 이용할 수 있는 만큼을 다 썼어요'인데 하루 횟수 한도가 없어져 서버의 `limit` 은 '대화 기록이 오래됨 · 너무 커짐' 뜻 → 글 다시(AI `CODE_TEXT_KO.limit` 와 같음)
+- AI: `fixed.ts` 위로 줄(`crisis.l1` · `violence.l1` · `misuse.l1`) · `CARD_NOTE` · `STORAGE_NOTE` 가 카피 23장과 다름(앱은 카피를 쓰고 서버 문장은 안 보임 — check:copy 가 [참고]로 알림) · 원본 `ts/index.ts` 가 `export *` 로 `SIGN_CODES` · `ELEMENT_CODES` 를 두 모듈에서 중복 내보냄(앱 eslint `import/export` 가 걸러 앱 쪽만 끔 — 원본은 안 고침) · `upstream.ts` 에 fetch 가 없음(청사진 문구와 다름)
+- 보안: check_sec2 'AIT' 묶음 · `prepush_scan` R6 에 `src/server/ait/generated.ts` 허용 좁게(공개 책 출처 주소) · 'AIT.privacy.keep 켜는 조건' 인정 여부 · 첫 응답 머리 방식의 작업 공간 확인 수용 여부
+- 법무: 시험자 동의 시트 글 구성이 16-4 #2 · #6 · #7 을 채우는지(국외 이전 · 상대 실명 쓰지 않기 · 캡처해 보내지 않기 · 업체 보관 30일) · 시험 끝나면 코드 닫기(#10)는 배포 몫
+- 테스트웹(AIT-W): `eas deploy` 는 서버 판 export(`npm run check:web:ait`)의 `dist-ait` 를 올리고 `--no-source-maps` 필요(서버 함수 소스맵이 export 에 같이 나옴) · 정적 데모 `dist-demo` 는 그대로 · 올리기 전 `npm run check:ait-bundle` · `check:ait-server`
+- 기획 · 디자인: 시험판 알약 · 시트 모양은 기존 부품으로 임시 구성 · `CONCERN.rest` 뜨는 때 · 단계 이름 아래 진행 표시는 PF-02 에 따라 0
+
+## AIT-F 척추 대조
+
+- 줄 · 등급 · 짝 · 점수 영향 0(AI 결과는 화면에만 — 서버 DB · 매칭 데이터 접근 0, 데모 가상 짝의 공개 같은 값만 보냄, `AIT_SET.noEffect` 로 밝힘) · 노출 영향 0(상대 정보 자동 첨부 0 · 결과 공유 · 복사 · 저장 0)
+- 푸시 · 재촉 0(먼저 말 걸기 · 남은 횟수 숫자 · 카운트다운 · 하루 횟수 한도 문구 0 · 끝은 사용자가 '충분해요'로 · 위기 낱말은 AI 부르기 전에 고정 카드 · 상시 번호 줄)
+- 네 질문: ① 줄을 흐리지 않나 — 예 ② 필수 일치를 깨지 않나 — 예 ③ 진지한 사람에게 도움 — 예(위기 · 폭력 · 미성년 카드 먼저, 상대 분석 허용은 본인 예외 D-234 그대로) ④ 차분 · 기다림을 즐겁게 — 예(중독 장치 0)
+- 벗어난 것: 없음
