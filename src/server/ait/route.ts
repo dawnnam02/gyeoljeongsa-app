@@ -7,7 +7,7 @@
 //  · 응답 머리 anthropic-workspace-id 가 AIT_WORKSPACE_ID 와 다르면 그 격리는 잠그고(live 호출 0) 그 응답은 버린다(AC-08, 첫 응답 확인 방식)
 import Anthropic from '@anthropic-ai/sdk';
 
-import { handleSaju5 } from '../saju5/handler5.ts';
+import { handleSaju5 } from './sajuRoute.ts';
 import { createCounters, GUARD, handleAi, MAX_BODY_BYTES, replyError } from './index.ts';
 import type { Counters, HandlerDeps, HttpReply, MessagesBody, ModelResult, UpstreamFailure } from './index.ts';
 

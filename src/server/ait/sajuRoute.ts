@@ -1,29 +1,29 @@
-// IF5-F2 ⑩ · 사주 AI 맞춤 서버 함수 — AIT 서버 경로(/api/ai/*) 위에 얹은 사주 기능 여섯(앱이 따로 쓰는 파일 — scripts/sync-if5.mjs 가 건드리지 않는다).
+// IF5-F2 ⑩ · 사주 AI 맞춤 서버 함수 — AIT 서버 경로(/api/ai/*) 위에 얹은 사주 기능 여섯(앱이 따로 쓰는 파일 — scripts/sync-ait.mjs OWN_FILES · 서버 변수 이름은 이 폴더만 읽는다(보안 AC-01 · prepush R11)).
 //  기능: s5_reading 풀이 · s5_daewoon 대운 · s5_sinyeon 올해 · s5_compat 둘이 맞춰 보기 · s5_taekil 날짜 고르기 설명 · s5_chat 사주 이야기. (종합 풀이는 앱이 풀이 · 대운 · 올해 세 번 부른다)
 //  AIT 핸들러(server/ait/handler.ts)와 같은 순서: 방법 → 출처 → 접근 코드(닫힘이 기본) → 형식 · 크기 → 키 허용 목록 → 모드 → 기능별 준비(위기 · 거절 · 가리기) → 속도 → 업체 호출 1회(재시도 0) → 출력 검사 → 응답.
 //  · 업체 호출은 deps.callModel 하나. 접근 코드가 있으면 실제(AIT_MODE=live + 키 + 작업 공간 확인이 갖춰졌을 때) · 아니면 모의 글(mock5) — 시험은 모의 응답만 쓴다(실호출 0)
 //  · 앱이 보내는 사실은 이 문에서 다시 걸러진다: 대운 날짜(start_date · end_date 와 날짜 꼴) 0 · 생일 원값 · 입력 꼴 0 · 한자 0 · 상대 쪽은 간지 없는 2단계 사실만(partner5 guardCompatFacts)
 //  · 끝줄(FOOTER5)은 응답에 붙이지 않는다 — 앱이 SAJU.card.footer 한 곳에서 보인다(팀장 10-31). 서버 저장 0 · 이력은 서명 묶음으로 앱이 들고 다닌다
 //  · 마일리지 예치 · 확정은 이 함수의 일이 아니다(진짜 서버에서는 Edge 가 한다 — P0 는 기기 안 가상 잔액이 앱 쪽에서 한다). 위기 · 거절 카드는 업체 호출 0
-import { AitError } from '../ait/codes.ts';
-import type { ResponseCode } from '../ait/codes.ts';
-import { classifyUpstream, shouldLockLive } from '../ait/upstream.ts';
-import type { UpstreamFailure } from '../ait/upstream.ts';
-import { checkAccessCode, consume, consumeChatCall, ACCESS_HEADER, GUARD } from '../ait/limits.ts';
-import type { HandlerDeps, HandlerRequest, ModelResult } from '../ait/handler.ts';
-import { MAX_BODY_BYTES } from '../ait/handler.ts';
-import { replyCard, replyError, replyOk } from '../ait/reply.ts';
-import type { HttpReply, Mode } from '../ait/reply.ts';
-import { newNonce } from '../ait/seal.ts';
-import type { MessagesBody } from '../ait/request.ts';
+import { AitError } from './codes.ts';
+import type { ResponseCode } from './codes.ts';
+import { classifyUpstream, shouldLockLive } from './upstream.ts';
+import type { UpstreamFailure } from './upstream.ts';
+import { checkAccessCode, consume, consumeChatCall, ACCESS_HEADER, GUARD } from './limits.ts';
+import type { HandlerDeps, HandlerRequest, ModelResult } from './handler.ts';
+import { MAX_BODY_BYTES } from './handler.ts';
+import { replyCard, replyError, replyOk } from './reply.ts';
+import type { HttpReply, Mode } from './reply.ts';
+import { newNonce } from './seal.ts';
+import type { MessagesBody } from './request.ts';
 import type { Feature5 } from '../../saju5/spec5.ts';
-import { buildMessages, buildSummaryInput, finishTurn5, foldJobOf, needsFold, newChatEnv, open5, seal5 } from './chat5.ts';
-import type { ChatEnv5, Sealed5 } from './chat5.ts';
-import { prepareChatText } from './input5.ts';
+import { buildMessages, buildSummaryInput, finishTurn5, foldJobOf, needsFold, newChatEnv, open5, seal5 } from '../saju5/chat5.ts';
+import type { ChatEnv5, Sealed5 } from '../saju5/chat5.ts';
+import { prepareChatText } from '../saju5/input5.ts';
 import { asResult, mockOutput5 } from '../../saju5/mock5.ts';
-import { guardCompatFacts, compatMessages } from './partner5.ts';
-import { buildRequest5, oneShotMessages } from './request5.ts';
-import { finish5, finishSummary } from './validate5.ts';
+import { guardCompatFacts, compatMessages } from '../saju5/partner5.ts';
+import { buildRequest5, oneShotMessages } from '../saju5/request5.ts';
+import { finish5, finishSummary } from '../saju5/validate5.ts';
 
 export const S5_FEATURES = ['s5_reading', 's5_daewoon', 's5_sinyeon', 's5_compat', 's5_taekil', 's5_chat'] as const;
 export type S5Feature = (typeof S5_FEATURES)[number];

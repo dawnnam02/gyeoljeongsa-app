@@ -51,7 +51,7 @@ const tap = async (id) => {
 };
 const goto = (p) => b.evaluate(`(() => { history.pushState(null, '', ${JSON.stringify(p)}); dispatchEvent(new PopStateEvent('popstate', { state: null })); return true; })()`);
 // 사주 마당 자리 글: 금지 낱말 0 · 느낌표 0 · 숫자 막대 라벨 0(점수 · 퍼센트 · 순위 · 판정 · 재회 · 마일리지 · 무제한)
-const BANNED = ['점수', '퍼센트', '순위', '판정', '재회', '마일리지', '무제한', '흉일', '적중', '내 편', '부적', '개운', '몰래', '전 애인'];
+const BANNED = ['점수', '퍼센트', '순위', '판정', '재회', '잔액', '무제한', '흉일', '적중', '내 편', '부적', '개운', '몰래', '전 애인'];
 async function words(label) {
   const t = await pageText();
   const banned = BANNED.filter((w) => t.includes(w));
@@ -103,6 +103,8 @@ try {
   await tap('saju-ck17-agree');
   check('1', '동의 시트(미리 체크 0)', (await waitVis('if2-ck17', 6000)) && (await b.evaluate(`(${visQ('if2-ck17-a')}).getAttribute('aria-checked')`)) === 'false', '');
   await tap('if2-ck17-a');
+  await tap('if2-ck17-c'); // IF5-F2: ③ 태어난 시각 · ④ 태어난 곳은 항목별 동의 — 동의해야 요청에 실린다
+  await tap('if2-ck17-d');
   await tap('if2-ck17-go');
   check('1', '동의 뒤 → 내 정보 안내 한 줄 + [내 정보 넣기]', await waitVis('saju-empty', 8000), '');
   await measure('빈 상태');
@@ -143,7 +145,7 @@ try {
   check('3', 'CK20 확인 전엔 생년월일 칸이 잠김 · 이름 · 성별 · 별명 칸 0', (await waitVis('saju-partner-birth', 5000)) && (await b.evaluate(`!!(${visQ('saju-partner-birth')}).disabled || (${visQ('saju-partner-birth')}).querySelector('input')?.disabled || (${visQ('saju-partner-birth')}).getAttribute('aria-disabled') === 'true'`)), '');
   await measure('상대 생일 시트');
   await b.shot(`SAJU_상대_${width}.png`);
-  await tap('saju-partner-ck20');
+  await tap('saju-partner-ck20-check');
   await b.type(sel('saju-partner-birth'), '19920802');
   await tap('saju-partner-go');
   check('3', '결과: 세 줄 + 이 화면을 닫으면 지워져요 · 점수 0', (await waitVis('saju-partner-result', 6000)) && (await visText('saju-partner-result-gone')).includes('지워져요'), '');
@@ -151,8 +153,7 @@ try {
   await b.shot(`SAJU_상대결과_${width}.png`);
   await tap('saju-partner-close');
   await waitGone('saju-partner-result', 4000);
-  await tap('saju-partner-open');
-  await tap('saju-partner-ck20');
+  await tap('saju-partner-open'); // CK20 확인은 이 기기에 한 번 기록돼 있어 다시 누르지 않는다
   await b.type(sel('saju-partner-birth'), '20180101');
   await tap('saju-partner-go');
   check('3', '만 19세 미만 → 맞춰 보지 않아요 한 줄 · 결과 0', (await waitVis('saju-partner-minor', 5000)) && !(await vis('saju-partner-result')), await visText('saju-partner-minor'));

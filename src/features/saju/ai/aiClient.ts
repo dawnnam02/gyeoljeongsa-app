@@ -8,7 +8,7 @@ import { parseReply, type AitResult } from '@/features/ait/aitTypes';
 export const S5_ACCESS_HEADER = 'x-ait-code';
 export const S5_KINDS = ['reading', 'daewoon', 'sinyeon', 'compat', 'taekil', 'chat'] as const;
 export type S5Kind = (typeof S5_KINDS)[number];
-/** 서버 handler5.ts 의 S5_ALLOWED_KEYS 와 같은 목록(시험이 서로 맞는지 본다) */
+/** 서버 sajuRoute.ts 의 S5_ALLOWED_KEYS 와 같은 목록(시험이 서로 맞는지 본다) */
 export const S5_BODY_KEYS: Readonly<Record<S5Kind, readonly string[]>> = {
   reading: ['facts'],
   daewoon: ['facts'],

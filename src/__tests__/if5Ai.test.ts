@@ -20,7 +20,7 @@ import { parseMyChart, parseMyLuck, parseTaekil } from '@/features/saju/sajuApi'
 import type { AitResult } from '@/features/ait/aitTypes';
 import { createCounters, MAX_BODY_BYTES } from '@/server/ait';
 import { createAitRoute, type RouteEnv, type Upstream } from '@/server/ait/route';
-import { guardFacts, S5_ALLOWED_KEYS, S5_FEATURES, type S5Feature } from '@/server/saju5/handler5';
+import { guardFacts, S5_ALLOWED_KEYS, S5_FEATURES, type S5Feature } from '@/server/ait/sajuRoute';
 import { guardCompatFacts } from '@/server/saju5/partner5';
 import { SCREEN_LABEL5, screenRelationLabels } from '@/server/saju5/ai_facts5';
 
@@ -297,7 +297,7 @@ describe('IF5-F2 ⑩ 정적 점검 — 끝줄 한 곳 · 번들 · 평문', () =
   const src = (...p: string[]) => path.join(__dirname, '..', ...p);
   const walk = (d: string): string[] => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : /\.(ts|tsx)$/.test(e.name) ? [path.join(d, e.name)] : []));
   test('끝줄(SAJU.card.footer)은 화면 파일에서만 · 서버는 FOOTER5 를 응답에 붙이지 않는다', () => {
-    const handler = fs.readFileSync(src('server', 'saju5', 'handler5.ts'), 'utf8').replace(/\/\/.*$/gm, '');
+    const handler = fs.readFileSync(src('server', 'ait', 'sajuRoute.ts'), 'utf8').replace(/\/\/.*$/gm, '');
     expect(handler).not.toMatch(/FOOTER5/);
     const ai = walk(src('features', 'saju', 'ai')).map((f) => fs.readFileSync(f, 'utf8').replace(/\/\/.*$/gm, '')).join('\n');
     expect(ai).not.toMatch(/SAJU\.card\.footer|FOOTER5|결정은 내 몫/); // AI 칸 안에서 끝줄 0 — 화면 한 곳(Footnote)만

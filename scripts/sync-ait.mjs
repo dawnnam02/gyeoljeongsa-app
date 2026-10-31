@@ -14,7 +14,7 @@ export const SRC_DIR = path.resolve(appDir, '..', 'ai', 'AIT', 'ts');
 export const DEST_DIR = path.join(appDir, 'src', 'server', 'ait');
 export const EXCLUDE = ['gen.ts'];
 /** 앱이 따로 쓰는 파일(원본에 없음) — 동기 대상이 아니다 */
-export const OWN_FILES = ['route.ts'];
+export const OWN_FILES = ['route.ts', 'sajuRoute.ts']; // IF5-F2: sajuRoute.ts = 사주 AI 맞춤 서버 핸들러(원본 없음)
 
 const norm = (text) => text.replace(/\r\n/g, '\n');
 

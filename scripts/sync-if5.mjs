@@ -60,7 +60,7 @@ export function compareServer(srcDir = SRC_DIR, destDir = SERVER_DEST_DIR) {
   return { files: SERVER_FILES, missing, differ, extra, fingerprint: hash.digest('hex').slice(0, 12) };
 }
 /** 앱이 따로 쓰는 서버 파일(원본에 없음 — 동기 대상 아님) */
-export const SERVER_OWN_FILES = ['handler5.ts'];
+export const SERVER_OWN_FILES = [];
 
 export function syncServer(srcDir = SRC_DIR, destDir = SERVER_DEST_DIR) {
   fs.mkdirSync(destDir, { recursive: true });

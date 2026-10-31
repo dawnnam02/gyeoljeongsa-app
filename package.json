@@ -85,6 +85,7 @@
     "check:lounge": "node scripts/web-lounge.mjs",
     "check:if2": "node scripts/web-if2.mjs",
     "check:saju": "node scripts/web-saju.mjs",
+    "check:mileage": "node scripts/web-mileage.mjs",
     "if5:sync": "node scripts/sync-if5.mjs",
     "if5:check": "node scripts/sync-if5.mjs --check",
     "gen:if5": "node scripts/gen-if5-copy.mjs && node scripts/gen-if3-copy.mjs",
