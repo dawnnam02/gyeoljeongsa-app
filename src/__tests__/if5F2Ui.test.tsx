@@ -234,10 +234,11 @@ describe('IF5-F2 ⑪ 동의 시트 — CK17A ③ ④ ⑤ · CK17D · CK19 · CK2
     expect(yes).toHaveBeenCalledTimes(1);
     await press(tree, 'if5-ck17d-more');
     expect(allTexts(tree).some((t) => t.startsWith('받는 곳: 미국의 Anthropic PBC'))).toBe(true); // 받는 업체 이름 밝힘
-    expect(IF5_KEEP_NOTE_ON).toBe(false);
-    expect(allTexts(tree).some((t) => t.startsWith('우리 쪽:'))).toBe(false);
+    expect(IF5_KEEP_NOTE_ON).toBe(true); // IF5-F1b ⓙ: 보안 S-F2 조건부 인정 뒤 켬
+    expect(allTexts(tree).some((t) => t.startsWith('우리 쪽:'))).toBe(true);
     await press(tree, 'if5-ck17d-full-open');
-    expect(allTexts(tree).join(' ')).not.toMatch(/서버에 저장하지 않습니다/);
+    expect(allTexts(tree).join(' ')).toMatch(/서버에 저장하지 않습니다/);
+    expect(visibleSummary(CK17D.summary, false).some((t) => t.startsWith('우리 쪽:'))).toBe(false); // 꺼진 판단 함수는 그대로 걸러낸다
     expect(visibleSummary(CK17D.summary, true).some((t) => t.startsWith('우리 쪽:'))).toBe(true);
     expect(visibleFull(CK17D.full, true).join(' ')).toMatch(/서버에 저장하지 않습니다/);
   });

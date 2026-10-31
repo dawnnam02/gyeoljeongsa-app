@@ -21,9 +21,9 @@ const hasCopyDoc = fs.existsSync(path.join(ROOT, '마케팅', '카피.md'));
 const run = (script: string, ...args: string[]) => spawnSync(process.execPath, [path.join(APP, 'scripts', script), ...args], { encoding: 'utf8' });
 
 (hasOrigin ? describe : describe.skip)('IF5-F1 ② 계산 모듈 사본 = 원본 (동기 검사)', () => {
-  test('node scripts/sync-if5.mjs --check 가 같음 · 파일 15개(코드 8 + 순수 검사기 3 + 데이터 4) + 서버 7개 · 원본은 읽기만', () => {
+  test('node scripts/sync-if5.mjs --check 가 같음 · 파일 19개(코드 10 + 순수 검사기 3 + 데이터 6) + 서버 7개 · 원본은 읽기만', () => {
     const r = run('sync-if5.mjs', '--check');
-    expect(r.stdout + r.stderr).toMatch(/IF5 동기 같음: 파일 15개\(src\/saju5\) \+ 7개\(src\/server\/saju5\)/);
+    expect(r.stdout + r.stderr).toMatch(/IF5 동기 같음: 파일 19개\(src\/saju5\) \+ 7개\(src\/server\/saju5\)/);
     expect(r.status).toBe(0);
   });
   test('들이지 않은 것: partner5(F2) · AI 요청 · 원가 · 대화 모듈이 앱 소스에 없다(번들에 지시문 0 — IFF5-35)', () => {
@@ -152,7 +152,7 @@ describe('IF5-F1 ⑤ 스위치 20키 (기획/IF5_스위치.md — 서버 이름 
 });
 
 (hasCopyDoc ? describe : describe.skip)('IF5-F1 ⑦ 글 사본 = 카피 (생성기 --check)', () => {
-  test('gen-if5-copy --check (if5Copy.ts = 카피 24장 318키)', () => {
+  test('gen-if5-copy --check (if5Copy.ts = 카피 24장 332키 = 318 + 24-15-1 새 키 12 + 24-16-1 새 키 2)', () => {
     const r = run('gen-if5-copy.mjs', '--check');
     expect(r.stdout + r.stderr).toContain('if5Copy.ts 최신');
     expect(r.status).toBe(0);
@@ -164,8 +164,8 @@ describe('IF5-F1 ⑤ 스위치 20키 (기획/IF5_스위치.md — 서버 이름 
 });
 
 describe('IF5-F1 ⑦ 글 사본 틀', () => {
-  test('318키 · 값 틀 자리 채우기 · 조사', () => {
-    expect(Object.keys(IF5_TEXT)).toHaveLength(318);
+  test('332키 · 값 틀 자리 채우기 · 조사', () => {
+    expect(Object.keys(IF5_TEXT)).toHaveLength(332);
     expect(t5('SAJU.cal.month', { 년: 2027, 월: 3 })).toBe('2027년 3월');
     expect(t5('SAJU.guide.help.title', { 낱말: '다섯 기운' })).toBe('다섯 기운 이 뭐예요?');
   });

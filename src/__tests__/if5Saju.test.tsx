@@ -3,7 +3,7 @@
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 
 import { demoDefault, FEATURE_KEYS } from '@/config/featureKeys';
-import { IF5_TEXT } from '@/content/if5Copy';
+import { IF5_TEXT, t5 } from '@/content/if5Copy';
 import { createDemoSaju } from '@/demo/sajuDemo';
 import { createIf5ConsentStore } from '@/features/consent/if5Consent';
 import type { Ck17Api } from '@/features/inflight/inflightService';
@@ -412,7 +412,8 @@ describe('IF5-F1 ③ 사주 마당 한 화면 — 상태 5종(빈 · 불러오�
     const tree = await hub(r, freshStore(true));
     const table = must(tree, 'saju-pillar-table');
     expect(table.props.accessible).toBe(true);
-    expect(table.props.accessibilityLabel).toBe(IF5_TEXT['SAJU.pillars.group']);
+    expect(String(table.props.accessibilityLabel).startsWith(IF5_TEXT['SAJU.pillars.group'])).toBe(true); // 카피 24-15-1 col.a11y: 칸 이름만 덧붙임(칸 글자 0)
+    for (const n of ['해', '달', '날']) expect(table.props.accessibilityLabel).toContain(t5('SAJU.pillars.col.a11y', { '칸 이름': n }));
     expect(must(tree, 'saju-pillar-table-day').props.importantForAccessibility).toBe('no-hide-descendants');
     expect(must(tree, 'saju-bars-목').props.importantForAccessibility).toBe('no-hide-descendants');
     const labels = tree.root.findAll((n) => typeof n.props.accessibilityLabel === 'string').map((n) => String(n.props.accessibilityLabel));
@@ -486,7 +487,8 @@ describe('IF5-F1 ③ 만세력 달력 · 날짜 고르기', () => {
     expect(textOf(tree, 'saju-cal-month')).toBe('2027년 2월');
     expect(taekil).not.toHaveBeenCalled();
     expect(mockForced).toHaveBeenCalledWith(true);
-    expect(allTexts(tree).join(' ')).not.toMatch(/음력 \d/); // 음양력 표가 없어 음력 날짜 줄을 만들지 않는다(카피 힌트 글에는 '음력'이 있다 — 마케팅 확인 요청)
+    await press(tree, 'saju-cal-day-9');
+    expect(textOf(tree, 'saju-cal-day-lunar') ?? '').toMatch(/^음력 윤?\d+월 \d+일$/); // IF5-F1b ⓐ: 음양력 표(lunar5)로 그날 한 장에 음력 줄
   });
   test('절기가 든 날 표시 · 달력 칸 읽기 이름 {날짜}, {그날의 글자}, {쉬어 가는 날} · 개수 · 순번 읽기 0', async () => {
     const weeks = monthGrid(2027, 3).flat().filter((c) => c);
