@@ -67,10 +67,10 @@ describe('이용약관 · 개인정보 처리방침 전체 (읽기 화면)', () 
     expect(articles[28]).toMatch(/^제29조 /);
   });
 
-  test('처리방침: 장 15개 · 소절 42개, 부록 · 목차는 게시하지 않는다', () => {
+  test('처리방침: 장 15개 · 소절 45개, 부록 · 목차는 게시하지 않는다', () => {
     const chapters = headings(LEGAL_PRIVACY, 2).filter((t) => /^[0-9]+. /.test(t));
     expect(chapters).toHaveLength(15);
-    expect(headings(LEGAL_PRIVACY, 3)).toHaveLength(42); // 법무 L10: 6-3 · 7-3 · 9-4 신설 · L17: 5-7 · 8-5 · 9-5 신설
+    expect(headings(LEGAL_PRIVACY, 3)).toHaveLength(45); // 법무 L10: 6-3 · 7-3 · 9-4 신설 · L17: 5-7 · 8-5 · 9-5 신설 · IF5-L2(10-31): 3-6 · 8-6 · 8-7 신설
     expect(headings(LEGAL_PRIVACY, 2).filter((t) => t.startsWith('부록'))).toHaveLength(0);
   });
 

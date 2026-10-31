@@ -1090,7 +1090,7 @@ try {
   //  ① 앱 글 사본(if2CopyData.ts — gen-if2-copy)이 카피.md 21장 표와 한 글자씩 같다(21장 키 383 = 글 382 + 끌어 쓰는 자리 1) · 기획 가안 키 0
   //  ② 카피 밖 글 0: 앱이 부르는 tx · txList 키가 모두 21장에 있고, 기내 서비스 화면 파일에 사본 밖 한글 글이 없다(만남 계획 공유 바로가기 = 카피 v4 SAFE_SHARE.entry)
   //  ③ 말투 · 금지어: 느낌표 · 숫자({…} 빼고) 0 · 정책 PF-18 · 법무 4-2 금지 낱말 0 · 앱 안 '운세' · '타로' 0 · 상대에게 보이는 글(궁합 카드 · 칩 · 대화방 칸)에 별자리 이름 · 일간 · 일주 · 띠 0
-  //  ④ 재미 정보 동의 시트 글(content/ck17Content.ts — gen-if2-assets 가 동의문구 4-17 에서 옮김)이 원본과 같다 · 판 = 판_관리(CK17A consent-2026.10.30-v1 · CK17B consent-2026.10.28-v2)
+  //  ④ 재미 정보 동의 시트 글(content/ck17Content.ts — gen-if2-assets 가 동의문구 4-17 에서 옮김)이 원본과 같다 · 판 = 판_관리(CK17A consent-2026.10.31-v1 · CK17B consent-2026.10.28-v3)
   //  ⑤ 생성 파일(라이브러리 · 그림 · 안전 낱말 · 아이콘)이 원본(ai/IF2 · 디자인 원본 · migrations)과 같다
   {
     const diffsIF = [];
@@ -1147,7 +1147,7 @@ try {
         lits.push(body);
       }
       for (const m of t.matchAll(/>\s*([^<>{}\n]*[가-힣][^<>{}\n]*?)\s*</g)) lits.push(m[1]); // JSX 글
-      const ALLOW = { 'If2Parts.tsx': ['원본'], 'inflightLogic.ts': ['${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일'] }; // 데이터 이름 · 날짜 꼴(화면 글 아님)
+      const ALLOW = { 'If2Parts.tsx': ['원본'], 'inflightLogic.ts': ['${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일'], 'if3Logic.ts': ['${Number(iso.slice(5, 7))}월 ${Number(iso.slice(8, 10))}일', '${md[0]}월 ${md[1]}일'] }; // 데이터 이름 · 날짜 꼴(화면 글 아님)
       for (const lit of lits) {
         if ((ALLOW[name] ?? []).includes(lit) || /^{[^}]+}$/.test(lit)) continue; // {자리 이름} 꼴 토큰
         if (lit === SAFE_ENTRY && name === 'If2Sheets.tsx') continue;
@@ -1171,7 +1171,7 @@ try {
     // ④ 재미 정보 동의 시트 = 동의문구 4-17
     const lc = fs.readFileSync(path.join(APP_DIR, 'src', 'config', 'laterConsent.ts'), 'utf8');
     const ed = readDoc(SOURCES.editions);
-    if (!/CK17A: 'consent-2026\.10\.30-v1', CK17B: 'consent-2026\.10\.28-v2'/.test(lc) || !/consent\.CK17A \| consent-2026\.10\.30-v1/.test(ed) || !/consent\.CK17B \| consent-2026\.10\.28-v2/.test(ed)) diffsIF.push('CK17A · CK17B 판이 판_관리와 다름');
+    if (!/CK17A: 'consent-2026\.10\.31-v1', CK17B: 'consent-2026\.10\.28-v3'/.test(lc) || !/consent\.CK17A \| consent-2026\.10\.31-v1/.test(ed) || !/consent\.CK17B \| consent-2026\.10\.28-v3/.test(ed)) diffsIF.push('CK17A · CK17B 판이 판_관리와 다름');
     // ⑤ 생성 파일 = 원본
     const assets = await load(path.join(APP_DIR, 'scripts', 'gen-if2-assets.mjs'));
     const same = (f, t) => fs.existsSync(f) && fs.readFileSync(f, 'utf8').replace(/\r\n/g, '\n') === t;

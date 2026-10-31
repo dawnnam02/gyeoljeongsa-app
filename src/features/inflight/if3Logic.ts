@@ -1,6 +1,6 @@
 // 하늘 읽기 규칙(순수 함수 · IF3-F 축소판 3부-카 · G-02 창밖 하늘 · G-03 하늘 도감 · G-04 금성 · 수성 · G-07 생일 주간 엽서).
 //  · 앱 안 천문 · 생년월일 계산 0 — 하늘 52주 표(content/skyWeeks.json)는 개발 때 AI가 미리 계산한 값을 찾기만 한다(정책 PG-07). 표에 없는 호는 칸째 없음(오류 글 0)
-//  · 글은 라이브러리(content/if3Library.json ← ai/IF3/문구_라이브러리3.json) 완결 문장 + 틀 글(content/if3Copy.ts). 숫자 · 퍼센트 · 달 밝기 · 순위 · 번호 0
+//  · 글은 라이브러리(content/if3Library.json ← ai/IF3/문구_라이브러리3.json) 완결 문장 + 틀 글(카피 22장 앱 사본). 숫자 · 퍼센트 · 달 밝기 · 순위 · 번호 0
 //  · 고르는 규칙(라이브러리 meta '고르는 규칙'): 달 사건 글 변형 v1 · v2 는 하늘표 첫 호부터 센 호 번호의 홀 · 짝 / 사건 없는 주는 목요일 저녁 달 모양 글 / 절기 든 주는 절기 틀 + 그 절기 한 줄
 import lib from '@/content/if3Library.json';
 import sky from '@/content/skyWeeks.json';

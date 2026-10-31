@@ -20,7 +20,10 @@ export const LATER_CONSENT_VERSIONS: Readonly<Record<LaterConsentCode, string>> 
 //  화면 · 글(동의문구 4-17)은 IF2-F 몫이라 LaterConsentCode · CONSENT_LATER_ITEMS(gen:legal 4-11 ~ 4-16)에는 아직 넣지 않는다
 // IF3-L(10-30 · D-227 ~ D-229): CK17A consent-2026.10.30-v1(금성 · 수성 · 세 기둥 · 나를 알기로 항목 · 목적이 넓어져 뜻이 바뀜 — 새 날짜) ·
 //  CK17B consent-2026.10.28-v2(짝에게 안 보이는 값의 이름만 정확히 — 뜻 그대로, 뒷자리만). 시행 전이라 다시 받을 사람 0
-export const IF2_CONSENT_VERSIONS = { CK17A: 'consent-2026.10.30-v1', CK17B: 'consent-2026.10.28-v2' } as const;
+// IF5-L2(10-31 · 3부-카 ⑦): CK17A consent-2026.10.31-v1(태어난 시각 · 태어난 곳 · 성별 항목 + 대운 · 사주 마당으로 목적이 넓어져 뜻이 바뀜 — 새 날짜) ·
+//  CK17B consent-2026.10.28-v3(짝에게 안 보이는 값의 이름에 시주 · 시각 · 곳만 더함 — 뜻 그대로, 뒷자리만). 시행 전이라 다시 받을 사람 0
+//  새 항목 ③ 태어난 시각 · ④ 태어난 곳 · ⑤ 성별(대운)의 시트 칸과 CK17D · CK19 · CK20 시트는 IF5-F 몫 — 이번에는 판 번호만 맞추고 시트에 칸을 만들지 않는다
+export const IF2_CONSENT_VERSIONS = { CK17A: 'consent-2026.10.31-v1', CK17B: 'consent-2026.10.28-v3' } as const;
 
 export const CK15_TEXT_VERSION = LATER_CONSENT_VERSIONS.CK15;
 export const CK16_TEXT_VERSION = LATER_CONSENT_VERSIONS.CK16;
