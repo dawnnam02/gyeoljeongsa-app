@@ -313,6 +313,11 @@ function DayCard({ iso, mode, tone, purpose, taekil, toneLabel, together }: { is
       <AppText variant="bodyBold" accessibilityRole="header" testID="saju-cal-day-title">
         {t5('SAJU.cal.day.title', { 월: m, 일: d, 요일: weekdayOf(iso) })}
       </AppText>
+      {together ? (
+        <AppText variant="body" testID="saju-cal-day-together">
+          {together === 'both' ? IF5_TEXT['SAJU.pick.partner.bothCard'] : IF5_TEXT['SAJU.pick.partner.noMark']}
+        </AppText>
+      ) : null}
       <AppText variant="bodyMedium" testID="saju-cal-day-tone">
         {toneLabel}
       </AppText>
@@ -331,11 +336,6 @@ function DayCard({ iso, mode, tone, purpose, taekil, toneLabel, together }: { is
             </AppText>
           ))}
         </>
-      ) : null}
-      {together ? (
-        <AppText variant="body" testID="saju-cal-day-together">
-          {together === 'both' ? IF5_TEXT['SAJU.pick.partner.bothCard'] : IF5_TEXT['SAJU.pick.partner.noMark']}
-        </AppText>
       ) : null}
       {tone === null && mode === 'pick' ? <AppText variant="caption">{IF5_TEXT['SAJU.pick.hint']}</AppText> : null}
     </View>

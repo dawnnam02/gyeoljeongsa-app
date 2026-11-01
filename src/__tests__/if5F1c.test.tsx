@@ -178,6 +178,19 @@ describe('IF5-QF M-QF 함께 보기 날 카드 한 줄', () => {
     await press(a.tree, `saju-cal-day-${plain[0]}`);
     expect(has(a.tree, 'saju-cal-day-together')).toBe(false);
   });
+  test('IF5-QF3 R-01: 켠 날 카드에서 함께 보기 줄이 제목 바로 아래 · 내 하루 말(tone)보다 앞 · 끄면 0', async () => {
+    const a = await bothDaysOnScreen('1994-03-14', '19920802');
+    const both = [...a.days].sort((x, y) => x - y);
+    const plain = Array.from({ length: 31 }, (_, i) => i + 1).filter((d) => !a.days.has(d) && !a.rests.has(d));
+    const order = () => a.tree.root.findAll((n) => typeof n.props.testID === 'string' && ['saju-cal-day-title', 'saju-cal-day-together', 'saju-cal-day-tone'].includes(n.props.testID)).map((n) => n.props.testID as string).filter((id, i, all) => all.indexOf(id) === i); // 부품 → 글자로 겹친 같은 testID 는 한 번만
+    for (const d of [both[0], plain[0]]) {
+      await press(a.tree, `saju-cal-day-${d}`);
+      expect(order()).toEqual(['saju-cal-day-title', 'saju-cal-day-together', 'saju-cal-day-tone']);
+    }
+    await press(a.tree, 'saju-cal-partner-toggle'); // 끔 — 지금과 같음(together 0 · 제목 다음 tone)
+    await press(a.tree, `saju-cal-day-${plain[0]}`);
+    expect(order()).toEqual(['saju-cal-day-title', 'saju-cal-day-tone']);
+  });
 });
 
 // ── ⓓ 상대 값은 일지 숫자 하나 · 네트워크 · 저장 0 ───────────────────────────────

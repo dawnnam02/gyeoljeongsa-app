@@ -339,7 +339,7 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
           {IF5_TEXT['SAJU.card.end']}
         </AppText>
         <Footnote text={IF5_TEXT['SAJU.card.footer']} testID="saju-talk-footer" />
-        <AppText variant="caption" testID="saju-talk-always">
+        <AppText variant="body" testID="saju-talk-always">
           {ait('CONCERN.always')}
         </AppText>
       </ScrollView>

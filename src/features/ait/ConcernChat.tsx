@@ -238,7 +238,7 @@ ${partner}`);
       <AppText variant="caption" testID={`${testID}-footer`}>
         {ait('CONCERN.footer')}
       </AppText>
-      <AppText variant="caption" testID={`${testID}-always`}>
+      <AppText variant="body" testID={`${testID}-always`}>
         {ait('CONCERN.always')}
       </AppText>
     </View>

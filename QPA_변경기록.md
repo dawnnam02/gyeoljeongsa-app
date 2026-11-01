@@ -1301,3 +1301,49 @@
 - 점수 · 퍼센트 · 판정 · 순위 · 배지 · 깜빡임 · 푸시 · 재촉 0: 새 글은 카피 23-13-4 5줄(마케팅)뿐, 앱은 글을 새로 쓰지 않았다. 걸린 낱말 · 판정 저장 0.
 - 네 질문: ① 줄을 흐리지 않나 — 예 ② 필수 일치를 깨지 않나 — 예 ③ 진지한 사람에게 도움 — 남을 해치고 싶다는 말에 피해자 번호(1366)를 주지 않고 112 · 109로 보내며, 피해와 위기가 겹치면 두 번호를 함께 준다. 미성년은 대화를 멈추고 1388로 ④ 차분 · 기다림 — 예.
 - 벗어난 것: 없음.
+
+# IF5-QF3 (D-237 · 11-01) — 재검수 낮음 2건: 함께 보기 줄 순서 · 상시 위기 줄 글자 크기
+
+근거 `팀장/세부청사진/IF5_QF3.md` · `검수/_log/IF5Q2/결과표_찾은것.md` R-01 · R-02 · 시작 8e1bcbb(jest 128묶음 2,263건). 새 카피 0 · 새 토큰 0.
+
+## IF5-QF3 한 일
+
+| 번호 | 한 일 | 파일 |
+|---|---|---|
+| ① R-01 | 날 카드(`DayCard`)에서 함께 보기 줄(`saju-cal-day-together`)을 제목 바로 아래 · 내 하루 말(`saju-cal-day-tone`) 위로 옮김. 글은 그대로(`SAJU.pick.partner.bothCard` / `noMark`) · 함께 보기를 끄면(together null) 줄이 없어 지금과 같음 | `src/features/saju/SajuCalendarScreen.tsx` |
+| ② R-02 | 상시 위기 줄(`CONCERN.always`) 두 곳 variant `caption` → `body`(AppText 기본 색이 본문 색 `colors.text`). 자리 · 글 · 접힘 밖은 그대로. 끝줄(`CONCERN.footer`)과 캡처 줄은 caption 그대로 | `src/features/saju/SajuTalkScreen.tsx`(`saju-talk-always`) `src/features/ait/ConcernChat.tsx`(`${testID}-always`) |
+
+## IF5-QF3 시험
+
+| 시험 | 내용 |
+|---|---|
+| `if5F1c.test.tsx` +1건 | 함께 보기 켠 날(◇ 날 · 표시 없는 날) 카드에서 순서가 제목 → together → tone · 끄면 together 0 · 제목 → tone |
+| `if5F2Ui.test.tsx` 기존 F-02 건에 줄 추가 | `saju-talk-always` variant `body` · 글 `AIT_TEXT['CONCERN.always']` 그대로 |
+| `aitScreens.test.tsx` 기존 첫 화면 건에 줄 추가 | `concern-always` variant `body` · 글 그대로 · `concern-footer` 는 `caption` 그대로 |
+
+## IF5-QF3 바닥선
+
+| 항목 | 결과 | 앞 수치와 차이 |
+|---|---|---|
+| tsc | 0 | 같음 |
+| lint | 0 | 같음 |
+| jest | 128묶음 2,264/2,264 통과 | +1건(새 시험 1건. 나머지 두 시험은 기존 건에 단언만 더함) |
+| check:copy | 통과 110 · 실패 0 | 같음 |
+| check:tokens | 5 / 0 | 같음 |
+| sync-ait · sync-if5 `--check` | 같음(20개 a15bed2ffac9 · 23 + 7개 af0dcb58192f / 6a0c125c0de2) | 같음 |
+| 웹(dist-demo 다시 만듦 후) | web-saju 360 · 390 · 430 각 42/0 · web-ait 360 · 390 · 430 각 22/0 | 같음(브라우저 한 번에 하나) |
+| 보안 check_sec2(`SEC_SKIP_AUDIT=1`) | 183건 = 통과 169 · 실패 0 · 정보 14 | 같음 |
+| prepush_scan | 확정 0 · 확인 0(커밋 전, 변경기록 포함) | 같음 |
+| 의존성 변경 | 0 | — |
+
+## IF5-QF3 못 한 것 · 확인 못 한 것
+
+- 실기기 · 스크린리더 · 360폭에서 상시 줄이 body(16)로 커졌을 때 줄 수 늘어남은 눈으로 보지 않음(web-saju · web-ait 3폭 점검은 가로 넘침 0 · 글자 13 이상 통과).
+- R-03은 설계대로('참고') 손대지 않음. 위기 사전 · 서버 · 백엔드 · 카피 손댐 0. 푸시는 팀장.
+
+## IF5-QF3 척추 대조
+
+- 줄 · 짝 · 순서 · 노출 · 등급 · 탑승권에 0: 날 카드 안 한 줄 순서와 안전 줄 글자 크기뿐. 매칭 · 추천 화면 import 0.
+- 점수 · 퍼센트 · 판정 · 순위 · 배지 · 깜빡임 · 푸시 · 재촉 0: 글을 새로 쓰지 않음.
+- 네 질문: ① 줄을 흐리지 않나 — 예 ② 필수 일치를 깨지 않나 — 예 ③ 진지한 사람에게 도움 — 함께 보기를 켠 사람이 처음 읽는 줄이 함께 보기 사실이 되고, 위기 번호 줄이 더 잘 읽힘 ④ 차분 · 기다림 — 예.
+- 벗어난 것: 없음.

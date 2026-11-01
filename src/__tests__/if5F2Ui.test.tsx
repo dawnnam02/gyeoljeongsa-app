@@ -611,6 +611,7 @@ describe('IF5-QF F-01 · F-02 사주 이야기: 위기 앞거름이 먼저 · �
     const r = aiRig({ code: null });
     const tree = await talk(r);
     expect(textOf(tree, 'saju-talk-always')).toBe(AIT_TEXT['CONCERN.always']);
+    expect(must(tree, 'saju-talk-always').props.variant).toBe('body'); // IF5-QF3 R-02: caption → body(색 = 본문 색)
     await say(tree, '죽고 싶어요');
     expect(textOf(tree, 'saju-talk-always')).toBe(AIT_TEXT['CONCERN.always']);
     const range = aiRig({ code: 'ait-code', birth: '1950-05-05' });

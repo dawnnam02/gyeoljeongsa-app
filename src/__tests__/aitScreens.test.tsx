@@ -384,6 +384,8 @@ describe('AIT-F ⑥ 연애 고민 정리 (카피 23-4 · 23-5 · ATF-12 ~ 15 · 
     expect(textOf(tree, 'concern-no-send')).toBe(AIT_TEXT['CONCERN.intro.noSend']);
     expect(textOf(tree, 'concern-footer')).toBe(AIT_TEXT['CONCERN.footer']);
     expect(textOf(tree, 'concern-always')).toBe(AIT_TEXT['CONCERN.always']);
+    expect(must(tree, 'concern-always').props.variant).toBe('body'); // IF5-QF3 R-02: caption → body
+    expect(must(tree, 'concern-footer').props.variant).toBe('caption'); // 끝줄은 그대로 caption
     expect(textOf(tree, 'concern-head-note')).toBe(AIT_TEXT['AIT.testNote']);
   });
 
