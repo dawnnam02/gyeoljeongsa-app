@@ -497,6 +497,12 @@ const ECHO_EXEMPT: ReadonlyArray<{ user: RegExp; strip: RegExp; ext: number }> =
   { user: /떠보/, strip: /떠보/g, ext: 2 },                                     // c_manip — "떠보는 말"처럼 뒤 두 글자까지 사용자 글과 같을 때만
 ];
 const normQ = (s: string): string => s.replace(/[^가-힣a-z0-9]/gi, '');
+/** 사용자가 **자기 상태 · 상대 행동으로 쓴 말**(무기력 · 우울해 · 번아웃 · 스트레스 · 불안정 · 집착 · 통제 …)을 되짚을 때만 그 낱말을 사전에서 뺀다(AI-FIX8 ①, IND7 증상 낱말 첫 응답 탈락 5/8).
+ *  병명(진단) 낱말과 낙인 라벨은 빼지 않는다: c_diagnosis · c_label 규칙은 건드리지 않고, c_symptom 안에서도 병명 꼴(…증 · 장애 · 공황 · 강박 · 중독 · 환청 · 망상)과 사람을 규정하는 꼴(…한 사람 · 성격 · 성향), c_stigma 안에서도 인격을 규정하는 꼴(원래 그런 · 천성 · 인격 · 악질 · 위선 …)은 빼지 않는다. */
+const ECHO_STATE: ReadonlyArray<{ id: string; only?: RegExp; skip: RegExp; labelNear?: boolean }> = [
+  { id: 'c_symptom', skip: /증$|증세|증상|장애|공황|강박|환청|망상|중독|충동|정신|심리|마음의 ?병|분노|사람|성격|성향|기질|자존감|아픈/ },   // 자존감은 위 ECHO_EXEMPT 가 "자존감이 바닥" 꼴까지 맞춰 본다
+  { id: 'c_stigma', only: /집착|이기적|통제|이용|거짓말|뻔뻔|계산적|못된/, skip: /거짓말쟁이|사람|성향/, labelNear: true },
+];
 const VICTIM_ADVICE = /보세요|해 ?보|해 ?주세요|하세요|방법|쪽으로|좋겠|권해|보시면|볼 ?수|드릴게|효과|좋다고|좋아요|낫|나아 ?보|도움이 ?되|유용|해야|돼요|하면 ?돼|하는 ?게 ?좋|전해 ?보/;
 /** 틀 뒤에 조건 꼴(면 · 듯이 · 하면서 · 려면)이 오거나, 틀 가까이에 사람 · 성향 · 타입 같은 낙인 꼴이 오면 풀지 않는다(AI-FIX4 M1: "조종하려는 느낌을 주면 …" · "길들이려는 성향의 사람") */
 const VICTIM_AFTER_BAD = /면[\s,]|듯이|하면서|려면/;
@@ -587,6 +593,21 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
       // 사용자가 직접 쓴 말을 **그대로 인용한 구간**만 사전에서 뺀다(AI-FIX7 ② ④). 문장 끝말(군요 · 셨어요)이 아니라 인용 일치로 본다 — "…자존감이 바닥이라서 더 힘드시겠어요"도 풀리고,
       //  "상대는 자존감이 낮아서 …"처럼 사용자가 쓰지 않은 꼴은 안 풀린다. 조언 꼴(보세요 · 방법 …)이 든 문장은 어느 쪽이든 풀지 않는다. 그 뒤 판단은 출력 판정(Haiku)이 한 번 더 한다.
       if (!advice) for (const e of ECHO_EXEMPT) if (e.user.test(allAsker)) u = u.replace(e.strip, (m: string, off: number, whole: string) => (echoQuoted(whole, off, m, e.ext) ? '' : m));
+      if (!advice) for (const ex of ECHO_STATE) {
+        const rule = CHAT_RULES.find((r) => r.id === ex.id);
+        if (!rule) continue;
+        u = u.replace(new RegExp(rule.re.source, rule.re.flags.replace(/g/g, '') + 'g'), (m: string, ...a: unknown[]) => {
+          const whole = a[a.length - 1] as string; const off = a[a.length - 2] as number;
+          if (ex.skip.test(m) || (ex.only && !ex.only.test(m))) return m;
+          const after = whole.slice(off + m.length);
+          if (/^(?:증|장애)/.test(after)) return m;                                   // 무기력증 · 우울장애 — 병명 꼴
+          if (ex.labelNear && VICTIM_STIGMA_NEAR.test(after)) return m;                // 이기적인 사람 · 집착하는 성향 — 사람을 규정하는 꼴
+          const n0 = normQ(m);
+          const stem = n0.replace(/(?:해|한|감|함|하다|하)$/, '');                       // 우울해 · 우울한 · 우울하다 → 우울
+          const probe = (stem.length >= 2 ? stem : n0).slice(0, 4);
+          return userNorm.includes(probe) ? '' : m;
+        });
+      }
       return u;
     };
     const hits = checkText(scan(text), CHAT_RULES, { allowPhrases: CHAT_ALLOW_PHRASES });

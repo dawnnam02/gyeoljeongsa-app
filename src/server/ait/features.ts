@@ -176,7 +176,7 @@ const mentionsContact = (s: string): boolean => CONTACT_WORDS.some((w) => s.incl
 const CONTACT_GIVEN = /(?:아이디|카톡|카카오톡|카카오|인스타|오픈채팅|라인|텔레그램)[^가-힣]{0,6}[A-Za-z0-9._@-]{4,}|[A-Za-z0-9-]{2,}[.](?:com|kr|net|me|io)(?:[/][^ ]*)?/i;
 
 /** 상대를 서열 · 조건으로 가르거나 연락을 막는 문구, 사실을 숨기고 속이려는 문구 — 이런 글에는 살릴 점(keep) 칭찬 줄을 내지 않는다(AI-FIX7 ⑦: "상위 1% 스펙 아니면 연락하지 마세요"에 "기준을 분명하게 밝힌 점"이라고 칭찬한 것). 출력 판정 앞의 서버 쪽 안전망이다 */
-const KEEP_BLOCK_INPUT = /(?:상위|스펙|연봉|학벌|직업|외모|키|조건)[^.!?]{0,24}(?:아니면|이하|미만|못하면|안 ?되면|사절|제외|거르|걸러|연락\s?(?:하지|마))|(?:눈|수준|급)\s?낮[^.!?]{0,12}(?:사절|거절|제외|연락\s?(?:하지|마))|상위\s?\d+\s?%|사절|(?:나이|혼인|결혼|이혼|기혼|유부|돌싱|직업|사는 ?곳|연봉|학력)[^.!?]{0,14}(?:숨기|숨겨|속이|속여|속였|거짓|꾸며|안 ?밝히|비밀로)|(?:숨기|숨겨|속이|속여)[^.!?]{0,14}(?:나이|혼인|결혼|이혼|기혼|유부|돌싱|직업|연봉|학력)/;
+const KEEP_BLOCK_INPUT = /(?:상위|스펙|연봉|학벌|직업|외모|키|조건)[^.!?]{0,24}(?:아니면|이하|미만|못하면|안 ?되면|사절|제외|거르|걸러|연락\s?(?:하지|마))|(?:눈|수준|급)\s?낮[^.!?]{0,12}(?:사절|거절|제외|연락\s?(?:하지|마))|상위\s?\d+\s?%|사절|사양(?:합|해)|감춰|감추고|감춘|들키지\s?않|들킬|것처럼\s?(?:써|보이게|적)|(?:이상|이내)만\s?(?:연락|만나|지원)|(?:그|이) ?(?:아래|이하)는|수준\s?안\s?맞|시간\s?낭비|(?:나이|혼인|결혼|이혼|기혼|유부|돌싱|직업|사는 ?곳|연봉|학력)[^.!?]{0,14}(?:숨기|숨겨|속이|속여|속였|거짓|꾸며|안 ?밝히|비밀로)|(?:숨기|숨겨|속이|속여)[^.!?]{0,14}(?:나이|혼인|결혼|이혼|기혼|유부|돌싱|직업|연봉|학력)/;
 
 export function finishCoach(resp: ApiResultLike, input: { field: string; text: string; masked?: number }): OneShotDone<CoachDisplay> {
   const p = parseJson(resp);
@@ -201,18 +201,23 @@ export function finishCoach(resp: ApiResultLike, input: { field: string; text: s
   for (const f of (o.findings as unknown[]).slice(0, 6)) {
     if (!isRecord(f) || !onlyKeys(f, ['quote', 'point', 'ask', 'options']) || typeof f.quote !== 'string' || typeof f.point !== 'string' || typeof f.ask !== 'string' || !Array.isArray(f.options)) { droppedAny = true; continue; }
     const quote = f.quote.trim(); const point = f.point.trim(); const ask = f.ask.trim();
-    const options = f.options.filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean);
+    const optionsRaw = f.options.filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean);
     const qlen = charLen(quote);
     let bad = false;
     if (qlen < 2 || qlen > 30 || !quoteInSource(quote, text)) bad = true;                 // 원문에서 글자 그대로 옮긴 조각
     if (charLen(point) > 100 || !endsWithHaeyo(point)) bad = true;
     if (charLen(ask) > 90 || !/\?\s*$/.test(ask) || !endsWithHaeyo(ask)) bad = true;
-    if (options.length < 1 || options.length > 2) bad = true;
-    for (const opt of options) {
+    if (optionsRaw.length < 1 || optionsRaw.length > 2) bad = true;
+    // AI-FIX8 ②: 고친 안은 하나씩 따로 본다 — 걸린 안(번역투 '에 대한' 등)은 그 안만 버리고, 멀쩡한 안이 남으면 짚기 · 되묻기는 살린다(L13 정상 글이 번역투 한 줄로 통째 닫히던 것).
+    //  걸린 이유는 reasons 에 그대로 쌓이므로 hardRules(k_pro · k_auto · contact)는 안 하나만 걸려도 응답 전체를 막는 것이 그대로다.
+    const options: string[] = [];
+    for (const opt of optionsRaw.slice(0, 2)) {
       const n = charLen(opt);
-      if (n < Math.max(6, Math.floor(qlen * 0.5)) || n > Math.ceil(qlen * 3) + 10) bad = true;   // 길이: 원문 조각의 절반 ~ 세 배(여유 10자)
-      if (checkLine(opt, COACH_RULES.filter((r) => OPTION_RULE_IDS.includes(r.id)))) bad = true;
+      let optBad = n < Math.max(6, Math.floor(qlen * 0.5)) || n > Math.ceil(qlen * 3) + 10;   // 길이: 원문 조각의 절반 ~ 세 배(여유 10자)
+      if (checkLine(opt, COACH_RULES.filter((r) => OPTION_RULE_IDS.includes(r.id)))) optBad = true;
+      if (!optBad) options.push(opt);
     }
+    if (options.length < 1) bad = true;
     if (checkLine(point, COACH_RULES) || checkLine(ask, COACH_RULES)) bad = true;
     if (masked && [quote, point, ask, ...options].some(mentionsContact)) continue;   // 연락 수단을 짚는 항목은 버리되 응답 전체 탈락은 아니다
     if (bad) { droppedAny = true; continue; }
