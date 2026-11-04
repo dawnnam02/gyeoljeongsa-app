@@ -168,7 +168,9 @@ describe('AIT-F 서버 경로 · 실호출 길(가짜 업체) — 요청 꼴 · 
   });
 
   test('챗봇은 Sonnet 5.5 — AIT_CHAT_MODEL 이 opus 5.5 가 아니면 무시 (request.ts 상수 그대로)', async () => {
-    const s = setup({ env: { ...live(), [N.model]: 'claude-fable-5-1' } as RouteEnv });
+    // AI-FIX5 D1: 입력 판정이 두 번 실패하면 챗봇을 부르지 않으므로, 심사 호출(Haiku)에는 정상 판정을 돌려준다
+    const create: Upstream['create'] = async (b) => ({ data: { stop_reason: 'end_turn', content: b.model === 'claude-haiku-5-5' ? [{ type: 'text', text: JSON.stringify({ intent: 'general', flagged: [] }) }] : good('x'), usage: { input_tokens: 10, output_tokens: 5 } }, workspaceId: WS });
+    const s = setup({ env: { ...live(), [N.model]: 'claude-fable-5-1' } as RouteEnv, create });
     await s.route(reqOf(CHAT));
     // AI-FIX4: 챗봇 턴은 심사 호출(Haiku 5.5 입력 · 출력 판정)이 앞뒤에 붙는다 — 본 호출만 본다
     expect(s.calls.filter((c) => c.model !== 'claude-haiku-5-5')[0]?.model).toBe('claude-sonnet-5-5');

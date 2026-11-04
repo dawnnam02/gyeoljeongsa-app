@@ -39,8 +39,8 @@ export function replyCard(code: 'crisis' | 'refused_intent', card: FixedCard, mo
   return wrap(body);
 }
 
-export function replyError(code: Exclude<ResponseCode, 'ok' | 'crisis' | 'refused_intent'>, mode: Mode, opts: { retryAfterSec?: number; bundle?: SealedBundle; status?: number } = {}): HttpReply {
-  const body: Reply = { ok: false, code, mode, text: CODE_TEXT_KO[code] };
+export function replyError(code: Exclude<ResponseCode, 'ok' | 'crisis' | 'refused_intent'>, mode: Mode, opts: { retryAfterSec?: number; bundle?: SealedBundle; status?: number; text?: string } = {}): HttpReply {
+  const body: Reply = { ok: false, code, mode, text: opts.text ?? CODE_TEXT_KO[code] };   // text: 서버 고정 글만 넘긴다(입력 · 이유 반사 0)
   if (code === 'rate' && typeof opts.retryAfterSec === 'number') body.retryAfterSec = Math.max(1, Math.min(3600, Math.round(opts.retryAfterSec)));
   if (opts.bundle) body.bundle = opts.bundle;       // blocked_output 에서도 새 묶음(탈락 수 갱신)을 돌려준다
   return wrap(body, code === 'rate' && body.retryAfterSec ? { 'retry-after': String(body.retryAfterSec) } : {}, opts.status);

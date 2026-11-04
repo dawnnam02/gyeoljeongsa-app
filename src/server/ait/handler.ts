@@ -24,7 +24,7 @@ import type { SealedBundle } from './seal.ts';
 import { asApiResult, mockChatOutput, mockCoachOutput, mockCompatOutput, mockHoroscopeOutput } from './mock.ts';
 import { classifyUpstream, shouldLockLive } from './upstream.ts';
 import { JUDGE_TIMEOUT_MS, buildInputJudgeRequest, buildOutputJudgeRequest, parseInputJudge, parseOutputJudge } from './judge.ts';
-import { CRISIS_CARD, JUDGE_DEGRADED_NOTE, MISUSE_CARD, VIOLENCE_CARD } from './fixed.ts';
+import { CRISIS_CARD, JUDGE_RETRY_LINE, MISUSE_CARD, VIOLENCE_CARD } from './fixed.ts';
 import type { UpstreamFailure } from './upstream.ts';
 
 /** 요청 본문 상한. AI-FIX1: 32KB → 96KB. 서명 묶음(seal.ts SEAL_MAX_BYTES 80KB)이 본문에 실려 돌아오므로 그보다 커야 한다 — 32KB 일 때 9턴째에 413 이 났다 */
@@ -203,10 +203,13 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
     return replyCard('refused_intent', MISUSE_CARD, mode, await seal(prep.env));
   }
   // AI 입력 판정(AI-FIX4): 사전을 지난 글을 값싼 모델이 한 번 더 본다. 위기 · 폭력 · 미성년 카드는 위(prepareTurn)에서 이미 먼저 돌았다.
-  //  가해 의도(harm)면 오용 카드(챗봇 본 호출 0). 판정이 실패하면 사전 결과대로 진행하고 화면에 고정 한 줄을 붙인다(출력 판정이 한 번 더 막아 준다).
-  let degraded = false;
+  //  가해 의도(harm)면 오용 카드(챗봇 본 호출 0). 판정이 실패하면 **한 번 다시** 부르고(AI-FIX5 D1), 그래도 실패하면 챗봇으로 보내지 않고 고정 한 줄로 닫는다(턴 차감 0).
+  //  앞서 한 말 최대 두 개를 맥락으로 함께 넣는다(AI-FIX5 D2 — 본 호출 이력에 이미 있는 글이라 새로 보내는 범위가 아니다).
   if (mode === 'live' && (prep.call.newTexts.asker.trim() || prep.call.newTexts.partner.trim())) {
-    const j = await judgeCall(deps, buildInputJudgeRequest(prep.call.newTexts), parseInputJudge);
+    const prevTexts = prep.env.userTexts.map((u) => u.asker).filter((x) => x.trim()).slice(-2);
+    const inReq = buildInputJudgeRequest({ ...prep.call.newTexts, prev: prevTexts });
+    let j = await judgeCall(deps, inReq, parseInputJudge);
+    if (!j.ok && (j.code === 'upstream' || j.code === 'timeout' || j.code === 'rate')) j = await judgeCall(deps, inReq, parseInputJudge);   // 일시 연결 오류 한 번 더
     if (j.ok && j.value === 'harm') {
       refund(deps.counters, POOL, 'chat_call', est);
       emit('chat', { code: 'refused_intent' });
@@ -214,12 +217,13 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
     }
     if (!j.ok) {
       if (j.code === 'spend_limit') { emit('chat', { code: 'spend_limit' }); return replyError('spend_limit', mode); }
+      refund(deps.counters, POOL, 'chat_call', est);       // 챗봇을 부르지 않았으니 이 턴은 차감 0 · 봉투는 그대로(새 서명 묶음 없음)
       if (prep.call.softMisuse) {                          // 사전이 걸렸는데 판정도 못 했다 → 안전한 쪽(사전 결과: 오용 카드)
-        refund(deps.counters, POOL, 'chat_call', est);
         emit('chat', { code: 'refused_intent' });
         return replyCard('refused_intent', MISUSE_CARD, mode, await seal(prep.env));
       }
-      degraded = true;
+      emit('chat', { code: 'timeout' });
+      return replyError('timeout', mode, { text: JUDGE_RETRY_LINE });
     }
   }
 
@@ -258,9 +262,6 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
       const drop = new Set(j.value.map((x) => shown[x.i].text));
       fin = finishTurn(prep, { stop_reason: result.stop_reason, content: result.content }, index, { dropTexts: drop });
     }
-    if (degraded && fin.kind === 'ok') fin.display.notes.push(JUDGE_DEGRADED_NOTE);
-  } else if (degraded && fin.kind === 'ok') {
-    fin.display.notes.push(JUDGE_DEGRADED_NOTE);
   }
   if (fin.kind === 'ok') { emit('chat', { code: 'ok', ...usage }); return replyOk(fin.display, mode, await seal(fin.env)); }
   if (fin.kind === 'card') { emit('chat', { code: fin.code, ...usage }); return replyCard(fin.code, fin.card, mode, await seal(fin.env)); }

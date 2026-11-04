@@ -232,6 +232,12 @@ export const CO_DEATH_FAMILY: TermFamily = {
 
 export const VIOLENCE_TERMS: readonly string[] = [...VIOLENCE_BASE, ...VIOLENCE_FAMILIES.flatMap((f) => f.terms)];
 
+const PARTNER_SUBJ = '(?:남자친구|남친|여자친구|여친|남편|아내|애인|전남친|전여친|전남자친구|전여자친구|전남편|전처|상대방?|그사람|엄마|아빠|부모님|오빠|형|그놈|걔|그분|시어머니|친구)';
+const MONITOR_OBJ = '(?:위치|폰|핸드폰|휴대폰|카톡|메신저|sns|인스타|계정|메시지|사진)';
+const MONITOR_VERB = '(?:보|본|봤|봐|확인|열어|열람|뒤져|뒤지|추적|감시|엿보|훔쳐|따라다)';
+/** AI-FIX5 D3: "남자친구 몰래 위치를 따라다니며 확인하려는데 방법 좀요" — 주어 뒤에 조사 없이 '몰래'가 붙은 말은 내가 하는 쪽이다(가해 의도). 폭력(피해자용) 낱말 검사에서 이 덩어리는 뺀다 */
+export const PERP_CLAUSE = new RegExp(`${PARTNER_SUBJ}몰래[가-힣]{0,8}${MONITOR_OBJ}[가-힣a-z]{0,14}(?:하려는데|하려고|하고싶|할래|해볼|방법|알려|싶어|싶은데|좀요)`);
+
 /** 문맥이 필요한 폭력 정규식 */
 export const VIOLENCE_PATTERNS: readonly PatternFamily[] = [
   { id: 'pv_knife', label: '칼로 (칼로리 제외)', risk: '중간', note: '기존 낱말 "칼로"의 "칼로리" 오탐을 뺐다. "영화에서 칼로 싸우는 장면"은 여전히 걸림',
@@ -243,6 +249,13 @@ export const VIOLENCE_PATTERNS: readonly PatternFamily[] = [
   { id: 'pv_monitor_third', label: '제3자 주어가 내 위치 · 폰을 추적 · 감시 / 항상 · 계속 감시 (남자친구가 제 위치를 추적하고 있어요)', risk: '낮음',
     note: '법무 18-3: 피해 쪽 말. 폭력 카드가 먼저이고 오용(거절) 카드는 나가지 않는다. 1인칭 가해("제가 남친 위치를 추적")는 그대로 오용',
     re: /(?:남자친구|남친|여자친구|여친|남편|아내|애인|전남친|전여친|전남자친구|전여자친구|전남편|전처|상대|그사람|엄마|아빠|부모님|오빠|형|그놈|걔)(?:가|이)(?:(?:제|저의|내|나의)(?:위치|폰|핸드폰|휴대폰|카톡|메신저|sns|인스타)(?:를|을)?(?:계속|항상|자꾸|매일)?(?:추적|감시|몰래(?:봐|보|열|뒤))|(?:항상|계속|자꾸|매일|늘)?(?:저를|나를|절|날)?(?:항상|계속|자꾸|매일|늘)?감시)/ },
+  // AI-FIX5 D3: 주어 규칙. 남이 '몰래 내 위치 · 폰을 본다'는 피해 말(상대가 몰래 내 위치를 본다)은 폭력 안전 카드가 떠야 하고 오용(거절) 카드는 나가지 않는다.
+  { id: 'pv_monitor_secret', label: '제3자 주어가 몰래 내 위치 · 폰 · 카톡을 보거나 따라다님 (상대가 몰래 내 위치를 본다)', risk: '중간',
+    note: '법무 18-3 이어서(AI-FIX5 D3): "몰래"가 주어 뒤나 목적어 뒤에 있고 주어가 제3자(가/이)이면 피해. 주어 뒤에 조사 없이 붙은 "남자친구 몰래 …"는 내가 하는 쪽(PERP_CLAUSE)',
+    re: new RegExp(`${PARTNER_SUBJ}(?:가|이)(?:몰래(?:제|저의|내|나의)${MONITOR_OBJ}(?:를|을)?|(?:제|저의|내|나의)${MONITOR_OBJ}(?:를|을)?몰래)(?:계속|항상|자꾸|매일)?${MONITOR_VERB}`) },
+  { id: 'pv_follow_me', label: '제3자 주어가 나를 계속 따라다님 · 쫓아다님 · 미행 (남자친구가 저를 계속 따라다녀요)', risk: '중간',
+    note: '스토킹 피해 말(AI-FIX5 D3). 낱말 "따라다니"는 "따라다녀요" 꼴을 못 잡았다',
+    re: new RegExp(`${PARTNER_SUBJ}(?:가|이)(?:저를|나를|절)(?:계속|자꾸|매일|몰래)?(?:따라다니|따라다녀|쫓아다니|쫓아다녀|따라와|쫓아와|미행)`) },
   { id: 'pv_monitor_own', label: '내 위치 · 폰이 추적 · 감시당함 (제 폰을 감시하고 있어요)', risk: '낮음',
     note: '법무 18-3: 주어는 없지만 "제 · 내 + 위치 · 폰 + 추적 · 감시"는 내가 당하는 쪽. 폭력 카드가 먼저',
     re: /(?:제|저의|내|나의)(?:위치|폰|핸드폰|휴대폰|카톡|메신저|sns|인스타)(?:를|을)?(?:추적|감시)(?:하고있|당하|해요|한다|하는|해서|했)/ },
@@ -408,10 +421,11 @@ export function classifyHits(text: string): HitClass[] {
   const attached = (cls: 'crisis_db' | 'crisis_ext'): boolean => ATTACHED_FORMS.some((g) => g.cls === cls && matchesAnyTerm(key, g.terms));
   if (matchesAnyTerm(key, CRISIS_DB_PARTIAL) || attached('crisis_db') || boundaryHit(text, 'crisis_db')) out.push('crisis_db');
   else if (matchesAnyTerm(key, CRISIS_TERMS_EXT) || matchesCrisisPattern(key) || attached('crisis_ext') || boundaryHit(text, 'crisis_ext') || matchesAnyTerm(key, CO_DEATH_FAMILY.terms)) out.push('crisis_ext');
-  if (matchesAnyTerm(key, VIOLENCE_TERMS) || matchesViolencePattern(key) || matchesAnyTerm(key, CO_DEATH_FAMILY.terms)) out.push('violence');
+  const keyV = key.replace(PERP_CLAUSE, '');          // 내가 몰래 하겠다는 말은 피해자용 폭력 카드가 아니라 오용 쪽(아래)
+  if (matchesAnyTerm(keyV, VIOLENCE_TERMS) || matchesViolencePattern(keyV) || matchesAnyTerm(key, CO_DEATH_FAMILY.terms)) out.push('violence');
   if (matchesAnyTerm(key, HARM_TERMS)) out.push('harm_intent');
   // 피해 쪽 감시 · 추적 말(남자친구가 제 위치를 추적 …)은 오용 거절 카드로 보내지 않는다 — 폭력 카드가 맞다(법무 18-3)
-  const victimMonitor = VIOLENCE_PATTERNS.some((p) => (p.id === 'pv_monitor_third' || p.id === 'pv_monitor_own') && matchesFamily(key, p));
+  const victimMonitor = VIOLENCE_PATTERNS.some((p) => p.id.startsWith('pv_monitor') && matchesFamily(key, p));
   if (!victimMonitor && MISUSE_PATTERNS.some((p) => p.re.test(key))) out.push('misuse');
   if (MINOR_FAMILIES.some((f) => matchesFamily(key, f))) out.push('minor');
   return out;

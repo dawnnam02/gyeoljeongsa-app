@@ -136,8 +136,8 @@ export const FALLBACK_QUESTION: Readonly<Record<'S1' | 'S1_CONFIRM' | 'S2' | 'S4
 /** 헤어질지 · 점수를 정해 달라는 말에 모델이 거절 문장을 못 냈을 때 서버가 앞에 붙이는 한 줄(AI-FIX2 A7). 글은 마케팅 확정 대기 — 모델이 평가에서 스스로 낸 말과 같은 꼴 */
 /** 위기 카드 뒤 첫 일반 턴의 맨 앞에 한 번 붙는 고정 점검 한 줄(AI-FIX4 R-a · 독립 채점 R-a 안 1). 글은 마케팅 · 법무 확인 대기 — 모델이 쓰지 않는 고정 글이다 */
 export const CRISIS_CHECK_LINE = '지금 마음은 어떠세요? 많이 힘들다면 아래 번호로 바로 이야기해도 돼요.';
-/** 입력 판정(judge.ts)이 실패해 사전 결과대로만 진행한 턴에 붙는 고정 한 줄(AI-FIX4). 글은 마케팅 확인 대기 */
-export const JUDGE_DEGRADED_NOTE = '확인 절차 일부를 마치지 못해 안전한 범위에서만 답했어요.';
+/** 입력 판정(judge.ts)이 두 번 다 실패해 챗봇으로 보내지 않고 닫을 때의 고정 한 줄(AI-FIX5 D1, `timeout` 코드로 나가며 턴은 차감 0). 글은 초안 — 마케팅 · 법무 확인 대기. 앱은 `timeout` 코드 문구로도 같은 뜻을 보여 준다 */
+export const JUDGE_RETRY_LINE = '확인을 마치지 못했어요. 이번 시도는 횟수에 넣지 않으니 한 번만 다시 보내 주세요.';
 export const VERDICT_NOTE = '그 결정은 제가 대신 내릴 수 없어요.';
 /** 코치 글에 연락처 · 링크가 있어 서버가 가렸을 때 붙이는 고정 한 줄(AI-FIX2 A6). 글은 마케팅 확정 대기 */
 export const CONTACT_NOTE = '연락처나 링크는 소개글에 쓸 수 없어요. 가린 채로 봐 드렸어요.';

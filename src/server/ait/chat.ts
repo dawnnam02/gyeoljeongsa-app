@@ -445,6 +445,8 @@ const VICTIM_FRAME = /(?:조종|길들)(?:당하|당했|여지|여진|이려는|
 const VICTIM_REPORT_END = /(?:군요|셨어요|셨네요|셨죠|들려요|들렸어요|들렸네요|들리네요|느껴져요|느껴졌어요|느껴지네요|말씀이에요|말씀이시죠|들었어요|들었네요|읽혀요|읽히네요)[.\s]*$/;
 const VICTIM_REPORT_SOFT = /(?:느낌|마음|말|생각|일)[^.]{0,14}(?:것으로|걸로) ?(?:보여요|읽혀요|들려요)[.\s]*$/;   // "그 말이 마음에 남아 있는 것으로 보여요" 같은 조심스러운 보고
 const VICTIM_QUESTION_ECHO = /(?:느끼|느껴|하셨|말씀|들으|들었|쓰셨)/;
+const FIT_USER = /안\s?맞|맞지\s?않|잘\s?맞/;
+const FIT_STEM = /안 ?맞|맞지 않|잘 ?맞/g;
 const VICTIM_ADVICE = /보세요|해 ?보|해 ?주세요|하세요|방법|쪽으로|좋겠|권해|보시면|볼 ?수|드릴게|효과|좋다고|좋아요|낫|나아 ?보|도움이 ?되|유용|해야|돼요|하면 ?돼|하는 ?게 ?좋|전해 ?보/;
 /** 틀 뒤에 조건 꼴(면 · 듯이 · 하면서 · 려면)이 오거나, 틀 가까이에 사람 · 성향 · 타입 같은 낙인 꼴이 오면 풀지 않는다(AI-FIX4 M1: "조종하려는 느낌을 주면 …" · "길들이려는 성향의 사람") */
 const VICTIM_AFTER_BAD = /면[\s,]|듯이|하면서|려면/;
@@ -517,6 +519,8 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
       if (kind !== 'restate' && kind !== 'problem_line' && kind !== 'question') return t;
       let u = worryOk ? t.replace(WORRY_FRAME, '') : t;
       if (victimStems.length) u = unwrapVictimFrame(u, victimStems, kind === 'question');
+      // AI-FIX5 D4: 사용자가 "안 맞아"라고 쓴 일을 되짚는 보고형 문장은 c_fit(잘 맞음/안 맞음 판정)에서 그 낱말만 뺀다 — 일정 · 시간이 안 맞는 이야기까지 판정 낱말로 지우지 않으려고
+      if (FIT_USER.test(lastAsker) && !VICTIM_ADVICE.test(t) && (kind === 'question' ? /\?\s*$/.test(t.trim()) && VICTIM_QUESTION_ECHO.test(t) : VICTIM_REPORT_END.test(t.trim()) || VICTIM_REPORT_SOFT.test(t.trim()))) u = u.replace(FIT_STEM, '');
       return u;
     };
     const hits = checkText(scan(text), CHAT_RULES, { allowPhrases: CHAT_ALLOW_PHRASES });
