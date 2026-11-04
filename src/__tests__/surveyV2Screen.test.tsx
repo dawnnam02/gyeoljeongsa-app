@@ -370,3 +370,78 @@ describe('선택 단계 · 검토 · 제출', () => {
     expect(find(tree, 'v2-review')).not.toBeNull();
   });
 });
+
+// QF2-B Q2-22(D-246): 세부사항(어필) 글을 AI가 읽어 등급에 반영하는 길을 끔 — 스위치 appeal_ai 가 꺼져 있으면 세부사항 단계 · 검토 칸 · '두 단계' 안내가 없고, 켜면 돌아온다
+describe('세부사항 숨김(스위치 appeal_ai · D-246)', () => {
+  async function fullRig() {
+    const r = rig();
+    await r.api.save({ answers: FULL, texts: TEXTS });
+    return r;
+  }
+  const showWith = async (deps: SurveyV2Deps, appealOn: boolean) => {
+    const tree = await mount(<SurveyV2Screen deps={deps} appealOn={appealOn} />);
+    await wait(30);
+    return tree;
+  };
+
+  test('시작 안내: 꺼짐 = 마지막 단계 하나(\'마지막 단계는…\') · 켜짐 = 마지막 두 단계(옛 글 그대로)', async () => {
+    const off = await showWith(rig().deps, false);
+    expect(allTexts(off)).toContain('마지막 단계는 쓰고 싶은 만큼만 써도 돼요.');
+    expect(allTexts(off).some((t) => t.includes('마지막 두 단계'))).toBe(false);
+    expect(SV2.intro.pointsNoAppeal.every((p) => allTexts(off).includes(p))).toBe(true);
+    const on = await showWith(rig().deps, true);
+    expect(SV2.intro.points.every((p) => allTexts(on).includes(p))).toBe(true);
+    expect(allTexts(on)).toContain('마지막 두 단계는 쓰고 싶은 만큼만 써도 돼요.');
+  });
+
+  test('꺼짐: 검토에 세부사항 칸이 없고, 결혼 이야기 → [답 확인하기] → 곧바로 검토 · 건너뛰기도 검토 · 뒤로 가면 결혼 이야기 · 설문을 끝까지 낼 수 있다', async () => {
+    const { deps } = await fullRig();
+    const tree = await showWith(deps, false);
+    expect(has(tree, 'v2-review')).toBe(true);
+    expect(has(tree, 'v2-review-appeal-edit')).toBe(false);
+    expect(has(tree, 'v2-review-story-edit')).toBe(true);
+    await tap(tree, 'v2-review-story-edit');
+    expect(has(tree, 'v2-story')).toBe(true);
+    expect(allTexts(tree)).toContain(SV2.appeal.toReview); // 다음 단계가 검토뿐이라 단추가 '답 확인하기'
+    await tap(tree, 'v2-next');
+    expect(has(tree, 'v2-appeal')).toBe(false);
+    expect(has(tree, 'v2-review')).toBe(true);
+    await tap(tree, 'v2-review-story-edit');
+    await tap(tree, 'v2-skip');
+    expect(has(tree, 'v2-appeal')).toBe(false);
+    expect(has(tree, 'v2-review')).toBe(true);
+    await tap(tree, 'v2-header-back'); // 검토에서 뒤로 → 결혼 이야기(세부사항 없음)
+    expect(has(tree, 'v2-story')).toBe(true);
+    expect(has(tree, 'v2-appeal')).toBe(false);
+    await tap(tree, 'v2-next');
+    await tap(tree, 'v2-submit');
+    await wait(30);
+    expect(mockRouter.push).toHaveBeenCalledWith('/photos'); // 제출 → 05 로 이어진다
+  });
+
+  test('꺼짐: 세부사항 글은 저장도 분석 호출도 가지 않는다 · 켜짐으로 바꾸면 세부사항 칸이 돌아온다', async () => {
+    const { deps, memory } = await fullRig();
+    const tree = await showWith(deps, false);
+    await tap(tree, 'v2-submit');
+    await wait(30);
+    expect(memory.users.get('u1')?.texts.T04).toBeUndefined();
+    const again = await showWith((await fullRig()).deps, true);
+    expect(has(again, 'v2-review-appeal-edit')).toBe(true);
+    await tap(again, 'v2-review-appeal-edit');
+    expect(has(again, 'v2-appeal')).toBe(true);
+    await tap(again, 'v2-header-back');
+    expect(has(again, 'v2-story')).toBe(true); // 켜짐에서는 세부사항에서 뒤로 가면 결혼 이야기(옛 길 그대로)
+  });
+
+  test('꺼짐: B04 도움말의 \'마지막 세부사항\' 말이 안 보인다 · 켜짐에서는 그대로', async () => {
+    const HELP = "있으면 마지막 '세부사항'에서 더 자세히 적을 수 있어요.";
+    const { deps } = await fullRig();
+    const off = await showWith(deps, false);
+    await tap(off, 'v2-review-edit-B04');
+    expect(question(off)).toBeTruthy();
+    expect(allTexts(off)).not.toContain(HELP);
+    const on = await showWith((await fullRig()).deps, true);
+    await tap(on, 'v2-review-edit-B04');
+    expect(allTexts(on)).toContain(HELP);
+  });
+});

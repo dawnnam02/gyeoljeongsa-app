@@ -12,6 +12,7 @@ import path from 'node:path';
 
 import { findBrowser, openBrowser, sleep } from './lib/browser.mjs';
 import { APP_DIR } from './lib/legal-source.mjs';
+import { fillSurveyV2 } from './lib/surveyV2Driver.mjs';
 
 const distDir = path.resolve(APP_DIR, process.argv[2] ?? 'dist-demo');
 const shotDir = path.join(APP_DIR, '확인', '스크린샷', 'QF2A');
@@ -89,6 +90,17 @@ try {
   await tap('not-found-home');
   check('1', '[홈으로] → 앱 시작(/)이 알맞은 첫 화면으로(로그인 전 01 온보딩)', await b.waitFor(`location.pathname === '/onboarding'`, 8000), await b.evaluate('location.pathname'));
 
+  // ═══ 1b. 설문 세부사항(어필 AI 끔 · D-246) — 스위치 appeal_ai 꺼짐(데모 처음값) ═══
+  await b.open('/survey/v2', `!!window.__q('v2-intro') || !!window.__q('v2-screen')`);
+  await b.waitFor(`!window.__q('splash')`, 8000);
+  await b.waitFor(`!!window.__q('v2-intro')`, 8000);
+  const introText = await pageText();
+  check('1b', "설문 시작 안내: '마지막 단계는…'(두 단계 아님)", introText.includes('마지막 단계는 쓰고 싶은 만큼만 써도 돼요.') && !introText.includes('마지막 두 단계'), '');
+  const walk = await fillSurveyV2(b);
+  check('1b', '필수 흐름 → 결혼 이야기 → 검토까지 세부사항 단계 없이 간다', walk.ok && !(await b.evaluate(`!!window.__q('v2-appeal')`)), `답한 문항 ${walk.answered}`);
+  check('1b', '검토 화면에 세부사항 칸 없음 · 결혼 이야기 칸은 있음', !(await b.evaluate(`!!window.__q('v2-review-appeal-edit')`)) && (await b.evaluate(`!!window.__q('v2-review-story-edit')`)), '');
+  console.log(`       스크린샷 ${await b.shot('QF2B_설문검토_세부사항없음_390x844.png')}`);
+
   // ═══ 2. 가입 → 폭마다 시트 ═══
   check('2', '가입(데모) → 탑승권 홈', await signUp('qf2a1@email.com'), '');
   const WIDTHS = [
@@ -143,9 +155,9 @@ try {
       console.log(`       스크린샷 ${await b.shot(`QF2A_동의시트_${w}x${h}.png`)}`);
       await scrollBottom('if2-ck17-scroll');
       await sleep(250);
-      const last = await rectOf('if2-ck17-e');
+      const last = await rectOf('if2-ck17-d');
       const goAfter = await rectOf('if2-ck17-go');
-      check('2', `${w} 폭: 칸을 끝까지 내리면 마지막 항목(성별)이 [이어 가기] 위에 보인다`, !!last && !!goAfter && last.b <= goAfter.t + 1 && last.t >= 0, last && goAfter ? `마지막 ${Math.round(last.b)} · 단추 위 ${Math.round(goAfter.t)}` : '');
+      check('2', `${w} 폭: 칸을 끝까지 내리면 마지막 항목(성별, 체크 ④)이 [이어 가기] 위에 보인다`, !!last && !!goAfter && last.b <= goAfter.t + 1 && last.t >= 0, last && goAfter ? `마지막 ${Math.round(last.b)} · 단추 위 ${Math.round(goAfter.t)}` : '');
       console.log(`       스크린샷 ${await b.shot(`QF2A_동의시트_아래_${w}x${h}.png`)}`);
       await tap('if2-ck17-close');
       await waitGone('if2-ck17-go', 4000);

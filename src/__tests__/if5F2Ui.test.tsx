@@ -201,25 +201,26 @@ describe('IF5-F2 ⑨ 확인 시트 셋 · 잔액 부족', () => {
 });
 
 // ── 동의 시트 ────────────────────────────────────────────────────────────────
-describe('IF5-F2 ⑪ 동의 시트 — CK17A ③ ④ ⑤ · CK17D · CK19 · CK20', () => {
-  test('CK17A 시트: ① ② + ③ ④ ⑤ 칸 · 미리 체크 0 · ①을 고르기 전엔 ③ ④ ⑤ 누를 수 없음 · 이어 가기로 항목별 기록', async () => {
+describe('IF5-F2 ⑪ 동의 시트 — CK17A ③ ④ · CK17D · CK19 · CK20', () => {
+  test('CK17A 시트: ① ② + ③ ④ 칸 · 미리 체크 0 · ①을 고르기 전엔 ③ ④ 누를 수 없음 · 이어 가기로 항목별 기록', async () => {
     const store = createIf5ConsentStore();
     const onSave = jest.fn(async () => true);
     setIf5ConsentForTest(store);
     const tree = keep(await mount(<Ck17Sheet visible onClose={() => undefined} onSave={onSave} />));
-    expect(allTexts(tree)).toEqual(expect.arrayContaining([CK17_EXTRA.time.check, CK17_EXTRA.place.check, CK17_EXTRA.gender.check]));
-    for (const k of ['c', 'd', 'e']) {
+    expect(allTexts(tree)).toEqual(expect.arrayContaining([CK17_EXTRA.time.check, CK17_EXTRA.gender.check]));
+    expect(has(tree, 'if2-ck17-e')).toBe(false); // D-247: 태어난 곳 칸이 빠져 체크 칸은 ① ② ③ ④
+    for (const k of ['c', 'd']) {
       const box = tree.root.findAll((n) => n.props.testID === `if2-ck17-${k}` && n.props.accessibilityRole === 'checkbox')[0];
       expect(box.props.accessibilityState.checked).toBe(false); // 미리 체크 0
       expect(box.props.disabled).toBe(true); // ①을 고르기 전엔 누를 수 없음
     }
     await press(tree, 'if2-ck17-a');
     await press(tree, 'if2-ck17-c');
-    await press(tree, 'if2-ck17-e');
+    await press(tree, 'if2-ck17-d');
     await press(tree, 'if2-ck17-go');
     await wait();
     expect(onSave).toHaveBeenCalledWith(true, false);
-    expect(store.get().items).toEqual({ time: true, place: false, gender: true });
+    expect(store.get().items).toEqual({ time: true, gender: true });
     setIf5ConsentForTest(null);
   });
   test('CK17D: 체크 전 [동의하고 이어 가기] 비활성 · 동의하지 않고 이어 가기 → 안내 한 줄 · 요약 / 전문 · 서버 저장 줄은 보안 시험 통과 전엔 꺼짐', async () => {
@@ -272,12 +273,12 @@ describe('IF5-F2 ⑪ 동의 시트 — CK17A ③ ④ ⑤ · CK17D · CK19 · CK2
     await s1.agreeD();
     await s1.agreeT(true);
     await s1.agreeC20();
-    await s1.setItems({ time: true, place: true, gender: false });
+    await s1.setItems({ time: true, gender: false });
     const s2 = createIf5ConsentStore(mem);
     await s2.load();
     expect(s2.get().d?.version).toBe(IF5_CONSENT_VERSIONS.CK17D);
     expect(s2.get().t?.health).toBe(true);
-    expect(s2.get().items).toEqual({ time: true, place: true, gender: false });
+    expect(s2.get().items).toEqual({ time: true, gender: false });
     await mem.setItem('ck.d.v1', JSON.stringify({ version: 'consent-2026.01.01-v1', at: 'x' }));
     const s3 = createIf5ConsentStore(mem);
     await s3.load();
@@ -307,7 +308,7 @@ function aiRig(opts: { code?: string | null; email?: string; birth?: string | nu
   };
   const posts: { kind: string; body: Record<string, unknown> }[] = [];
   const consent = createIf5ConsentStore(opts.consent);
-  if (opts.items !== false) void consent.setItems({ time: true, place: true, gender: true });
+  if (opts.items !== false) void consent.setItems({ time: true, gender: true });
   const ai: AiServices = {
     mileage: createMileageApi(call),
     edge: createLedgerEdge(call),
@@ -327,8 +328,8 @@ function aiRig(opts: { code?: string | null; email?: string; birth?: string | nu
   return { ai, deps, calls, posts, consent, flags };
 }
 const answered = (): InputStore => {
-  const s = createInputStore(memoryInputStorage(), []);
-  void s.save({ time: { hour: 15, minute: 20 }, place: '서울', saveTime: false, savePlace: false });
+  const s = createInputStore(memoryInputStorage());
+  void s.save({ time: { hour: 15, minute: 20 }, saveTime: false});
   return s;
 };
 

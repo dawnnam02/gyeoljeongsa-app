@@ -2,6 +2,7 @@ import { Redirect, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
+import { env } from '@/config/env';
 import { DemoSkipBar } from '@/features/ai/DemoSkipBar';
 import { SurveyChatScreen } from '@/features/surveyChat/SurveyChatScreen';
 import { surveyChatOn } from '@/features/surveyChat/switch';
@@ -34,12 +35,14 @@ export default function SurveyScreen() {
   }, [ready, refresh]);
 
   // notice: missing(05 에서 빠진 문항) · politics · religion(3부-아 QP-32 — T1 [설문으로]가 그 한 문항으로)
+  // 세부사항(어필) 단계 = 스위치 appeal_ai(D-246). 데모 웹에서만 ?notice=appeal 로 켜서 볼 수 있다(웹 점검용 — 실서버 빌드에는 이 길이 없다)
+  const appealOn = flagOn(flags, 'appeal_ai') || (env.demoMode && notice === 'appeal');
   const v2Entry = notice === 'missing' || notice === 'politics' || notice === 'religion' ? notice : 'resume';
-  if (step === 'v2') return <SurveyV2Screen key={`v2-${notice ?? ''}`} entry={v2Entry} />;
+  if (step === 'v2') return <SurveyV2Screen key={`v2-${notice ?? ''}`} entry={v2Entry} appealOn={appealOn} />;
   if (!isSurveyStep(step)) {
     return <Redirect href={{ pathname: '/survey/[step]', params: { step: '01' } }} />;
   }
-  const body = !ready ? <View style={{ flex: 1 }} testID="survey-flags-wait" /> : surveyChatOn(flags) ? <SurveyChatScreen key={`chat-${notice ?? ''}`} typeOn={flagOn(flags, 'type_card')} /> : surveyV2On(flags) ? <SurveyV2Screen key={`v2-${notice ?? ''}`} entry={v2Entry} /> : <SurveyLiteScreen key={`${step}-${notice ?? ''}`} entry={liteEntryOf(step, notice)} />; // V6-F: 대화형 설문 스위치(survey_chat) 켜짐이면 대화형
+  const body = !ready ? <View style={{ flex: 1 }} testID="survey-flags-wait" /> : surveyChatOn(flags) ? <SurveyChatScreen key={`chat-${notice ?? ''}`} typeOn={flagOn(flags, 'type_card')} /> : surveyV2On(flags) ? <SurveyV2Screen key={`v2-${notice ?? ''}`} entry={v2Entry} appealOn={appealOn} /> : <SurveyLiteScreen key={`${step}-${notice ?? ''}`} entry={liteEntryOf(step, notice)} />; // V6-F: 대화형 설문 스위치(survey_chat) 켜짐이면 대화형
   return (
     <View style={{ flex: 1 }}>
       {body}

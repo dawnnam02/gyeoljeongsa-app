@@ -37,9 +37,9 @@ const toSlot = <T,>(r: SajuResult<T>): Slot<T> => (r.ok ? { kind: 'ready', data:
 
 type Done = { runKey: string; chart?: Slot<MyChart>; luck?: Slot<MyLuck>; day?: Slot<MyDay> };
 
-/** CK17A 항목별 동의(③ 시각 · ④ 곳)가 없으면 그 값은 요청에 싣지 않는다(법무 4-17 — 태어난 시각 · 곳은 동의한 분께만). items 가 없으면(동의 기록을 아직 못 읽음) 싣지 않는 쪽 */
+/** CK17A 항목별 동의(③ 시각)가 없으면 그 값은 요청에 싣지 않는다(법무 4-17 — 태어난 시각은 동의한 분께만. 곳은 D-247 로 받지 않음). items 가 없으면(동의 기록을 아직 못 읽음) 싣지 않는 쪽 */
 export function consentedInput(input: DeviceInput, items: Ck17Items | undefined): DeviceInput {
-  return { ...input, time: items?.time ? input.time : null, place: items?.place ? input.place : null };
+  return { ...input, time: items?.time ? input.time : null };
 }
 
 export function useSajuData(deps: Pick<SajuDeps, 'api' | 'now'>, rawInput: DeviceInput, enabled: boolean, items?: Ck17Items): { chart: Slot<MyChart>; luck: Slot<MyLuck>; day: Slot<MyDay>; reload: () => void } {

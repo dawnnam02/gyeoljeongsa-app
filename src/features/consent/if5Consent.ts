@@ -1,16 +1,16 @@
-// 사주 마당 동의 기록(IF5-F2 ⑪ · 법무 동의문구 4-17 새 칸 ③ ④ ⑤ · 4-18 CK17D · 4-19 CK19 · 4-20 CK20).
+// 사주 마당 동의 기록(IF5-F2 ⑪ · 법무 동의문구 4-17 새 칸 ③ ④ · 4-18 CK17D · 4-19 CK19 · 4-20 CK20).
 //  · 기록은 이 기기에만(lib/secureStorage if5Storage — 네이티브 SecureStore · 열쇠 목록 withKeyIndex · 웹은 메모리). 서버 동의 표에는 이 코드가 아직 없다(백엔드 넘김).
 //    판 값 = config/laterConsent IF5_CONSENT_VERSIONS — 글 판이 바뀌면 이전 기록은 없는 것으로 본다(다시 받음)
-//  · 항목은 따로따로: ③ 태어난 시각 · ④ 태어난 곳 · ⑤ 성별(대운) — CK17A(①)를 꺼 두면 셋 다 꺼진다. 미리 체크 0
+//  · 항목은 따로따로: ③ 태어난 시각 · ④ 성별(대운) — CK17A(①)를 꺼 두면 둘 다 꺼진다. 미리 체크 0. 태어난 곳은 D-247(11-04)로 받지 않는다(옛 ④ 곳 · ⑤ 성별 → ④ 성별)
 //  · CK17D(AI 풀이 보내기) → CK19(자유 입력 이야기 · 건강 · 성생활은 따로) 순서. CK19 의 ②(건강 · 성생활)는 ①이 있어야만 의미가 있다. CK20 은 확인형(다른 분 정보 넣을 때)
 //  · 열쇠 이름에 생일 · 상대 · 사주 · 마일리지 낱말 0(check_sec2 IF5-aa). 로그 0. 지움: 로그아웃 · 탈퇴 · 새로 깐 기기 · 동의 관리의 거두기
 import { useEffect, useSyncExternalStore } from 'react';
 
-import { IF5_CONSENT_VERSIONS } from '@/config/laterConsent';
+import { IF2_CONSENT_VERSIONS, IF5_CONSENT_VERSIONS } from '@/config/laterConsent';
 
 export const IF5_CONSENT_KEYS = { items: 'ck.items.v1', d: 'ck.d.v1', t: 'ck.t.v1', c20: 'ck.c20.v1' } as const;
 
-export type Ck17Items = { time: boolean; place: boolean; gender: boolean };
+export type Ck17Items = { time: boolean; gender: boolean };
 export type Stamp = { version: string; at: string };
 export type If5ConsentState = {
   items: Ck17Items;
@@ -18,7 +18,7 @@ export type If5ConsentState = {
   t: (Stamp & { health: boolean }) | null; // CK19(health = ② 건강 · 성생활도 읽어도 된다)
   c20: Stamp | null; // CK20 안내 확인
 };
-export const NO_ITEMS: Ck17Items = { time: false, place: false, gender: false };
+export const NO_ITEMS: Ck17Items = { time: false, gender: false };
 export const EMPTY_CONSENT: If5ConsentState = { items: NO_ITEMS, d: null, t: null, c20: null };
 
 export type ConsentStorage = { getItem: (key: string) => Promise<string | null>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void> };
@@ -78,7 +78,8 @@ export function createIf5ConsentStore(storage: ConsentStorage = memoryConsentSto
         let it: Ck17Items = NO_ITEMS;
         try {
           const v: unknown = items ? JSON.parse(items) : null;
-          if (isRec(v) && v.version === 'consent-2026.10.31-v1') it = { time: v.time === true, place: v.place === true, gender: v.gender === true };
+          if (isRec(v) && v.version === IF2_CONSENT_VERSIONS.CK17A) it = { time: v.time === true, gender: v.gender === true };
+          else if (items) void storage.removeItem(IF5_CONSENT_KEYS.items).catch(() => undefined); // 옛 판(곳 항목이 있던 10-31 판) 기록은 지운다 — 새 판에서 다시 받는다(D-247)
         } catch {
           it = NO_ITEMS;
         }
@@ -87,7 +88,7 @@ export function createIf5ConsentStore(storage: ConsentStorage = memoryConsentSto
         const cs = stampOf(c20, IF5_CONSENT_VERSIONS.CK20);
         // 이미 이 세션에서 받은 동의가 있으면 저장본으로 덮지 않는다
         put({
-          items: snap.items.time || snap.items.place || snap.items.gender ? snap.items : it,
+          items: snap.items.time || snap.items.gender ? snap.items : it,
           d: snap.d ?? (ds ? { version: String(ds.version), at: String(ds.at) } : null),
           t: snap.t ?? (ts ? { version: String(ts.version), at: String(ts.at), health: ts.health === true } : null),
           c20: snap.c20 ?? (cs ? { version: String(cs.version), at: String(cs.at) } : null),
@@ -97,8 +98,8 @@ export function createIf5ConsentStore(storage: ConsentStorage = memoryConsentSto
     },
     async setItems(items, now = new Date()) {
       put({ ...snap, items });
-      if (!items.time && !items.place && !items.gender) await storage.removeItem(IF5_CONSENT_KEYS.items).catch(() => undefined);
-      else await write(IF5_CONSENT_KEYS.items, { version: 'consent-2026.10.31-v1', ...items, at: now.toISOString() });
+      if (!items.time && !items.gender) await storage.removeItem(IF5_CONSENT_KEYS.items).catch(() => undefined);
+      else await write(IF5_CONSENT_KEYS.items, { version: IF2_CONSENT_VERSIONS.CK17A, ...items, at: now.toISOString() });
     },
     async agreeD(now = new Date()) {
       const s = stamp(IF5_CONSENT_VERSIONS.CK17D, now);

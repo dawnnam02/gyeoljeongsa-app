@@ -116,7 +116,7 @@ async function answerCurrent(id) {
 
 let exitCode = 0;
 try {
-  await b.open('/survey/v2', `!!${q('v2-intro')} || !!${q('v2-screen')}`);
+  await b.open('/survey/v2?notice=appeal', `!!${q('v2-intro')} || !!${q('v2-screen')}`);
   await b.waitFor(`!window.__q('splash')`, 8000); // 스플래시(약 2.8초)가 걷힌 뒤 누른다
   check('1', '시작 안내: 제목 · 다섯 줄 · [시작하기]', (await wait(`!!${q('v2-intro')}`)) && (await text('v2-intro')).includes('설문은 10분쯤 걸려요') && (await visible('v2-start')), await text('v2-intro-0'));
   await shot('01_시작안내');

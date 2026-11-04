@@ -1,4 +1,4 @@
-// 사주 마당 · 마일리지(IF5 · 카피 24장) 글의 앱 사본 — scripts/gen-if5-copy.mjs 가 마케팅/카피.md 24장에서 만든다(손으로 고치지 않는다). 336키.
+// 사주 마당 · 마일리지(IF5 · 카피 24장) 글의 앱 사본 — scripts/gen-if5-copy.mjs 가 마케팅/카피.md 24장에서 만든다(손으로 고치지 않는다). 337키.
 //  · 무료 층(F1)은 MILEAGE.* · SAJU.talk.* · REST_HINT.* · SAJU.card.aiButton 계열을 부르지 않는다 — 그 글은 마일리지 · AI 맞춤(F2)이 부른다. 아직 어느 화면도 안 부르는 키는 '앱 반영 전'(F1b 몫 포함).
 //  · 글이 {…} 하나뿐인 키(값 틀)는 AI 라이브러리 · 서버 값이 들어오는 자리다. 화면은 이 틀 대신 값을 쓴다.
 //  · check:copy IF5 그룹이 24장 표와 한 글자씩 대조한다. 이 파일은 check:copy 가 Node 로 바로 읽으므로 경로 별칭 없이 홀로 선다
@@ -123,6 +123,7 @@ export const IF5_TEXT = {
   'SAJU.pillars.oh.neutral': '좋고 나쁨이 아니라 결을 설명하는 말이에요.',
   'SAJU.pillars.trait.title': '별난 점 카드',
   'SAJU.pillars.trait.sub': '나만의 특징을 카드로 봐요',
+  'SAJU.trait.basis': '신살 풀이는 전통 해석이 갈리는 부분이 있어, 여러 설 중 한 가지로 봐요.',
   'SAJU.pillars.trait.a.t': '{별난 점 이름}',
   'SAJU.pillars.trait.a.b': '{별난 점 풀이 한 줄}',
   'SAJU.table.title': '자세히 보기 표',

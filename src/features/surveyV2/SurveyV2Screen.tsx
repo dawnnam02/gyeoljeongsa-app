@@ -73,7 +73,8 @@ import type { ProofState, V2Value } from './types';
 // 3부-아(검수 QP-32): T1 '설문 한 문항이 남았어요' [설문으로]는 그 문항으로 바로 — politics = 정치 막대 단계 · religion = 종교(A06, 동의가 없으면 카드부터).
 //  그 한 문항을 마치거나 [나중에 할게요] · ‹ 를 누르면 왔던 곳(T1)으로 돌아간다(흐름 · 검토로 이어 가지 않음)
 export type SurveyV2Entry = 'resume' | 'missing' | 'politics' | 'religion';
-type Props = { deps?: SurveyV2Deps; entry?: SurveyV2Entry; onDone?: () => void };
+// appealOn: 스위치 appeal_ai(D-246 · 11-04 — 세부사항 글을 AI가 읽어 등급에 반영하는 길을 끔). 꺼져 있으면 세부사항(어필) 단계 · 안내 · 검토 칸이 없다(코드는 그대로 — 켜면 돌아온다). 기본 true(시험 · 옛 호출), 라우트가 스위치 값을 넘긴다
+type Props = { deps?: SurveyV2Deps; entry?: SurveyV2Entry; onDone?: () => void; appealOn?: boolean };
 
 const T_TEXT = ['T01', 'T02', 'T03'];
 const A06_OTHER_NOTE = "'그 외'를 고르면 '그 외'를 고른 분끼리 이어져요."; // 카피.md 14-2 A06_OTHER_NOTE(v5, QP-A) — '그 외'를 고르면 한 번 더 보인다
@@ -92,8 +93,9 @@ function initialDrafts(snap: V2Snapshot, local: LocalDraft | null): Record<strin
   return out;
 }
 
-export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props) {
+export function SurveyV2Screen({ deps: given, entry = 'resume', onDone, appealOn = true }: Props) {
   const router = useRouter();
+  const appealRef = useRef(appealOn); // 시간 뒤에 부르는 일(저장 · 건너뛰기)이 늘 지금 스위치 값을 읽게
   const [deps] = useState<SurveyV2Deps>(() => given ?? surveyV2Deps());
   const { api, local, politics, religion } = deps;
   // 3부-사 종교 동의 카드(설문 v2 · 답 확인 화면에서 A06 을 열 때도 — 카피 17-1 '답 확인 화면에서 종교를 누르면 이 카드가 다시'): null = 모름(카드 없이)
@@ -186,7 +188,7 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
         setShown(true);
       } else if (started) setNotice(SV2.resume);
     } else {
-      setStage(mine && ['story', 'appeal', 'review'].includes(mine.stage) ? mine.stage : 'review');
+      setStage(mine && ['story', 'appeal', 'review'].includes(mine.stage) ? (mine.stage === 'appeal' && !appealRef.current ? 'story' : mine.stage) : 'review');
       if (started) setNotice(SV2.resume);
     }
     setPhase('ready');
@@ -232,7 +234,7 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
       } else if (!same(s.answers[id], v)) answersOut[id] = v;
     }
     const clearOut = clear.filter((id) => id in s.answers);
-    for (const q of APPEAL) {
+    for (const q of appealRef.current ? APPEAL : []) { // 스위치가 꺼진 동안은 세부사항 글을 저장하지 않는다 — 분석 호출도 가지 않는다(D-246)
       const c = check(q, d[q.id] ?? emptyDraft(q), a);
       const v = c.state === 'ok' && typeof c.value === 'string' ? c.value : c.state === 'empty' ? null : undefined;
       if (v === undefined) continue; // 글자 수가 틀린 칸은 저장하지 않는다(막는 검증은 [답 확인하기]에서)
@@ -477,7 +479,7 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
       const list = visibleFlow(st.answers);
       goTo('flow', list[list.length - 1].id);
     } else if (st.stage === 'appeal') goTo('story');
-    else if (st.stage === 'review') goTo('appeal');
+    else if (st.stage === 'review') goTo(appealRef.current ? 'appeal' : 'story');
   }, [goTo, politics, focus, leaveFocus]);
 
   const canBack = focus || (stage !== 'intro' && !(stage === 'flow' && visible[0]?.id === at));
@@ -564,9 +566,9 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
       return out;
     });
     setSkipped((x) => (x.includes(kind) ? x : [...x, kind]));
-    if (kind === 'story') setSeen((x) => (x.includes('appeal') ? x : [...x, 'appeal']));
-    if (kind === 'story' && !fromReview) openAppeal();
-    goTo(kind === 'story' ? (fromReview ? 'review' : 'appeal') : 'review');
+    if (kind === 'story' && appealRef.current) setSeen((x) => (x.includes('appeal') ? x : [...x, 'appeal']));
+    if (kind === 'story' && !fromReview && appealRef.current) openAppeal();
+    goTo(kind === 'story' ? (fromReview || !appealRef.current ? 'review' : 'appeal') : 'review');
     if (fromReview) setFromReview(false);
   };
 
@@ -617,12 +619,13 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
   // 시간 뒤에 부르는 일(자동 넘김 · 저장)이 늘 마지막 그림의 값을 읽게 한다
   useEffect(() => {
     stateRef.current = { drafts, answers, publicOn, stage, at, seen, userKey };
+    appealRef.current = appealOn;
     nextRef.current = nextFlow;
     flushRef.current = writeLocal;
     actsRef.current = {
       next: nextFlow,
       save: tempSave,
-      leave: () => leaveCards(stage === 'story' ? STORY.map((q) => q.id) : APPEAL.map((q) => q.id), stage === 'story' ? 'appeal' : 'review'),
+      leave: () => leaveCards(stage === 'story' ? STORY.map((q) => q.id) : APPEAL.map((q) => q.id), stage === 'story' && appealRef.current ? 'appeal' : 'review'),
       submit,
     };
   });
@@ -692,8 +695,8 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
       const rows = qs.filter((q) => typeof answers[q.id] === 'string').map((q) => ({ id: q.id, question: copyOf(q.id)?.q ?? q.id, answer: String(answers[q.id]) }));
       return { key, name: SECTION_COPY[key].name, edit: qs[0].id, skipped: rows.length === 0 && (skipped.includes(key) || seen.includes(key)), rows };
     };
-    return [...flow, cards('story'), cards('appeal')];
-  }, [answers, visible, skipped, seen]);
+    return appealOn ? [...flow, cards('story'), cards('appeal')] : [...flow, cards('story')];
+  }, [answers, visible, skipped, seen, appealOn]);
 
   const warnList = useMemo(
     () =>
@@ -783,7 +786,7 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
                 <AppText variant="heading" accessibilityRole="header">
                   {SV2.intro.title}
                 </AppText>
-                {SV2.intro.points.map((p, i) => (
+                {(appealOn ? SV2.intro.points : SV2.intro.pointsNoAppeal).map((p, i) => (
                   <AppText key={p} variant="body" testID={`v2-intro-${i}`}>
                     {p}
                   </AppText>
@@ -805,7 +808,7 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
                     </AppText>
                   </View>
                 ) : null}
-                <QuestionHead question={copyOf(at)?.q ?? at} help={copyOf(at)?.help} lines={lines} />
+                <QuestionHead question={copyOf(at)?.q ?? at} help={at === 'B04' && !appealOn ? undefined : copyOf(at)?.help} lines={lines} />
                 {AI_BOX_IDS.includes(at) ? (
                   <Card testID="v2-aibox">
                     <AppText variant="caption" tone="text">
@@ -889,7 +892,7 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
           {stage === 'story' ? (
             <StoryStage drafts={drafts} open={openCards} max={storyMax} errors={cardErrors} onToggle={(id) => setOpenCards((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]))} onChange={(id, d) => onDraft(id, d)} />
           ) : null}
-          {stage === 'appeal' ? (
+          {stage === 'appeal' && appealOn ? (
             <AppealStage
               drafts={drafts}
               open={openCards}
@@ -943,7 +946,7 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone }: Props)
           {stage === 'story' || stage === 'appeal' ? (
             <CtaPair
               secondary={<Button label={SV2.common.skip} variant="secondary" onPress={() => skipCards(stage)} disabled={busy} testID="v2-skip" />}
-              primary={<Button label={stage === 'story' ? SV2.common.next : SV2.appeal.toReview} onPress={() => after('leave')} loading={busy} testID="v2-next" />}
+              primary={<Button label={stage === 'story' && appealOn ? SV2.common.next : SV2.appeal.toReview} onPress={() => after('leave')} loading={busy} testID="v2-next" />}
             />
           ) : null}
           {stage === 'review' ? <Button label={SV2.review.submit} onPress={() => after('submit')} dimmed={firstMissing(answers) !== null} loading={busy} testID="v2-submit" /> : null}

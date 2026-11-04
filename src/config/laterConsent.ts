@@ -22,12 +22,15 @@ export const LATER_CONSENT_VERSIONS: Readonly<Record<LaterConsentCode, string>> 
 //  CK17B consent-2026.10.28-v2(짝에게 안 보이는 값의 이름만 정확히 — 뜻 그대로, 뒷자리만). 시행 전이라 다시 받을 사람 0
 // IF5-L2(10-31 · 3부-카 ⑦): CK17A consent-2026.10.31-v1(태어난 시각 · 태어난 곳 · 성별 항목 + 대운 · 사주 마당으로 목적이 넓어져 뜻이 바뀜 — 새 날짜) ·
 //  CK17B consent-2026.10.28-v3(짝에게 안 보이는 값의 이름에 시주 · 시각 · 곳만 더함 — 뜻 그대로, 뒷자리만). 시행 전이라 다시 받을 사람 0
-//  새 항목 ③ 태어난 시각 · ④ 태어난 곳 · ⑤ 성별(대운)의 시트 칸과 CK17D · CK19 · CK20 시트는 IF5-F 몫 — 이번에는 판 번호만 맞추고 시트에 칸을 만들지 않는다
-export const IF2_CONSENT_VERSIONS = { CK17A: 'consent-2026.10.31-v1', CK17B: 'consent-2026.10.28-v3' } as const;
+//  (IF5-L2 당시) 새 항목 ③ 태어난 시각 · ④ 태어난 곳 · ⑤ 성별(대운)의 시트 칸과 CK17D · CK19 · CK20 시트는 IF5-F 몫 — 이번에는 판 번호만 맞추고 시트에 칸을 만들지 않는다
+// D-247(11-04): 사주 · 별자리 입력에서 태어난 곳을 뺌 — CK17A consent-2026.11.04-v1(수집 항목이 줄고 체크 ④ · 거부 · 철회 · 번호가 바뀜 — 새 날짜) · CK17B -v4(이름에서 곳만 뺌 — 뜻 그대로)
+//  체크는 ① ② ③ 태어난 시각 ④ 성별(대운)로 당겨졌다(옛 ⑤ → ④). 시행 전이라 다시 받을 사람 0
+export const IF2_CONSENT_VERSIONS = { CK17A: 'consent-2026.11.04-v1', CK17B: 'consent-2026.10.28-v4' } as const;
 
 // IF5-F2 ⑪(10-31 · 판_관리 2-1): 사주 마당 새 동의 셋 — 판 값만 둔다. 글 = content/if5ConsentContent.ts(gen-if2-assets 가 동의문구 4-18 ~ 4-20 에서 옮김)
 //  CK17D AI 풀이 받기(사주 글자 국외 이전) · CK19 사주 이야기 나누기(자유 입력 국외 이전 + 건강 · 성생활) · CK20 다른 분의 정보를 넣을 때 지킬 점(확인형). 기록은 이 기기에만(features/consent/if5Consent) — 서버 동의 표에 이 코드는 아직 없다(백엔드 넘김)
-export const IF5_CONSENT_VERSIONS = { CK17D: 'consent-2026.10.31-v1', CK19: 'consent-2026.10.31-v1', CK20: 'consent-2026.10.31-v1' } as const;
+// D-247: CK17D · CK19 는 보내지 않는 것 목록에서 '태어난 곳 이름'만 뺌 — 뒷자리 v2(뜻 그대로)
+export const IF5_CONSENT_VERSIONS = { CK17D: 'consent-2026.10.31-v2', CK19: 'consent-2026.10.31-v2', CK20: 'consent-2026.10.31-v1' } as const;
 /** 법무 4-18 · 4-19 가 '보안 시험(IFS5-72 · 73 · 75) 통과 전에는 앱에 쓰지 않는다'고 한 줄 — 요약 '우리 쪽' 줄 · 전문의 '서버에 저장하지 않습니다' 문장.
  *  보안 S-F2(보안/IF5_위협.md 15장 · check_sec2 IF5-af · ag)가 사주 AI 서버 경로의 저장 0 · 로그 값 0을 조건부로 인정해 켠다(IF5-F1b ⓙ · 팀장 10-31). 조건이 깨지면(허용 키 필터를 빼거나 저장 길을 더하면) 다시 false */
 export const IF5_KEEP_NOTE_ON = true;

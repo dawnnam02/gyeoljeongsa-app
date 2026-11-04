@@ -1,6 +1,6 @@
 // IF5-F1 사주 마당 웹 점검(IF-MADANG · IF-SJ-IN · IF-SJ-PARTNER · IF-SJ-CAL · IF-SJ-TODAY · 12 설정 줄). 무료 · 네트워크 없음(로컬 서버 + 로컬 헤드리스 브라우저).
 //  먼저 데모 모드 웹 번들을 만든 뒤 쓴다(npm run check:web:demo → dist-demo/). 사람이 하는 순서대로 누른다.
-//  1 가입 → 12 설정 '사주 마당' 줄 → 사주 마당: 동의 전엔 카드 0 + [동의하고 보기](저절로 시트 0) → 동의 시트 → [내 정보 넣기] 시트(시각 모름 처음값 · 미리 체크 0 · 지점 23)
+//  1 가입 → 12 설정 '사주 마당' 줄 → 사주 마당: 동의 전엔 카드 0 + [동의하고 보기](저절로 시트 0) → 동의 시트 → [내 정보 넣기] 시트(시각 모름 처음값 · 미리 체크 0 · 곳 칸 0(D-247))
 //  2 저장하고 보기 → 카드 열 장(순서) · 숫자 막대 라벨 0 · 점수 · 퍼센트 · 판정 · 재회 · 마일리지 0 · 시각 모름 줄 · 캡처 안내 줄 · [?] 풀이 시트
 //  3 상대 생일 시트: CK20 확인 전 잠김 → 입력 → 결과 · 19세 미만 한 줄 · 닫으면 값 0 · 바깥 요청 0
 //  4 날짜 고르기(용도 칩 → 달력 색 두 가지 + 모양) · 만세력 달력(칸 글자 · 절기) · 오늘 하루
@@ -103,21 +103,19 @@ try {
   await tap('saju-ck17-agree');
   check('1', '동의 시트(미리 체크 0)', (await waitVis('if2-ck17', 6000)) && (await b.evaluate(`(${visQ('if2-ck17-a')}).getAttribute('aria-checked')`)) === 'false', '');
   await tap('if2-ck17-a');
-  await tap('if2-ck17-c'); // IF5-F2: ③ 태어난 시각 · ④ 태어난 곳은 항목별 동의 — 동의해야 요청에 실린다
+  await tap('if2-ck17-c'); // IF5-F2: ③ 태어난 시각 · ④ 성별(대운)은 항목별 동의 — 동의해야 요청에 실린다(D-247: 태어난 곳 칸은 없다)
   await tap('if2-ck17-d');
   await tap('if2-ck17-go');
   check('1', '동의 뒤 → 내 정보 안내 한 줄 + [내 정보 넣기]', await waitVis('saju-empty', 8000), '');
   await measure('빈 상태');
   await b.shot(`SAJU_빈_${width}.png`);
   await tap('saju-fill');
-  check('1', '입력 시트: 시각 모름 처음값 · 저장 칸 둘 미리 체크 0', (await waitVis('saju-in-time-unknown', 6000)) && (await b.evaluate(`(${visQ('saju-in-save-time')}).getAttribute('aria-checked')`)) === 'false', '');
-  await tap('saju-in-place-pick');
-  const places = await b.evaluate(`new Set([...document.querySelectorAll('[data-testid^="saju-in-place-"]')].filter((e) => /^saju-in-place-\\d+$/.test(e.getAttribute('data-testid'))).map((e) => e.getAttribute('data-testid'))).size`);
-  check('1', '태어난 곳 목록 23곳(자유 글 · 위치 권한 0)', places === 23, String(places));
+  check('1', '입력 시트: 시각 모름 처음값 · 저장 칸 하나 미리 체크 0', (await waitVis('saju-in-time-unknown', 6000)) && (await b.evaluate(`(${visQ('saju-in-save-time')}).getAttribute('aria-checked')`)) === 'false', '');
+  const placeParts = await b.evaluate(`document.querySelectorAll('[data-testid^="saju-in-place"], [data-testid="saju-in-save-place"], [data-testid="saju-in-abroad"]').length`);
+  check('1', '태어난 곳 칸 · 저장 칸 · 한국 밖 안내 0(D-247)', placeParts === 0 && !/태어난 곳|한국 밖/.test(await pageText()), String(placeParts));
   await words('입력 시트');
   await measure('입력 시트');
   await b.shot(`SAJU_입력_${width}.png`);
-  await tap('saju-in-place-0');
   await tap('saju-in-save');
 
   // ═══ 2. 카드 ═══

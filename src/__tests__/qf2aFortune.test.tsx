@@ -85,13 +85,13 @@ describe('Q2-20 운세 정리(D-245) — 스위치 7개 데모 꺼짐 · 서버 
     const api = createSajuApi(async (fn, args = {}) => demo.rpc(user, fn, args));
     const ck17: Ck17Api = { load: async () => ({ ok: true, data: { a: true, b: false } }), record: jest.fn(async () => ({ ok: true as const })), revoke: jest.fn(async () => ({ ok: true as const })) };
     const consent = createIf5ConsentStore();
-    void consent.setItems({ time: true, place: true, gender: true });
+    void consent.setItems({ time: true, gender: true });
     const deps: SajuDeps = { api, ck17, isOn: (k) => flags[k] === true, now: () => NOW, birthDate: async () => '1994-03-14', consent };
     return deps;
   }
   const hub = async (deps: SajuDeps) => {
-    const store = createInputStore(memoryInputStorage(), []);
-    void store.save({ time: null, place: null, saveTime: false, savePlace: false });
+    const store = createInputStore(memoryInputStorage());
+    void store.save({ time: null, saveTime: false});
     const tree = keep(await mount(<SajuMadangScreen deps={deps} store={store} />));
     await wait(80);
     return tree;

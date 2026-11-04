@@ -15,18 +15,19 @@ export default function MagazineRoute() {
   const waysOn = isOn('my_ways');
   const birthOn = isOn('birth_card');
   const bookOn = isOn('sky_book');
+  const tarotOn = isOn('inflight_tarot'); // 이번 주 타로(운세 정리 D-245): 꺼지면 기내지에서 '카드' 쪽을 뺀다(MagazineScreen) — 켜진 서버 · 데모 장면에서는 쪽이 있다
   // 서버는 '안 탄 분'과 '탄 뒤 닫힌 분'을 가르지 않아 탑승권 상태를 함께 넘긴다(3부-자 QP-43 — none 일 때만 읽음)
   const deps = useMemo(
     () => ({
       ...inflightServices(),
       preOn,
-      isOn: (k: string) => (k === 'sky_week' ? skyWeekOn : k === 'my_ways' ? waysOn : k === 'birth_card' ? birthOn : k === 'sky_book' ? bookOn : false),
+      isOn: (k: string) => (k === 'sky_week' ? skyWeekOn : k === 'my_ways' ? waysOn : k === 'birth_card' ? birthOn : k === 'sky_book' ? bookOn : k === 'inflight_tarot' ? tarotOn : false),
       boarding: async () => {
         const r = await boardingServices().api.load();
         return r.ok ? r.state : null;
       },
     }),
-    [preOn, skyWeekOn, waysOn, birthOn, bookOn],
+    [preOn, skyWeekOn, waysOn, birthOn, bookOn, tarotOn],
   );
   return <MagazineScreen deps={deps} />;
 }

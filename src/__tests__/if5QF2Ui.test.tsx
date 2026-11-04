@@ -62,7 +62,7 @@ function aiRig(opts: { code?: string | null; email?: string; post?: AiServices['
   };
   const posts: { kind: string; body: Record<string, unknown> }[] = [];
   const consent = createIf5ConsentStore();
-  void consent.setItems({ time: true, place: true, gender: true });
+  void consent.setItems({ time: true, gender: true });
   const ai: AiServices = {
     mileage: createMileageApi(call),
     edge: createLedgerEdge(call),
@@ -82,8 +82,8 @@ function aiRig(opts: { code?: string | null; email?: string; post?: AiServices['
   return { ai, deps, calls, posts, consent };
 }
 const answered = (): InputStore => {
-  const s = createInputStore(memoryInputStorage(), []);
-  void s.save({ time: { hour: 15, minute: 20 }, place: '서울', saveTime: false, savePlace: false });
+  const s = createInputStore(memoryInputStorage());
+  void s.save({ time: { hour: 15, minute: 20 }, saveTime: false});
   return s;
 };
 

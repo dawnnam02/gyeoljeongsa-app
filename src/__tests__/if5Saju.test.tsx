@@ -9,7 +9,7 @@ import { createDemoSaju } from '@/demo/sajuDemo';
 import { createIf5ConsentStore } from '@/features/consent/if5Consent';
 import type { Ck17Api } from '@/features/inflight/inflightService';
 import { rpcOf } from '@/features/inflight/inflightApi';
-import { createInputStore, INPUT_KEYS, memoryInputStorage, type InputStore } from '@/features/saju/deviceInput';
+import { createInputStore, INPUT_KEYS, memoryInputStorage, requestInputOf, type InputStore } from '@/features/saju/deviceInput';
 import { matchPartner } from '@/features/saju/partnerLocal';
 import { PartnerSheet } from '@/features/saju/PartnerSheet';
 import { SajuCalendarScreen } from '@/features/saju/SajuCalendarScreen';
@@ -70,15 +70,15 @@ function rig(opts: { birth?: string | null; ck17?: boolean; flags?: Record<strin
     revoke: jest.fn(async () => ({ ok: true as const })),
   };
   const isOn = (k: string) => flags[k] === true;
-  // IF5-F2: 시각 · 곳 · 성별은 CK17A ③ ④ ⑤ 에 동의한 분만 쓴다 — 이 시험의 사람은 셋 다 동의한 것으로 둔다
+  // IF5-F2: 시각 · 성별은 CK17A ③ ④ 에 동의한 분만 쓴다(D-247 로 곳 칸은 없다) — 이 시험의 사람은 둘 다 동의한 것으로 둔다
   const consent = createIf5ConsentStore();
-  void consent.setItems({ time: true, place: true, gender: true });
+  void consent.setItems({ time: true, gender: true });
   const deps: SajuDeps = { api, ck17, isOn, now: () => NOW, birthDate: async () => '1994-03-14', consent };
   return { user, demo, calls, api, ck17, deps, isOn, flags };
 }
 const freshStore = (answered = false): InputStore => {
-  const s = createInputStore(memoryInputStorage(), []);
-  if (answered) void s.save({ time: null, place: null, saveTime: false, savePlace: false });
+  const s = createInputStore(memoryInputStorage());
+  if (answered) void s.save({ time: null, saveTime: false});
   return s;
 };
 
@@ -169,32 +169,56 @@ describe('IF5-F1 ② 모의 서버(0048 응답 모양) — 계산은 기기 안'
 });
 
 // ── ① 기기 저장 ──────────────────────────────────────────────────────────────
-describe('IF5-F1 ① 시각 · 곳은 이 휴대폰에만 — 저장 칸을 켠 항목만 · 열쇠 이름', () => {
+describe('IF5-F1 ① 시각은 이 휴대폰에만 — 저장 칸을 켠 항목만 · 열쇠 이름 · 옛 곳 저장본 지움(D-247)', () => {
   test('저장 칸을 켠 칸만 저장소에 쓴다 · 끈 칸은 메모리뿐 · 새 저장소(앱을 다시 켬)에서 저장본만 돌아온다', async () => {
     const storage = memoryInputStorage();
-    const a = createInputStore(storage, ['서울']);
-    await a.save({ time: { hour: 15, minute: 20 }, place: '서울', saveTime: true, savePlace: false });
+    const a = createInputStore(storage);
+    await a.save({ time: { hour: 15, minute: 20 }, saveTime: true });
     expect(a.get().time).toEqual({ hour: 15, minute: 20 });
-    expect(a.get().place).toBe('서울'); // 이번 앱 실행 동안은 메모리에
     expect(await storage.getItem(INPUT_KEYS.time)).not.toBeNull();
-    expect(await storage.getItem(INPUT_KEYS.place)).toBeNull();
-    const b = createInputStore(storage, ['서울']);
+    const b = createInputStore(storage);
     await b.load();
-    expect(b.get()).toMatchObject({ time: { hour: 15, minute: 20 }, place: null, saveTime: true, savePlace: false, answered: true });
+    expect(b.get()).toMatchObject({ time: { hour: 15, minute: 20 }, saveTime: true, answered: true });
     await b.clearAll();
-    expect(b.get()).toMatchObject({ time: null, place: null, answered: false });
-    const c = createInputStore(storage, ['서울']);
+    expect(b.get()).toMatchObject({ time: null, answered: false });
+    const c = createInputStore(storage);
     await c.load();
     expect(c.get().time).toBeNull(); // 로그아웃 · 탈퇴 뒤에는 저장본도 0
   });
-  test('열쇠 이름에 birth · partner · saju · mileage 낱말 0 · 모양이 틀린 저장본 · 목록에 없는 지점 id 는 버린다', async () => {
+  test('열쇠 이름에 birth · partner · saju · mileage 낱말 0 · 모양이 틀린 저장본은 버린다', async () => {
     for (const k of Object.values(INPUT_KEYS)) expect(k).not.toMatch(/birth|partner|saju|mileage/i);
     const storage = memoryInputStorage();
     await storage.setItem(INPUT_KEYS.time, '{"hour":99,"minute":1}');
-    await storage.setItem(INPUT_KEYS.place, '"화성"');
-    const s = createInputStore(storage, ['서울']);
+    const s = createInputStore(storage);
     await s.load();
-    expect(s.get()).toMatchObject({ time: null, place: null });
+    expect(s.get()).toMatchObject({ time: null });
+  });
+  test('D-247: 예전에 곳을 저장해 둔 기기 — 불러올 때 곳 저장본이 지워지고 값은 어디에도 안 실린다 · 모두 지우기에도 지워진다', async () => {
+    const storage = memoryInputStorage();
+    await storage.setItem('my.spot.v1', '"서울"'); // 옛 열쇠(곳)
+    await storage.setItem(INPUT_KEYS.time, JSON.stringify({ hour: 15, minute: 20 }));
+    const s = createInputStore(storage);
+    await s.load();
+    await Promise.resolve();
+    expect(await storage.getItem('my.spot.v1')).toBeNull();
+    expect(s.get()).toEqual({ time: { hour: 15, minute: 20 }, saveTime: true, answered: false });
+    expect(requestInputOf(s.get())).toEqual({ hour: 15, minute: 20, place: null }); // 곳은 늘 null — 서버가 한국 표준시로 계산
+    await storage.setItem('my.spot.v1', '"부산"');
+    await s.clearAll();
+    expect(await storage.getItem('my.spot.v1')).toBeNull();
+  });
+  test('D-247: 옛 판(10-31 · 곳 항목이 있던) 동의 항목 기록은 지우고 다시 받는다 · 새 판 기록은 시각 · 성별만', async () => {
+    const mem = memoryInputStorage();
+    await mem.setItem('ck.items.v1', JSON.stringify({ version: 'consent-2026.10.31-v1', time: true, place: true, gender: true, at: 'x' }));
+    const old = createIf5ConsentStore(mem);
+    await old.load();
+    expect(old.get().items).toEqual({ time: false, gender: false });
+    expect(await mem.getItem('ck.items.v1')).toBeNull();
+    await old.setItems({ time: true, gender: true });
+    const fresh = createIf5ConsentStore(mem);
+    await fresh.load();
+    expect(fresh.get().items).toEqual({ time: true, gender: true });
+    expect(JSON.parse((await mem.getItem('ck.items.v1')) as string).version).toBe('consent-2026.11.04-v1');
   });
 });
 
@@ -453,24 +477,30 @@ describe('IF5-F1 ③ 사주 마당 한 화면 — 상태 5종(빈 · 불러오�
     expect(has(tree, 'saju-guide-card')).toBe(false);
     expect(has(tree, 'saju-kyeol')).toBe(true);
   });
-  test('입력 시트: 시각 모름이 처음값(미리 체크 0) · 지점 23곳 + 모름 + 한국 밖 · 성별은 읽기 안내만 · 저장 칸 둘 미리 체크 0 · 비워도 저장 · 한국 밖은 범위 안내', async () => {
+  test('별난 점 카드: 펼치면 목록 맨 아래에 여러 설 중 한 가지 줄(SAJU.trait.basis · Q2-19) — 접힌 동안은 안 보임', async () => {
+    const r = rig();
+    const tree = await hub(r, freshStore(true));
+    expect(has(tree, 'saju-trait-basis')).toBe(false);
+    await press(tree, 'saju-traits-toggle');
+    expect(textOf(tree, 'saju-trait-basis')).toBe(IF5_TEXT['SAJU.trait.basis']);
+    expect(IF5_TEXT['SAJU.trait.basis']).toBe('신살 풀이는 전통 해석이 갈리는 부분이 있어, 여러 설 중 한 가지로 봐요.');
+    expect(/점수|순위|판정|%/.test(IF5_TEXT['SAJU.trait.basis'])).toBe(false);
+  });
+  test('입력 시트: 시각 모름이 처음값(미리 체크 0) · 태어난 곳 칸 0(D-247) · 성별은 읽기 안내만 · 저장 칸 하나 미리 체크 0 · 비워도 저장', async () => {
     const r = rig();
     const store = freshStore();
     const tree = await hub(r, store);
     await press(tree, 'saju-fill');
     expect(must(tree, 'saju-in-time-unknown').props.variant).toBe('selected');
     expect(must(tree, 'saju-in-save-time').props.on).toBe(false);
-    expect(must(tree, 'saju-in-save-place').props.on).toBe(false);
     expect(textOf(tree, 'saju-in-birth')).toBe('1994년 3월 14일');
     expect(textOf(tree, 'saju-in-gender-note')).toBe(IF5_TEXT['SAJU.input.genderNote']);
-    await press(tree, 'saju-in-place-pick');
-    const chips = tree.root.findAll((n) => /^saju-in-place-\d+$/.test(String(n.props.testID ?? '')));
-    expect(new Set(chips.map((c) => c.props.testID)).size).toBe(23);
-    await press(tree, 'saju-in-place-abroad');
-    expect(textOf(tree, 'saju-in-abroad')).toBe(IF5_TEXT['SAJU.range.abroad']);
+    // D-247: 태어난 곳 고르기 · 저장 칸 · 한국 밖 안내가 시트에서 빠졌다
+    expect(tree.root.findAll((n) => /^saju-in-(place|save-place|abroad)/.test(String(n.props.testID ?? '')))).toHaveLength(0);
+    expect(allTexts(tree).some((t) => /태어난 곳|한국 밖|대표 지점/.test(t))).toBe(false);
     await press(tree, 'saju-in-save'); // 아무것도 안 골라도 눌린다
     await wait(60);
-    expect(store.get()).toMatchObject({ time: null, place: null, answered: true });
+    expect(store.get()).toMatchObject({ time: null, answered: true });
   });
 });
 

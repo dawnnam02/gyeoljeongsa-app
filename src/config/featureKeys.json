@@ -157,6 +157,7 @@
     { "key": "mileage_spend", "group": "IF5", "id": "ML-02", "live": false },
     { "key": "mileage_charge", "group": "IF5", "id": "ML-03", "live": false },
     { "key": "mileage_gift", "group": "IF5", "id": "ML-04", "live": false },
-    { "key": "rest_hint", "group": "IF5", "id": "ML-05", "live": false }
+    { "key": "rest_hint", "group": "IF5", "id": "ML-05", "live": false },
+    { "key": "appeal_ai", "group": "D246", "id": "S16-AP", "live": false, "demo": false }
   ]
 }

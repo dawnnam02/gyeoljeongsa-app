@@ -220,7 +220,7 @@ export function buildCk17(file = CONSENT_DOC) {
   for (const [k, v] of Object.entries(out)) if (v === null || v === '' || (Array.isArray(v) && v.length === 0)) throw new Error(`동의문구 4-17 에서 ${k} 를 읽지 못했어요`);
   return [
     '// 생성 파일 — 손으로 고치지 않는다. 다시 만들기: node scripts/gen-if2-assets.mjs (IF2-F · 재미 정보 동의 시트 IF-CK17)',
-    '// 원본: 법무/동의문구.md 4-17 화면 문구 · 전문(글자 그대로). 판 = config/laterConsent IF2_CONSENT_VERSIONS(CK17A consent-2026.10.30-v1 · CK17B consent-2026.10.28-v2)',
+    '// 원본: 법무/동의문구.md 4-17 화면 문구 · 전문(글자 그대로). 판 = config/laterConsent IF2_CONSENT_VERSIONS(CK17A consent-2026.11.04-v1 · CK17B consent-2026.10.28-v4)',
     '// rowA · rowB = 12 동의 관리 줄 안 두 칸 이름(4-17 전문 (가) · (나) 머리 — 동의문구 5-6 끝 ②)',
     '',
     `export const CK17 = ${JSON.stringify(out, null, 2)} as const;`,
@@ -228,7 +228,7 @@ export function buildCk17(file = CONSENT_DOC) {
   ].join('\n');
 }
 
-// ⑥ src/content/if5ConsentContent.ts — 사주 마당 동의 시트 글(IF5-F2 ⑪). 원본 = 법무/동의문구.md 4-17 새 칸 ③ ④ ⑤ · 4-18 CK17D · 4-19 CK19 · 4-20 CK20 '화면 문구' · 전문(글자 그대로 · 마크다운 표시만 걷음)
+// ⑥ src/content/if5ConsentContent.ts — 사주 마당 동의 시트 글(IF5-F2 ⑪). 원본 = 법무/동의문구.md 4-17 새 칸 ③ ④ · 4-18 CK17D · 4-19 CK19 · 4-20 CK20 '화면 문구' · 전문(글자 그대로 · 마크다운 표시만 걷음)
 export const IF5_CONSENT_OUT = path.join(appDir, 'src', 'content', 'if5ConsentContent.ts');
 export function buildIf5Consent(file = CONSENT_DOC) {
   const doc = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
@@ -272,13 +272,11 @@ export function buildIf5Consent(file = CONSENT_DOC) {
   };
   const ck17extra = need('4-17', {
     time: box('③'),
-    place: box('④'),
-    gender: box('⑤'),
+    gender: box('④'), // D-247(11-04): 태어난 곳 칸을 뺐다 — 성별이 ⑤ → ④
     noHour: tick(l17[idx(l17, /^- 동의하지 않으면\(시주 칸\):/)]),
-    noPlace: tick(l17[idx(l17, /^- 동의하지 않으면\(태어난 곳\):/)]),
     noLuck: tick(l17[idx(l17, /^- 동의하지 않으면\(대운 칸\):/)]),
   });
-  for (const k of ['time', 'place', 'gender']) need(`4-17 ${k}`, ck17extra[k]);
+  for (const k of ['time', 'gender']) need(`4-17 ${k}`, ck17extra[k]);
   // 4-18 CK17D
   const l18 = secOf(18);
   const b18 = ticks(l18[idx(l18, /^- 버튼:/)]);
@@ -331,7 +329,7 @@ export function buildIf5Consent(file = CONSENT_DOC) {
   });
   return [
     '// 생성 파일 — 손으로 고치지 않는다. 다시 만들기: node scripts/gen-if2-assets.mjs (IF5-F2 ⑪ · 사주 마당 동의 시트)',
-    '// 원본: 법무/동의문구.md 4-17 새 칸 ③ ④ ⑤ · 4-18 CK17D · 4-19 CK19 · 4-20 CK20 화면 문구 · 전문(글자 그대로). 판 = config/laterConsent IF5_CONSENT_VERSIONS (판_관리 2-1)',
+    '// 원본: 법무/동의문구.md 4-17 새 칸 ③ ④ · 4-18 CK17D · 4-19 CK19 · 4-20 CK20 화면 문구 · 전문(글자 그대로). 판 = config/laterConsent IF5_CONSENT_VERSIONS (판_관리 2-1)',
     '',
     `export const CK17_EXTRA = ${JSON.stringify(ck17extra, null, 2)} as const;`,
     '',

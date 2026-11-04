@@ -100,7 +100,7 @@ const peek = () => b.evaluate('(window.__surveyV2Peek ? window.__surveyV2Peek() 
 let exitCode = 0;
 try {
   // ═══ 1 · 2 · 3 · 4 설문 v2 ═══
-  await b.open('/survey/v2', `!!${q('v2-intro')}`);
+  await b.open('/survey/v2?notice=appeal', `!!${q('v2-intro')}`);
   await b.waitFor(`!${q('splash')}`, 8000);
   await tap('v2-start');
   await b.waitFor(`!!${q('v2-A12-input')}`);

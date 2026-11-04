@@ -34,8 +34,8 @@ import { tx, txList } from './if2Text';
 const count = (t: string) => Array.from(t).length;
 
 // ── IF-CK17 재미 정보 동의 시트(정책 PF-16 · 동의문구 4-17) ───────────────────────────
-//  체크 ① ② + 새 항목 ③ 태어난 시각 · ④ 태어난 곳 · ⑤ 성별(대운)(IF5-F2 ⑪ · 동의문구 4-17) · 미리 체크 0 · ② ~ ⑤ 는 ①을 고른 뒤에만 · ①을 풀면 모두 풀림 · [이어 가기]는 아무것도 안 골라도 눌림(거부 기록) · 권유 말 0
-//  ③ ④ ⑤ 는 항목마다 따로 — 이 기기에 기록한다(features/consent/if5Consent). 거부하면 시주 칸 · 태어난 곳 보정 · 대운 칸만 빠지고 다른 풀이는 그대로
+//  체크 ① ② + 새 항목 ③ 태어난 시각 · ④ 성별(대운)(IF5-F2 ⑪ · 동의문구 4-17 · D-247 로 태어난 곳 칸을 뺐다) · 미리 체크 0 · ② ~ ④ 는 ①을 고른 뒤에만 · ①을 풀면 모두 풀림 · [이어 가기]는 아무것도 안 골라도 눌림(거부 기록) · 권유 말 0
+//  ③ ④ 는 항목마다 따로 — 이 기기에 기록한다(features/consent/if5Consent). 거부하면 시주 칸 · 대운 칸만 빠지고 다른 풀이는 그대로
 type Ck17Props = { visible: boolean; initial?: { a: boolean; b: boolean }; onClose: () => void; onSave: (a: boolean, b: boolean) => Promise<boolean>; testID?: string };
 export function Ck17Sheet(props: Ck17Props) {
   const testID = props.testID ?? 'if2-ck17';
@@ -77,7 +77,7 @@ function Ck17Body({ initial, onClose, onSave, testID = 'if2-ck17' }: Ck17Props) 
     const ok = await onSave(a, a && b);
     if (ok) {
       try {
-        await if5Consent().setItems(a ? items : NO_ITEMS); // ③ ④ ⑤ 기록(이 기기) — ①을 안 골랐으면 모두 거부
+        await if5Consent().setItems(a ? items : NO_ITEMS); // ③ ④ 기록(이 기기) — ①을 안 골랐으면 모두 거부
       } catch {
         // 기기 저장소를 못 써도 이번 실행 동안은 메모리 값으로 쓴다
       }
@@ -88,7 +88,7 @@ function Ck17Body({ initial, onClose, onSave, testID = 'if2-ck17' }: Ck17Props) 
   };
   const toggleA = () => {
     if (a) {
-      setB(false); // A 를 풀면 B · ③ ④ ⑤ 도 풀림
+      setB(false); // A 를 풀면 B · ③ ④ 도 풀림
       setItems(NO_ITEMS);
     }
     setA(!a);
@@ -104,8 +104,7 @@ function Ck17Body({ initial, onClose, onSave, testID = 'if2-ck17' }: Ck17Props) 
         <CheckRow on={a} label={CK17.checkA} why={CK17.whyA} onPress={toggleA} testID={`${testID}-a`} />
         <CheckRow on={b} label={CK17.checkB} why={CK17.whyB} note={CK17.noteB} disabled={!a} onPress={() => setB(!b)} testID={`${testID}-b`} />
         <CheckRow on={a && items.time} label={CK17_EXTRA.time.check} why={CK17_EXTRA.time.why} note={CK17_EXTRA.time.note} disabled={!a} onPress={() => setItems({ ...items, time: !items.time })} testID={`${testID}-c`} />
-        <CheckRow on={a && items.place} label={CK17_EXTRA.place.check} why={CK17_EXTRA.place.why} note={CK17_EXTRA.place.note} disabled={!a} onPress={() => setItems({ ...items, place: !items.place })} testID={`${testID}-d`} />
-        <CheckRow on={a && items.gender} label={CK17_EXTRA.gender.check} why={CK17_EXTRA.gender.why} note={CK17_EXTRA.gender.note} disabled={!a} onPress={() => setItems({ ...items, gender: !items.gender })} testID={`${testID}-e`} />
+        <CheckRow on={a && items.gender} label={CK17_EXTRA.gender.check} why={CK17_EXTRA.gender.why} note={CK17_EXTRA.gender.note} disabled={!a} onPress={() => setItems({ ...items, gender: !items.gender })} testID={`${testID}-d`} />
         <TextButton label={more === 'full' ? CK17.fullOpen : CK17.summaryOpen} align="start" onPress={() => setMore(more === 'none' ? 'summary' : 'full')} testID={`${testID}-more`} />
         {more !== 'none' ? (
           <View style={if2Styles.gapSmall} testID={`${testID}-summary`}>

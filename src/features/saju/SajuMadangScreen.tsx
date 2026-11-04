@@ -273,6 +273,10 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
                     <AppText variant="body">{t.text}</AppText>
                   </View>
                 ))}
+                {/* 신살 풀이는 학파마다 해석이 갈린다 — 한 가지 기준임을 한 줄로(AI/FA1/검증결과_12신신살.md 12-4 · Q2-19) */}
+                <AppText variant="caption" testID="saju-trait-basis">
+                  {IF5_TEXT['SAJU.trait.basis']}
+                </AppText>
               </FoldRow>
             ) : null}
             <FoldRow id="saju-table" title={IF5_TEXT['SAJU.table.title']} sub={IF5_TEXT['SAJU.table.sub']}>
