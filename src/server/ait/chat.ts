@@ -524,6 +524,7 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
   if (raw.sentences.length === 0 || raw.sentences.length > 20) { res.blockers.push('sentence_count'); return res; }
   const seenText = new Set<string>();
   const lastAsker = ctx.userTexts[ctx.userTexts.length - 1]?.asker ?? '';
+  const allAsker = ctx.userTexts.map((t) => t.asker).join(' ');          // 이 세션에서 사용자가 쓴 말 전부 — 앞 턴에 쓴 낱말(자존감이 바닥)을 모델이 다음 턴에도 되짚는 길(실호출 E1R7 m4 T2 · T3 막다른 길)
   const worryOk = WORRY_TEST.test(lastAsker);
   const victimStems = ['조종', '길들', '질투'].filter((st) => lastAsker.includes(st));            // 사용자가 직접 쓴 낱말만(모델이 먼저 꺼낸 낱말은 풀지 않는다)
   const kept: Array<{ kind: Kind; ds: DisplaySentence }> = [];
@@ -552,7 +553,7 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
         // c_fit: "안 맞는 / 맞지 않는" 앞뒤에 짝(두 분 · 상대 · 사이 · 사람 · 관계 …)이 있으면 AI 가 짝을 판정하는 문장이라 면제하지 않는다. "양가 일정이 안 맞는다" 같은 일정 · 시간 이야기만 풀어 준다
         if (FIT_USER.test(lastAsker)) u = u.replace(FIT_STEM, (m, off: number, whole: string) => (FIT_PAIR.test(whole.slice(Math.max(0, off - 14), off)) || FIT_PAIR_AFTER.test(whole.slice(off + m.length, off + m.length + 8)) ? m : ''));
         // 사용자가 직접 쓴 낱말(자존감이 바닥 · 떠보는 말투)을 되짚는 말은 그 낱말만 뺀다 — 피해를 털어놓는 첫 글이 3연속 막히던 것
-        for (const e of ECHO_EXEMPT) if (e.user.test(lastAsker)) u = u.replace(e.strip, '');
+        for (const e of ECHO_EXEMPT) if (e.user.test(allAsker)) u = u.replace(e.strip, '');
       }
       return u;
     };
@@ -778,7 +779,7 @@ export function finishTurn(prep: Extract<Prepared, { kind: 'call' }>, resp: ApiR
     const e = cloneEnv(env); e.state.ended = true;
     return { kind: 'card', code: 'refused_intent', card: MINOR_CARD, env: e };
   }
-  if (!ev.ok) return block([...new Set([...ev.blockers, ...ev.dropped.map((d) => d.reason)])], ev.hitWords.filter((w) => call.newTexts.asker.replace(/\s/g, '').includes(w.replace(/\s/g, ''))));   // 사용자가 직접 쓴 낱말만 '피할 낱말'로 돌려준다(모델이 낸 낱말은 서명 묶음 → 화면 쪽으로 새지 않게)
+  if (!ev.ok) return block([...new Set([...ev.blockers, ...ev.dropped.map((d) => d.reason)])], ev.hitWords.filter((w) => userTexts.some((u) => u.asker.replace(/\s/g, '').includes(w.replace(/\s/g, '')))));   // 사용자가 직접 쓴 낱말만 '피할 낱말'로 돌려준다(모델이 낸 낱말은 서명 묶음 → 화면 쪽으로 새지 않게)
 
   // 새 봉투
   const st: ChatState = { ...call.stateAfterResolve, slots: { ...call.stateAfterResolve.slots }, chips: { ...call.stateAfterResolve.chips } };
