@@ -19,7 +19,7 @@ export const CODE_TEXT_KO: Readonly<Record<ResponseCode, string>> = {
   too_long: '글이 너무 길어요. 조금 줄여서 다시 보내 주세요.',
   bad_request: '요청을 읽지 못했어요. 화면을 새로 열어 다시 시도해 주세요.',
   upstream: 'AI가 바빠요. 잠시 뒤에 다시 시도해 주세요.',
-  timeout: '답이 늦어지고 있어요. 이번 시도는 횟수에 넣지 않으니 다시 보내 주세요.',
+  timeout: '답이 늦어지고 있어요. 이번 시도는 따로 세지 않으니 다시 보내 주세요.',
   blocked_output: '이번 답은 안전 문제로 보여 드리지 않아요. 횟수는 줄지 않으니 같은 글을 다시 보내 주세요.',
   crisis: '',
   refused_intent: '',

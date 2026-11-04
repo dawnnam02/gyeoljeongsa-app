@@ -25,6 +25,7 @@ import { asApiResult, mockChatOutput, mockCoachOutput, mockCompatOutput, mockHor
 import { classifyUpstream, shouldLockLive } from './upstream.ts';
 import { JUDGE_TIMEOUT_MS, buildInputJudgeRequest, buildOutputJudgeRequest, parseInputJudge, parseOutputJudge } from './judge.ts';
 import { CRISIS_CARD, JUDGE_RETRY_LINE, MISUSE_CARD, VIOLENCE_CARD } from './fixed.ts';
+import { COACH_REFUSED_CARD, applyOneShotJudge, buildCoachInputJudgeRequest, buildOneShotOutputJudgeRequest, parseCoachInputJudge, parseOneShotOutputJudge, planOneShotJudge } from './judge_oneshot.ts';
 import type { UpstreamFailure } from './upstream.ts';
 
 /** 요청 본문 상한. AI-FIX1: 32KB → 96KB. 서명 묶음(seal.ts SEAL_MAX_BYTES 80KB)이 본문에 실려 돌아오므로 그보다 커야 한다 — 32KB 일 때 9턴째에 413 이 났다 */
@@ -280,6 +281,24 @@ async function handleOneShot(feature: Exclude<Feature, 'chat'>, body: Record<str
   const c = consume(deps.counters, POOL, feature, now, deps.guard ?? GUARD, costOf[feature]);
   if (!c.ok) { emit(feature, { code: c.code }); return replyError(c.code, mode, { retryAfterSec: c.code === 'rate' ? 30 : undefined }); }
 
+  // AI 입력 판정(Q2-30): 자유 글을 받는 기능은 코치뿐(내 공개 문구). 궁합 · 별자리는 코드 목록이라 입력 판정이 없다.
+  //  scam(사기 · 광고) · instruction(AI 에게 시키는 글)이면 고정 카드(호출 0). 판정 실패는 한 번 다시 부르고, 그래도 실패하면 보내지 않고 고정 한 줄(차감 0)
+  if (mode === 'live' && feature === 'coach') {
+    const inReq = buildCoachInputJudgeRequest(String((prep.input as { text?: unknown }).text ?? ''));
+    let j = await judgeCall(deps, inReq, parseCoachInputJudge);
+    if (!j.ok && (j.code === 'upstream' || j.code === 'timeout' || j.code === 'rate')) j = await judgeCall(deps, inReq, parseCoachInputJudge);
+    if (j.ok && j.value !== 'normal') {
+      refund(deps.counters, POOL, feature, costOf[feature]);
+      emit(feature, { code: 'refused_intent' });
+      return replyCard('refused_intent', COACH_REFUSED_CARD, mode);
+    }
+    if (!j.ok) {
+      refund(deps.counters, POOL, feature, costOf[feature]);
+      emit(feature, { code: j.code === 'spend_limit' ? 'spend_limit' : 'timeout' });
+      return j.code === 'spend_limit' ? replyError('spend_limit', mode) : replyError('timeout', mode, { text: JUDGE_RETRY_LINE });
+    }
+  }
+
   let result: ModelResult;
   if (mode === 'live') {
     const system = feature === 'compat' ? buildCompatSystem(PROMPTS.compat) : PROMPTS[feature];
@@ -299,7 +318,30 @@ async function handleOneShot(feature: Exclude<Feature, 'chat'>, body: Record<str
   const resp: ApiResultLike = { stop_reason: result.stop_reason, content: result.content };
   const done = feature === 'compat' ? finishCompat(resp) : feature === 'coach' ? finishCoach(resp, prep.input as { field: string; text: string }) : finishHoroscope(resp);
   const usage = { in: result.usage?.input_tokens, out: result.usage?.output_tokens };
-  if (done.kind === 'ok') { emit(feature, { code: 'ok', ...usage }); return replyOk(done.display, mode); }
+  if (done.kind === 'ok') {
+    // AI 출력 판정(Q2-30): 화면에 나갈 글을 값싼 모델이 한 번 더 본다. 걸린 글은 빼고(코치) 쓸 수 없으면 내보내지 않는다. 판정이 실패하면 내보내지 않는다. 모두 차감 0
+    let shown = done.display;
+    if (mode === 'live') {
+      const plan = planOneShotJudge(feature, shown as never, prep.input);
+      if (plan.items.length > 0) {
+        const j = await judgeCall(deps, buildOneShotOutputJudgeRequest(feature, plan), (r) => parseOneShotOutputJudge(feature, r, plan.items.length));
+        if (!j.ok) {
+          refund(deps.counters, POOL, feature, costOf[feature]);
+          emit(feature, { code: j.code, ...usage });
+          return replyError(j.code, mode);
+        }
+        const applied = applyOneShotJudge(feature, shown as never, plan, j.value);
+        if (applied === null) {
+          refund(deps.counters, POOL, feature, costOf[feature]);
+          emit(feature, { code: 'blocked_output', ...usage });
+          return replyError('blocked_output', mode);
+        }
+        shown = applied as typeof shown;
+      }
+    }
+    emit(feature, { code: 'ok', ...usage });
+    return replyOk(shown, mode);
+  }
   emit(feature, { code: 'blocked_output', ...usage });
   return replyError('blocked_output', mode);
 }
