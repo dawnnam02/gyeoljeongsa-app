@@ -23,6 +23,8 @@ import { newNonce, nextSealCtx, openEnvelope, sealEnvelope } from './seal.ts';
 import type { SealedBundle } from './seal.ts';
 import { asApiResult, mockChatOutput, mockCoachOutput, mockCompatOutput, mockHoroscopeOutput } from './mock.ts';
 import { classifyUpstream, shouldLockLive } from './upstream.ts';
+import { JUDGE_TIMEOUT_MS, buildInputJudgeRequest, buildOutputJudgeRequest, parseInputJudge, parseOutputJudge } from './judge.ts';
+import { CRISIS_CARD, JUDGE_DEGRADED_NOTE, MISUSE_CARD, VIOLENCE_CARD } from './fixed.ts';
 import type { UpstreamFailure } from './upstream.ts';
 
 /** 요청 본문 상한. AI-FIX1: 32KB → 96KB. 서명 묶음(seal.ts SEAL_MAX_BYTES 80KB)이 본문에 실려 돌아오므로 그보다 커야 한다 — 32KB 일 때 9턴째에 413 이 났다 */
@@ -45,6 +47,8 @@ export interface HandlerDeps {
   log: (r: LogRecord) => void;
   /** 월 상한 도달 같은 신호를 받으면 켠다(이 격리 안에서 live를 잠금) */
   lock?: { live: boolean };
+  /** AI 심사층(judge.ts) 한 번의 시간 상한(밀리초). 없으면 JUDGE_TIMEOUT_MS. 시험에서 짧게 줄일 때만 쓴다 */
+  judgeTimeoutMs?: number;
 }
 export interface HandlerRequest { method: string; headers: Record<string, string | undefined>; bodyText: string }
 
@@ -132,6 +136,22 @@ async function callLive(deps: HandlerDeps, body: MessagesBody): Promise<{ ok: tr
   }
 }
 
+type JudgeFail = { ok: false; code: ReturnType<typeof classifyUpstream> };
+/** AI 심사층 호출 한 번: 시간 상한 안에 업체가 답하고 틀에 맞아야 ok. 아니면 안전한 쪽으로 가라는 신호(ok:false)다. 청구서가 생겼을 수 있으므로 호출 횟수 되돌림은 없다 */
+async function judgeCall<T>(deps: HandlerDeps, body: MessagesBody, parse: (r: { stop_reason: string | null; content: unknown[] }) => T | null): Promise<{ ok: true; value: T } | JudgeFail> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => resolve('timeout'), deps.judgeTimeoutMs ?? JUDGE_TIMEOUT_MS); });
+  try {
+    const r = await Promise.race([callLive(deps, body), timeout]);
+    if (r === 'timeout') return { ok: false, code: 'timeout' };
+    if (!r.ok) return { ok: false, code: r.code };
+    const v = parse({ stop_reason: r.res.stop_reason, content: r.res.content });
+    return v === null ? { ok: false, code: 'upstream' } : { ok: true, value: v };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 // ================================================================ 챗봇
 async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode: Mode, emit: Emit): Promise<HttpReply> {
   const now = deps.now();
@@ -177,6 +197,32 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
     return replyError(cc.code, mode, { retryAfterSec: cc.code === 'rate' ? 30 : undefined });
   }
 
+  if (prep.call.softMisuse && mode !== 'live') {          // 판정 없이는 사전 결과(카드)로 닫는다
+    refund(deps.counters, POOL, 'chat_call', est);
+    emit('chat', { code: 'refused_intent' });
+    return replyCard('refused_intent', MISUSE_CARD, mode, await seal(prep.env));
+  }
+  // AI 입력 판정(AI-FIX4): 사전을 지난 글을 값싼 모델이 한 번 더 본다. 위기 · 폭력 · 미성년 카드는 위(prepareTurn)에서 이미 먼저 돌았다.
+  //  가해 의도(harm)면 오용 카드(챗봇 본 호출 0). 판정이 실패하면 사전 결과대로 진행하고 화면에 고정 한 줄을 붙인다(출력 판정이 한 번 더 막아 준다).
+  let degraded = false;
+  if (mode === 'live' && (prep.call.newTexts.asker.trim() || prep.call.newTexts.partner.trim())) {
+    const j = await judgeCall(deps, buildInputJudgeRequest(prep.call.newTexts), parseInputJudge);
+    if (j.ok && j.value === 'harm') {
+      refund(deps.counters, POOL, 'chat_call', est);
+      emit('chat', { code: 'refused_intent' });
+      return replyCard('refused_intent', MISUSE_CARD, mode, await seal(prep.env));
+    }
+    if (!j.ok) {
+      if (j.code === 'spend_limit') { emit('chat', { code: 'spend_limit' }); return replyError('spend_limit', mode); }
+      if (prep.call.softMisuse) {                          // 사전이 걸렸는데 판정도 못 했다 → 안전한 쪽(사전 결과: 오용 카드)
+        refund(deps.counters, POOL, 'chat_call', est);
+        emit('chat', { code: 'refused_intent' });
+        return replyCard('refused_intent', MISUSE_CARD, mode, await seal(prep.env));
+      }
+      degraded = true;
+    }
+  }
+
   let result: ModelResult;
   if (mode === 'live') {
     const model: ModelId = pickChatModel(deps.env.AIT_CHAT_MODEL);
@@ -191,8 +237,31 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
   } else {
     result = asApiResult(mockChatOutput(prep.call, index)) as ModelResult;
   }
-  const fin = finishTurn(prep, { stop_reason: result.stop_reason, content: result.content }, index);
+  let fin = finishTurn(prep, { stop_reason: result.stop_reason, content: result.content }, index);
   const usage = { in: result.usage?.input_tokens, out: result.usage?.output_tokens };
+  // AI 출력 판정(AI-FIX4): 화면에 나갈 문장을 값싼 모델이 한 번 더 본다. 닿은 문장은 화면에서 빼고 구성을 다시 확인한다(남은 문장으로 답이 안 되면 blocked_output).
+  //  판정이 실패하면 답을 내보내지 않는다. 다만 위기 카드 · 폭력 트랙이 켜진 세션에서는 판정 실패가 안내를 막지 않게 고정 카드로 대신한다.
+  if (mode === 'live' && fin.kind === 'ok') {
+    const shown = fin.display.sentences;
+    const j = await judgeCall(deps, buildOutputJudgeRequest(prep.call.newTexts, shown), (r) => parseOutputJudge(r, shown.length));
+    if (!j.ok) {
+      if (j.code === 'spend_limit') { emit('chat', { code: 'spend_limit', ...usage }); return replyError('spend_limit', mode); }
+      const st = prep.call.stateAfterResolve;
+      if (st.crisisCards > 0 || st.safety) {
+        emit('chat', { code: 'crisis', ...usage });
+        return replyCard('crisis', st.crisisCards > 0 ? CRISIS_CARD : VIOLENCE_CARD, mode, await seal(prep.env));
+      }
+      emit('chat', { code: j.code, ...usage });
+      return replyError(j.code, mode);
+    }
+    if (j.value.length > 0) {
+      const drop = new Set(j.value.map((x) => shown[x.i].text));
+      fin = finishTurn(prep, { stop_reason: result.stop_reason, content: result.content }, index, { dropTexts: drop });
+    }
+    if (degraded && fin.kind === 'ok') fin.display.notes.push(JUDGE_DEGRADED_NOTE);
+  } else if (degraded && fin.kind === 'ok') {
+    fin.display.notes.push(JUDGE_DEGRADED_NOTE);
+  }
   if (fin.kind === 'ok') { emit('chat', { code: 'ok', ...usage }); return replyOk(fin.display, mode, await seal(fin.env)); }
   if (fin.kind === 'card') { emit('chat', { code: fin.code, ...usage }); return replyCard(fin.code, fin.card, mode, await seal(fin.env)); }
   emit('chat', { code: 'blocked_output', ...usage });          // 탈락 이유는 응답 · 로그 어디에도 내보내지 않는다

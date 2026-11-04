@@ -170,7 +170,8 @@ describe('AIT-F 서버 경로 · 실호출 길(가짜 업체) — 요청 꼴 · 
   test('챗봇은 Sonnet 5.5 — AIT_CHAT_MODEL 이 opus 5.5 가 아니면 무시 (request.ts 상수 그대로)', async () => {
     const s = setup({ env: { ...live(), [N.model]: 'claude-fable-5-1' } as RouteEnv });
     await s.route(reqOf(CHAT));
-    expect(s.calls[0]?.model).toBe('claude-sonnet-5-5');
+    // AI-FIX4: 챗봇 턴은 심사 호출(Haiku 5.5 입력 · 출력 판정)이 앞뒤에 붙는다 — 본 호출만 본다
+    expect(s.calls.filter((c) => c.model !== 'claude-haiku-5-5')[0]?.model).toBe('claude-sonnet-5-5');
   });
 
   test('위기 낱말은 live 에서도 업체를 부르기 전에 고정 카드 — 업체 호출 0 (ATS-38 ~ 40)', async () => {

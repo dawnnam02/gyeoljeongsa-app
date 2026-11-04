@@ -126,13 +126,18 @@ export const SOFT_HELP_LINES: readonly string[] = [
 ];
 
 /** 질문 칸만 형식 규칙에 걸려 떨어졌을 때 서버가 대신 다는 단계별 고정 질문(AI-FIX3 · S1 S2 S4만 질문이 필수). 글은 마케팅 확정 대기 */
-export const FALLBACK_QUESTION: Readonly<Record<'S1' | 'S2' | 'S4', string>> = {
+export const FALLBACK_QUESTION: Readonly<Record<'S1' | 'S1_CONFIRM' | 'S2' | 'S4', string>> = {
+  S1_CONFIRM: '이 한 줄이 지금 마음과 맞나요?',
   S1: '지금 가장 마음에 걸리는 일이 무엇인지 한 줄로 들려주실 수 있나요?',
   S2: '방금 이야기에서 더 말하고 싶은 부분이 있나요?',
   S4: '지금 이 일에서 가장 마음에 남는 부분은 무엇인가요?',
 };
 
 /** 헤어질지 · 점수를 정해 달라는 말에 모델이 거절 문장을 못 냈을 때 서버가 앞에 붙이는 한 줄(AI-FIX2 A7). 글은 마케팅 확정 대기 — 모델이 평가에서 스스로 낸 말과 같은 꼴 */
+/** 위기 카드 뒤 첫 일반 턴의 맨 앞에 한 번 붙는 고정 점검 한 줄(AI-FIX4 R-a · 독립 채점 R-a 안 1). 글은 마케팅 · 법무 확인 대기 — 모델이 쓰지 않는 고정 글이다 */
+export const CRISIS_CHECK_LINE = '지금 마음은 어떠세요? 많이 힘들다면 아래 번호로 바로 이야기해도 돼요.';
+/** 입력 판정(judge.ts)이 실패해 사전 결과대로만 진행한 턴에 붙는 고정 한 줄(AI-FIX4). 글은 마케팅 확인 대기 */
+export const JUDGE_DEGRADED_NOTE = '확인 절차 일부를 마치지 못해 안전한 범위에서만 답했어요.';
 export const VERDICT_NOTE = '그 결정은 제가 대신 내릴 수 없어요.';
 /** 코치 글에 연락처 · 링크가 있어 서버가 가렸을 때 붙이는 고정 한 줄(AI-FIX2 A6). 글은 마케팅 확정 대기 */
 export const CONTACT_NOTE = '연락처나 링크는 소개글에 쓸 수 없어요. 가린 채로 봐 드렸어요.';
