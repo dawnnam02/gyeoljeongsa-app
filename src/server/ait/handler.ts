@@ -139,7 +139,7 @@ async function callLive(deps: HandlerDeps, body: MessagesBody): Promise<{ ok: tr
 
 type JudgeFail = { ok: false; code: ReturnType<typeof classifyUpstream> };
 /** AI 심사층 호출 한 번: 시간 상한 안에 업체가 답하고 틀에 맞아야 ok. 아니면 안전한 쪽으로 가라는 신호(ok:false)다. 청구서가 생겼을 수 있으므로 호출 횟수 되돌림은 없다 */
-async function judgeCall<T>(deps: HandlerDeps, body: MessagesBody, parse: (r: { stop_reason: string | null; content: unknown[] }) => T | null): Promise<{ ok: true; value: T } | JudgeFail> {
+export async function judgeCall<T>(deps: HandlerDeps, body: MessagesBody, parse: (r: { stop_reason: string | null; content: unknown[] }) => T | null): Promise<{ ok: true; value: T } | JudgeFail> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => resolve('timeout'), deps.judgeTimeoutMs ?? JUDGE_TIMEOUT_MS); });
   try {

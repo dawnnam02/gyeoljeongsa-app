@@ -24,7 +24,7 @@ export const DATA_FILES = ['data/jie5.json', 'data/sun5.json', 'data/fragments5.
 export const AIT_FILES = ['ait/rules.ts', 'ait/text.ts', 'ait/types.ts', 'ait/lexicon.ts', 'ait/fixed.ts', 'ait/safety.ts']; // IF5-QF: lexicon = 위기 · 폭력 · 오용 · 미성년 낱말 사전(서버와 한 벌 — 데모 · 코드 없는 길의 위기 앞거름이 같은 사전을 쓴다. 가져오는 것 0 · 순수 함수) / IF5-QF2: fixed = 고정 카드 · 확정 번호 줄(가져오는 것 0) · safety = 갈래 겹침 합치기 composeSafety(lexicon · fixed 만 가져옴) — 화면 쪽 앞거름이 서버와 같은 카드를 그리게 한 벌로 둔다
 /** IF5-F2 ⑯: AI 요청 쪽 서버 전용 모듈 — src/server/saju5 로 간다 */
 export const SERVER_DEST_DIR = path.join(appDir, 'src', 'server', 'saju5');
-export const SERVER_FILES = ['request5.ts', 'chat5.ts', 'ai_facts5.ts', 'partner5.ts', 'generated5.ts', 'input5.ts', 'validate5.ts'];
+export const SERVER_FILES = ['request5.ts', 'chat5.ts', 'ai_facts5.ts', 'partner5.ts', 'generated5.ts', 'input5.ts', 'validate5.ts', 'judge5.ts'];   // Q2-30 남은 몫: judge5 = 사주 AI 출력 판정 (AIT judge.ts 공통 틀 위, 서버 전용)
 const SERVER_LOCAL = ['spec5', 'saju_calc5', 'names5', 'rules5'];
 export const FILES = [...TS_FILES, ...AIT_FILES, ...DATA_FILES];
 // 원본 경로: ait/ 는 ai/AIT/ts, 나머지는 ai/IF5/ts

@@ -27,6 +27,8 @@ export interface ChatEnv5 {
   crisisCards: number;  // 위기 카드가 나온 횟수(통계만 — 세션을 닫지 않음)
   blocked: number;      // 검사 탈락 연속 수(재전송 폭주 막기용으로 호출하는 쪽이 본다)
   ended: boolean;       // 미성년 감지 때만 true
+  /** 이 세션에서 가해 의도(오용)로 닫은 글 수 — 닫은 글은 이력에 없어서 "아까 말한 대로 할게요"가 앞 말 창에 안 보이므로 입력 판정에 알린다(서명 묶음 안이라 지울 수 없다. 새 세션이면 0) */
+  misuse?: number;
 }
 
 export function newChatEnv(facts: unknown): ChatEnv5 {

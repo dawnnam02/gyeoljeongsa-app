@@ -64,7 +64,8 @@ export const CHAT5_LIMITS = { textMax: 1000 } as const;   // 한 번에 보내�
 
 export type ChatPrep5 =
   | { kind: 'reject'; code: 'bad_request' | 'too_long'; why: string }
-  | { kind: 'card'; code: 'crisis' | 'refused_intent'; card: FixedCard; endSession: boolean }
+  /** judgeText: 폭력 낱말 글 · 오용 사전 글은 위기가 끼었는지(그리고 폭력 낱말 글은 글쓴이가 하는 쪽인지) 입력 판정을 함께 본다 — 고민 정리(AIT chat.ts)와 같은 순서: 위기가 언제나 먼저(Q2-30 남은 몫) */
+  | { kind: 'card'; code: 'crisis' | 'refused_intent'; card: FixedCard; endSession: boolean; judgeText?: string; judgeFor?: 'violence' | 'misuse' }
   | { kind: 'ok'; text: string; masked: number };
 
 export function prepareChatText(raw: unknown): ChatPrep5 {
@@ -74,8 +75,11 @@ export function prepareChatText(raw: unknown): ChatPrep5 {
   // A-QF2: 한 글에 갈래가 둘 이상 걸리면 가장 먼저 처리할 카드 하나에 다른 갈래의 확정 번호 줄만 덧붙이고, 미성년이 끼어 있으면 세션을 마친다(safety.ts)
   const hits = classifyHits(clean);
   const safe = composeSafety(hits);
-  if (safe && safe.kinds[0] !== 'minor') return { kind: 'card', code: 'crisis', card: safe.card, endSession: safe.endSession };
-  if (hits.includes('misuse')) return { kind: 'card', code: 'refused_intent', card: MISUSE_CARD, endSession: false };
+  if (safe && safe.kinds[0] !== 'minor') {
+    const jt = safe.kinds[0] === 'violence' && !safe.endSession ? maskText(clean).text : undefined;
+    return { kind: 'card', code: 'crisis', card: safe.card, endSession: safe.endSession, ...(jt !== undefined ? { judgeText: jt, judgeFor: 'violence' as const } : {}) };
+  }
+  if (hits.includes('misuse')) return { kind: 'card', code: 'refused_intent', card: MISUSE_CARD, endSession: false, judgeText: maskText(clean).text, judgeFor: 'misuse' };
   if (safe) return { kind: 'card', code: safe.code, card: safe.card, endSession: true };
   if (charLen(clean) > CHAT5_LIMITS.textMax) return { kind: 'reject', code: 'too_long', why: 'length' };
   const m = maskText(clean);

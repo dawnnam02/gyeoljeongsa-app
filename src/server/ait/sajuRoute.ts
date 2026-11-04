@@ -11,11 +11,13 @@ import { classifyUpstream, shouldLockLive } from './upstream.ts';
 import type { UpstreamFailure } from './upstream.ts';
 import { checkAccessCode, consume, consumeChatCall, ACCESS_HEADER, GUARD } from './limits.ts';
 import type { HandlerDeps, HandlerRequest, ModelResult } from './handler.ts';
-import { MAX_BODY_BYTES } from './handler.ts';
+import { MAX_BODY_BYTES, judgeCall } from './handler.ts';
 import { replyCard, replyError, replyOk } from './reply.ts';
 import type { HttpReply, Mode } from './reply.ts';
 import { newNonce } from './seal.ts';
 import type { MessagesBody } from './request.ts';
+import { buildInputJudgeRequest, parseInputJudge } from './judge.ts';
+import { ALWAYS_LINE, CRISIS_CARD, JUDGE_RETRY_LINE, MISUSE_CARD } from './fixed.ts';
 import type { Feature5 } from '../../saju5/spec5.ts';
 import { buildMessages, buildSummaryInput, finishTurn5, foldJobOf, needsFold, newChatEnv, open5, seal5 } from '../saju5/chat5.ts';
 import type { ChatEnv5, Sealed5 } from '../saju5/chat5.ts';
@@ -24,6 +26,7 @@ import { asResult, mockOutput5 } from '../../saju5/mock5.ts';
 import { guardCompatFacts, compatMessages } from '../saju5/partner5.ts';
 import { buildRequest5, oneShotMessages } from '../saju5/request5.ts';
 import { finish5, finishSummary } from '../saju5/validate5.ts';
+import { applyJudge5, judgeChunks5, parseJudge5 } from '../saju5/judge5.ts';
 
 export const S5_FEATURES = ['s5_reading', 's5_daewoon', 's5_sinyeon', 's5_compat', 's5_taekil', 's5_chat'] as const;
 export type S5Feature = (typeof S5_FEATURES)[number];
@@ -173,6 +176,31 @@ async function callLive(deps: HandlerDeps, body: MessagesBody): Promise<{ ok: tr
   }
 }
 
+// ================================================================ AI 심사층 (Q2-30 남은 몫) — 고민 정리(AIT handler.ts)와 같은 틀
+/** 출력 판정: 화면에 나갈 글의 문장을 값싼 모델이 한 번 더 본다. 걸린 문장만 빼고 하한 아래로 내려가는 칸이 있을 때만 닫는다. 묶음마다 실패는 한 번 다시 부르고, 그래도 실패하면 fail(안전한 쪽으로 닫힘 · 차감 0) */
+type OutJudged = { kind: 'ok'; display: Record<string, unknown> } | { kind: 'blocked' } | { kind: 'fail'; code: ReturnType<typeof classifyUpstream> };
+async function judgeOutput5(deps: HandlerDeps, feature: Feature5, display: Record<string, unknown>): Promise<OutJudged> {
+  const flagged = new Set<string>();
+  for (const ch of judgeChunks5(display)) {
+    let j = await judgeCall(deps, ch.body, (r) => parseJudge5(r, ch));
+    if (!j.ok && (j.code === 'upstream' || j.code === 'timeout' || j.code === 'rate')) j = await judgeCall(deps, ch.body, (r) => parseJudge5(r, ch));
+    if (!j.ok) return { kind: 'fail', code: j.code };
+    for (const f of j.value) flagged.add(f.text);
+  }
+  if (flagged.size === 0) return { kind: 'ok', display };
+  const a = applyJudge5(feature, display, flagged);
+  return a.kind === 'ok' ? { kind: 'ok', display: a.display } : { kind: 'blocked' };
+}
+
+/** 입력 판정: 사전을 지난 글 · 폭력 낱말 글 · 오용 사전 글을 값싼 모델이 한 번 본다(글쓴이가 하는 쪽 harm · 위기 crisis · 그 밖). 실패는 한 번 다시 부르고 그래도 실패하면 null */
+async function judgeInput5(deps: HandlerDeps, texts: { asker: string; prev?: string[]; closed?: number }): Promise<ReturnType<typeof parseInputJudge> | 'spend_limit' | null> {
+  const req = buildInputJudgeRequest({ asker: texts.asker, partner: '', prev: texts.prev, closed: texts.closed });
+  let j = await judgeCall(deps, req, parseInputJudge);
+  if (!j.ok && (j.code === 'upstream' || j.code === 'timeout' || j.code === 'rate')) j = await judgeCall(deps, req, parseInputJudge);
+  if (j.ok) return j.value;
+  return j.code === 'spend_limit' ? 'spend_limit' : null;
+}
+
 // ================================================================ 단발 기능
 async function handleOneShot(feature: Exclude<S5Feature, 's5_chat'>, body: Record<string, unknown>, deps: HandlerDeps, mode: Mode, emit: Emit): Promise<HttpReply> {
   const now = deps.now();
@@ -203,8 +231,21 @@ async function handleOneShot(feature: Exclude<S5Feature, 's5_chat'>, body: Recor
   const done = finish5(kind, { stop_reason: result.stop_reason, content: result.content }, { facts });
   const usage = { in: result.usage?.input_tokens, out: result.usage?.output_tokens };
   if (done.kind === 'ok') {
+    let shown = done.display;
+    if (mode === 'live') {          // AI 출력 판정(Q2-30 남은 몫): 걸린 문장만 빼고, 판정이 실패하면 답을 내보내지 않는다(차감 0 — 마일리지는 앱이 ok 응답에서만 확정)
+      const j = await judgeOutput5(deps, kind, shown);
+      if (j.kind === 'fail') {
+        emit({ code: j.code, ...usage });
+        return replyError(j.code, mode);
+      }
+      if (j.kind === 'blocked') {
+        emit({ code: 'blocked_output', ...usage });
+        return replyError('blocked_output', mode);
+      }
+      shown = j.display;
+    }
     emit({ code: 'ok', ...usage });
-    return replyOk(done.display, mode);
+    return replyOk(shown, mode);
   }
   emit({ code: 'blocked_output', ...usage }); // 탈락 이유는 응답 · 로그 어디에도 내보내지 않는다
   return replyError('blocked_output', mode);
@@ -261,8 +302,21 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
     return replyError(prep.code === 'too_long' ? 'too_long' : 'bad_request', mode);
   }
   if (prep.kind === 'card') {
+    // 폭력 낱말 글 · 오용 사전 글: 위기가 끼었는지(그리고 폭력 낱말 글은 글쓴이가 하는 쪽인지) 입력 판정을 함께 본다 — 위기가 언제나 먼저. 판정이 실패하거나 해당 없으면 사전 결과 카드 그대로(안전한 쪽)
+    if (prep.judgeText && mode === 'live' && consumeChatCall(deps.counters, POOL, now, deps.guard ?? GUARD, 0).ok) {
+      const v = await judgeInput5(deps, { asker: prep.judgeText });
+      if (v === 'crisis') {
+        emit({ code: 'crisis' });
+        return replyCard('crisis', CRISIS_CARD, mode, await seal({ ...env, crisisCards: env.crisisCards + 1 }));
+      }
+      if (v === 'harm' && prep.judgeFor === 'violence') {
+        emit({ code: 'refused_intent' });
+        return replyCard('refused_intent', MISUSE_CARD, mode, await seal({ ...env, misuse: (env.misuse ?? 0) + 1 }));
+      }
+    }
     emit({ code: prep.code }); // 로그에는 코드만(낱말 · 판정 0)
     const next: ChatEnv5 = { ...env, crisisCards: env.crisisCards + (prep.code === 'crisis' ? 1 : 0), ended: env.ended || prep.endSession };
+    if (prep.judgeFor === 'misuse') next.misuse = (env.misuse ?? 0) + 1;
     return replyCard(prep.code, prep.card, mode, await seal(next));
   }
   if (env.ended) {
@@ -274,6 +328,28 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
   if (!cc.ok) {
     emit({ code: cc.code });
     return replyError(cc.code, mode, { retryAfterSec: 30 });
+  }
+
+  // AI 입력 판정(Q2-30 남은 몫): 사전을 지난 글을 값싼 모델이 한 번 더 본다. 가해 의도(harm)면 오용 카드, 사전이 못 잡은 위기(crisis)면 위기 카드(챗봇 호출 0).
+  //  앞서 한 말 최대 두 개 + 이 세션에서 닫은 글 수(misuse)를 함께 넣는다. 판정이 두 번 실패하면 챗봇으로 보내지 않고 고정 한 줄(차감 0) — 위기 카드를 이미 낸 세션이면 번호 줄(ALWAYS_LINE)을 함께.
+  if (mode === 'live') {
+    const v = await judgeInput5(deps, { asker: prep.text, prev: env.recent.map((t) => t.u).slice(-2), closed: env.misuse ?? 0 });
+    if (v === 'spend_limit') {
+      emit({ code: 'spend_limit' });
+      return replyError('spend_limit', mode);
+    }
+    if (v === 'harm') {
+      emit({ code: 'refused_intent' });
+      return replyCard('refused_intent', MISUSE_CARD, mode, await seal({ ...env, misuse: (env.misuse ?? 0) + 1 }));
+    }
+    if (v === 'crisis') {
+      emit({ code: 'crisis' });
+      return replyCard('crisis', CRISIS_CARD, mode, await seal({ ...env, crisisCards: env.crisisCards + 1 }));
+    }
+    if (v === null) {
+      emit({ code: 'timeout' });
+      return replyError('timeout', mode, { text: env.crisisCards > 0 ? `${JUDGE_RETRY_LINE} ${ALWAYS_LINE}` : JUDGE_RETRY_LINE });
+    }
   }
 
   let result: ModelResult;
@@ -297,7 +373,27 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
     emit({ code: 'blocked_output', ...usage });
     return replyError('blocked_output', mode, { bundle: await seal({ ...env, blocked: env.blocked + 1 }) as never });
   }
-  const display = done.kind === 'ok' ? done.display : { reply: done.line, ask: '', flags: [done.flag] };
+  let display: Record<string, unknown> = done.kind === 'ok' ? done.display : { reply: done.line, ask: '', flags: [done.flag] };
+  if (mode === 'live' && done.kind === 'ok') {          // AI 출력 판정: 걸린 문장만 빼고 답이 하한(2문장) 아래면 닫는다. 판정 실패는 답을 내보내지 않는다(위기 카드를 이미 낸 세션은 고정 위기 카드로)
+    const j = await judgeOutput5(deps, 'chat', display);
+    if (j.kind === 'fail') {
+      if (j.code === 'spend_limit') {
+        emit({ code: 'spend_limit', ...usage });
+        return replyError('spend_limit', mode);
+      }
+      if (env.crisisCards > 0) {
+        emit({ code: 'crisis', ...usage });
+        return replyCard('crisis', CRISIS_CARD, mode, await seal(env));
+      }
+      emit({ code: j.code, ...usage });
+      return replyError(j.code, mode);
+    }
+    if (j.kind === 'blocked') {
+      emit({ code: 'blocked_output', ...usage });
+      return replyError('blocked_output', mode, { bundle: await seal({ ...env, blocked: env.blocked + 1 }) as never });
+    }
+    display = j.display;
+  }
   // 접기: 12턴이 되면 오래된 6턴을 요약(live 는 요약 호출 · mock 은 결정적 접기)
   let newSummary: string | null = null;
   if (needsFold(env) && mode === 'live') {
