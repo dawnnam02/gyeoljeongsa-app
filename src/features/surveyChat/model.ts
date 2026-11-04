@@ -3,7 +3,7 @@
 //  · 지금 물을 문항 = 보이는 1부 문항 가운데 첫 '열린' 문항(답 없음, 그리고 필수이거나 건너뛰지 않은 선택 문항). 고친 답 때문에 앞에 새 필수 문항이 생기면 그것부터
 //  · 대화 줄은 답에서 다시 만든다(이어서 하기 · 고치기가 같은 길): 섹션 시작 · 끝 줄 · AI 말(변형 고정) · 왜 묻는지 · 내 답 · 받아 주는 말
 import { SV2 } from '@/features/surveyV2/copy';
-import { answerText, DECLINE_HINT_IDS, qOf, RELIGION_ID, visibleFlow } from '@/features/surveyV2/model';
+import { answerText, DECLINE_HINT_IDS, MONEY_SECTION, PARENT_SCHOOL_IDS, qOf, RELIGION_ID, visibleFlow } from '@/features/surveyV2/model';
 import { POL } from '@/features/surveyV2/politicsCopy';
 import type { QuestionDef, SectionKey, V2Answers } from '@/features/surveyV2/types';
 
@@ -79,12 +79,15 @@ export function buildPart1(a: V2Answers, opts: BuildOpts): Part1View {
       lines.push({ kind: 'topic', key: `topic-${section}`, text: fill(t('CHAT.UI.nextTopic'), { 섹션: sectionName(section) }) });
     }
     lines.push({ kind: 'ai', key: `sec-start-${section}`, text: pick(`CHAT.SEC.${section}.start`, userKey) });
+    if (section === MONEY_SECTION) lines.push({ kind: 'note', key: 'money-notice', text: SV2.common.moneyNotice }); // D-248: 돈 문항 묶음 앞에 등급 고지 한 번
     prevSection = section;
   };
   const ask = (q: QuestionDef) => {
     enter(q.section);
     lines.push({ kind: 'ai', key: `q-${q.id}`, text: pick(`CHAT.${q.id}`, userKey), qid: q.id });
     if (t(`CHAT.${q.id}.why`)) lines.push({ kind: 'ai', key: `why-${q.id}`, text: t(`CHAT.${q.id}.why`), small: true, qid: q.id });
+    // D-248: '말하고 싶지 않아요'를 고르기 전에 보이는 한 줄(질문 바로 아래) — 고른 뒤에만 나오던 옛 줄을 앞으로 옮겼다
+    if (DECLINE_HINT_IDS.includes(q.id)) lines.push({ kind: 'note', key: `hint-${q.id}`, text: PARENT_SCHOOL_IDS.includes(q.id) ? SV2.common.declineHintParents : SV2.common.declineHint });
   };
 
   // 종교 동의 카드 줄: 카드 앞 AI 말 · (고른 뒤) 내 말풍선(누른 버튼 글) · 받아 주는 말. 거절이면 A06 은 '답하지 않음'(null)이라 질문 · 답 줄 없이 여기서 끝(L22 D2 ②)
@@ -112,7 +115,6 @@ export function buildPart1(a: V2Answers, opts: BuildOpts): Part1View {
     ask(q);
     const value = answered ? a[q.id] : undefined;
     lines.push({ kind: 'me', key: `me-${q.id}`, qid: q.id, text: answered ? answerText(q, a[q.id], schoolName) || SV2.common.skip : SV2.common.skip });
-    if (value === null && DECLINE_HINT_IDS.includes(q.id)) lines.push({ kind: 'note', key: `hint-${q.id}`, text: SV2.common.declineHint });
     const ack = ackText(q.id, value, a, varsFor(q.id, a, schoolName), userKey);
     if (ack && !quietAck(q.id, ack, userKey)) lines.push({ kind: 'ai', key: `ack-${q.id}`, text: ack });
   }

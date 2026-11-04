@@ -136,5 +136,5 @@ export function useInputStore(store?: InputStore): DeviceInput {
   return useSyncExternalStore(s.subscribe, s.get, s.get);
 }
 
-/** 서버 요청 인자 꼴(시각) — 요청에만 싣고 저장 0. 곳은 늘 null(D-247) — 서버는 곳이 없으면 한국 표준시로 계산한다 */
-export const requestInputOf = (d: DeviceInput): { hour: number | null; minute: number | null; place: string | null } => ({ hour: d.time?.hour ?? null, minute: d.time?.minute ?? null, place: null });
+/** 서버 요청 인자 꼴(시각) — 요청에만 싣고 저장 0. 태어난 곳은 받지 않는다(D-247 · QF2 Q2-31 — `p_place` 인자를 아예 안 보낸다, 서버는 한국 표준시로 계산) */
+export const requestInputOf = (d: DeviceInput): { hour: number | null; minute: number | null } => ({ hour: d.time?.hour ?? null, minute: d.time?.minute ?? null });

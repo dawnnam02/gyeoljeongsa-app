@@ -136,8 +136,8 @@ describe('글 규칙(카피 1-1 · 16-J L-7)', () => {
     expect(all.filter((s) => /[!！]|죄송|미안|양해|(습니다|십시오|합니다|입니다)\.?$/.test(s.text)).map((s) => s.key)).toEqual([]);
   });
 
-  test("'등급'은 L-7 세 자리(declineHint · A06 도움말 · 세부사항 머리)에만, '점수' · 퍼센트는 0", () => {
-    expect(all.filter((s) => /등급/.test(s.text)).map((s) => s.key).sort()).toEqual(['Q.A06.help', 'SECTION.appeal.lead', 'SV2.common.declineHint']);
+  test("'등급'은 L-7 다섯 자리(declineHint · declineHintParents · moneyNotice · A06 도움말 · 세부사항 머리)에만, '점수' · 퍼센트는 0", () => {
+    expect(all.filter((s) => /등급/.test(s.text)).map((s) => s.key).sort()).toEqual(['Q.A06.help', 'SECTION.appeal.lead', 'SV2.common.declineHint', 'SV2.common.declineHintParents', 'SV2.common.moneyNotice']);
     expect(all.filter((s) => /점수|%|퍼센트|순위|등수/.test(s.text)).map((s) => s.key)).toEqual([]);
   });
 

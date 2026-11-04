@@ -464,12 +464,14 @@ describe('10 상대 프로필 (조건 3 · 4)', () => {
     expect(allTexts(tree).join(' ')).not.toMatch(/순위|퍼센트/);
   });
 
-  test('F12 · 공개 항목 15개(정책 2-5 순서): 서버가 준 것만 줄로, 값은 서버 글 그대로(구간 포함) · 하나도 없으면 구역을 뺀다', async () => {
-    const all = { A04: '부산', A10: '월 1~2회', A11: '군필', A08: '없음', D05: '1명', D06: '첫째(장남·장녀)', B03: '경영학', B04: '없음', C03: '대리·과장급', C04: '정규직', C06: '1억~3억', B02: '한국대', C02: '가나다 회사', G02: '보통', G03: ['단정', '캐주얼'] };
+  test('F12 · 공개 항목 16개(정책 2-5 순서 + D-248 취미): 서버가 준 것만 줄로, 값은 서버 글 그대로(구간 포함) · 하나도 없으면 구역을 뺀다', async () => {
+    const all = { A04: '부산', A10: '월 1~2회', A11: '군필', A08: '없음', D05: '1명', D06: '첫째(장남·장녀)', B03: '경영학', B04: '없음', C03: '대리·과장급', C04: '정규직', C06: '1억~3억', B02: '한국대', C02: '가나다 회사', G02: '보통', G03: ['단정', '캐주얼'], E11: ['여행', '맛집·카페', '봉사·종교 활동', 'volunteer'] };
     const full = await mount(<CandidateScreen deps={candDeps(detail({ answers: { ...detail().answers, ...all } })).deps} />);
     expect(textOf(full, 'candidate-open-title')).toBe('공개한 정보');
     const ids = full.root.findAll((n) => typeof n.props.testID === 'string' && /^candidate-open-[A-Z]\d\d$/.test(n.props.testID)).map((n) => n.props.testID);
-    expect([...new Set(ids)]).toEqual(['A04', 'A10', 'A11', 'A08', 'D05', 'D06', 'B03', 'B04', 'C03', 'C04', 'C06', 'B02', 'C02', 'G02', 'G03'].map((x) => `candidate-open-${x}`));
+    expect([...new Set(ids)]).toEqual(['A04', 'A10', 'A11', 'A08', 'D05', 'D06', 'B03', 'B04', 'C03', 'C04', 'C06', 'B02', 'C02', 'G02', 'G03', 'E11'].map((x) => `candidate-open-${x}`));
+    expect(textOf(full, 'candidate-open-E11-value') ?? allTexts(full).find((t) => t === '여행, 맛집·카페')).toBe('여행, 맛집·카페'); // D-248: 취미(공개) — 고른 취미를 ', '로 이어 그린다. '봉사 · 종교 활동' 보기는 앱에서도 그리지 않는다
+    expect(allTexts(full).join(' ')).not.toMatch(/봉사|volunteer/);
     expect(hasText(full, '1억~3억')).toBe(true); // 본인 자산은 구간 그대로
     expect(hasText(full, '단정, 캐주얼')).toBe(true);
     expect(hasText(full, '본인 자산')).toBe(true);

@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createDemoV2Memory, createSurveyV2DemoClient, demoV2Seed, type DemoV2Memory } from '@/demo/surveyV2Backend';
 import { createSurveyV2Api } from '@/features/surveyV2/api';
 import { SV2 } from '@/features/surveyV2/copy';
+import { DECLINE_HINT_IDS, FLOW, PARENT_SCHOOL_IDS } from '@/features/surveyV2/model';
 import { createLocalDraftStore } from '@/features/surveyV2/localDraft';
 import { SurveyV2Screen } from '@/features/surveyV2/SurveyV2Screen';
 import type { SurveyV2Deps } from '@/features/surveyV2/deps';
@@ -162,14 +163,15 @@ describe("'그 외' · '말하고 싶지 않아요' · 뒤로 · 임시 저장 �
     expect(question(tree)).toBe('자녀가 있나요?');
   });
 
-  test("'말하고 싶지 않아요'를 고르면 '답하면 등급이 오를 수 있어요.'(돈 문항) · 값은 null 로 저장", async () => {
+  test("돈 문항: 고르기 전부터 '가장 낮은 구간' 줄이 보이고(D-248) 말하고 싶지 않아요를 고르면 값은 null 로 저장", async () => {
     const { deps, memory, api } = rig();
     await api.save({ answers: { A12: '김하나', A02: 'female', A03: { sido: 'seoul', sigungu: '강남구' }, A05: 165, A06: 'none', A07: 'never', A08: 'none', A11: 'na', B01: 'hs', B04: 'none', C01: 'student' } });
     const tree = await show(deps);
     expect(question(tree)).toBe('한 해 소득은 어느 구간인가요?');
     expect(textOf(tree, 'v2-notice')).toBe(SV2.resume);
+    expect(textOf(tree, 'v2-decline-hint')).toBe(SV2.common.declineHint); // 고르기 전
     await tap(tree, 'v2-C05-opt-decline');
-    expect(textOf(tree, 'v2-decline-hint')).toBe('답하면 등급이 오를 수 있어요.');
+    expect(textOf(tree, 'v2-decline-hint')).toBe(SV2.common.declineHint);
     await tap(tree, 'v2-next');
     expect(answersOf(memory).C05).toBeNull();
     expect(question(tree)).toBe('모은 자산은 어느 구간인가요?');
@@ -262,8 +264,9 @@ describe('학교 검색 자동완성', () => {
     await typeInto(tree, 'v2-D08-search', 'ㅋㅋㅋㅋ없는학교');
     await wait(250);
     expect(textOf(tree, 'v2-D08-empty')).toBe(SV2.search.empty);
+    expect(textOf(tree, 'v2-decline-hint')).toBe(SV2.common.declineHintParents); // 고르기 전부터 늘 보임(D-248) · 부모님 학교는 가산 0 글
     await tap(tree, 'v2-D08-opt-decline');
-    expect(textOf(tree, 'v2-decline-hint')).toBe(SV2.common.declineHint);
+    expect(textOf(tree, 'v2-decline-hint')).toBe(SV2.common.declineHintParents);
     await tap(tree, 'v2-next');
     expect(answersOf(memory).D08).toBeNull();
   });
@@ -372,6 +375,31 @@ describe('선택 단계 · 검토 · 제출', () => {
 });
 
 // QF2-B Q2-22(D-246): 세부사항(어필) 글을 AI가 읽어 등급에 반영하는 길을 끔 — 스위치 appeal_ai 가 꺼져 있으면 세부사항 단계 · 검토 칸 · '두 단계' 안내가 없고, 켜면 돌아온다
+// D-248(0056): '말하고 싶지 않아요'를 고르면 등급에서 가장 낮은 구간 — 고르기 전에 보이는 줄. 돈 문항 전부(연봉 · 본인 자산 · 부모님 자산 · 부모님 학교 둘)에서 질문 아래 늘 보인다 + 돈 문항 앞 고지 한 번
+describe('등급 고지(D-248): 고르기 전부터 늘 보이는 줄', () => {
+  test.each(DECLINE_HINT_IDS.map((id) => [id]))('%s: 질문이 뜨면 칩을 고르기 전에 줄이 이미 있다 · 부모님 학교만 가산 0 글', async (id) => {
+    const { deps, api } = rig();
+    const ids = FLOW.map((q) => q.id);
+    const before = new Set(ids.slice(0, ids.indexOf(id)));
+    await api.save({ answers: Object.fromEntries(Object.entries(FULL).filter(([k]) => before.has(k))) });
+    const tree = await show(deps);
+    expect(has(tree, `v2-${id}-opt-decline`)).toBe(true); // 이 질문에 와 있다(말하고 싶지 않아요 보기가 있음)
+    expect(textOf(tree, 'v2-decline-hint')).toBe(PARENT_SCHOOL_IDS.includes(id) ? SV2.common.declineHintParents : SV2.common.declineHint);
+    expect(textOf(tree, 'v2-decline-hint')).not.toMatch(/오를 수/); // 옛 '답하면 등급이 오를 수 있어요' 없음
+    expect(textOf(tree, 'v2-decline-hint')).not.toMatch(/\d|점수/);
+  });
+  test('돈 문항 묶음 앞(구역 머리)에 등급 고지 한 번 · 사실 문장(답하지 않아도 가입할 수 있어요)', async () => {
+    const { deps, api } = rig();
+    const ids = FLOW.map((q) => q.id);
+    const before = new Set(ids.slice(0, ids.indexOf('C05')));
+    await api.save({ answers: Object.fromEntries(Object.entries(FULL).filter(([k]) => before.has(k))) });
+    const tree = await show(deps);
+    expect(textOf(tree, 'v2-money-notice')).toBe(SV2.common.moneyNotice);
+    expect(SV2.common.moneyNotice).toContain('가장 낮은 구간');
+    expect(SV2.common.moneyNotice).toContain('답하지 않아도 가입할 수 있어요');
+  });
+});
+
 describe('세부사항 숨김(스위치 appeal_ai · D-246)', () => {
   async function fullRig() {
     const r = rig();

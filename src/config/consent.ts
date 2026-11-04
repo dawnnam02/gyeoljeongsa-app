@@ -11,10 +11,10 @@ import type { ConsentCode } from '@/content/types';
 export const CONSENT_TEXT_VERSIONS: Readonly<Record<ConsentCode, string>> = {
   CK1: "consent-2026.10.27-v1",
   CK2: "consent-2026.10.18-v1",
-  CK3: "consent-2026.11.04-v1",
+  CK3: "consent-2026.11.04-v2",
   CK4: "consent-2026.10.27-v2",
-  CK5: "consent-2026.10.14-v1",
-  CK6: "consent-2026.10.28-v1",
+  CK5: "consent-2026.11.04-v1",
+  CK6: "consent-2026.11.04-v1",
   CK7: "consent-2026.10.14-v1",
   CK8: "consent-2026.10.27-v1",
   CK9: "consent-2026.10.14-v3",
@@ -38,17 +38,17 @@ export function isCurrentEdition(code: ConsentCode, version: string): boolean {
 export const CONSENT_TEXT_FINGERPRINTS: Readonly<Record<ConsentCode, string>> = {
   CK1: "2a4ec408761f",
   CK2: "f8167545f89d",
-  CK3: "a17fa2c9594d",
+  CK3: "372c84a74017",
   CK4: "802a2e095a09",
-  CK5: "bfb551bd3af5",
-  CK6: "1a064c9a9751",
+  CK5: "1953e0d3000f",
+  CK6: "141b30953332",
   CK7: "07b25c716338",
   CK8: "9c5d88f3e4ab",
   CK9: "2e5e24446387",
 };
 // 약관 · 처리방침: 표식 구간과 작업 표시를 걸러낸 글의 지문
 export const LEGAL_DOC_FINGERPRINTS = {
-  terms: "421aeb651d70",
-  privacy: "63de7f390e32",
+  terms: "85b7e609b4b1",
+  privacy: "f95f2b03f553",
 } as const;
 // <fingerprints:end>

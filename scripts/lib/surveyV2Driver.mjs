@@ -13,7 +13,8 @@ const TEXT = {
   A12: '김하나', B03: '경영학', C02: '한빛전자', T01: '조용한 주말을 좋아하고 산책을 자주 하는 편이에요.', T02: '평일 저녁에는 같이 밥을 먹고 주말에는 함께 걷고 싶어요.', T03: '서로를 존중하는 마음이에요.',
 };
 
-export async function fillSurveyV2(b, { log = () => undefined, politics = 'answer' } = {}) {
+// stopAt(QF2-B3): 이 문항 번호가 화면에 뜨면 답하지 않고 멈춘다({ ok, answered, stage, stoppedAt }) — 돈 문항 앞에서 화면을 보려고
+export async function fillSurveyV2(b, { log = () => undefined, politics = 'answer', stopAt = [] } = {}) {
   const q = (id) => `window.__q(${JSON.stringify(id)})`;
   const tap = async (id) => {
     await b.click(`[data-testid="${id}"]`);
@@ -36,6 +37,7 @@ export async function fillSurveyV2(b, { log = () => undefined, politics = 'answe
       await sleep(200);
       continue;
     }
+    if (stopAt.includes(id)) return { ok: true, answered, stage: 'flow', stoppedAt: id };
     const moved = () => b.waitFor(`!${q(`v2-block-${id}`)}`, 1500);
     let done = false;
     if (id === 'A06' && (await b.evaluate(`!!${q('chat-card-REL')}`))) {

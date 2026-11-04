@@ -289,6 +289,13 @@ export function HowBody() {
           </AppText>
         ))}
       </Card>
+      <Card style={styles.card} testID="how-contrib">
+        {(['inc', 'ast', 'pas', 'ans', 'sch'] as const).map((k) => (
+          <AppText key={k} variant="caption" tone="text" testID={`how-contrib-${k}`}>
+            {GRADE16.contrib[k]}
+          </AppText>
+        ))}
+      </Card>
       <Card style={styles.card}>
         <AppText variant="caption" tone="text" testID="how-relation">
           {GI.payNote}

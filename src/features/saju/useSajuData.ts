@@ -47,7 +47,7 @@ export function useSajuData(deps: Pick<SajuDeps, 'api' | 'now'>, rawInput: Devic
   const [done, setDone] = useState<Done>({ runKey: '' });
   const [tries, setTries] = useState(0);
   const req = requestInputOf(input);
-  const runKey = `${req.hour}|${req.minute}|${req.place}|${tries}`;
+  const runKey = `${req.hour}|${req.minute}|${tries}`;
   const nowFn = deps.now ?? Date.now;
   useEffect(() => {
     if (!enabled) return undefined;

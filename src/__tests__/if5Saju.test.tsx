@@ -87,11 +87,11 @@ describe('IF5-F1 ② 서버 4함수 응답 읽기 — 오류 코드 7종', () =>
   const failWith = (data: unknown, error: { code?: string; message?: string } | null = null) => createSajuApi(async () => ({ data, error }));
   test('consent_required · invalid_value · invalid_time · not_ready 는 서버 코드 그대로', async () => {
     for (const code of ['consent_required', 'invalid_value', 'invalid_time', 'not_ready'] as const) {
-      expect(await failWith({ ok: false, code }).chart({ hour: null, minute: null, place: null })).toEqual({ ok: false, code });
+      expect(await failWith({ ok: false, code }).chart({ hour: null, minute: null })).toEqual({ ok: false, code });
     }
   });
   test('feature_off · forbidden(42501) · network(끊김) · 모르는 코드는 not_ready — 일곱 코드 모두 한 종류씩', async () => {
-    const input = { hour: null, minute: null, place: null };
+    const input = { hour: null, minute: null };
     expect(await failWith(null, { code: '42501', message: 'feature_off' }).chart(input)).toEqual({ ok: false, code: 'feature_off' });
     expect(await failWith(null, { code: '42501', message: 'forbidden' }).luck(input)).toEqual({ ok: false, code: 'forbidden' });
     expect(await createSajuApi(async () => { throw new Error('offline'); }).day(input)).toEqual({ ok: false, code: 'network' });
@@ -101,54 +101,53 @@ describe('IF5-F1 ② 서버 4함수 응답 읽기 — 오류 코드 7종', () =>
   });
   test('요청 인자는 시각 · 곳뿐 — 생년월일 · 상대 · 회원 id 인자 0 · 자동 재시도 0(한 번 부름)', async () => {
     const r = rig();
-    await r.api.chart({ hour: 15, minute: 20, place: '서울' });
-    await r.api.luck({ hour: null, minute: null, place: null }, 2027);
-    await r.api.day({ hour: null, minute: null, place: null }, '2027-03-20');
-    await r.api.taekil({ purpose: 'moving', start: '2027-03-01', end: '2027-03-31', personal: false, hour: null, minute: null, place: null });
+    await r.api.chart({ hour: 15, minute: 20 });
+    await r.api.luck({ hour: null, minute: null }, 2027);
+    await r.api.day({ hour: null, minute: null }, '2027-03-20');
+    await r.api.taekil({ purpose: 'moving', start: '2027-03-01', end: '2027-03-31', personal: false, hour: null, minute: null });
     expect(r.calls.map((c) => c.fn)).toEqual(['get_my_saju', 'get_my_luck', 'get_my_day', 'get_taekil']);
-    expect(r.calls[0].args).toEqual({ p_hour: 15, p_minute: 20, p_place: '서울' });
+    expect(r.calls[0].args).toEqual({ p_hour: 15, p_minute: 20 });
     for (const c of r.calls) for (const k of Object.keys(c.args)) expect(k).toMatch(/^p_(hour|minute|place|year|date|purpose|start|end|personal)$/);
     const failing = jest.fn(async () => ({ data: { ok: false, code: 'not_ready' }, error: null }));
-    await createSajuApi(failing).chart({ hour: null, minute: null, place: null });
+    await createSajuApi(failing).chart({ hour: null, minute: null });
     expect(failing).toHaveBeenCalledTimes(1);
   });
   test('rpcOf 는 클라이언트 rpc 를 그대로(이름 · 인자)', async () => {
     const rpc = jest.fn(async () => ({ data: { ok: true, state: 'none' }, error: null }));
     const api = createSajuApi(rpcOf({ rpc } as never));
-    expect(await api.chart({ hour: 3, minute: 5, place: null })).toEqual({ ok: true, data: { state: 'none' } });
-    expect(rpc).toHaveBeenCalledWith('get_my_saju', { p_hour: 3, p_minute: 5, p_place: null });
+    expect(await api.chart({ hour: 3, minute: 5 })).toEqual({ ok: true, data: { state: 'none' } });
+    expect(rpc).toHaveBeenCalledWith('get_my_saju', { p_hour: 3, p_minute: 5 });
   });
 });
 
 describe('IF5-F1 ② 모의 서버(0048 응답 모양) — 계산은 기기 안', () => {
   test('get_my_saju: 시각 있음 4기둥 · 시각 모름 3기둥 + hour null · 입춘일은 두 가지 · 생년월일 원값 0', async () => {
     const r = rig();
-    const known = await r.api.chart({ hour: 15, minute: 20, place: '서울' });
+    const known = await r.api.chart({ hour: 15, minute: 20 });
     expect(known.ok && known.data.state === 'ready' && known.data.hourKnown && known.data.hour !== null).toBe(true);
-    const unknown = await r.api.chart({ hour: null, minute: null, place: null });
+    const unknown = await r.api.chart({ hour: null, minute: null });
     expect(unknown.ok && unknown.data.state === 'ready' && !unknown.data.hourKnown && unknown.data.hour === null).toBe(true);
     const raw = await r.demo.rpc(r.user, 'get_my_saju', {});
     expect(JSON.stringify(raw.data)).not.toMatch(/1994|birth/);
     const cusp = rig({ birth: '2025-02-03' });
-    const c = await cusp.api.chart({ hour: null, minute: null, place: null });
+    const c = await cusp.api.chart({ hour: null, minute: null });
     expect(c.ok && c.data.state === 'ready' ? c.data.options.length : 0).toBe(2);
   });
   test('get_my_luck: 대운 9 · 세운 · 월운 12 / 성별 없음이면 대운 null / get_my_day · get_taekil 모양', async () => {
     const r = rig();
-    const l = await r.api.luck({ hour: null, minute: null, place: null }, 2027);
+    const l = await r.api.luck({ hour: null, minute: null }, 2027);
     expect(l.ok && l.data.state === 'ready' && l.data.daewoon?.items.length === 9 && l.data.wolun.length === 12 && l.data.seun?.year === 2027).toBe(true);
-    const nog = await rig({ email: 'sjnog@email.com' }).api.luck({ hour: null, minute: null, place: null }, 2027);
+    const nog = await rig({ email: 'sjnog@email.com' }).api.luck({ hour: null, minute: null }, 2027);
     expect(nog.ok && nog.data.state === 'ready' && nog.data.daewoon === null).toBe(true);
-    const d = await r.api.day({ hour: null, minute: null, place: null }, '2027-03-20');
+    const d = await r.api.day({ hour: null, minute: null }, '2027-03-20');
     expect(d.ok && d.data.state === 'ready' && d.data.officer !== null && d.data.date === '2027-03-20').toBe(true);
-    const t = await r.api.taekil({ purpose: 'moving', start: '2027-03-01', end: '2027-03-31', personal: false, hour: null, minute: null, place: null });
+    const t = await r.api.taekil({ purpose: 'moving', start: '2027-03-01', end: '2027-03-31', personal: false, hour: null, minute: null });
     expect(t.ok && t.data.days.length === 31 && t.data.days.every((x) => ['good', 'neutral', 'rest'].includes(x.tone))).toBe(true);
   });
   test('오류: CK17A 꺼짐 consent_required · 스위치 꺼짐 feature_off · 모르는 지점 invalid_value · 1961-08-10 이전 out_of_range · 생년월일 없음 none · 62일 넘는 날짜 고르기 invalid_value', async () => {
-    const input = { hour: null, minute: null, place: null };
+    const input = { hour: null, minute: null };
     expect(await rig({ ck17: false }).api.chart(input)).toEqual({ ok: false, code: 'consent_required' });
     expect(await rig({ flags: { saju_yard: false } }).api.chart(input)).toEqual({ ok: false, code: 'feature_off' });
-    expect(await rig().api.chart({ hour: 3, minute: 0, place: '화성' })).toEqual({ ok: false, code: 'invalid_value' });
     expect(await rig({ birth: '1950-05-05' }).api.chart(input)).toEqual({ ok: true, data: { state: 'out_of_range' } });
     expect(await rig({ birth: null }).api.chart(input)).toEqual({ ok: true, data: { state: 'none' } });
     expect(await rig().api.taekil({ purpose: 'moving', start: '2027-01-01', end: '2027-04-01', personal: false, ...input })).toEqual({ ok: false, code: 'invalid_value' });
@@ -156,9 +155,9 @@ describe('IF5-F1 ② 모의 서버(0048 응답 모양) — 계산은 기기 안'
   });
   test('기둥 번호 ↔ 60갑자 변환 · 서버 기둥으로 세운 원국 = 기기에서 직접 만든 원국', async () => {
     const r = rig();
-    const res = await r.api.chart({ hour: 15, minute: 20, place: '서울' });
+    const res = await r.api.chart({ hour: 15, minute: 20 });
     if (!res.ok || res.data.state !== 'ready') throw new Error('x');
-    const direct = build_chart({ year: 1994, month: 3, day: 14, hour: 15, minute: 20, place: '서울', gender: 'F' });
+    const direct = build_chart({ year: 1994, month: 3, day: 14, hour: 15, minute: 20, gender: 'F' });
     const viaServer = chartOf(res.data as ReadyChart);
     expect(viaServer?.pillars).toEqual(direct.pillars);
     expect(idx60(0, 0)).toBe(0);
@@ -202,7 +201,7 @@ describe('IF5-F1 ① 시각은 이 휴대폰에만 — 저장 칸을 켠 항목�
     await Promise.resolve();
     expect(await storage.getItem('my.spot.v1')).toBeNull();
     expect(s.get()).toEqual({ time: { hour: 15, minute: 20 }, saveTime: true, answered: false });
-    expect(requestInputOf(s.get())).toEqual({ hour: 15, minute: 20, place: null }); // 곳은 늘 null — 서버가 한국 표준시로 계산
+    expect(requestInputOf(s.get())).toEqual({ hour: 15, minute: 20 }); // 곳은 늘 null — 서버가 한국 표준시로 계산
     await storage.setItem('my.spot.v1', '"부산"');
     await s.clearAll();
     expect(await storage.getItem('my.spot.v1')).toBeNull();
@@ -224,7 +223,7 @@ describe('IF5-F1 ① 시각은 이 휴대폰에만 — 저장 칸을 켠 항목�
 
 // ── 상대 생일 ────────────────────────────────────────────────────────────────
 describe('IF5-F1 ② ③ 상대 생일 — 늘 기기 계산 · 서버 전송 0 · 저장 0 · 19세 미만 0', () => {
-  const mine = build_chart({ year: 1994, month: 3, day: 14, hour: 15, minute: 20, place: '서울', gender: 'F' });
+  const mine = build_chart({ year: 1994, month: 3, day: 14, hour: 15, minute: 20, gender: 'F' });
   test('결과는 닮은 점 · 다른 점 · 부딪힐 때 쓰는 말 세 줄 + 펼침 · 점수 · 퍼센트 0', () => {
     const r = matchPartner(mine, { birthDigits: '19920802', time: null }, '2027-03-20');
     expect(r.kind).toBe('ok');
@@ -448,7 +447,7 @@ describe('IF5-F1 ③ 사주 마당 한 화면 — 상태 5종(빈 · 불러오�
     expect(must(tree, 'saju-pillar-table-day').props.importantForAccessibility).toBe('no-hide-descendants');
     expect(must(tree, 'saju-bars-목').props.importantForAccessibility).toBe('no-hide-descendants');
     const labels = tree.root.findAll((n) => typeof n.props.accessibilityLabel === 'string').map((n) => String(n.props.accessibilityLabel));
-    const chart = await r.api.chart({ hour: null, minute: null, place: null });
+    const chart = await r.api.chart({ hour: null, minute: null });
     if (!chart.ok || chart.data.state !== 'ready') throw new Error('x');
     for (const l of labels) expect(l).not.toContain(pairText(chart.data.day)); // 날 기둥 글자가 어떤 읽기 이름에도 없다
   });
@@ -545,7 +544,7 @@ describe('IF5-F1 ③ 만세력 달력 · 날짜 고르기', () => {
     await press(tree, 'saju-cal-use-0');
     await wait(60);
     const call = r.calls.find((c) => c.fn === 'get_taekil');
-    expect(call?.args).toMatchObject({ p_purpose: 'moving', p_start: '2027-03-01', p_end: '2027-03-31', p_personal: false, p_hour: null, p_place: null });
+    expect(call?.args).toMatchObject({ p_purpose: 'moving', p_start: '2027-03-01', p_end: '2027-03-31', p_personal: false, p_hour: null });
     const marks = tree.root.findAll((n) => /^saju-cal-day-\d+$/.test(String(n.props.testID ?? '')) && /좋은|쉬어 가는/.test(String(n.props.accessibilityLabel ?? '')));
     expect(marks.length).toBeGreaterThan(0);
     expect(new Set(marks.map((m) => (/좋은/.test(String(m.props.accessibilityLabel)) ? 'good' : 'rest'))).size).toBe(2); // 색 두 가지(글자 + 모양이 함께라 색만으로 전하지 않음)

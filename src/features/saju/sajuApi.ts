@@ -27,7 +27,7 @@ export type SajuFail = { ok: false; code: SajuFailCode };
 export type SajuResult<T> = { ok: true; data: T } | SajuFail;
 
 /** 내 시각 · 곳 (기기에서 가져와 요청 인자로만 보낸다) */
-export type MyInput = { hour: number | null; minute: number | null; place: string | null };
+export type MyInput = { hour: number | null; minute: number | null }; // 태어난 곳(place)은 D-247로 받지 않는다 — QF2 Q2-31: p_place 인자도 안 보낸다(서버 기본 null)
 
 /** 기둥 하나: 천간 0~9 · 지지 0~11 (서버가 60갑자 번호에서 나눈 나머지) */
 export type Pair = { stem: number; branch: number };
@@ -127,7 +127,7 @@ export type SajuApi = {
   taekil(a: TaekilArgs): Promise<SajuResult<Taekil>>;
 };
 
-const inputArgs = (i: MyInput): Rec => ({ p_hour: i.hour, p_minute: i.hour === null ? null : i.minute ?? 0, p_place: i.place });
+const inputArgs = (i: MyInput): Rec => ({ p_hour: i.hour, p_minute: i.hour === null ? null : i.minute ?? 0 });
 
 export function createSajuApi(call: RpcCall): SajuApi {
   async function read<T>(fn: string, args: Rec, parse: (d: unknown) => T | null, event: string): Promise<SajuResult<T>> {

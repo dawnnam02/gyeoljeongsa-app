@@ -704,11 +704,11 @@ try {
   // R1 C①(D-123 ④): 설문 v2 글(features/surveyV2 의 copy.ts · questionCopy.ts)도 같은 점검에 넣는다. 등급 말은 카피 16-J L-7 세 자리만(declineHint · A06 도움말 · 세부사항 머리), 점수 말 0
   const sv2Dir = path.join(APP_DIR, 'src', 'features', 'surveyV2');
   const sv2Files = ['copy.ts', 'questionCopy.ts'].filter((f) => fs.existsSync(path.join(sv2Dir, f)));
-  const sv2Allowed = ['답하면 등급이 오를 수 있어요.', '종교는 짝을 고르는 데만 쓰고 등급에는 쓰지 않아요.', '쓴 내용은 AI가 읽고 등급 계산에 참고해요.']; // 둘째: 카피 14-2 survey.A06.help v5(QP-A)
+  const sv2Allowed = ["'말하고 싶지 않아요'를 고르면 이 항목은 등급 계산에서 가장 낮은 구간으로 세어요.", "부모님 학교는 등급 계산에 더해지지 않아서, '말하고 싶지 않아요'를 골라도 달라지지 않아요.", "연봉 · 자산 · 부모님 자산은 등급 계산에 들어가요. '말하고 싶지 않아요'를 고르면 그 항목은 가장 낮은 구간으로 세어져요. 답하지 않아도 가입할 수 있어요.", '종교는 짝을 고르는 데만 쓰고 등급에는 쓰지 않아요.', '쓴 내용은 AI가 읽고 등급 계산에 참고해요.']; // 둘째: 카피 14-2 survey.A06.help v5(QP-A)
   const sv2Lines = sv2Files.flatMap((f) => fs.readFileSync(path.join(sv2Dir, f), 'utf8').split(/\r?\n/).filter((l) => !l.trim().startsWith('//')).map((l) => [f, l]));
   const sv2Seen = sv2Allowed.map((t) => sv2Lines.filter(([, l]) => l.includes(t)).length);
   const sv2Leaked = sv2Lines.filter(([, l]) => /등급|점수/.test(sv2Allowed.reduce((s, t) => s.split(t).join(''), l))).map(([f, l]) => `${f}: ${l.trim().slice(0, 50)}`);
-  check('S', `설문 v2 글(${sv2Files.length}개 파일)의 등급 말은 카피 16-J L-7 세 자리에 한 번씩만 있고(${sv2Seen.join(' · ')}) 그 밖의 등급 · 점수 말은 없다`, sv2Files.length === 0 || (sv2Leaked.length === 0 && sv2Seen.every((n) => n === 1)), [...sv2Leaked, ...sv2Allowed.filter((_, i) => sv2Seen[i] !== 1).map((t) => `L-7 자리 개수 다름: ${t}`)].join('\n'));
+  check('S', `설문 v2 글(${sv2Files.length}개 파일)의 등급 말은 카피 16-J L-7 다섯 자리에 한 번씩만 있고(${sv2Seen.join(' · ')}) 그 밖의 등급 · 점수 말은 없다`, sv2Files.length === 0 || (sv2Leaked.length === 0 && sv2Seen.every((n) => n === 1)), [...sv2Leaked, ...sv2Allowed.filter((_, i) => sv2Seen[i] !== 1).map((t) => `L-7 자리 개수 다름: ${t}`)].join('\n'));
   // '점수' 말은 16 전체(등급 화면 · 상품)와 NV81 방향 문구(09 말풍선 · 10 상세 — BADGE16)에서만. 12 설정 줄 · 구매 전 확인 · 안내 글에는 없다(L-2 등급만 허용)
   const pointWord = shopStrings.filter(([where, t]) => /점수/.test(t) && (where.startsWith('S.SETTINGS16') || where.startsWith('S.BEFORE_BUY') || where.startsWith('S.WITHDRAW'))).map(([where]) => where);
   check('S', "'점수' 말은 12 설정 줄 · 탈퇴 안내 · 구매 전 확인에는 없다(등급만 허용, 카피 16-J L-2 · L-3)", pointWord.length === 0, pointWord.join(', '));

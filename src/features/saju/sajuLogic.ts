@@ -2,14 +2,14 @@
 //  · 내 기둥은 서버(get_my_saju)가 준 번호로만 세운다(chart_from_pillars) — 생년월일 원값은 앱에 없다. 데모 모드 모의 서버만 기기 계산(demo/sajuDemo)
 //  · 점수 · 퍼센트 · 판정 · 순위 · 숫자 막대 0. 오행은 막대 길이만(숫자 라벨 0). 한자 0(한글 간지)
 //  · 글은 조각 표(검사기 check_text5 통과 · 관계 말 '부딪히기 쉬운 결' · '엇갈리기 쉬운 결') + 카피 24장 틀. 이 파일은 화면 글을 쓰지 않는다
-import { BIRTH_PLACES, BRANCHES, BRANCH_ELEMENT, ELEMENTS, STAGE_NEUTRAL, STEMS, chart_from_pillars, current_daewoon, dayNumOf, day_idx, element_counts, gj, isoDate, jie_state, luck_facts, sinsal, sipsung, twelve_stage, clock_to_std } from '@/saju5/saju_calc5';
+import { BRANCHES, BRANCH_ELEMENT, ELEMENTS, STAGE_NEUTRAL, STEMS, chart_from_pillars, current_daewoon, dayNumOf, day_idx, element_counts, gj, isoDate, jie_state, luck_facts, sinsal, sipsung, twelve_stage, clock_to_std } from '@/saju5/saju_calc5';
 import type { Chart, Rec } from '@/saju5/saju_calc5';
 import { pickCard, quarterTones, type Card5, type PickInput } from '@/saju5/fragments5';
 import { NAMES5 } from '@/saju5/names5';
 import { hiddenStemSipsung } from '@/saju5/jijanggan5';
 import { LunarError, solarToLunar } from '@/saju5/lunar5';
 
-import { IF5_TEXT, type If5Key } from '@/content/if5Copy';
+import { IF5_TEXT } from '@/content/if5Copy';
 import type { LuckItem, MyChart, MyDay, MyLuck, Pair } from './sajuApi';
 
 export type ReadyChart = Extract<MyChart, { state: 'ready' }>;
@@ -268,10 +268,6 @@ export const USE_PURPOSE = ['moving', 'business', 'business', 'new_start', 'trav
 export function pickDayCard(purpose: string, tone: string, officer: string, clash: boolean): CardView | null {
   return safePick('F5-09', { purpose, tone, officer_code: officer, clash });
 }
-
-// ── 태어난 곳 ────────────────────────────────────────────────────────────────
-export const PLACE_IDS: readonly string[] = Object.keys(BIRTH_PLACES);
-export const placeKey = (i: number): If5Key => `SAJU.input.place.p${String(i + 1).padStart(2, '0')}` as If5Key;
 
 // ── 나이 · 날짜 검사 ─────────────────────────────────────────────────────────
 export function ageOn(birthIso: string, todayIso: string): number {

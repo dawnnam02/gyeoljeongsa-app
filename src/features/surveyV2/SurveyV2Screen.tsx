@@ -45,6 +45,8 @@ import {
   check,
   copyOf,
   DECLINE_HINT_IDS,
+  MONEY_SECTION,
+  PARENT_SCHOOL_IDS,
   draftFromValue,
   emptyDraft,
   firstMissing,
@@ -806,9 +808,20 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone, appealOn
                     <AppText variant="caption" tone="text">
                       {SECTION_COPY[current.section].lead}
                     </AppText>
+                    {current.section === MONEY_SECTION ? (
+                      <AppText variant="caption" tone="accent" testID="v2-money-notice">
+                        {SV2.common.moneyNotice}
+                      </AppText>
+                    ) : null}
                   </View>
                 ) : null}
                 <QuestionHead question={copyOf(at)?.q ?? at} help={at === 'B04' && !appealOn ? undefined : copyOf(at)?.help} lines={lines} />
+                {/* D-248: 보기가 길어도 칩을 고르기 전에 닿도록 질문 바로 아래(보기 위)에 둔다 */}
+                {DECLINE_HINT_IDS.includes(at) ? (
+                  <AppText variant="captionMedium" tone="accent" testID="v2-decline-hint">
+                    {PARENT_SCHOOL_IDS.includes(at) ? SV2.common.declineHintParents : SV2.common.declineHint}
+                  </AppText>
+                ) : null}
                 {AI_BOX_IDS.includes(at) ? (
                   <Card testID="v2-aibox">
                     <AppText variant="caption" tone="text">
@@ -835,11 +848,6 @@ export function SurveyV2Screen({ deps: given, entry = 'resume', onDone, appealOn
                 ) : (
                   <QuestionInput q={current} draft={draft} answers={answers} onChange={(d) => onDraft(at, d)} invalid={reason !== null} />
                 )}
-                {DECLINE_HINT_IDS.includes(at) && value === null ? (
-                  <AppText variant="captionMedium" tone="accent" testID="v2-decline-hint">
-                    {SV2.common.declineHint}
-                  </AppText>
-                ) : null}
                 {at === 'A06' && value === 'other' ? (
                   <AppText variant="captionMedium" tone="accent" testID="v2-other-note">
                     {A06_OTHER_NOTE}

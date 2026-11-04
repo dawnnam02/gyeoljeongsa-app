@@ -161,13 +161,24 @@ export function headLineDetail(answers: Answers): string {
 }
 
 // 10 공개 항목 15개(정책 2-5, 이 순서). 서버가 상대가 보이게 둔 것만 주므로 있는 줄만 그린다(구간 공개 항목은 서버가 준 구간 글 그대로)
-export const OPEN_ITEMS = ['A04', 'A10', 'A11', 'A08', 'D05', 'D06', 'B03', 'B04', 'C03', 'C04', 'C06', 'B02', 'C02', 'G02', 'G03'] as const;
+//  D-248(0056): E11 취미(고른 취미 목록 · 최대 5개)가 토글 없이 공개 항목에 더해졌다 — 서버는 보기 글 배열을 준다(`["여행","맛집·카페"]`)
+export const OPEN_ITEMS = ['A04', 'A10', 'A11', 'A08', 'D05', 'D06', 'B03', 'B04', 'C03', 'C04', 'C06', 'B02', 'C02', 'G02', 'G03', 'E11'] as const;
+export const HOBBY_MAX = 5;
+
+// 취미 칸 글: 고른 취미를 ', '로 이어 최대 5개. '봉사 · 종교 활동' 보기는 공개에서 뺐다(팀장 정함 · 종교 활동이 토글 없이 드러나지 않게) —
+//  서버가 내려 주지 않게 고치는 중이고, 앱에서도 그 보기(코드 volunteer · 글자에 '봉사'가 든 것)를 그리지 않는 이중 막이. 질문 보기 자체는 그대로다
+export const HOBBY_HIDDEN_CODE = 'volunteer';
+export function hobbyText(value: unknown): string | null {
+  if (!Array.isArray(value)) return null;
+  const kept = value.filter((v): v is string => typeof v === 'string' && v.trim() !== '' && v !== HOBBY_HIDDEN_CODE && !v.includes('봉사')).slice(0, HOBBY_MAX);
+  return kept.length ? kept.join(', ') : null;
+}
 export type OpenItemId = (typeof OPEN_ITEMS)[number];
 
 export function openItems(answers: Answers): { id: OpenItemId; label: string; value: string }[] {
   const out: { id: OpenItemId; label: string; value: string }[] = [];
   for (const id of OPEN_ITEMS) {
-    const value = plain(answers[id]);
+    const value = id === 'E11' ? hobbyText(answers[id]) : plain(answers[id]);
     if (value !== null) out.push({ id, label: CANDIDATE.openLabels[id], value });
   }
   return out;

@@ -84,7 +84,7 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
     if (mine.kind === 'loading') return undefined;
     if (!api.chart) return setMine({ kind: 'missing' });
     setMine({ kind: 'loading' });
-    void api.chart({ hour: null, minute: null, place: null }).then((r) => {
+    void api.chart({ hour: null, minute: null }).then((r) => {
       if (!r.ok) return setMine({ kind: r.code === 'consent_required' || r.code === 'forbidden' || r.code === 'feature_off' ? 'missing' : 'fail' } as const);
       if (r.data.state !== 'ready') return setMine({ kind: 'missing' });
       const idx = idx60(r.data.day.stem, r.data.day.branch);
@@ -105,7 +105,7 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
     let alive = true;
     // 한 달 안에서 지원 범위만(최대 62일 안) — 개인 맞춤 0(p_personal false)이라 시각 · 곳을 보내지 않는다
     void api
-      .taekil({ purpose: USE_PURPOSE[use], start: first < SUPPORT_FROM_ISO ? SUPPORT_FROM_ISO : first, end: last > SUPPORT_TO_ISO ? SUPPORT_TO_ISO : last, personal: false, hour: null, minute: null, place: null })
+      .taekil({ purpose: USE_PURPOSE[use], start: first < SUPPORT_FROM_ISO ? SUPPORT_FROM_ISO : first, end: last > SUPPORT_TO_ISO ? SUPPORT_TO_ISO : last, personal: false, hour: null, minute: null })
       .then((r) => alive && setRes({ key: reqKey, ok: r.ok ? r.data : null }));
     return () => {
       alive = false;

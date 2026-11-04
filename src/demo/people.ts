@@ -300,10 +300,12 @@ export function detailAnswers(p: DemoPerson): Row {
     B02: p.showSchool ? p.school : undefined,
     C05: p.income ?? undefined,
     ...p.open,
+    E11: DEMO_HOBBIES[p.n % DEMO_HOBBIES.length], // D-248(0056): 고른 취미는 토글 없이 공개 항목(최대 5개). 서버가 '봉사 · 종교 활동' 보기는 내려 주지 않는다
     ...p.marriage,
   };
   return Object.fromEntries(Object.entries(all).filter(([, v]) => v !== undefined));
 }
+const DEMO_HOBBIES: readonly string[][] = [['여행', '맛집·카페'], ['독서·공부', '음악·악기'], ['운동·헬스', '캠핑·등산', '요리·베이킹'], ['영화·공연·전시', '반려동물']];
 
 // 10 상세의 질문 카드(get_candidate_profile 의 prompts — 서버 S14 모양: 칸 순서 · 질문 글 · 답). 없으면 빈 목록(서버는 키 자체를 뺀다)
 export function promptsOf(p: DemoPerson): { code: string; question: string; answer: string }[] {

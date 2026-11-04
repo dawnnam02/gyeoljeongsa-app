@@ -4,6 +4,8 @@ import { createSurveyChatApi, readSummary } from '@/features/surveyChat/api';
 import { behaviorPayload, BEHAVIOR_KEYS, createMeter, graphemes, NULL_BEHAVIOR } from '@/features/surveyChat/behavior';
 import { ackKind, ackText, euro, fill, givenName, pick, slotFallback, slotName } from '@/features/surveyChat/copy';
 import { buildPart1, currentQuestion, part1List } from '@/features/surveyChat/model';
+import { SV2 } from '@/features/surveyV2/copy';
+import { DECLINE_HINT_IDS, PARENT_SCHOOL_IDS } from '@/features/surveyV2/model';
 import { surveyChatOn } from '@/features/surveyChat/switch';
 import { FLAGS_FALLBACK, parseFlags } from '@/lib/featureFlagsApi';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -228,6 +230,38 @@ describe('1부 대화 줄(설문 v2 문항 · 보임 그대로)', () => {
     expect(keys.indexOf('sec-end-basic')).toBeLessThan(keys.indexOf('topic-edu'));
     expect(v.lines.find((l) => l.key === 'ack-A03')?.kind === 'ai' ? (v.lines.find((l) => l.key === 'ack-A03') as { text: string }).text : null).toBe('서울 강남구로 적어 둘게요.');
     expect(currentQuestion({ ...a, B02: 'unlisted_kr', B06: 'grad', B07: 'no' }, true, ['B03'])?.id).toBe('B04');
+  });
+
+  // D-248: 대화형 설문도 '말하고 싶지 않아요'를 고르기 전에 줄이 보인다(질문 바로 뒤 · 답이 없어도) + 돈 구역 시작에 등급 고지 한 번
+  test('돈 문항(C05 · C06 · D04 · D08 · D09): 질문 뒤에 등급 고지 줄이 바로 있다(고르기 전) · 부모님 학교는 가산 0 글 · 옛 글 없음', () => {
+    const FULL: Record<string, unknown> = {
+      A12: '김하나', A02: 'female', A03: { sido: 'seoul', sigungu: '강남구' }, A05: 165, A06: 'none', A07: 'never', A08: 'none', A11: 'na', B01: 'univ', B02: { school_key: 'K0138' }, B06: 'grad', B07: 'no', B04: 'none',
+      C01: 'large', C02: '한빛전자', C03: 'staff', C04: 'regular', C05: 'inc05', C06: 'ast04', D08: 'unknown', D09: 'no_college', D04: 'pas02',
+    };
+    // 문항을 차례로 답해 가며 그 문항이 지금 문항이 되는 지점까지 간다(보이는 문항만 · 답이 없는 칸은 'x')
+    const reach = (id: string): Record<string, unknown> => {
+      const a: Record<string, unknown> = {};
+      for (let n = 0; n < 120; n += 1) {
+        const cur = currentQuestion(a as never, true, []);
+        if (!cur || cur.id === id) break;
+        a[cur.id] = FULL[cur.id] ?? 'x';
+      }
+      return a;
+    };
+    for (const id of DECLINE_HINT_IDS) {
+      const a = reach(id);
+      const v = buildPart1(a as never, { userKey: 'u', interview: true, skipped: [], pol: 'off', schoolName: () => null });
+      const keys = v.lines.map((l) => l.key);
+      const at = keys.indexOf(`q-${id}`);
+      expect(at).toBeGreaterThan(-1);
+      const hint = v.lines.find((l) => l.key === `hint-${id}`) as { text: string } | undefined;
+      expect(hint?.text).toBe(PARENT_SCHOOL_IDS.includes(id) ? SV2.common.declineHintParents : SV2.common.declineHint);
+      expect(keys.indexOf(`hint-${id}`)).toBeGreaterThan(at); // 질문 뒤
+      expect(keys.indexOf(`hint-${id}`)).toBeLessThan(keys.indexOf(`me-${id}`) === -1 ? Infinity : keys.indexOf(`me-${id}`));
+      expect(hint?.text).not.toMatch(/오를 수/);
+    }
+    const money = buildPart1(reach('C05') as never, { userKey: 'u', interview: true, skipped: [], pol: 'off', schoolName: () => null });
+    expect((money.lines.find((l) => l.key === 'money-notice') as { text: string } | undefined)?.text).toBe(SV2.common.moneyNotice);
   });
 });
 

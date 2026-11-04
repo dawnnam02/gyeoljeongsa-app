@@ -233,7 +233,7 @@ describe('IF5-F1c 상대 값 일지 하나 · fetch · rpc · 저장 0', () => {
     fetchSpy.mockRestore();
     expect(new Set(calls.map((c) => c.fn))).toEqual(new Set(['get_my_saju', 'get_taekil']));
     const mineCall = calls.find((c) => c.fn === 'get_my_saju');
-    expect(mineCall?.args).toEqual({ p_hour: null, p_minute: null, p_place: null });
+    expect(mineCall?.args).toEqual({ p_hour: null, p_minute: null }); // Q2-31: p_place 를 안 보낸다
     expect(JSON.stringify(calls)).not.toMatch(/1992|0802|19920802/);
     expect(calls.filter((c) => c.fn === 'get_my_saju')).toHaveLength(1); // 한 번 읽고 다시 읽지 않는다
     const pair = src('saju5/pair5.ts');

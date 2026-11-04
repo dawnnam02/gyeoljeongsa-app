@@ -25,6 +25,8 @@ export const NO_AI_IDS: readonly string[] = ['A12', 'B02', 'B05', 'C02', 'D08', 
 export const AI_BOX_IDS: readonly string[] = ['T01', 'T02', 'T03'];
 // '말하고 싶지 않아요'를 고르면 '답하면 등급이 오를 수 있어요.'를 보이는 다섯 문항(등급에 쓰는 돈 · 부모 쪽, 설문_v2 2-4). 혼인 A07 · 자녀 A08 은 등급에 쓰지 않아 안내 없음
 export const DECLINE_HINT_IDS: readonly string[] = ['C05', 'C06', 'D04', 'D08', 'D09'];
+export const PARENT_SCHOOL_IDS: readonly string[] = ['D08', 'D09']; // 부모님 학교: 등급 가산 0(0023 부터) — 칩 옆 한 줄이 다르다(declineHintParents)
+export const MONEY_SECTION = 'money'; // 돈 문항 묶음(C05 · C06) 앞 화면에 등급 고지 한 번(moneyNotice)
 // 3부-사(종교 동의 카드 · 법무 L22 D2): 내 종교(A06)는 보기에 '말하고 싶지 않아요'가 없지만, 종교 동의(CK4)를 하지 않으면 '답하지 않음'(값 null)으로 저장한다.
 //  서버도 민감 문항의 null 은 동의 없이 받는다(0023 validate_survey_answer). 화면 보기에는 넣지 않고 동의 카드의 [동의하지 않을게요]로만 생긴다
 export const RELIGION_ID = 'A06';

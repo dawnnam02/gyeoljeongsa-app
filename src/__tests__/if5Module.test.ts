@@ -84,10 +84,9 @@ describe('IF5-F1 ② 앱 안 계산 기본값', () => {
     expect(() => build_chart({ year: 1960, month: 5, day: 5 })).toThrow('out_of_range');
     expect(() => build_chart({ year: 1990, month: 5, day: 5, hour: 3, minute: 0, place: '화성' })).toThrow('unknown_place');
   });
-  test('대표 지점 23곳 = 카피 24장 SAJU.input.place.p01 ~ p23 이름과 차례가 같다', () => {
-    const ids = Object.keys(BIRTH_PLACES);
-    expect(ids).toHaveLength(23);
-    ids.forEach((id, i) => expect(IF5_TEXT[`SAJU.input.place.p${String(i + 1).padStart(2, '0')}` as keyof typeof IF5_TEXT]).toBe(id));
+  test('대표 지점 23곳(계산 모듈에는 그대로)은 카피에 글이 없다 — 태어난 곳 31키는 QF2 Q2-31에서 지웠다', () => {
+    expect(Object.keys(BIRTH_PLACES)).toHaveLength(23);
+    expect(Object.keys(IF5_TEXT).filter((k) => k.startsWith('SAJU.input.place'))).toEqual([]);
   });
 });
 
@@ -165,8 +164,8 @@ describe('IF5-F1 ⑤ 스위치 20키 (기획/IF5_스위치.md — 서버 이름 
 });
 
 describe('IF5-F1 ⑦ 글 사본 틀', () => {
-  test('382키 · 값 틀 자리 채우기 · 조사', () => {
-    expect(Object.keys(IF5_TEXT)).toHaveLength(382); // 337 + QF2-B2 새 키 45(24-17-1)
+  test('351키 · 값 틀 자리 채우기 · 조사', () => {
+    expect(Object.keys(IF5_TEXT)).toHaveLength(351); // 337 + QF2-B2 새 키 45(24-17-1) - 태어난 곳 31(Q2-31)
     expect(t5('SAJU.cal.month', { 년: 2027, 월: 3 })).toBe('2027년 3월');
     expect(t5('SAJU.guide.help.title', { 낱말: '다섯 기운' })).toBe('다섯 기운 이 뭐예요?');
   });
