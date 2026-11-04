@@ -38,6 +38,8 @@ function check(group, title, ok, detail = '') {
 
 const b = await openBrowser({ distDir, shotDir, width, height: 800 });
 const shot = async (name) => {
+  await b.waitFor(`!window.__q('splash')`, 6000); // 시작 덮개가 걷힌 뒤에 찍는다
+  await sleep(500);
   const file = `QF2B2_${name}.png`;
   await b.shot(file);
   console.log(`       스크린샷 확인/스크린샷/${subdir}/${file}`);
@@ -61,10 +63,6 @@ async function measure(label) {
   const m = await b.evaluate('window.__metrics()');
   check('7', `${label}: ${width} 폭 가로 넘침 0 · 글자 13 이상 · 터치 48 이상`, m.scrollW <= m.innerW && m.over.length === 0 && m.minFont >= 13 && m.small.length === 0, `넘침 ${m.over.length}(${m.over.slice(0, 2).join(',')}) · 최소 글자 ${m.minFont} · 작은 터치 ${m.small.length}`);
 }
-const scene = async (id) => {
-  await tap(`boarding-demo-${id}`);
-  await sleep(700);
-};
 
 async function signUp(email, until) {
   await b.open('/sign-in', `document.body.innerText.includes('이메일로 시작해요')`);
@@ -148,17 +146,15 @@ try {
 
   // ═══ 5 · 6. 공개 → 대화방 ═══
   await goto('/boarding');
-  await wait(`location.pathname === '/boarding'`, 6000);
-  if (await vis('boarding-buy')) {
-    await tap('boarding-buy');
-    await wait(`!!${visQ('boarding-pay')}`, 8000);
-    await sleep(700);
-    await tap('boarding-pay');
-    await wait(`!!${visQ('boarding-status-boarded')}`, 8000);
-  }
-  await scene('matched');
-  await tap('boarding-open-reveal');
-  await wait(`location.pathname === '/reveal' && !!${visQ('reveal-name')}`, 8000);
+  await wait(`location.pathname === '/boarding' && !!${visQ('home-blocks')}`, 10000);
+  await sleep(600);
+  await tap('if2-demo-matched'); // 기내 서비스 데모 줄: 짝 있음
+  await b.waitFor(`!!document.querySelector('${sel('home-state-matched')}')`, 8000);
+  await goto('/reveal');
+  await wait(`location.pathname === '/reveal'`, 8000);
+  await sleep(900);
+  if (await vis('reveal-arrive-open')) await tap('reveal-arrive-open'); // 아직 안 연 회차는 도착 화면 먼저
+  await wait(`!!${visQ('reveal-name')}`, 10000);
   await sleep(2200); // 공개 움직임(약 1초) + 칩을 읽는 시간
   const entry = await vis('reveal-opener-entry');
   if (entry) {
@@ -181,6 +177,10 @@ try {
     await wait(`location.pathname.startsWith('/chat/')`, 8000);
   }
   await sleep(1200);
+  if (await b.evaluate(`document.body.innerText.includes('건너뛰기')`)) await b.clickText('건너뛰기'); // 만남 장면(처음 들어올 때 한 번)을 건너뛴 뒤의 대화방을 본다
+  await sleep(1800);
+  const chips = await visText('if2-chips');
+  console.log(`       첫마디 줄: ${chips.slice(0, 80) || '(없음)'}`);
   await shot('대화방');
   await measure('대화방');
   await b.evaluate(`(() => { const el = ${visQ('chat-room-more')}; if (el) el.click(); return !!el; })()`);
@@ -193,8 +193,12 @@ try {
     console.log('[미확인] ⋯ 메뉴에 안심 공유 줄이 안 보여요(스위치 safe_share).');
   }
 } catch (error) {
-  console.log(`[실패] 점검 중 오류: ${error instanceof Error ? error.message : String(error)}`);
-  exitCode = 1;
+  check('X', '점검 중 오류', false, error instanceof Error ? error.message : String(error));
+  try {
+    await shot('오류');
+  } catch {
+    /* 캡처 실패 */
+  }
 } finally {
   const errors = (b.errors ?? []).filter((e) => !/favicon/.test(e));
   check('7', '콘솔 오류 · 예외 0', errors.length === 0, errors.slice(0, 3).join(' | '));

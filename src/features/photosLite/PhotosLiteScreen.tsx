@@ -20,7 +20,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Pressable } from '@/components/Pressable';
 import { TextButton } from '@/components/TextButton';
 import { PHOTOS } from '@/content/qf2Copy';
-import { PhotoExampleSheet } from './PhotoExampleSheet';
+import { PhotoExampleSheet } from '@/components/PhotoExampleSheet';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { OfflineArt } from '@/components/StateArt';
 import { Icon } from '@/components/Icon';
