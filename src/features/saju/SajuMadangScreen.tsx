@@ -471,7 +471,7 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
           data.reload();
         }}
       />
-      <PartnerSheet visible={sheet === 'partner'} mine={my} today={() => nowIso(nowFn())} onClose={() => setSheet('none')} consent={deps.consent} ai={aiOn ? deps.ai : undefined} />
+      <PartnerSheet visible={sheet === 'partner'} mine={my} today={() => nowIso(nowFn())} onClose={() => setSheet('none')} consent={deps.consent} ai={aiOn ? deps.ai : undefined} lunarOn={on('saju_lunar')} />
       <Ck17Sheet
         visible={sheet === 'ck17'}
         onClose={() => setSheet('none')}

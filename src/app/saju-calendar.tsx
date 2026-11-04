@@ -7,5 +7,5 @@ import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 export default function SajuCalendarRoute() {
   const { flags, isOn } = useFeatureFlags();
   if (flags.loaded && !(isOn('saju_yard') && isOn('saju_calendar'))) return <Redirect href={'/boarding' as Href} />;
-  return <SajuCalendarScreen />;
+  return <SajuCalendarScreen lunar={isOn('saju_lunar')} />;
 }

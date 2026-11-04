@@ -13,24 +13,26 @@ import { IF5_TEXT } from '@/content/if5Copy';
 import { Footnote } from '@/features/inflight/If2Parts';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useAlwaysCaptureBlock } from '@/lib/captureBlock';
+import type { MorningStore } from '@/lib/morningNotice';
 import { colors, radius, size, space } from '@/theme/tokens';
 
 import { inputStore, useInputStore, type InputStore } from './deviceInput';
 import { chartOf, nowIso, todayBaseLine, todayView } from './sajuLogic';
 import { sajuServices, type SajuDeps } from './sajuService';
+import { MorningRow } from './MorningRow';
 import { ErrorBlock, LoadingBlock, sajuStyles } from './SajuParts';
 import { useCk17, useSajuData } from './useSajuData';
 import { useIf5Consent } from '@/features/consent/if5Consent';
 
-export function SajuTodayScreen({ deps, store }: { deps?: SajuDeps; store?: InputStore }) {
-  return deps ? <Today svc={deps} store={store} /> : <TodayWithDefaults />;
+export function SajuTodayScreen({ deps, store, morning }: { deps?: SajuDeps; store?: InputStore; morning?: MorningStore }) {
+  return deps ? <Today svc={deps} store={store} morning={morning} /> : <TodayWithDefaults />;
 }
 function TodayWithDefaults() {
   const flags = useFeatureFlags();
   const svc = useMemo(() => ({ ...sajuServices(), isOn: flags.isOn }), [flags.isOn]);
   return <Today svc={svc} />;
 }
-function Today({ svc, store: injectedStore }: { svc: SajuDeps; store?: InputStore }) {
+function Today({ svc, store: injectedStore, morning }: { svc: SajuDeps; store?: InputStore; morning?: MorningStore }) {
   const router = useRouter();
   const store = injectedStore ?? inputStore();
   const input = useInputStore(store);
@@ -83,6 +85,7 @@ function Today({ svc, store: injectedStore }: { svc: SajuDeps; store?: InputStor
           </View>
         ) : null}
         <Button label={IF5_TEXT['SAJU.today.go']} variant="secondary" onPress={() => router.push('/saju' as Href)} testID="saju-today-go" />
+        {svc.isOn('saju_morning') ? <MorningRow isOn={svc.isOn} store={morning} /> : null}
         <AppText variant="bodyMedium">{IF5_TEXT['SAJU.card.end']}</AppText>
         <Footnote text={IF5_TEXT['SAJU.card.footer']} testID="saju-today-footer" />
       </ScrollView>

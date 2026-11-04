@@ -1,5 +1,7 @@
 // IF-SJ-TALK 사주 이야기 나누기(IF5-F2 ⑩ · F5-17 · 화면 요구 IF-SJ-TALK · 정책 PS-38 · PS-45 ~ PS-53 · 디자인 CH-1 ~ 3 · 카피 24-9 · 설계안 M-13 · S-10 · A-8).
-//  순서: (처음) CK17D 동의 → CK19 동의 → **시작 시트 한 번**('한 번 말할 때마다 N 마일리지를 써요') → 말풍선 대화. 이후 턴은 시트 0 · 자동 차감. **대화 화면에 줄어드는 숫자 · 남은 횟수 · 글자 수 카운터 0**
+//  순서: (처음) CK17D 동의 → CK19 동의 → **시작 시트 한 번**('한 번 말할 때마다 N 마일리지를 써요') → 말풍선 대화. 이후 턴은 시트 0 · 자동 차감. **남은 횟수 · 글자 수 카운터 0**
+//  · QF2 Q2-06(D-240 I): 머리 아래에 잔액 한 줄을 이 화면 한 곳만 예외로 고정한다 — '마일리지 1,240' 꼴 · 13 보조 글 · 움직임 0 · 경고색 0(잔액 0이어도 같은 모양) · 서버가 확정한 값만(턴 끝 뒤 다시 읽음 — 앱이 미리 빼 보이지 않음) · 마일리지 꺼짐 · 동의 전이면 줄 없음
+//  · QF2 Q2-10b: 대화를 시작하기 전(시작 시트를 닫은 뒤) 빈 화면에 추천 질문 칩 3 — 누르면 입력창에 들어갈 뿐 바로 보내지 않음(보내기에서 위기 앞거름 · 마일리지 확인을 그대로 지남). 첫 말을 보낸 뒤 사라짐
 //  · 턴마다: 위기 앞거름(차감 0 · 잔액이 0이어도 · **동의 전이어도 · 접근 코드가 없어도** 카드 — IF5-QF F-01: 낱말 사전을 동의 · 잔액 · 코드 확인보다 먼저 본다) → 예치 → 서버 호출(접근 코드가 있으면 실제 · 없으면 데모 글) → 확정 / 해제. 부족하면 그 턴만 멈추고 한 줄 + [충전하러 가기](쓰던 글 그대로)
 //  · 위기 카드: 고정 글 · 전화 걸기 0 · 상한 없음 · 닫으면(이어서 하기) 대화로 돌아감. **한 세션에서 5번째 위기 카드가 나오면 세션이 닫힌다**(카드 · 번호는 계속 보임, 입력 닫힘 · [새로 시작])
 //  · AI 답 **30번째 뒤 '쉬어 가요' 한 줄을 한 번** — 막지 않음 · 숫자 0 · 닫으면 다시 안 뜸. 긴 이야기는 서버가 앞부분을 요약해 이어 가고 화면에는 '앞부분은 요약해서 이어 가요' 한 줄뿐
@@ -10,11 +12,12 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
+import { Chip } from '@/components/Chip';
 import { Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextButton } from '@/components/TextButton';
 import { TextField } from '@/components/TextField';
-import { IF5_TEXT } from '@/content/if5Copy';
+import { IF5_TEXT, t5 } from '@/content/if5Copy';
 import { AitCardView, cardView } from '@/features/ait/AitParts';
 import { ait } from '@/features/ait/aitText';
 import type { AitCard } from '@/features/ait/aitTypes';
@@ -23,7 +26,7 @@ import { cardEndsSession } from '@/features/ait/safetyCard';
 import { Ck17dSheet, Ck19Sheet } from '@/features/consent/If5ConsentSheets';
 import { useIf5Consent } from '@/features/consent/if5Consent';
 import { Footnote } from '@/features/inflight/If2Parts';
-import { costOf } from '@/features/mileage/mileageLogic';
+import { costOf, fmt } from '@/features/mileage/mileageLogic';
 import { MILEAGE_HREF } from '@/features/mileage/MileageScreen';
 import { LowBalance, TalkStartSheet } from '@/features/mileage/MileageSheets';
 import { useMileageState } from '@/features/mileage/useMileage';
@@ -88,7 +91,8 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
   const luck = data.luck.kind === 'ready' && data.luck.data.state === 'ready' ? data.luck.data : null;
   const my = useMemo(() => (ready ? chartOf(ready) : null), [ready]);
   useAlwaysCaptureBlock(true); // 이야기 화면은 늘 캡처 · 녹화를 막는다(IFF5-22)
-  const { slot: bal, reload: reloadBal } = useMileageState(ai?.mileage ?? DEAD_API, !!ai);
+  const { slot: bal, reload: reloadBal, retry: retryBal } = useMileageState(ai?.mileage ?? DEAD_API, !!ai);
+  const balanceOn = !!ai && deps.isOn('mileage') && !!consent.d && !!consent.t; // 마일리지 꺼짐 · 동의 전이면 잔액 줄 0
 
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState('');
@@ -263,6 +267,16 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
             {IF5_TEXT['SAJU.talk.entry.body']}
           </AppText>
         ) : null}
+        {msgs.length === 0 && started && !closed && !!consent.d && !!consent.t ? (
+          <View style={styles.chips} testID="saju-talk-chips">
+            <AppText variant="caption">{IF5_TEXT['SAJU.talk.chips.label']}</AppText>
+            {(['SAJU.talk.chips.1', 'SAJU.talk.chips.2', 'SAJU.talk.chips.3'] as const).map((k, i) => (
+              <View key={k} style={styles.chipRow}>
+                <Chip label={IF5_TEXT[k]} variant="inactive" accessibilityLabel={t5('SAJU.talk.chips.a11y', { 질문: IF5_TEXT[k] })} onPress={() => setText(IF5_TEXT[k])} testID={`saju-talk-chip-${i}`} />
+              </View>
+            ))}
+          </View>
+        ) : null}
         {msgs.map((m) =>
           m.role === 'card' && m.card ? (
             <CardRow key={m.id} card={m.card} last={m.id === msgs[msgs.length - 1].id} closed={closed} onContinue={() => setMsgs(msgs.map((x) => (x.id === m.id ? { ...x, card: { ...x.card!, options: [] } } : x)))} onRestart={() => void restart()} />
@@ -330,6 +344,26 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
   return (
     <Screen edges={['top']} testID="screen-saju-talk">
       <ScreenHeader title={IF5_TEXT['SAJU.talk.title']} onBack={back} testID="saju-talk-header" />
+      {balanceOn ? (
+        <View style={styles.balance} testID="saju-talk-balance">
+          {bal.kind === 'ready' ? (
+            <AppText variant="caption" accessibilityLabel={t5('SAJU.talk.balance', { 잔액: fmt(bal.state.total) })} testID="saju-talk-balance-text">
+              {t5('SAJU.talk.balance', { 잔액: fmt(bal.state.total) })}
+            </AppText>
+          ) : bal.kind === 'loading' ? (
+            <AppText variant="caption" testID="saju-talk-balance-text">
+              {IF5_TEXT['SAJU.talk.balanceLoading']}
+            </AppText>
+          ) : (
+            <View style={styles.balanceFail}>
+              <AppText variant="caption" testID="saju-talk-balance-text">
+                {IF5_TEXT['SAJU.talk.balanceFailed']}
+              </AppText>
+              <TextButton label={IF5_TEXT['SAJU.talk.balanceRetry']} variant="captionMedium" onPress={retryBal} testID="saju-talk-balance-retry" />
+            </View>
+          )}
+        </View>
+      ) : null}
       <ScrollView ref={scroll} contentContainerStyle={styles.body} testID="saju-talk-scroll">
         <AppText variant="caption" testID="saju-talk-capture">
           {IF5_TEXT['SAJU.talk.capture']}
@@ -418,4 +452,8 @@ const styles = StyleSheet.create({
   me: { alignSelf: 'flex-end', backgroundColor: colors.accentSoft },
   bot: { alignSelf: 'flex-start', backgroundColor: colors.card },
   rest: { flexDirection: 'row', alignItems: 'center', gap: space.s12, padding: space.s12, borderRadius: radius.lg, backgroundColor: colors.card },
+  balance: { alignItems: 'flex-end', paddingHorizontal: size.screenPadding }, // 머리 아래 고정 한 줄(스크롤 밖) · 배경 면 · 테두리 · 아이콘 0
+  balanceFail: { flexDirection: 'row', alignItems: 'center', gap: space.s8 },
+  chips: { gap: space.s8 },
+  chipRow: { alignItems: 'flex-start' },
 });

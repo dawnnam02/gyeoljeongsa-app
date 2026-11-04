@@ -44,11 +44,14 @@ describe('스위치 키 한 목록(K19 2-5) · 앱이 87키를 읽는다', () =>
   const IF3_KEYS = ['read_guide', 'sky_week', 'sky_book', 'my_ways', 'three_pillars', 'meet_sky', 'birth_card'];
   // IF5-F1(D-237): 사주 마당 · 마일리지 스위치 17 — 기획/IF5_스위치.md(서버 이름: saju_yard · mileage · mileage_charge — 0048) · live 꺼짐 · 데모 켜짐(saju_ai · saju_talk · mileage_charge 는 데모도 꺼짐)
   const IF5_KEYS = ['saju_yard', 'saju_home', 'saju_reading', 'saju_season', 'saju_year', 'saju_calendar', 'saju_today', 'saju_pickday', 'saju_partner', 'pair_card_saju', 'saju_ai', 'saju_talk', 'mileage', 'mileage_spend', 'mileage_charge', 'mileage_gift', 'rest_hint'];
-  const k19 = () => FEATURE_KEY_LIST.filter((k) => !['K12', 'K15', 'V5', 'V6', 'R', 'D46', 'LG', 'IF2', 'IF3', 'IF5', 'D246'].includes(k.group));
+  const QF2_KEYS = ['saju_lunar', 'saju_morning']; // QF2-B2(D-240): 상대 생일 음력 선택 · 사주 아침 알림 — 서버 스위치 표 시드는 백엔드 몫(0054 가칭 · live 꺼짐 · 데모 켜짐)
+  const k19 = () => FEATURE_KEY_LIST.filter((k) => !['K12', 'K15', 'V5', 'V6', 'R', 'D46', 'LG', 'IF2', 'IF3', 'IF5', 'D246', 'QF2'].includes(k.group));
 
-  test('139키 = K12 9 · K15 3 · 새 키 75 · V5 3 · V6 1 · R 1 · D46 1 · LG 1 · IF2 20 · IF3 7 · IF5 17 · D246 1(appeal_ai), 이름은 겹치지 않고 snake_case', () => {
-    expect(FEATURE_KEYS).toHaveLength(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length + D46_KEYS.length + LG_KEYS.length + IF2_KEYS.length + IF3_KEYS.length + IF5_KEYS.length + 1);
-    expect(new Set(FEATURE_KEYS).size).toBe(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length + D46_KEYS.length + LG_KEYS.length + IF2_KEYS.length + IF3_KEYS.length + IF5_KEYS.length + 1);
+  test('141키 = K12 9 · K15 3 · 새 키 75 · V5 3 · V6 1 · R 1 · D46 1 · LG 1 · IF2 20 · IF3 7 · IF5 17 · QF2 2 · D246 1(appeal_ai), 이름은 겹치지 않고 snake_case', () => {
+    expect(FEATURE_KEYS).toHaveLength(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length + D46_KEYS.length + LG_KEYS.length + IF2_KEYS.length + IF3_KEYS.length + IF5_KEYS.length + QF2_KEYS.length + 1);
+    expect(new Set(FEATURE_KEYS).size).toBe(12 + NEW_KEYS + V5_KEYS.length + V6_KEYS.length + R_KEYS.length + D46_KEYS.length + LG_KEYS.length + IF2_KEYS.length + IF3_KEYS.length + IF5_KEYS.length + QF2_KEYS.length + 1);
+    expect(FEATURE_KEY_LIST.filter((k) => k.group === 'QF2').map((k) => k.key)).toEqual(QF2_KEYS);
+    expect(FEATURE_KEY_LIST.filter((k) => k.group === 'QF2').every((k) => k.live === false)).toBe(true);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'D246').map((k) => k.key)).toEqual(['appeal_ai']); // D-246(11-04): 설문 세부사항(어필) AI 끔 스위치 — 실서버 · 데모 모두 꺼짐
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'LG').map((k) => k.key)).toEqual(LG_KEYS);
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'IF2').map((k) => k.key)).toEqual(IF2_KEYS);

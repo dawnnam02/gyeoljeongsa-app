@@ -7,6 +7,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 
 import { forgetIf5Consent } from '@/features/consent/if5Consent';
+import { forgetMorning } from '@/lib/morningNotice';
 
 import { forgetAiResults } from './ai/aiResults';
 
@@ -124,6 +125,7 @@ export async function forgetSajuDevice(): Promise<void> {
   // IF5-F2: 이 기기에 둔 동의 기록(③ ④ ⑤ · CK17D · CK19 · CK20)과 AI 풀이 저장본도 함께 지운다(IFF5-31)
   await forgetIf5Consent();
   await forgetAiResults();
+  await forgetMorning(); // QF2 Q2-04: 아침 알림 예약도 취소하고 기록을 지운다(다음 계정에 넘어가지 않게)
 }
 
 export function useInputStore(store?: InputStore): DeviceInput {

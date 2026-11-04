@@ -8,7 +8,9 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { COMMON } from '@/content/copy';
+import { IF5_TEXT, t5 } from '@/content/if5Copy';
 import { NOTIFY } from '@/content/settingsCopy';
+import { useMorning, type MorningStore } from '@/lib/morningNotice';
 import type { NotifyKey, NotifyPrefs, OptionalConsents, SettingsApi } from '@/lib/settingsApi';
 import { space } from '@/theme/tokens';
 
@@ -26,7 +28,27 @@ const SERVICE: readonly { key: NotifyKey; label: string; note?: string }[] = [
   { key: 'chat', label: NOTIFY.chat, note: NOTIFY.chatNote },
 ];
 
-export function NotificationsPage({ api, pushStatus, onRequestPush, onBack, onToast }: { api: Api; pushStatus: PushStatus; onRequestPush: () => Promise<PushStatus>; onBack: () => void; onToast: (text: string) => void }) {
+// 사주 아침 알림(QF2 Q2-04): 직접 켠 분에게만 보이는 줄 — 끄기만 된다(켜는 곳은 오늘 하루 화면). 켜 두지 않았으면 줄 없음
+function MorningSettingsRow({ store, onToast }: { store: MorningStore; onToast: (text: string) => void }) {
+  const rec = useMorning(store);
+  if (!rec.on) return null;
+  return (
+    <RowGroup testID="settings-notify-morning-group">
+      <SwitchRow
+        label={IF5_TEXT['SAJU.morning.settingsName']}
+        note={t5('SAJU.morning.settingsSub', { n: rec.hour })}
+        on
+        last
+        onPress={() => {
+          void store.disable().then(() => onToast(IF5_TEXT['SAJU.morning.offToast']));
+        }}
+        testID="settings-notify-morning"
+      />
+    </RowGroup>
+  );
+}
+
+export function NotificationsPage({ api, pushStatus, onRequestPush, onBack, onToast, morning }: { api: Api; pushStatus: PushStatus; onRequestPush: () => Promise<PushStatus>; onBack: () => void; onToast: (text: string) => void; morning?: MorningStore | null }) {
   const read = useCallback(async () => {
     const [prefs, consents] = await Promise.all([api.loadNotify(), api.loadConsents()]);
     if (!prefs.ok) return prefs;
@@ -95,6 +117,7 @@ export function NotificationsPage({ api, pushStatus, onRequestPush, onBack, onTo
               <SwitchRow key={s.key} label={s.label} note={s.note} on={data.prefs[s.key]} last={i === SERVICE.length - 1} onPress={() => void toggleService(s.key)} testID={`settings-notify-${s.key}`} />
             ))}
           </RowGroup>
+          {morning ? <MorningSettingsRow store={morning} onToast={onToast} /> : null}
           <RowGroup testID="settings-notify-marketing-group">
             <SwitchRow label={NOTIFY.marketing} on={data.marketing} last onPress={() => void toggleMarketing()} testID="settings-notify-marketing" />
             <View style={styles.notes}>

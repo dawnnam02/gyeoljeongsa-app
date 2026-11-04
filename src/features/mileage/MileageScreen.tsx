@@ -15,13 +15,15 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextButton } from '@/components/TextButton';
 import { IF5_TEXT, t5 } from '@/content/if5Copy';
 import { SUPPORT } from '@/content/copy';
+import { ACCOUNT } from '@/content/qf2Copy';
+import { LockNote } from '@/components/LockNote';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { If5Icon } from '@/features/saju/If5Icon';
 import { openSettingsPage } from '@/features/settings/settingsIntent';
 import { colors, radius, size, space } from '@/theme/tokens';
 
 import type { MileageProduct } from './mileageApi';
-import { fmt, splitLine } from './mileageLogic';
+import { fmt, priceRows, splitLine } from './mileageLogic';
 import { mileageServices, type MileageDeps } from './mileageService';
 import { BigChargeSheet } from './MileageSheets';
 import { useMileageState } from './useMileage';
@@ -109,6 +111,26 @@ function Shop({ deps }: { deps: MileageDeps }) {
               </AppText>
             </View>
 
+            {priceRows(s.costs).length > 0 ? (
+              <View style={styles.card} testID="mileage-table">
+                <AppText variant="bodyBold" accessibilityRole="header" testID="mileage-table-title">
+                  {IF5_TEXT['MILEAGE.table.title']}
+                </AppText>
+                {priceRows(s.costs).map((r, i) => {
+                  const name = IF5_TEXT[`MILEAGE.table.${r.key}` as const];
+                  const value = t5(r.from ? 'MILEAGE.table.valueFrom' : 'MILEAGE.table.value', { N: fmt(r.cost) });
+                  return (
+                    <View key={r.key} style={[styles.priceRow, i > 0 && styles.priceLine]} accessible accessibilityLabel={t5('MILEAGE.table.rowA11y', { 이름: name, N: fmt(r.cost) })} testID={`mileage-table-${r.key}`}>
+                      <AppText variant="body" style={styles.flex}>
+                        {name}
+                      </AppText>
+                      <AppText variant="bodyBold">{value}</AppText>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
+
             {canCharge && !s.chargeLocked && !lockedNow ? (
               <View style={styles.card} testID="mileage-products">
                 <AppText variant="bodyBold" accessibilityRole="header">
@@ -180,6 +202,7 @@ function Shop({ deps }: { deps: MileageDeps }) {
               {IF5_TEXT['MILEAGE.shop.trial']}
             </AppText>
             <TextButton label={IF5_TEXT['MILEAGE.shop.history']} align="start" onPress={() => router.push(MILEAGE_LOG_HREF as Href)} testID="mileage-to-log" />
+            <LockNote text={ACCOUNT.noSwap} textTestID="mileage-noswap" />
           </>
         ) : null}
       </ScrollView>
@@ -195,6 +218,8 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.s8 },
   flex: { flex: 1 },
   product: { minHeight: size.touchMin, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, paddingHorizontal: space.s16, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.bg },
+  priceRow: { minHeight: size.touchMin, flexDirection: 'row', alignItems: 'center', gap: space.s12 }, // 줄 높이 48 · 왼쪽 이름 · 오른쪽 값(굵게)
+  priceLine: { borderTopWidth: 1, borderTopColor: colors.line },
   skel: { height: 14, borderRadius: radius.sm, backgroundColor: colors.line, width: '60%' },
   skelWide: { width: '85%' },
 });

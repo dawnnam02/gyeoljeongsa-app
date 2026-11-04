@@ -39,7 +39,8 @@ import { ErrorBlock, RangeBlock, sajuStyles } from './SajuParts';
 const REST_OFFICERS = ['위', '폐', '파'];
 type Tone = 'good' | 'neutral' | 'rest';
 
-export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forcedUse, ai: injectedAi, consent }: { api?: Pick<SajuApi, 'taekil'> & Partial<Pick<SajuApi, 'chart'>>; now?: () => number; mode?: 'cal' | 'pick'; use?: number | null; ai?: AiServices | null; consent?: If5ConsentStore }) {
+// lunar(QF2 Q2-09): 스위치 saju_lunar 값을 라우트가 넘긴다(상대 생일 시트의 음력 선택 · 범위 밖 달 안내 글). 없으면 꺼짐
+export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forcedUse, ai: injectedAi, consent, lunar = false }: { api?: Pick<SajuApi, 'taekil'> & Partial<Pick<SajuApi, 'chart'>>; now?: () => number; mode?: 'cal' | 'pick'; use?: number | null; ai?: AiServices | null; consent?: If5ConsentStore; lunar?: boolean }) {
   const ai = useMemo(() => {
     if (injectedAi !== undefined) return injectedAi;
     try {
@@ -217,7 +218,7 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
         </View>
 
         {outOfRangeMonth ? (
-          <RangeBlock id="saju-cal-range" />
+          <RangeBlock id="saju-cal-range" text={lunar ? IF5_TEXT['SAJU.status.rangeBodyOn'] : undefined} />
         ) : taekil.kind === 'fail' ? (
           <ErrorBlock id="saju-cal-error" onRetry={() => setTries((n) => n + 1)} />
         ) : (
@@ -290,7 +291,7 @@ export function SajuCalendarScreen({ api: injected, now, mode: forced, use: forc
         <AppText variant="bodyMedium">{IF5_TEXT['SAJU.card.end']}</AppText>
         <Footnote text={IF5_TEXT['SAJU.card.footer']} testID="saju-cal-footer" />
       </ScrollView>
-      {mode === 'pick' ? <PartnerSheet visible={partnerOpen} mine={null} today={() => today} onClose={() => setPartnerOpen(false)} consent={consent} pick={(r) => (setPartner(r.branch), setCombine(true))} testID="saju-cal-partner-sheet" /> : null}
+      {mode === 'pick' ? <PartnerSheet lunarOn={lunar} visible={partnerOpen} mine={null} today={() => today} onClose={() => setPartnerOpen(false)} consent={consent} pick={(r) => (setPartner(r.branch), setCombine(true))} testID="saju-cal-partner-sheet" /> : null}
     </Screen>
   );
 }

@@ -18,7 +18,7 @@ export const IF5_COPY_FILE = path.join(appDir, 'src', 'content', 'if5Copy.ts');
 const COPY_DOC = process.env.CHECK_COPY_DOC ?? path.join(root, '마케팅', '카피.md');
 
 export const IF5_PREFIXES = ['SAJU', 'MILEAGE', 'REST_HINT'];
-export const IF5_KEY_COUNT = 337; // 336(아래) + QF2-B 새 키 1(SAJU.trait.basis · Q2-19) = 318(24-2 ~ 24-11) + 24-15-1 새 키 12(IF5-F1b) + 24-16-1 새 키 2(M-F2) + F1c 새 키 2(윤달 SAJU.cal.day.lunarLeap · 충전 잠김 둘째 줄 MILEAGE.shop.lockedKeep) + M-QF 새 키 2(◇ 날 카드 SAJU.pick.partner.bothCard · 표시 없는 날 카드 SAJU.pick.partner.noMark)
+export const IF5_KEY_COUNT = 382; // 337 + QF2-B2 새 키 45(24-17-1: 사주 아침 알림 14 · 잔액 줄 4 · 추천 질문 5 · 음력 14 · 가격표 8) / 337 = 336(아래) + QF2-B 새 키 1(SAJU.trait.basis · Q2-19) = 318(24-2 ~ 24-11) + 24-15-1 새 키 12(IF5-F1b) + 24-16-1 새 키 2(M-F2) + F1c 새 키 2(윤달 SAJU.cal.day.lunarLeap · 충전 잠김 둘째 줄 MILEAGE.shop.lockedKeep) + M-QF 새 키 2(◇ 날 카드 SAJU.pick.partner.bothCard · 표시 없는 날 카드 SAJU.pick.partner.noMark)
 
 const NL = String.fromCharCode(10);
 const cellsOf = (line) => {
@@ -45,7 +45,7 @@ export function readRows(docPath = COPY_DOC) {
     rows.set(m[1], c[1].replace(/\*\*/g, '').replace(/`/g, ''));
   }
   // 24-15-1(IF5-F1b) 새 키 12 · 24-16-1(M-F2) 새 키 2: 앱 반영 전 꼴 절의 표를 24-4 ~ 24-10 표와 같게 읽는다. 이미 있는 키면(마케팅이 표로 옮긴 뒤) 글이 같아야 하고 키 수는 늘지 않는다
-  for (const [head, tail] of [[/^#### 24-15-1\. /m, /^#### 24-15-2\. /m], [/^#### 24-16-1\. /m, /^### 24-17\. |^## \d+\. /m]] ) {
+  for (const [head, tail] of [[/^#### 24-15-1\. /m, /^#### 24-15-2\. /m], [/^#### 24-16-1\. /m, /^### 24-17\. |^## \d+\. /m], [/^#### 24-17-1\. /m, /^## \d+\. /m]] ) {
     const a = sec.search(head);
     if (a < 0) continue;
     const after = sec.slice(a + 5);

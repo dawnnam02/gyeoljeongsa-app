@@ -442,10 +442,12 @@ describe('IF5-F2 ⑩ 사주 이야기 나누기 (IF-SJ-TALK)', () => {
     await press(tree, 'saju-talk-send');
     await wait(80);
   };
-  test('처음: CK17D → CK19 → 시작 시트 한 번 → 대화 · 이후 시트 0 · 줄어드는 숫자 0 · 캡처 막기 · 끝줄 한 곳', async () => {
+  test('처음: CK17D → CK19 → 시작 시트 한 번 → 대화 · 이후 시트 0 · 잔액 한 줄(QF2 Q2-06)만 숫자 · 추천 칩은 입력창만 채움(Q2-10b) · 캡처 막기 · 끝줄 한 곳', async () => {
     const r = aiRig({ code: 'ait-code' });
     const tree = await talk(r);
     expect(mockForced).toHaveBeenCalledWith(true);
+    expect(has(tree, 'saju-talk-balance')).toBe(false); // 동의 전: 잔액 줄 0
+    expect(has(tree, 'saju-talk-chips')).toBe(false); // 동의 · 시작 시트 전: 추천 칩 0
     await say(tree, '올해 일이 잘 풀릴까요?');
     expect(isOpen(tree, 'saju-talk-ck17d')).toBe(true);
     expect(r.posts.filter((p) => !p.body.precheck)).toHaveLength(0);
@@ -459,7 +461,15 @@ describe('IF5-F2 ⑩ 사주 이야기 나누기 (IF-SJ-TALK)', () => {
     expect(isOpen(tree, 'saju-talk-start')).toBe(true);
     expect(textOf(tree, 'saju-talk-start-line')).toBe(IF5_TEXT['MILEAGE.talkStart.saju.line']);
     await press(tree, 'saju-talk-start-go');
+    await wait();
+    expect(textOf(tree, 'saju-talk-balance-text')).toMatch(/^마일리지 [\d,]+$/); // 머리 아래 고정 한 줄 · 서버가 확정한 잔액
+    expect(has(tree, 'saju-talk-chips')).toBe(true);
+    expect([0, 1, 2].map((i) => must(tree, `saju-talk-chip-${i}`).props.label)).toEqual([IF5_TEXT['SAJU.talk.chips.1'], IF5_TEXT['SAJU.talk.chips.2'], IF5_TEXT['SAJU.talk.chips.3']]);
+    await press(tree, 'saju-talk-chip-0'); // 입력창에 들어갈 뿐 보내지 않는다
+    expect(must(tree, 'saju-talk-input').props.value).toBe(IF5_TEXT['SAJU.talk.chips.1']);
+    expect(r.posts.filter((p) => !p.body.precheck)).toHaveLength(0);
     await say(tree, '올해 일이 잘 풀릴까요?');
+    expect(has(tree, 'saju-talk-chips')).toBe(false); // 첫 말을 보낸 뒤 사라짐
     const turns = () => r.posts.filter((p) => !p.body.precheck); // 위기 앞거름 호출은 따로 센다
     expect(turns()).toHaveLength(1);
     expect(turns()[0].body.facts).toBeDefined(); // 첫 턴은 사실, 이어서는 서명 묶음
@@ -468,7 +478,8 @@ describe('IF5-F2 ⑩ 사주 이야기 나누기 (IF-SJ-TALK)', () => {
     expect(turns()).toHaveLength(2);
     expect(turns()[1].body.bundle).toBeUndefined(); // 이 시험 응답은 묶음을 안 준다 → 사실로 다시 시작
     const all = allTexts(tree).join(' ');
-    expect(all).not.toMatch(/남은|\d+\s*번 남|잔액|마일리지 \d/);
+    expect(textOf(tree, 'saju-talk-balance-text')).toBe('마일리지 600'); // 두 턴 뒤 서버가 확정한 값(200 × 2 차감) — 줄어드는 움직임 · 경고색 없이 같은 자리에서 바뀐다
+    expect(all.replace('마일리지 600', '')).not.toMatch(/남은|\d+\s*번 남|잔액|마일리지 \d/); // 그 한 줄 밖에는 남은 횟수 · 잔액 숫자 0
     expect(allTexts(tree).filter((t) => t === IF5_TEXT['SAJU.card.footer'])).toHaveLength(1); // 끝줄은 한 곳
     expect(allTexts(tree).filter((t) => t === IF5_TEXT['SAJU.card.aiTag'])).toHaveLength(2); // 답마다 AI가 쓴 글
     expect((await r.ai.mileage.state()).ok && (await r.ai.mileage.state())).toMatchObject({ data: { total: 600 } }); // 200 × 2

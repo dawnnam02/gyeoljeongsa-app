@@ -165,8 +165,8 @@ describe('IF5-F1 ⑤ 스위치 20키 (기획/IF5_스위치.md — 서버 이름 
 });
 
 describe('IF5-F1 ⑦ 글 사본 틀', () => {
-  test('337키 · 값 틀 자리 채우기 · 조사', () => {
-    expect(Object.keys(IF5_TEXT)).toHaveLength(337);
+  test('382키 · 값 틀 자리 채우기 · 조사', () => {
+    expect(Object.keys(IF5_TEXT)).toHaveLength(382); // 337 + QF2-B2 새 키 45(24-17-1)
     expect(t5('SAJU.cal.month', { 년: 2027, 월: 3 })).toBe('2027년 3월');
     expect(t5('SAJU.guide.help.title', { 낱말: '다섯 기운' })).toBe('다섯 기운 이 뭐예요?');
   });
@@ -186,6 +186,12 @@ describe('IF5-F1 앱 시험 IFF5-21 · 30 · 33 정적 점검 — 공유 · 복�
       const t = fs.readFileSync(f, 'utf8').replace(/\/\/.*$/gm, '');
       expect(t).not.toMatch(/expo-clipboard|expo-sharing|Share\.share|expo-notifications|scheduleNotification|expo-file-system|fetch\(|XMLHttpRequest|localStorage|sessionStorage|AsyncStorage/);
     }
+  });
+  // QF2 Q2-04(D-240 F 본인 승인): 사주 '오늘 하루' 아침 알림 하나만 예외. 알림 코드는 lib/morningNotice.ts 한 파일에 있고 사주 폴더는 그 함수만 부른다(위 점검은 그대로 — 예외는 사주 폴더 밖에 둔다).
+  //  예외가 넓어지지 않게: 사주 폴더 가운데 lib/morningNotice 를 가져오는 파일은 아침 알림 줄(MorningRow) · 오늘 하루 화면 · 기기 지우기(deviceInput)뿐이다
+  test('아침 알림 예외는 한 곳: lib/morningNotice 를 가져오는 사주 폴더 파일은 정해진 셋뿐(QF2 Q2-04)', () => {
+    const users = sajuFiles.filter((f) => /lib\/morningNotice/.test(fs.readFileSync(f, 'utf8'))).map((f) => path.basename(f)).sort();
+    expect(users).toEqual(['MorningRow.tsx', 'SajuTodayScreen.tsx', 'deviceInput.ts']);
   });
   test('줄 · 짝 · 노출 · 등급 · 탑승권 화면(추천 · 상대 프로필 · 호감 · 등급 · 채팅 · 탑승권)은 사주 모듈을 가져오지 않는다(IFF5-33 · 척추 해석 한 줄)', () => {
     for (const dir of ['recs', 'likes', 'grade', 'chat', 'boarding', 'shop', 'featured']) {

@@ -42,6 +42,8 @@ import { AvoidPage } from './AvoidPage';
 import { ConsentManagePage } from './ConsentManagePage';
 import { forgetInflightNotes } from '@/features/inflight/deviceNotes';
 import { forgetSajuDevice } from '@/features/saju/deviceInput';
+import { SETTINGS as QF2_SETTINGS } from '@/content/qf2Copy';
+import type { MorningStore } from '@/lib/morningNotice';
 import type { Ck17Api } from '@/features/inflight/inflightService';
 import { AitCodePage } from './AitCodePage';
 import { aitStore } from '@/features/ait/aitStore';
@@ -69,6 +71,7 @@ export type SettingsDeps = SupportDeps & {
   skyBook?: () => boolean; // IF3-F: 정보 묶음 '하늘 도감' 줄(스위치 sky_book 이 켜졌을 때만). 없으면 줄 없음
   flagOn?: (key: string) => boolean; // D-238: 서류 인증 제출 줄(doc_verify) · 동의 관리 CK12(selfie_verify) · CK14(doc_verify) 줄은 스위치가 켜졌을 때만. 없으면 줄 없음(처음값 꺼짐)
   ait?: () => boolean; // AIT-F ⑤: 시험용 AI 코드 줄(데모 판에서만 참 — 실서버 판엔 줄 0). 없으면 줄 없음
+  morning?: () => MorningStore | null; // QF2 Q2-04: 알림 화면의 '오늘 하루 아침 알림' 줄(직접 켠 분에게만 · 끄기만). 없거나 null 이면 줄 없음
   ck17?: () => Ck17Api | null; // IF2-F: 동의 관리 '재미 정보' 줄(기내지 · 궁합 카드 스위치가 켜졌을 때만). 없거나 null 이면 줄 없음
 };
 
@@ -84,6 +87,7 @@ export function defaultSettingsDeps(): SettingsDeps {
     contact: contactPorts, // 누를 때 처음 만든다(기기 모듈을 미리 읽지 않음)
     boarded: boardedNow,
     ck17: ck17Now,
+    morning: morningNow,
     skyBook: skyBookNow,
     sajuYard: sajuYardNow,
     mileage: mileageNow,
@@ -98,6 +102,15 @@ export function defaultSettingsDeps(): SettingsDeps {
       }
     },
   };
+}
+
+// 사주 아침 알림 저장소(스위치 saju_morning 이 켜져 있고 알림이 되는 기기일 때만). 누를 때 처음 만든다
+function morningNow(): MorningStore | null {
+  if (!flagNow('saju_morning')) return null;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { morning } = require('@/lib/morningNotice') as typeof import('@/lib/morningNotice');
+  const s = morning();
+  return s.supported() ? s : null;
 }
 
 // 이번 회차 탑승권 · 판매 마감 전(T2 [탑승 취소]가 보이는 조건 canCancel 과 같음). 탑승권 화면과 같은 서버 연결을 쓰고, 누를 때 처음 만든다
@@ -312,6 +325,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
             }}
             onBack={toList}
             onToast={showToast}
+            morning={deps.morning?.() ?? null}
           />
         );
       case 'security':
@@ -361,9 +375,20 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
           <TabHeader title={SETTINGS.headerTitle} collapse={collapse} testID="settings-header" />
           <Animated.ScrollView contentContainerStyle={styles.list} onScroll={collapse.onScroll} scrollEventThrottle={16} testID="settings-list">
             <RowGroup testID="settings-rows">
-              {main.map((row) => (
-                <NavRow key={row.key} label={row.label} right={row.right} icon={row.icon} onPress={() => onRow(row)} testID={`settings-row-${row.key}`} />
-              ))}
+              {main.map((row) => {
+                // QF2 Q2-10e: 크레딧(탑승권)과 마일리지(사주 마당) 줄이 이웃해 헷갈리지 않게 줄 위에 그룹 제목을 둔다. 마일리지 줄이 빠지면(스위치 꺼짐) 그 제목도 없다. 줄 차례는 Figma 12 그대로
+                const groupText = row.key === 'credits' ? QF2_SETTINGS.group.boarding : row.key === 'mileage' ? QF2_SETTINGS.group.saju : null;
+                return (
+                  <View key={row.key}>
+                    {groupText ? (
+                      <View style={styles.infoHead}>
+                        <GroupLabel text={groupText} testID={`settings-group-${row.key}`} />
+                      </View>
+                    ) : null}
+                    <NavRow label={row.label} right={row.right} icon={row.icon} onPress={() => onRow(row)} testID={`settings-row-${row.key}`} />
+                  </View>
+                );
+              })}
               <View style={styles.infoHead}>
                 <GroupLabel text={SETTINGS.rows.infoGroup} testID="settings-info-label" />
               </View>

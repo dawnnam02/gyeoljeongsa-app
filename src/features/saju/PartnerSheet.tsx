@@ -8,21 +8,25 @@ import { AppState, ScrollView, View } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/Button';
+import { CheckBox } from '@/components/CheckBox';
 import { Chip } from '@/components/Chip';
+import { Pressable } from '@/components/Pressable';
 import { TextField } from '@/components/TextField';
-import { IF5_TEXT } from '@/content/if5Copy';
+import { IF5_TEXT, t5 } from '@/content/if5Copy';
 import { useAlwaysCaptureBlock } from '@/lib/captureBlock';
 import type { Chart } from '@/saju5/saju_calc5';
 import { Ck20Block } from '@/features/consent/If5ConsentSheets';
 import { if5Consent, useIf5Consent, type If5ConsentStore } from '@/features/consent/if5Consent';
 
 import { AiBlock } from './ai/AiBlock';
+import { convertBirth, type CalMode } from './lunarInput';
 import type { AiServices } from './ai/aiService';
 import { matchPartner, partnerAiFacts, partnerBranch, type PartnerBranch, type PartnerResult } from './partnerLocal';
 import { clockText, sajuStyles, TimePicker } from './SajuParts';
 
 // pick: 날짜 고르기 '상대와 함께 보기'용(IF5-F1c) — 맞춰 보기 카드 대신 상대의 일지 숫자 하나만 부른 화면에 넘기고 닫는다(mine 필요 없음 · AI 칸 0)
-type Props = { visible: boolean; mine: Chart | null; today: () => string; onClose: () => void; consent?: If5ConsentStore; ai?: AiServices; pick?: (r: Extract<PartnerBranch, { kind: 'ok' }>) => void; testID?: string };
+// lunarOn(QF2 Q2-09 · 스위치 saju_lunar): 상대 생일에 [양력 · 음력] 선택 + [윤달]. 음력이면 기기 안에서 양력으로 바꿔 계산하고 바뀐 양력 날짜를 칸 아래에 늘 보인다(저장 0 · 음력 원값은 서버 · AI 에 안 감). 꺼짐이면 선택 칸 없음(양력만)
+type Props = { visible: boolean; mine: Chart | null; today: () => string; onClose: () => void; consent?: If5ConsentStore; ai?: AiServices; pick?: (r: Extract<PartnerBranch, { kind: 'ok' }>) => void; lunarOn?: boolean; testID?: string };
 
 export function PartnerSheet(props: Props) {
   const testID = props.testID ?? 'saju-partner';
@@ -35,13 +39,18 @@ export function PartnerSheet(props: Props) {
 }
 
 const LABELS = ['SAJU.partner.result.l1.label', 'SAJU.partner.result.l2.label', 'SAJU.partner.result.l3.label'] as const;
+const CAL_ERRORS = { invalid: 'SAJU.partner.cal.errors.invalid', range: 'SAJU.partner.cal.errors.range', leapMonth: 'SAJU.partner.cal.errors.leapMonth', day: 'SAJU.partner.cal.errors.day' } as const;
 
-function Body({ mine, today, onClose, consent, ai, pick, testID = 'saju-partner' }: Props) {
+function Body({ mine, today, onClose, consent, ai, pick, lunarOn = false, testID = 'saju-partner' }: Props) {
   // 상대 값은 모두 이 화면의 메모리뿐 — 시트를 닫으면 Body 가 사라져 값도 사라진다(저장 0). 기기에 남기는 것은 CK20 확인 기록 하나(상대 값 0)
   const store = consent ?? if5Consent();
   const ck20 = useIf5Consent(store).c20 !== null;
   const setCk20 = (on: boolean) => void (on ? store.agreeC20() : store.revoke('c20'));
   const [digits, setDigits] = useState('');
+  const [mode, setMode] = useState<CalMode>('solar');
+  const [leap, setLeap] = useState(false);
+  const cal = convertBirth(digits, lunarOn ? mode : 'solar', lunarOn && mode === 'lunar' && leap); // 변환 줄 · 계산에 쓰는 양력 (스위치 꺼짐이면 늘 양력)
+  const solarDigits = cal.kind === 'ok' ? cal.solarDigits : digits; // 음력 원값은 이 아래로 내려가지 않는다
   const [time, setTime] = useState<{ hour: number; minute: number } | null>(null);
   const [timeOpen, setTimeOpen] = useState(false);
   const [result, setResult] = useState<PartnerResult | null>(null);
@@ -52,16 +61,16 @@ function Body({ mine, today, onClose, consent, ai, pick, testID = 'saju-partner'
   }, []);
 
   const go = () => {
-    if ((!mine && !pick) || !ck20 || digits.length !== 8) return;
+    if ((!mine && !pick) || !ck20 || digits.length !== 8 || (lunarOn && cal.kind !== 'ok')) return;
     if (pick) {
-      const r = partnerBranch({ birthDigits: digits, time }, today());
+      const r = partnerBranch({ birthDigits: solarDigits, time }, today());
       if (r.kind === 'ok') {
         pick(r);
         onClose();
       } else setResult(r);
       return;
     }
-    setResult(matchPartner(mine as Chart, { birthDigits: digits, time }, today()));
+    setResult(matchPartner(mine as Chart, { birthDigits: solarDigits, time }, today()));
   };
   const again = () => setResult(null);
 
@@ -79,6 +88,24 @@ function Body({ mine, today, onClose, consent, ai, pick, testID = 'saju-partner'
       {result === null ? (
         <>
           <Ck20Block checked={ck20} onToggle={() => setCk20(!ck20)} testID={`${testID}-ck20`} />
+          {lunarOn ? (
+            <View style={sajuStyles.gapSmall} accessibilityRole="radiogroup" accessibilityLabel={IF5_TEXT['SAJU.partner.cal.label']} testID={`${testID}-cal`}>
+              <AppText variant="bodyMedium">{IF5_TEXT['SAJU.partner.cal.label']}</AppText>
+              <View style={sajuStyles.wrap}>
+                <Chip label={IF5_TEXT['SAJU.partner.cal.solar']} variant="tab" selected={mode === 'solar'} onPress={() => ck20 && (setMode('solar'), setLeap(false))} testID={`${testID}-cal-solar`} />
+                <Chip label={IF5_TEXT['SAJU.partner.cal.lunar']} variant="tab" selected={mode === 'lunar'} onPress={() => ck20 && setMode('lunar')} testID={`${testID}-cal-lunar`} />
+              </View>
+              {mode === 'lunar' ? (
+                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: leap }} aria-checked={leap} accessibilityLabel={IF5_TEXT['SAJU.partner.cal.leap']} onPress={() => ck20 && setLeap(!leap)} effect="none" style={sajuStyles.leapRow} testID={`${testID}-cal-leap`}>
+                  <CheckBox checked={leap} />
+                  <AppText variant="body">{IF5_TEXT['SAJU.partner.cal.leap']}</AppText>
+                </Pressable>
+              ) : null}
+              <AppText variant="caption" testID={`${testID}-cal-note`}>
+                {IF5_TEXT['SAJU.partner.cal.note']}
+              </AppText>
+            </View>
+          ) : null}
           <TextField
             label={IF5_TEXT['SAJU.partner.birth']}
             value={digits}
@@ -91,8 +118,16 @@ function Body({ mine, today, onClose, consent, ai, pick, testID = 'saju-partner'
             autoCapitalize="none"
             textContentType="none"
             disabled={!ck20}
+            error={lunarOn && cal.kind === 'error' ? t5(CAL_ERRORS[cal.key]) : null}
             testID={`${testID}-birth`}
           />
+          {lunarOn && cal.kind !== 'error' ? (
+            <View style={sajuStyles.calLine} accessibilityLiveRegion="polite" testID={`${testID}-cal-line`}>
+              <AppText variant="body" tone={cal.kind === 'ok' ? 'text' : 'sub'} testID={`${testID}-cal-line-text`}>
+                {cal.kind === 'hint' ? IF5_TEXT['SAJU.partner.cal.hint'] : t5(cal.mode === 'lunar' ? 'SAJU.partner.cal.lineLunar' : 'SAJU.partner.cal.lineSolar', { 년: cal.year, 월: cal.month, 일: cal.day })}
+              </AppText>
+            </View>
+          ) : null}
           <View style={sajuStyles.gapSmall}>
             <AppText variant="bodyMedium">{IF5_TEXT['SAJU.partner.time']}</AppText>
             <View style={sajuStyles.wrap}>
@@ -104,10 +139,10 @@ function Body({ mine, today, onClose, consent, ai, pick, testID = 'saju-partner'
           <AppText variant="caption" testID={`${testID}-gone`}>
             {IF5_TEXT['SAJU.partner.gone']}
           </AppText>
-          <Button label={IF5_TEXT['SAJU.partner.go']} disabled={!ck20 || digits.length !== 8 || (!mine && !pick)} onPress={go} testID={`${testID}-go`} />
+          <Button label={IF5_TEXT['SAJU.partner.go']} disabled={!ck20 || digits.length !== 8 || (!mine && !pick) || (lunarOn && cal.kind !== 'ok')} onPress={go} testID={`${testID}-go`} />
         </>
       ) : (
-        <ResultBody result={result} onAgain={again} onClose={onClose} testID={testID} aiBlock={ai && mine ? <AiBlock id={`${testID}-compat`} kind="compat" svc={ai} facts={() => partnerAiFacts(mine, { birthDigits: digits, time }, today())} /> : null} />
+        <ResultBody result={result} onAgain={again} onClose={onClose} testID={testID} aiBlock={ai && mine ? <AiBlock id={`${testID}-compat`} kind="compat" svc={ai} facts={() => partnerAiFacts(mine, { birthDigits: solarDigits, time }, today())} /> : null} />
       )}
     </ScrollView>
   );

@@ -276,6 +276,8 @@ export const sajuStyles = StyleSheet.create({
   gapSmall: { gap: space.s8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.s8 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s8 },
+  leapRow: { flexDirection: 'row', alignItems: 'center', gap: space.s8, minHeight: 48 }, // QF2 Q2-09: 윤달 체크 줄(터치 48)
+  calLine: { minHeight: 48, justifyContent: 'center', backgroundColor: colors.card, borderRadius: radius.md, paddingHorizontal: space.s16, paddingVertical: space.s8 }, // 변환된 양력 날짜 늘 보이는 한 줄
 });
 
 const styles = StyleSheet.create({

@@ -33,6 +33,7 @@
 //        사본 밖 글 0 · 느낌표 · 숫자 · PF-18 금지 낱말 · 상대 화면 별자리 이름 · 일간 0 · 재미 정보 동의 시트 = 동의문구 4-17 · 생성 파일(라이브러리 · 그림 · 안전 낱말 · 아이콘) = 원본.
 //        21-18(BOARDING.matched.body · SETTINGS.rows.imageCredit · IMAGE_CREDIT.headerTitle)은 X · O 가 14-5-1 · 12 옛 줄 대신 읽는다(SEC2118)
 //  IF5. 사주 마당 · 마일리지 글(IF5-F1 · D-237, content/if5Copy.ts — gen-if5-copy)이 카피.md 24장 표 336키(318 + F1b 24-15-1 새 키 12 + M-F2 24-16-1 새 키 2 + F1c 새 키 2 + M-QF 새 키 2)와 한 글자씩 같은가 · 느낌표 · 법무 금지 낱말 0 · 앱 키가 모두 24장에 있는가 · F1 화면은 F2 몫 글(마일리지 · 쉬어 가요 · 사주 이야기 · AI 맞춤)을 안 부르는가
+//  QF2. QF2-B2 새 글(content/qf2Copy.ts · chatCopy · boardingCopy · prelaunchCopy)이 카피.md 14-9 표 37줄과 한 글자씩 같은가 · 새 글 파일 글이 모두 14-9 에 있는가 · 점수 · 서열 · 재촉 · 마음 표현 · 방송 낱말 · 숫자 · 느낌표 0
 //  J. 06 AI 정리 중 · 07 내 성향의 글이 카피.md 06 · 07 · 화면_요구사항(N13 · N14)에 그대로 있는가 · 근거 문항 이름 · 직접 입력 태그 후보(F3)
 // 사용: node scripts/check-copy.mjs   (npm run check:copy)
 // 종료 코드: 0 통과 · 1 실패
@@ -919,6 +920,63 @@ try {
     check('X', `v5 새 화면 글 ${rowsX.length}줄(14-5-1 · 14-5-2 · 14-6 · 14-7 · 16장 만남 장면 ${rows16.length}줄, 글 함수 ${funcs}개 포함)이 boardingCopy.ts · chatCopy.ts · settingsCopy.ts AVOID · meetCopy.ts 와 같다`, rowsX.length >= 180 && diffsX.length === 0, diffsX.join('\n') || `표 ${rowsX.length}줄`);
   }
 
+  // ── QF2. QF2-B2 새 글(카피.md 14-9 표 — 첫마디 길 · 마지막 날 · 크레딧/마일리지 구분 · 사진 예시 · 알림 버튼 · 사전 오픈 탑승 말) ──
+  //  · 14-9 표 첫 칸 끝의 키를 앱 글 파일에서 찾아 한 글자씩 대조 · 앱 새 글 파일(content/qf2Copy.ts)의 글이 모두 14-9 에 있고 · 점수 · 서열 · 재촉 · 마음 표현 낱말 · 느낌표 · 방송 낱말 0
+  {
+    const q2 = await load(path.join(contentDir, 'qf2Copy.ts'));
+    const chQ = await load(path.join(APP_DIR, 'src', 'features', 'chat', 'chatCopy.ts'));
+    const bcQ = await load(path.join(APP_DIR, 'src', 'features', 'boarding', 'boardingCopy.ts'));
+    const pcQ = await load(path.join(APP_DIR, 'src', 'features', 'prelaunch', 'prelaunchCopy.ts'));
+    const rootsQ = {
+      OPENER_PATH: q2.OPENER_PATH,
+      PROMPT_START: q2.PROMPT_START,
+      FIRST_FROM_CARD: q2.FIRST_FROM_CARD,
+      ACCOUNT: q2.ACCOUNT,
+      SETTINGS: q2.SETTINGS,
+      PHOTOS: q2.PHOTOS,
+      NOTIFY: { primeAllow: q2.NOTIFY_PRIME.allow, primeLater: q2.NOTIFY_PRIME.later, openSettings: q2.NOTIFY_PRIME.openSettings },
+      CHAT: chQ.CHAT,
+      CREDITS: bcQ.CREDITS,
+      PRELAUNCH: pcQ.PRELAUNCH,
+    };
+    const fromQ = copyText.search(/^### 14-9\. /m);
+    const restQ = fromQ >= 0 ? copyText.slice(fromQ + 5) : '';
+    const nextQ = restQ.search(/^## \d+\. /m); // 14-9 다음 장(읽기 도구가 15장 폐지 기록장을 빼므로 다음 큰 제목으로 끊는다)
+    const secQ = fromQ >= 0 ? copyText.slice(fromQ, nextQ >= 0 ? fromQ + 5 + nextQ : undefined) : '';
+    const wantQ = new Map(
+      secQ
+        .split(/\r?\n/)
+        .filter((l) => /^\| [^|]*`[A-Z_]+\.[A-Za-z0-9_.]+` \|/.test(l))
+        .map(cells)
+        .map((r) => [(/`([A-Z_]+\.[A-Za-z0-9_.]+)`\s*$/.exec(r[0]) ?? [])[1], r[1]]),
+    );
+    const SLOTQ = '§';
+    const MARKQ = '\u0001';
+    const normQ = (t) => t.replace(/\{[^{}]+\}/g, SLOTQ);
+    const resolveQ = (key) => key.split('.').reduce((o, k) => (o == null ? undefined : o[k]), rootsQ);
+    const textOfQ = (v) => (typeof v === 'string' ? v : typeof v === 'function' ? String(v(...Array.from({ length: Math.max(1, v.length) }, () => MARKQ))).split(MARKQ).join(SLOTQ) : undefined);
+    const diffsQ = [];
+    for (const [key, want] of wantQ) {
+      const got = textOfQ(resolveQ(key));
+      if (got === undefined) diffsQ.push(`${key}: 앱에 없음(또는 글이 아님)`);
+      else if (normQ(got) !== normQ(want)) diffsQ.push(`${key}: 앱 "${got}" / 카피 "${want}"`);
+    }
+    // 앱 새 글 파일의 글이 모두 14-9 에 있다(카피 밖 글 0)
+    const leavesQ = [];
+    const walkQ = (o, prefix) => {
+      for (const [k, v] of Object.entries(o)) {
+        if (typeof v === 'string' || typeof v === 'function') leavesQ.push([`${prefix}.${k}`, textOfQ(v)]);
+        else if (v && typeof v === 'object') walkQ(v, `${prefix}.${k}`);
+      }
+    };
+    for (const name of ['OPENER_PATH', 'PROMPT_START', 'FIRST_FROM_CARD', 'ACCOUNT', 'SETTINGS', 'PHOTOS']) walkQ(q2[name], name);
+    walkQ(rootsQ.NOTIFY, 'NOTIFY');
+    for (const [key] of leavesQ) if (!wantQ.has(key)) diffsQ.push(`${key}: 카피 14-9 에 없는 글`);
+    const BAN_Q = /점수|등급|순위|퍼센트|판정|서둘|빨리|지금 바로|좋아요|설레|마음에 들|먼저 말|놓치|\d|[!！]|출연|방송|촬영/;
+    for (const [key, t] of leavesQ) if (BAN_Q.test(t.replace(/§/g, ''))) diffsQ.push(`${key}: 쓰지 않을 낱말 "${t}"`);
+    check('QF2', `QF2-B2 새 글 ${wantQ.size}줄(카피 14-9)이 qf2Copy.ts · chatCopy.ts · boardingCopy.ts · prelaunchCopy.ts 와 한 글자씩 같고 · 새 글 파일 글 ${leavesQ.length}개가 모두 14-9 에 있고 · 점수 · 서열 · 재촉 · 마음 표현 · 방송 낱말 · 숫자 · 느낌표 0`, wantQ.size === 37 && diffsQ.length === 0, diffsQ.join('\n') || `표 ${wantQ.size}줄`);
+  }
+
   // ── LG. 탑승객 라운지(LG-F · 카피.md 19장 — 19-12 '앱 반영' 뒤 대조) ──
   {
     const lc = await load(path.join(APP_DIR, 'src', 'features', 'lounge', 'loungeCopy.ts'));
@@ -1109,7 +1167,7 @@ try {
       for (const w of BAN5) if (t.includes(w)) diffsIF5.push(`${key}: 금지 낱말 '${w}'`);
       if (t.includes('상담') && key !== 'SAJU.card.footer') diffsIF5.push(`${key}: '상담'은 끝줄 부정문 한 곳만`);
     }
-    const ALLOWED5 = ['features/inflight/InflightHome.tsx', 'features/inflight/MeetSky.tsx', 'features/settings/SettingsScreen.tsx', 'features/settings/settingsLogic.ts', 'features/settings/WithdrawFlow.tsx'];
+    const ALLOWED5 = ['lib/morningNotice.ts', 'features/settings/NotificationsPage.tsx', 'features/inflight/InflightHome.tsx', 'features/inflight/MeetSky.tsx', 'features/settings/SettingsScreen.tsx', 'features/settings/settingsLogic.ts', 'features/settings/WithdrawFlow.tsx'];
     // IF5-F2: 마일리지 · AI 맞춤 · 동의 화면(아래 폴더 · 파일)은 F2 몫 글을 부른다. 무료 층(F1) 화면 파일만 못 부른다
     const F2_FILES = (rel) => rel.startsWith('features/mileage/') || rel.startsWith('features/saju/ai/') || rel === 'features/saju/SajuTalkScreen.tsx' || rel.startsWith('features/consent/');
     const F2_KEY = /['"`](MILEAGE\.|REST_HINT\.|SAJU\.talk\.|SAJU\.card\.(aiButton|costTag|reopenFree|askMore)|SAJU\.status\.(maint|aiRunning|aiBlocked|sendFailed|balanceFailed)|SAJU\.pick\.ai)/;

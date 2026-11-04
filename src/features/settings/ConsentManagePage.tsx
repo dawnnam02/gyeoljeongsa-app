@@ -31,6 +31,7 @@ import { alpha, colors, size, space } from '@/theme/tokens';
 import { GroupLabel, LoadState, RowGroup, SubPage, SwitchRow } from './SettingsParts';
 import { useLoad } from './useLoad';
 import { CK17 } from '@/content/ck17Content';
+import { forgetMorning } from '@/lib/morningNotice';
 import { Ck17Sheet } from '@/features/inflight/If2Sheets';
 import type { Ck17Api, Ck17State } from '@/features/inflight/inflightService';
 import { tx } from '@/features/inflight/if2Text';
@@ -83,6 +84,7 @@ export function ConsentManagePage({ api, boarded, onBack, onToast, ck17, flagOn 
     setBusy(true);
     setError(null);
     const r = await ck17.revoke(code);
+    if (r.ok && code === 'CK17A') void forgetMorning(); // QF2 Q2-04: 재미 정보(사주) 동의를 거두면 아침 알림 예약도 취소
     busyRef.current = false;
     if (!alive.current) return;
     setBusy(false);
