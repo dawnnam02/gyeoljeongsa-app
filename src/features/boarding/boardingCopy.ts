@@ -148,6 +148,7 @@ export const CREDITS = {
   headerTitle: '크레딧',
   balanceLabel: '쓸 수 있는 크레딧',
   balance: (n: number) => `${n}장`,
+  identity: '크레딧은 탑승권을 탈 때만 써요.', // QF2 Q2-10e: 정체 한 줄(마일리지는 AI 맞춤 풀이 · 사주 이야기에 써요)
   note: '크레딧 1장으로 다음 회차 탑승권 1장을 탈 수 있어요.', // 카피 14-7(D-200 ③) — '1년' 문장 지움
   noExpiry: '크레딧은 기한 없이 쓸 수 있어요. 탈퇴하면 남은 크레딧은 쓸 수 없어요.', // 카피 14-7 · 약관 ⑤ · 제22조 ⑧
   historyTitle: '내역',

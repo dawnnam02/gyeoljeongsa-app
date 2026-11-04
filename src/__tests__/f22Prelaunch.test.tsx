@@ -479,7 +479,7 @@ describe('09 자리 분기(PrelaunchGate) · 대기 화면', () => {
     expect(allTexts(tree)).toContain('사진');
     expect(screenTexts(tree)).not.toMatch(/셀피|서류/);
     expect(textOf(tree, 'prelaunch-first-rec-when')).toBe(WHEN);
-    expect(textOf(tree, 'prelaunch-notice')).toBe(PRELAUNCH.notice);
+    expect(has(tree, 'prelaunch-notice')).toBe(false); // QF2 Q2-10g: '출연' 설명 고지는 폐지(앱에서 '출연'이 사라짐)
     expect(has(tree, 'prelaunch-todo')).toBe(true);
     expect(screenTexts(tree)).toContain(PRELAUNCH.todo.checking);
     expect(['avoid', 'docs', 'vouch', 'link'].map((t) => has(tree, `prelaunch-task-${t}`))).toEqual([true, false, false, true]); // 서류 인증 · 지인 확인은 스위치가 꺼져 입구 0, 아는 분 미리 피하기는 그대로
@@ -498,9 +498,10 @@ describe('09 자리 분기(PrelaunchGate) · 대기 화면', () => {
   test('확정: 확정 카드(날짜 · 요일 · 시각 · 하루 세 분 추천) + 고지는 카드 안 한 번 · 로고 타일 찍힘 · 지인 확인 할 일은 스위치를 켠 때만(D-238)', async () => {
     const tree = await render(depsWith(okLoad({ review: confirmedReview }), { flags: flagsOn(FLAGS_ALL) }));
     expect(textOf(tree, 'prelaunch-confirmed-body')).toBe(`확정됐어요. 첫 매칭은 ${WHEN}에 열려요. 탑승권을 사면 그날 나와 수준이 가장 잘 맞는 한 분과 이어져요.`);
-    expect(textOf(tree, 'prelaunch-confirmed-notice')).toBe(PRELAUNCH.notice);
+    expect(has(tree, 'prelaunch-confirmed-notice')).toBe(false); // QF2 Q2-10g: 고지 폐지
     expect(has(tree, 'prelaunch-notice')).toBe(false);
-    expect(allTexts(tree).filter((t) => t === PRELAUNCH.notice)).toHaveLength(1);
+    expect(textOf(tree, 'prelaunch-header')).toBeDefined();
+    expect(allTexts(tree).join(' ')).not.toMatch(/출연/);
     expect(has(tree, 'prelaunch-stamp')).toBe(true);
     expect(has(tree, 'prelaunch-task-vouch')).toBe(true);
     expect(has(tree, 'prelaunch-todo')).toBe(false);
@@ -630,7 +631,7 @@ describe('09 자리 분기(PrelaunchGate) · 대기 화면', () => {
     const tree = await render(deps);
     await press(tree, 'prelaunch-link-open');
     expect(isOpen(tree, 'prelaunch-link')).toBe(true);
-    expect(textOf(tree, 'prelaunch-link-notice')).toBe(PRELAUNCH.notice);
+    expect(has(tree, 'prelaunch-link-notice')).toBe(false); // QF2 Q2-10g: 고지 폐지
     expect(textOf(tree, 'prelaunch-link-same')).toBe(LINK_SHEET.same);
     await typeInto(tree, 'prelaunch-link-no', '1018472');
     await typeInto(tree, 'prelaunch-link-code', '246810');
@@ -732,8 +733,8 @@ describe('글(prelaunchCopy)', () => {
       expect(s).not.toMatch(BANNED);
       expect(s).not.toMatch(/(습니다|십시오|합니다|입니다)\.?$/);
     }
-    expect(strings.filter((s) => /방송|촬영/.test(s))).toEqual([PRELAUNCH.notice]);
-    expect(PRELAUNCH.notice).toBe("'출연'은 결정사에서 쓰는 말이에요. 방송이나 촬영은 없어요."); // NP-08 그대로
+    expect(strings.filter((s) => /방송|촬영|출연/.test(s))).toEqual([]); // QF2 Q2-10g: 앱 안 비유를 탑승으로 합쳐 '출연' 낱말과 그 설명 고지가 없다
+    expect([PRELAUNCH.headerTitle, PRELAUNCH.confirmedTitle, PRELAUNCH.loadFailed]).toEqual(['탑승 준비', '준비 완료', '탑승 준비 상태를 불러오지 못했어요. 다시 시도해 주세요.']);
     expect(Array.from(LINK_SHEET.linkedToast('1018-4721')).length).toBeLessThanOrEqual(40); // 토스트 40자
   });
 

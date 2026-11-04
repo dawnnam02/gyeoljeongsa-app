@@ -16,9 +16,11 @@ import { Pressable } from '@/components/Pressable';
 import { TextButton } from '@/components/TextButton';
 import { TextField } from '@/components/TextField';
 import { SAFETY_GUIDE } from '@/content/copy';
+import { FIRST_FROM_CARD } from '@/content/qf2Copy';
 import { CONSENT_MANAGE } from '@/content/settingsCopy';
 import type { Message } from '@/features/chat/chatApi';
 import { CHAT } from '@/features/chat/chatCopy';
+import { cardParts, variantOf, type CardOpener } from '@/features/chat/openerPath';
 import { alpha, colors, radius, size, space } from '@/theme/tokens';
 
 import { deviceNotes, useDeviceNotes, type DeviceNotes, type Postcard } from './deviceNotes';
@@ -38,7 +40,9 @@ const failText = (f: If2Fail): string => (f.code === 'text_blocked' ? CHAT.send.
 export const postcardBody = (p: Postcard): string => [txList('HELLO_POSTCARD.write.lines')[p.line] ?? '', p.extra].filter((x) => x.trim() !== '').join(' ');
 
 // ── 첫마디 실마리(F-23 · PF-51): 입력창 위 칩 3 · 써 둔 엽서가 있으면 첫 칩 · 내 첫 글 뒤 사라짐 ─────────────
-export function OpenerChips({ roomId, roundNo, wrote, deps, onChip, onPostcard, testID = 'if2-chips' }: { roomId: string; roundNo: number | null; wrote: boolean; deps: ChatIf2Deps; onChip: (text: string) => void; onPostcard: () => void; testID?: string }) {
+// card(QF2 Q2-08): 상대 프로필 질문 카드에서 온 길이면 첫 칸을 카드 답을 꺼낸 문장으로(방 번호로 A · B), 그 위에 내 화면에만 보이는 확인 띠 한 줄.
+//  문장을 못 만들면(답이 길거나 연락처 꼴) 카드 칩 · 띠 0 — 일반 칩만. 칩은 입력창을 채울 뿐 바로 보내지 않는다 · 내 첫 글 뒤 칩과 띠가 함께 사라진다
+export function OpenerChips({ roomId, roundNo, wrote, deps, onChip, onPostcard, card: fromCard, testID = 'if2-chips' }: { roomId: string; roundNo: number | null; wrote: boolean; deps: ChatIf2Deps; onChip: (text: string) => void; onPostcard: () => void; card?: CardOpener | null; testID?: string }) {
   const notes = useDeviceNotes(deps.notes ?? deviceNotes());
   const [loaded, setChips] = useState<OpenerChip[]>([]);
   const on = deps.isOn('opener_chips');
@@ -47,14 +51,23 @@ export function OpenerChips({ roomId, roundNo, wrote, deps, onChip, onPostcard, 
   }, [deps.api, on, roomId, wrote]);
   const chips = on && !wrote ? loaded : []; // 내 첫 글 뒤 · 스위치 꺼짐이면 칩 0
   const card = deps.isOn('postcard') && notes.postcard && roundNo !== null && notes.postcard.round === roundNo ? notes.postcard : null;
+  const parts = fromCard ? cardParts(fromCard) : null;
+  const cardText = parts ? (variantOf(roomId) === 'a' ? FIRST_FROM_CARD.chipA : FIRST_FROM_CARD.chipB)(parts.answerFront) : null;
   const texts = [...new Set(chips.map((c) => chipText(c.id, c.hobby)).filter((t): t is string => !!t))]; // 갈래 칩은 번호 홀짝으로 고르니 같은 글이 겹치면 한 번만
-  if (wrote || (!card && texts.length === 0)) return null;
+  if (wrote || (!card && !cardText && texts.length === 0)) return null;
+  const room = 3 - (card ? 1 : 0) - (cardText ? 1 : 0); // 칩은 모두 3개까지
   return (
     <View style={styles.chips} accessibilityLabel={tx('FIRST_HINT.label')} testID={testID}>
+      {cardText && parts ? (
+        <AppText variant="caption" accessibilityLabel={FIRST_FROM_CARD.bandA11y(parts.questionFront)} testID={`${testID}-band`}>
+          {FIRST_FROM_CARD.band(parts.questionFront)}
+        </AppText>
+      ) : null}
       <AppText variant="caption">{tx('FIRST_HINT.label')}</AppText>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
         {card ? <Chip label={tx('FIRST_HINT.postcardChip')} accessibilityLabel={tx('FIRST_HINT.postcardChipA11y')} onPress={onPostcard} testID={`${testID}-postcard`} /> : null}
-        {texts.slice(0, card ? 2 : 3).map((t, i) => (
+        {cardText ? <Chip label={cardText} accessibilityLabel={FIRST_FROM_CARD.chipA11y(cardText)} onPress={() => onChip(cardText)} testID={`${testID}-card`} /> : null}
+        {texts.slice(0, Math.max(room, 0)).map((t, i) => (
           <Chip key={t} label={tx('FIRST_HINT.chip', { 질문: t })} accessibilityLabel={tx('FIRST_HINT.chipA11y', { 질문: t })} onPress={() => onChip(t)} testID={`${testID}-${i}`} />
         ))}
       </ScrollView>

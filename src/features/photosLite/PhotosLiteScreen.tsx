@@ -18,6 +18,9 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Pressable } from '@/components/Pressable';
+import { TextButton } from '@/components/TextButton';
+import { PHOTOS } from '@/content/qf2Copy';
+import { PhotoExampleSheet } from './PhotoExampleSheet';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { OfflineArt } from '@/components/StateArt';
 import { Icon } from '@/components/Icon';
@@ -48,6 +51,7 @@ export type PhotosLiteDeps = {
   now: () => number;
   startGraceMs: number;
   surveyMissing?: (answers: LiteAnswers) => Promise<string | null>; // F20: 설문 빈 문항 검사(없으면 임시 설문 답으로 본다)
+  previewOn?: () => boolean; // QF2 Q2-10f: [짝에게 보이는 모습 보기] 줄 — 스위치 profile_preview 가 켜져 있을 때만(없으면 지금 스위치 값을 읽는다)
   interviewConfirm?: () => Promise<boolean>; // 3부-자(0044): 대화형 '내 성향'을 마쳤으면 confirm_profile(null) 로 확정 — true 면 06 · 07 을 건너뛰고 08 로(없으면 늘 AI 정리 길)
 };
 export const START_GRACE_MS = 1500;
@@ -57,6 +61,18 @@ const interviewConfirm = async (): Promise<boolean> => {
   useSignupStore.getState().setStage('traits-confirmed');
   manualOfferStore.clear();
   return true;
+};
+// 지금 스위치 값(읽지 못하면 꺼짐) — 화면이 훅을 안 쓰고 누르는 때 읽는다
+const previewOnNow = (): boolean => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { appFlagsStore } = require('@/hooks/useFeatureFlags') as typeof import('@/hooks/useFeatureFlags');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { isOn } = require('@/lib/featureFlagsApi') as typeof import('@/lib/featureFlagsApi');
+    return isOn(appFlagsStore().get(), 'profile_preview');
+  } catch {
+    return false;
+  }
 };
 const defaultDeps = (): PhotosLiteDeps => ({ api: surveyLiteApi(), picker: defaultPicker(), now: Date.now, startGraceMs: START_GRACE_MS, surveyMissing: photosSurveyMissing, interviewConfirm });
 
@@ -80,6 +96,7 @@ export function PhotosLiteScreen({ deps: given, onMissing, mode = 'normal' }: Pr
   const [slots, setSlots] = useState<Readonly<Record<PhotoSlot, SlotView>>>({ face: EMPTY_SLOT, full: EMPTY_SLOT, free: EMPTY_SLOT });
   const [styleDraft, setStyleDraft] = useState<Draft>(() => draftFromValue(STYLE_Q, undefined));
   const [ask, setAsk] = useState<PhotoSlot | null>(null); // 권한 안내 창
+  const [example, setExample] = useState<PhotoSlot | null>(null); // 예시 시트(QF2 Q2-10f)
   const [denied, setDenied] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [lastSlotError, setLastSlotError] = useState<string | null>(null);
@@ -343,9 +360,12 @@ export function PhotosLiteScreen({ deps: given, onMissing, mode = 'normal' }: Pr
 
         <View style={styles.slots}>
           {PHOTO_SLOTS.map((slot) => (
-            <SlotBox key={slot} slot={slot} view={slots[slot]} locked={reupload && locked.includes(slot)} onPress={() => void pressSlot(slot)} />
+            <SlotBox key={slot} slot={slot} view={slots[slot]} locked={reupload && locked.includes(slot)} onPress={() => void pressSlot(slot)} onExample={() => setExample(slot)} />
           ))}
         </View>
+        {uploaded === PHOTO_SLOTS.length && !working && (deps.previewOn ?? previewOnNow)() ? (
+          <TextButton label={PHOTOS.preview.open} onPress={() => router.push('/preview-me' as never)} testID="photoslite-preview-link" />
+        ) : null}
         {lastSlotError ? (
           <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" testID="photoslite-slot-error">
             {lastSlotError}
@@ -388,6 +408,7 @@ export function PhotosLiteScreen({ deps: given, onMissing, mode = 'normal' }: Pr
         <CtaFade />
         <Button label={reupload ? PHOTOS_LITE.reupload : PHOTOS_LITE.finish} onPress={() => void finish()} dimmed={working || uploaded < PHOTO_SLOTS.length} loading={busy} testID="photoslite-finish" />
       </View>
+      <PhotoExampleSheet slot={example} onClose={() => setExample(null)} />
       <ConfirmDialog
         visible={ask !== null}
         title={PHOTOS_LITE.permissionAsk}
@@ -401,7 +422,7 @@ export function PhotosLiteScreen({ deps: given, onMissing, mode = 'normal' }: Pr
   );
 }
 
-function SlotBox({ slot, view, locked, onPress }: { slot: PhotoSlot; view: SlotView; locked: boolean; onPress: () => void }) {
+function SlotBox({ slot, view, locked, onPress, onExample }: { slot: PhotoSlot; view: SlotView; locked: boolean; onPress: () => void; onExample: () => void }) {
   const name = PHOTOS_LITE.slots[slot];
   return (
     <View style={styles.slotCell}>
@@ -434,6 +455,7 @@ function SlotBox({ slot, view, locked, onPress }: { slot: PhotoSlot; view: SlotV
         ) : null}
         {view.photoId && !view.working ? <View testID={`photoslite-done-${slot}`} /> : null}
       </Pressable>
+      {view.photoId === null && !locked ? <TextButton label={PHOTOS.example.open} variant="captionMedium" accessibilityLabel={`${name} ${PHOTOS.example.open}`} onPress={onExample} testID={`photoslite-example-open-${slot}`} /> : null}
     </View>
   );
 }

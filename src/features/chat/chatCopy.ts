@@ -22,6 +22,8 @@ export const CHAT = {
     headerA11yMore: '대화방 메뉴',
     openUntil: (when: string) => `${when}까지 열려 있어요.`,
     lastDay: '오늘 오후 6시까지 열려 있어요.',
+    lastDayChosen: '연장을 원한다고 골랐어요.', // QF2 Q2-03: 마지막 날에 내가 연장을 골랐을 때 띠 둘째 줄(첫 줄 마지막 날 글을 가리지 않는다)
+    lastDayA11y: '대화방이 오늘 닫혀요. 오후 6시까지 열려 있어요.', // 마지막 날 띠 읽기 이름
     extendedNote: '둘 다 원해서 7일 더 열렸어요.',
     extendLink: '연장 알아보기',
     closedTitle: '대화방이 닫혔어요',
@@ -86,6 +88,7 @@ export const CHAT = {
     profile: '상대 프로필 보기',
     extend: '7일 연장하기',
     extendHint: '둘 다 원하면 7일 더 열려요.',
+    safeShareHint: '내 기기에서 만들어요. 결정사에는 남지 않아요.', // QF2 Q2-10h: 안심 공유 줄 힌트(줄 이름은 SAFE_SHARE.entry '만남 계획 공유')
     leave: '대화방 나가기',
     leaveHint: '나가면 이 대화방이 내 목록에서 사라져요.',
     safety: '신고 · 차단',
@@ -97,6 +100,7 @@ export const CHAT = {
     body: '둘 다 원하면 대화방이 7일 더 열려요. 상대가 원하는지는 둘 다 고른 뒤에 알 수 있어요.',
     want: '연장을 원해요',
     wantNote: '연장을 원한다고 골랐어요. 상대도 원하면 7일 더 열려요.',
+    lastDayNote: '대화방은 오늘 오후 6시에 닫혀요.', // QF2 Q2-03: 연장 시트 안 한 줄(마지막 날에만)
     undo: '연장 원하지 않기',
     undoNote: '연장을 원하지 않는 것으로 바꿨어요.',
     extendedToast: '둘 다 원해서 7일 더 열렸어요.',

@@ -1,4 +1,5 @@
-// IF-TYPE 내 여행 타입(F-19 · 정책 PF-31 ~ PF-33 · 카피 21-5 · 계산명세 10-1) — 짐 싸기 7문항(기기에만) → 엽서 앞(타입 소재 + 고른 짐 · 이름 · 앞면 한 줄) · [뒷면 보기] → 뒤(설명 세 줄 · 끝줄) · 노선도(내 역 + 대화가 편하게 이어지는 타입 두 역, 역마다 까닭).
+// IF-TYPE 내 여행 타입(F-19 · 정책 PF-31 ~ PF-33 · 카피 21-5 · 계산명세 10-1) — 엽서 앞(타입 소재 + 고른 짐 · 이름 · 앞면 한 줄) · [뒷면 보기] → 뒤(설명 세 줄 · 끝줄) · 노선도(내 역 + 대화가 편하게 이어지는 타입 두 역, 역마다 까닭).
+//  · QF2 Q2-11(엽서 먼저): 타입이 있으면 짐을 싸기 전에도 소품 없는 기본 엽서를 바로 보인다. 짐 싸기 7문항은 [엽서 꾸미기]를 눌러야 나오는 선택이다(고른 짐은 엽서 그림에만 — PF-31)
 //  · 타입은 성향 정리 결과(계산명세 10-1) · 등급 입력 0 · 짝 타입 0 · 우열 · 희귀 · 퍼센트 · 진행 숫자 0 · 공유 단추는 그리지 않음(type_card_share 꺼짐 · 신고번호 뒤)
 //  · 이름 · 앞면 한 줄 · 설명 · 역 까닭 · 짐 문항 글은 라이브러리 원본(content/if2Library.json ← ai/IF2/문구_라이브러리.json), 그림은 디자인 타입소재 33개(if2art.json types · items) — 대화 팁은 1.1이라 그리지 않는다(TYPE_CARD.tip)
 //  · 고른 짐은 엽서 앞면 소품 그림에만 들어간다: 기기에만(deviceNotes typeBag) · 서버 0 · 성향 · 타입 · 매칭 계산 0. 짐을 아직 안 쌌으면 짐 싸기부터(그때 처음 엽서가 나온다)
@@ -146,6 +147,7 @@ export function TypeCardScreen({ source, notes }: { source?: TypeSource; notes?:
   const [typeState, setTypeState] = useState<TypeState | 'loading'>('loading');
   const [tries, setTries] = useState(0);
   const [side, setSide] = useState<'front' | 'back'>('front');
+  const [packingOpen, setPackingOpen] = useState(false); // [엽서 꾸미기]를 눌러 짐 싸기 질문이 열린 동안
   useEffect(() => {
     let alive = true;
     void typeStateOf(src)
@@ -181,8 +183,8 @@ export function TypeCardScreen({ source, notes }: { source?: TypeSource; notes?:
         {stateKey === 'not_ready' ? <Button label={COMMON.retry} variant="secondary" onPress={() => (setTypeState('loading'), setTries((n) => n + 1))} testID="type-retry" /> : null}
       </View>
     );
-  } else if (!wait && type && !packed) {
-    body = <PackQuiz notes={store} onLater={back} />;
+  } else if (!wait && type && !packed && packingOpen) {
+    body = <PackQuiz notes={store} onLater={() => setPackingOpen(false)} />; // [나중에 하기] = 엽서로 돌아간다(타입 엽서는 이미 있다)
   } else if (!wait && type) {
     const routes = type.routes.map((r) => ({ type: travelTypeOf(r.to), why: r.why })).filter((r): r is { type: TravelTypeLib; why: string } => !!r.type);
     body =
@@ -196,6 +198,14 @@ export function TypeCardScreen({ source, notes }: { source?: TypeSource; notes?:
           <AppText variant="body" testID="type-line">
             {tx('TYPE_CARD.result.line', { '한 줄 소개': type.line })}
           </AppText>
+          {!packed ? (
+            <View style={if2Styles.gapSmall}>
+              <Button label={tx('TYPE_CARD.decorate.open')} variant="secondary" onPress={() => setPackingOpen(true)} testID="type-decorate" />
+              <AppText variant="caption" testID="type-decorate-hint">
+                {tx('TYPE_CARD.decorate.hint')}
+              </AppText>
+            </View>
+          ) : null}
         </View>
       ) : (
         <View style={if2Styles.gap} testID="type-back">
@@ -238,10 +248,10 @@ export function TypeCardScreen({ source, notes }: { source?: TypeSource; notes?:
 
   return (
     <Screen edges={['top']} testID="screen-type">
-      <ScreenHeader title={wait || !type || packed ? tx('TYPE_CARD.result.kicker') : tx('TYPE_CARD.quiz.title')} onBack={back} testID="type-header" />
+      <ScreenHeader title={wait || !type || packed || !packingOpen ? tx('TYPE_CARD.result.kicker') : tx('TYPE_CARD.quiz.title')} onBack={back} testID="type-header" />
       <ScrollView contentContainerStyle={styles.body}>
         {body}
-        {!wait && type && packed ? <Button label={side === 'front' ? tx('TYPE_CARD.result.flip') : tx('TYPE_CARD.result.flipBack')} variant="secondary" onPress={() => setSide(side === 'front' ? 'back' : 'front')} testID="type-flip" /> : null}
+        {!wait && type && (packed || !packingOpen) ? <Button label={side === 'front' ? tx('TYPE_CARD.result.flip') : tx('TYPE_CARD.result.flipBack')} variant="secondary" onPress={() => setSide(side === 'front' ? 'back' : 'front')} testID="type-flip" /> : null}
       </ScrollView>
     </Screen>
   );

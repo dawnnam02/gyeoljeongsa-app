@@ -28,6 +28,7 @@ import { TabHeader } from '@/components/TabHeader';
 import { TextButton } from '@/components/TextButton';
 import { Toast } from '@/components/Toast';
 import { fillText } from '@/content/fillLegal';
+import { handOff } from '@/features/chat/openerPath';
 import { TermsArticleSheet } from '@/features/consent/TermsArticleSheet';
 import { openSettingsPage } from '@/features/settings/settingsIntent';
 import { haptic, InkTile, logoTile, MaskLine, scene2, SkeletonCard, SkeletonPulse, TOAST_MS, Wipe } from '@/motion';
@@ -241,7 +242,10 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
               onToast={setToast}
               nav={{
                 open: (href) => router.push(href),
-                chat: (roomId, draft) => router.push(hrefOf(`/chat/${encodeURIComponent(roomId)}${draft ? `?draft=${encodeURIComponent(draft)}` : ''}`)),
+                chat: (roomId, draft) => {
+                  if (draft) handOff({ roomId, draft }); // QF2 Q2-13: 글은 주소가 아니라 앱 안 메모리로(웹 주소에 인용이 남지 않게)
+                  router.push(hrefOf(`/chat/${encodeURIComponent(roomId)}`));
+                },
                 settings: (page) => openSettingsPage(router, page),
                 profileSameHobby: () => router.push(hrefOf('/profile?focus=sameHobby')),
               }}

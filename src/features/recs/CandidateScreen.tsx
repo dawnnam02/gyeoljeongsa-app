@@ -46,12 +46,15 @@ import type { SafetyApi } from '@/features/safety/reportLogic';
 
 import { PhotoBox } from './PhotoBox';
 import { MarriageViews } from './MarriageViews';
-import { PromptCards } from './PromptCards';
+import { PromptCards, type PromptCard } from './PromptCards';
+import { handOff } from '@/features/chat/openerPath';
+import { PROMPT_START } from '@/content/qf2Copy';
 import { detailInfoLine, galleryPhotos, headLineDetail, heightText, openItems, plain, REASON_NAMES, regionText, tableRows, whySentence } from './recsLogic';
 import { usePhotoUrls } from './usePhotoUrls';
 
 // chat: v5 대화방에서 연 10(from=reveal&chat=방)의 신고 · 차단은 0031 report_chat_partner · block_chat_partner(방 id)로 — v4 report_user · block_user 는 추천 · 호감 관계만 받아 대화 짝에게 실패한다(R-A)
-export type CandidateDeps = { api: Pick<RecsApi, 'loadCandidate' | 'pairState' | 'photoUrl' | 'pass' | 'sendLike' | 'report' | 'block'>; likes?: Pick<LikesApi, 'accept' | 'decline'>; grade?: Pick<GradeApi, 'partnerGrade'>; chat?: () => SafetyApi; toastMs: number };
+// roomState(QF2 Q2-08): 대화방이 열려 있고 내 첫 글 전인가 — 질문 카드 [이 이야기로 시작하기] 단추를 그릴지 정한다(못 읽으면 false = 단추 0)
+export type CandidateDeps = { api: Pick<RecsApi, 'loadCandidate' | 'pairState' | 'photoUrl' | 'pass' | 'sendLike' | 'report' | 'block'>; likes?: Pick<LikesApi, 'accept' | 'decline'>; grade?: Pick<GradeApi, 'partnerGrade'>; chat?: () => SafetyApi; roomState?: (chatId: string) => Promise<boolean>; startOn?: () => boolean; toastMs: number };
 const defaultDeps: CandidateDeps = { api: recsApi, likes: likesApi, grade: gradeApi, toastMs: TOAST_MS };
 
 // 대화방 신고 · 차단(chatService 는 처음 쓸 때 만든다 — 시험이 서버 설정 없이 이 파일을 읽을 수 있게)
@@ -61,6 +64,52 @@ const chatSafetyApi = () => {
   const { chatApi } = require('@/features/chat/chatService') as typeof import('@/features/chat/chatService');
   return chatApi();
 };
+// 기본 방 상태: 방이 열려 있고 내가 보낸 글이 아직 없을 때만 true(닫힌 방 · 이미 첫 글을 보냄 · 못 읽음 = false)
+const defaultRoomState = async (chatId: string): Promise<boolean> => {
+  const api = chatSafetyApi();
+  const [room, msgs] = await Promise.all([api.getRoom(chatId), api.listMessages(chatId)]);
+  if (!room.ok || !msgs.ok) return false;
+  return room.data.closedAt === null && api.now() < room.data.closesAt && !msgs.data.some((m) => m.mine && m.kind !== 'system');
+};
+
+// 스위치 profile_prompts 의 지금 값(읽지 못하면 꺼짐). 화면이 훅을 안 쓰고 그릴 때 읽는다 — 앱은 탭 묶음이 열릴 때 이미 스위치를 불러 둔다
+const startOnNow = (): boolean => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { appFlagsStore } = require('@/hooks/useFeatureFlags') as typeof import('@/hooks/useFeatureFlags');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { isOn } = require('@/lib/featureFlagsApi') as typeof import('@/lib/featureFlagsApi');
+    return isOn(appFlagsStore().get(), 'profile_prompts');
+  } catch {
+    return false;
+  }
+};
+
+// 질문 카드 칸. v5 공개 뒤 길(from=reveal, 방 id 있음)이고 profile_prompts 가 켜져 있고 방이 열려 있으며 내 첫 글 전일 때만 카드마다 [이 이야기로 시작하기]를 둔다
+function PromptsWithStart({ prompts, v5, chatId, roomState, startOn, onFail }: { prompts: CandidateData['prompts']; v5: boolean; chatId: string | null; roomState: (id: string) => Promise<boolean>; startOn: () => boolean; onFail: () => void }) {
+  const router = useRouter();
+  const on = v5 && !!chatId && startOn();
+  const [startable, setStartable] = useState(false);
+  useEffect(() => {
+    if (!on || !chatId) return undefined;
+    let alive = true;
+    roomState(chatId).then((ok) => alive && setStartable(ok), () => alive && setStartable(false));
+    return () => {
+      alive = false;
+    };
+  }, [on, chatId, roomState]);
+  const start = (card: PromptCard) => {
+    if (!chatId) return;
+    try {
+      handOff({ roomId: chatId, card: { question: card.question, answer: card.answer } }); // 앱 안 메모리로만 건넴 — 주소 · 서버 · 저장 0
+      router.push(`/chat/${chatId}` as unknown as Href);
+    } catch {
+      onFail();
+    }
+  };
+  return <PromptCards prompts={prompts} noteHidden={v5} onStart={on && startable ? start : undefined} />;
+}
+
 const defaultChatSafety = (): SafetyApi => ({
   report: (room, reason, description) => chatSafetyApi().report(room, reason, description),
   block: (room) => chatSafetyApi().block(room),
@@ -356,7 +405,7 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
             testID="candidate-glance"
           />
         </Rise>
-        <PromptCards prompts={data.prompts} noteHidden={v5} />
+        <PromptsWithStart prompts={data.prompts} v5={v5} chatId={chatId} roomState={deps.roomState ?? defaultRoomState} startOn={deps.startOn ?? startOnNow} onFail={() => setToast(PROMPT_START.failed)} />
         <MarriageViews answers={data.answers} />
 
         {shownGrade !== null && !v5 ? (

@@ -167,13 +167,21 @@ export function MessageBubble({ message: m, sendState = 'sent', mediaUri, voice,
 }
 
 // lead: 글 앞 아이콘 16 · sub(D43 A11 — 연장을 고른 뒤 상태 줄 accept)
-export function Banner({ text, action, lead, testID }: { text: string; action?: { label: string; onPress: () => void; icon?: IconName }; lead?: IconName; testID: string }) {
+// extra(QF2 Q2-03): 마지막 날에 내가 연장을 골랐을 때 첫 줄(마지막 날 글)을 가리지 않고 둘째 줄로 함께 보인다 — 같은 면 · 같은 글자색(경고색 0)
+export function Banner({ text, extra, action, lead, a11y, testID }: { text: string; extra?: string; action?: { label: string; onPress: () => void; icon?: IconName }; lead?: IconName; a11y?: string; testID: string }) {
   return (
     <View style={styles.banner} testID={testID}>
       {lead ? <Icon name={lead} size={16} color={colors.sub} testID={`${testID}-lead`} /> : null}
-      <AppText variant="small" style={styles.flex} testID={`${testID}-text`}>
-        {text}
-      </AppText>
+      <View style={styles.flex}>
+        <AppText variant="small" accessibilityLabel={a11y} testID={`${testID}-text`}>
+          {text}
+        </AppText>
+        {extra ? (
+          <AppText variant="small" testID={`${testID}-extra`}>
+            {extra}
+          </AppText>
+        ) : null}
+      </View>
       {action ? <TextButton label={action.label} variant="captionMedium" icon={action.icon} onPress={action.onPress} testID={`${testID}-action`} /> : null}
     </View>
   );

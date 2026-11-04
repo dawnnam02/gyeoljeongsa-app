@@ -9,7 +9,7 @@ import type { DeclineReason, FixReason, StepKey, StepState } from './launchApi';
 import type { TodoKind, WaitTask } from './launchLogic';
 
 export const PRELAUNCH = {
-  headerTitle: '출연 준비',
+  headerTitle: '탑승 준비', // QF2 Q2-10g: 방송 비유('출연')를 앱 전체 비유(탑승)로 합쳤다
   applicantNo: (no: string) => `신청 번호 ${no}`, // NP-02
   applicantNoNote: '순서를 뜻하는 번호는 아니에요.', // NP-02
   stepsTitle: '확정까지', // P-D2 단계표 제목
@@ -36,7 +36,7 @@ export const PRELAUNCH = {
   firstRecLabel: '첫 매칭', // NP-09(V5)
   firstRec: (when: string) => when, // NP-09: '12월 23일 수요일 오후 6시' — 날짜 · 요일 · 시각만(서버 launch_text 그대로)
   firstRecUnknown: '첫 매칭 날짜가 정해지면 여기에 보여 드려요.',
-  confirmedTitle: '출연 확정', // K20 2-1 화면 말
+  confirmedTitle: '준비 완료', // 머리가 이미 '탑승 준비'라 제목에서 '탑승'을 되풀이하지 않는다('탑승 확정'은 탑승권을 산 상태 '탑승 완료'로 읽혀 피함)
   confirmed: (when: string) => `확정됐어요. 첫 매칭은 ${when}에 열려요. 탑승권을 사면 그날 나와 수준이 가장 잘 맞는 한 분과 이어져요.`, // NP-05(V5)
   confirmedNoDay: '확정됐어요. 탑승권을 사면 나와 수준이 가장 잘 맞는 한 분과 이어져요.',
   confirmedA11y: (when: string) => `확정. 첫 매칭 ${when}`, // NP-22
@@ -74,8 +74,8 @@ export const PRELAUNCH = {
     link: { name: '신청 잇기', line: '인스타그램으로 먼저 신청하셨나요?' }, // NP-12 첫 줄
   } satisfies Record<WaitTask, { name: string; line: string }>,
   linkOpen: '신청 잇기',
-  notice: "'출연'은 결정사에서 쓰는 말이에요. 방송이나 촬영은 없어요.", // NP-08: 3곳 같은 글(대기 화면 · 확정 카드 · 신청 잇기 시트)
-  loadFailed: '출연 준비 상태를 불러오지 못했어요. 다시 시도해 주세요.', // NFK20-07(11장)
+  // NP-08 '출연' 설명 고지 한 줄은 폐지(QF2 Q2-10g): '출연'이 앱에서 사라져 설명할 말이 없다 — 3곳(대기 화면 · 확정 카드 · 신청 잇기 시트)에서 뺐다
+  loadFailed: '탑승 준비 상태를 불러오지 못했어요. 다시 시도해 주세요.', // NFK20-07(11장)
   stepsA11y: (parts: string) => `확정까지 단계. ${parts}`, // NP-22
 } as const;
 

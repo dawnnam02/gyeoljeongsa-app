@@ -45,6 +45,8 @@ import type { Session, Summary } from './api';
 import { createMeter, behaviorPayload, type Meter } from './behavior';
 import { ChatInput, PolCard, RelCard } from './ChatInput';
 import { fill, pick, sectionName, SLOT_ORDER, slotFallback, slotName, t } from './copy';
+import { ProgressBar } from './ProgressBar';
+import { FLOW_SECTIONS } from '@/features/surveyV2/model';
 import { surveyChatDeps, type SurveyChatDeps } from './deps';
 import type { ChatStage, LocalChat } from './localChat';
 import { buildPart1, part1List, TEXT_QS, varsFor, type Line, type PolState, type RelState } from './model';
@@ -1187,6 +1189,13 @@ export function SurveyChatScreen({ deps: given, onDone, typeOn = false }: Props)
     <Screen edges={['top', 'bottom', 'left', 'right']} testID="chat-screen">
       <KeyboardAvoid>
         <ScreenHeader title={stage === 'traits' ? t('CHAT.TRAITS.header') : SV2.headerTitle} rightLabel={rightLabel} onRight={rightLabel ? onRight : undefined} testID="chat-header" />
+        {nowName ? (
+          <ProgressBar
+            total={stage === 'part2' ? SLOT_ORDER.length : FLOW_SECTIONS.length}
+            index={stage === 'part2' ? (slot ? SLOT_ORDER.indexOf(slot) : -1) : view.section ? FLOW_SECTIONS.indexOf(view.section) : -1}
+            a11yLabel={fill(t('CHAT.UI.progressA11y'), { 섹션: nowName })}
+          />
+        ) : null}
         {nowName ? (
           <View style={styles.now} accessible accessibilityRole="text" testID="chat-now">
             <Rise key={nowName} distance={0} duration={150}>

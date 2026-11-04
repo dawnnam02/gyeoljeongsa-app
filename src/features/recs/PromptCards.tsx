@@ -11,6 +11,8 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { Card } from '@/components/Card';
 import { ContactReceiverNote } from '@/components/ContactHint';
+import { TextButton } from '@/components/TextButton';
+import { PROMPT_START } from '@/content/qf2Copy';
 import { space } from '@/theme/tokens';
 
 export const PROMPT_CARDS = {
@@ -39,7 +41,9 @@ export function readPrompts(raw: unknown): PromptCard[] {
 }
 
 // noteHidden: v5 공개 뒤 10(QP-01) — 짝과는 이미 대화방이 열려 있어 '서로 수락한 뒤의 연락 방법' 한 줄(NF10-04)을 그리지 않는다
-export function PromptCards({ prompts, testID = 'candidate-prompts', noteHidden = false }: { prompts: readonly PromptCard[] | null | undefined; testID?: string; noteHidden?: boolean }) {
+// onStart(QF2 Q2-08): 방이 열려 있고 내 첫 글 전일 때만 받는다 — 카드 안 오른쪽 아래 글자 단추 [이 이야기로 시작하기]. 카드마다 같은 크기 · 같은 자리(어느 카드가 낫다는 인상 0),
+//  누르면 대화방으로 넘어갈 뿐 호감 표시 · 저장 · 상대 알림 · 카드에 '선택됨' 표시 0
+export function PromptCards({ prompts, testID = 'candidate-prompts', noteHidden = false, onStart }: { prompts: readonly PromptCard[] | null | undefined; testID?: string; noteHidden?: boolean; onStart?: (card: PromptCard) => void }) {
   const cards = (prompts ?? []).slice(0, PROMPT_CARD_MAX);
   if (cards.length === 0) return null;
   return (
@@ -48,13 +52,18 @@ export function PromptCards({ prompts, testID = 'candidate-prompts', noteHidden 
         {PROMPT_CARDS.title}
       </AppText>
       {cards.map((c, i) => (
-        <Card key={c.code} variant="paper" style={styles.card} accessible accessibilityLabel={`${c.question} ${c.answer}`} testID={`${testID}-${i}`}>
+        <Card key={c.code} variant="paper" style={styles.card} accessible={onStart ? undefined : true} accessibilityLabel={onStart ? undefined : `${c.question} ${c.answer}`} testID={`${testID}-${i}`}>
           <AppText variant="caption" testID={`${testID}-${i}-q`}>
             {c.question}
           </AppText>
           <AppText variant="body" testID={`${testID}-${i}-a`}>
             {c.answer}
           </AppText>
+          {onStart ? (
+            <View style={styles.start}>
+              <TextButton label={PROMPT_START.btn} variant="captionMedium" accessibilityLabel={PROMPT_START.a11y(c.question)} onPress={() => onStart(c)} testID={`${testID}-${i}-start`} />
+            </View>
+          ) : null}
         </Card>
       ))}
       {noteHidden ? null : <ContactReceiverNote testID={`${testID}-note`} />}
@@ -65,4 +74,5 @@ export function PromptCards({ prompts, testID = 'candidate-prompts', noteHidden 
 const styles = StyleSheet.create({
   section: { gap: space.s12 },
   card: { gap: space.s8 },
+  start: { alignItems: 'flex-end' },
 });

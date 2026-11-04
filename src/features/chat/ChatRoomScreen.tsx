@@ -33,15 +33,18 @@ import { alpha, colors, size, space } from '@/theme/tokens';
 
 import type { ChatApi, Message, Outgoing, Room, SendFailure } from './chatApi';
 import { CHAT } from './chatCopy';
-import { closedLine, dayKey, dayText, isOpen, openLine, TEXT_MAX, VOICE_MAX_BYTES, VOICE_MIN_MS } from './chatLogic';
+import { closedLine, dayKey, dayText, isLastDay, isOpen, openLine, TEXT_MAX, VOICE_MAX_BYTES, VOICE_MIN_MS } from './chatLogic';
 import type { ChatMedia } from './chatMedia';
 import { Banner, ClosedNotice, DayDivider, MessageBubble, type SendState } from './ChatParts';
 import { chatApi, chatMedia, CHAT_LIST_HREF } from './chatService';
 import { Composer } from './Composer';
+import type { CardOpener } from './openerPath';
 import { MeetScene } from './MeetScene';
 import { useMeetScene, type MeetDeps } from './useMeetScene';
 import { FarewellSheet, HelloSendSheet, MoneySafetyCard, OpenerChips, tagLabel, TogetherCard, TopicsSheet, type ChatIf2Deps } from '@/features/inflight/ChatIf2';
 import { createDeviceNotes, deviceNotes, useDeviceNotes } from '@/features/inflight/deviceNotes';
+import { SAFE_SHARE_ENTRY } from '@/features/inflight/If2Sheets';
+import { SafeShareSheet } from '@/features/safeShare/SafeShareSheet';
 import { moneySafetyHit } from '@/features/inflight/inflightLogic';
 import { tx } from '@/features/inflight/if2Text';
 
@@ -78,7 +81,8 @@ const asMessage = (p: Pending): Message => ({
 
 // IF2-F(D-223): if2 = 대화방 칸(첫마디 실마리 · 이야깃거리 시트 · 꼬리표 글 · 같이 열어 보는 질문 · 안전 안내 카드 · 작별 엽서 — 정책 PF-51 ~ PF-59). 없으면 지금 그대로.
 //  draft = 홈 '꺼내는 말 가져가기'(입력창에 넣기만). 맨 위 순서(머리 · 남은 날 띠 · 기억 한 줄 · 방 열림 글)에는 아무것도 더하지 않는다(PF-58)
-export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs = TOAST_MS, pollMs = POLL_MS, meet, if2, draft }: { id: string; api?: ChatApi; media?: ChatMedia; toastMs?: number; pollMs?: number; meet?: MeetDeps; if2?: ChatIf2Deps; draft?: string }) {
+//  fromCard(QF2 Q2-08) = 상대 프로필 질문 카드에서 온 길(앱 안 메모리로만 건너옴 — 주소에 남지 않음). 첫마디 칩 · 내 화면의 확인 띠를 만든다
+export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs = TOAST_MS, pollMs = POLL_MS, meet, if2, draft, fromCard }: { id: string; api?: ChatApi; media?: ChatMedia; toastMs?: number; pollMs?: number; meet?: MeetDeps; if2?: ChatIf2Deps; draft?: string; fromCard?: CardOpener }) {
   const api = givenApi ?? chatApi();
   const media = givenMedia ?? chatMedia();
   const router = useRouter();
@@ -89,7 +93,7 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
   const [crisisId, setCrisisId] = useState<string | null>(null); // 위기 도움 카드가 붙은 내 글 id — 방금 보낸 글 한 장만(화면 메모리 · 방을 다시 열면 0 · 하루 3번, 정책 P4-29 ~ 34)
   const [urls, setUrls] = useState<Record<string, string | null>>({});
   const [seen, setSeen] = useState<Set<string> | null>(null); // 처음 불러온 글(움직이지 않음)
-  const [sheet, setSheet] = useState<'none' | 'menu' | 'extend' | 'leave' | 'safety' | 'topics' | 'hello'>('none');
+  const [sheet, setSheet] = useState<'none' | 'menu' | 'extend' | 'leave' | 'safety' | 'topics' | 'hello' | 'share'>('none');
   const [inject, setInject] = useState<{ text: string; seq: number } | null>(draft ? { text: draft, seq: 1 } : null);
   const putText = (text: string) => setInject((cur) => ({ text, seq: (cur?.seq ?? 0) + 1 }));
   const if2Store = if2?.notes ?? (if2 ? deviceNotes() : NO_NOTES); // IF2 칸이 없으면 기기 저장소를 건드리지 않는다
@@ -161,6 +165,7 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
   const now = api.now();
   const open = room ? isOpen(room, now) : false;
   const meetView = useMeetScene(meet, { id, load: load.kind, room, messages, now: () => api.now() });
+  const lastDay = open && !!room && isLastDay(room.closesAt, now); // 마지막 날: 내가 연장을 골랐어도 띠 첫 줄은 마지막 날 글(Q2-03)
   const covered = meetView.scene !== null || meetView.cover; // 장면 · 판단 중 바탕이 덮는 동안 아래 대화방은 화면 읽기에서 숨긴다
 
   // 새 카드가 뜨면 앞 카드는 걷힌다(한 번에 한 장). 하루 3번을 넘으면 글만 보내고 화면 변화 0(안내 글 0)
@@ -317,7 +322,9 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
             <KeyboardAvoid>
               {open ? (
                 <Banner
-                  text={room.myExtend ? CHAT.extend.wantNote : openLine(room.closesAt, now)}
+                  text={room.myExtend && !lastDay ? CHAT.extend.wantNote : openLine(room.closesAt, now)}
+                  extra={room.myExtend && lastDay ? CHAT.room.lastDayChosen : undefined}
+                  a11y={lastDay ? CHAT.room.lastDayA11y : undefined}
                   lead={room.myExtend ? 'accept' : undefined}
                   action={{ label: CHAT.room.extendLink, onPress: () => setSheet('extend'), icon: 'extend' }}
                   testID="chat-room-banner"
@@ -394,7 +401,7 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
                 })}
               </ScrollView>
               {/* 첫마디 실마리는 만남 장면(D46)이 덮여 있는 동안 0 — 장면이 끝난 뒤 입력창 위에 */}
-              {open && if2 && !meetView.scene ? <OpenerChips roomId={id} roundNo={room.roundNo} wrote={wrote} deps={if2} onChip={putText} onPostcard={() => setSheet('hello')} /> : null}
+              {open && if2 && !meetView.scene ? <OpenerChips roomId={id} roundNo={room.roundNo} wrote={wrote} deps={if2} onChip={putText} onPostcard={() => setSheet('hello')} card={fromCard} /> : null}
               {open ? (
                 <Composer
                   canPhoto={media.photo}
@@ -428,7 +435,8 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
             </AppText>
             {open ? (
               <>
-                <MenuItem label={CHAT.menu.extend} hint={CHAT.menu.extendHint} icon="extend" onPress={() => setSheet('extend')} testID="chat-menu-extend" />
+                <MenuItem label={CHAT.menu.extend} hint={CHAT.menu.extendHint} icon="extend" onPress={() => setSheet('extend')} testID="chat-menu-extend" noLine={!if2On('safe_share')} />
+                {if2On('safe_share') ? <MenuItem label={SAFE_SHARE_ENTRY} hint={CHAT.menu.safeShareHint} icon="safety" onPress={() => setSheet('share')} testID="chat-menu-share" /> : null}
                 <MenuItem
                   label={CHAT.menu.leave}
                   hint={CHAT.menu.leaveHint}
@@ -454,6 +462,11 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
             <AppText variant="small" testID="chat-extend-body">
               {room?.myExtend ? CHAT.extend.wantNote : CHAT.extend.body}
             </AppText>
+            {lastDay ? (
+              <AppText variant="small" testID="chat-extend-lastday">
+                {CHAT.extend.lastDayNote}
+              </AppText>
+            ) : null}
             {dialogError ? (
               <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" testID="chat-extend-error">
                 {dialogError}
@@ -511,6 +524,7 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
             testID="chat-leave"
           />
 
+          {room && if2On('safe_share') ? <SafeShareSheet visible={sheet === 'share'} partner={{ name: room.partner.name, age: null }} onClose={() => setSheet('none')} testID="chat-share" /> : null}
           {room ? (
             <ReportBlockSheet
               visible={sheet === 'safety'}
@@ -555,9 +569,9 @@ export function ChatRoomScreen({ id, api: givenApi, media: givenMedia, toastMs =
 }
 
 // 메뉴 줄 앞 아이콘 24(D43 A1 · A2 · A3, 신고 · 차단은 accent)
-function MenuItem({ label, hint, icon, danger = false, onPress, testID, last = false }: { label: string; hint: string; icon: IconName; danger?: boolean; onPress: () => void; testID: string; last?: boolean }) {
+function MenuItem({ label, hint, icon, danger = false, onPress, testID, last = false, noLine = false }: { label: string; hint: string; icon: IconName; danger?: boolean; onPress: () => void; testID: string; last?: boolean; noLine?: boolean }) {
   return (
-    <Pressable accessibilityLabel={`${label}. ${hint}`} onPress={onPress} effect="none" style={({ pressed }) => [styles.item, styles.itemRow, !last && styles.itemLine, pressed && styles.pressed]} testID={testID}>
+    <Pressable accessibilityLabel={`${label}. ${hint}`} onPress={onPress} effect="none" style={({ pressed }) => [styles.item, styles.itemRow, !last && !noLine && styles.itemLine, pressed && styles.pressed]} testID={testID}>
       <Icon name={icon} size={24} color={danger ? colors.accent : colors.text} testID={`${testID}-icon`} />
       <View style={styles.itemText}>
         <AppText variant="bodyMedium">{label}</AppText>

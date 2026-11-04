@@ -1,5 +1,5 @@
 // 사전 오픈 대기 화면(09 자리, K20 2-4 · 4-5 · P-D1 · F22 2). 추천 탭에 오늘의 추천 대신 그린다(features/prelaunch/PrelaunchGate 가 고른다).
-//  위에서 아래: 머리(출연 준비 + 프로필 원) → (미룸 공지, 한 번) → 로고 타일 · 신청 번호 + '순서를 뜻하는 번호는 아니에요.' → 상태 카드(확정 · 함께하기 어려워요 · 할 일 한 줄)
+//  위에서 아래: 머리(탑승 준비 + 프로필 원) → (미룸 공지, 한 번) → 로고 타일 · 신청 번호 + '순서를 뜻하는 번호는 아니에요.' → 상태 카드(확정 · 함께하기 어려워요 · 할 일 한 줄)
 //   → 단계표 4칸(서류 칸은 doc_verify 켜짐일 때만 5칸) → 첫 추천 날짜 · 요일 · 시각(또는 내 지역 첫 매칭 안내) → 기다리는 동안 할 일 ①~④ → '방송 아님' 고지 → (데모 모드) 장면 줄
 //  · 날짜 · 요일 · 시각 글만. 남은 날 수 · 카운트다운 · 움직이는 숫자 · 깜빡임 0(K20 2-6 · P-11). 순번 · 앞사람 수 · 진행 % · 대기 인원 0(P-10)
 //  · 매일 바뀌는 내용(오늘의 팁 · 출석) 0 — 매일 들어올 이유를 만들지 않는다. 알림 권한 묻기(NP-10)는 넣지 않는다(푸시 0, F22 · D-123)
@@ -125,9 +125,6 @@ export function PrelaunchScreen({ state, failure, onRetry, onChanged, api, flags
             <AppText variant="body" testID="prelaunch-confirmed-body">
               {when ? PRELAUNCH.confirmed(when) : PRELAUNCH.confirmedNoDay}
             </AppText>
-            <AppText variant="caption" testID="prelaunch-confirmed-notice">
-              {PRELAUNCH.notice}
-            </AppText>
           </Card>
         ) : null}
 
@@ -181,12 +178,6 @@ export function PrelaunchScreen({ state, failure, onRetry, onChanged, api, flags
               <TaskRow key={t} task={t} onLink={() => setSheet(true)} onAvoid={() => openSettingsPage(router, 'avoid')} />
             ))}
           </View>
-        ) : null}
-
-        {!confirmed ? (
-          <AppText variant="caption" testID="prelaunch-notice">
-            {PRELAUNCH.notice}
-          </AppText>
         ) : null}
 
         {demoBar}

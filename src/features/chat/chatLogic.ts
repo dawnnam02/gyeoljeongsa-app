@@ -74,12 +74,14 @@ export function purgeAtOf(room: RoomTimes): number {
   return (room.closedAt ?? room.closesAt) + PURGE_DAYS * DAY;
 }
 
+// 마지막 날인가: 닫는 날(한국 날짜)이 오늘이고 닫는 시각이 18:00 정각일 때만(다른 시각이면 날짜 글로 — 틀린 시각을 말하지 않는다)
+export function isLastDay(closesAt: number, now: number): boolean {
+  return kstDayNo(closesAt) === kstDayNo(now) && kst(closesAt).getUTCHours() === 18 && kst(closesAt).getUTCMinutes() === 0;
+}
+
 // 방 위 안내 한 줄(재촉 0): 열림 = '…까지 열려 있어요.' · 마지막 날 = '오늘 오후 6시까지 열려 있어요.'
 export function openLine(closesAt: number, now: number): string {
-  if (kstDayNo(closesAt) === kstDayNo(now)) {
-    const h = kst(closesAt).getUTCHours();
-    if (h === 18 && kst(closesAt).getUTCMinutes() === 0) return CHAT.room.lastDay;
-  }
+  if (isLastDay(closesAt, now)) return CHAT.room.lastDay;
   return CHAT.room.openUntil(whenText(closesAt));
 }
 

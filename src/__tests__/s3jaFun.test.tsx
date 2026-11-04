@@ -350,10 +350,17 @@ describe('라이브러리 원본: 타입 12 · 짐 싸기 7 · 여행지 12 · �
 
 describe('IF-TYPE 내 여행 타입 화면 — 짐 싸기 → 엽서 → 뒷면', () => {
   const ALL = ['thermos', 'paper_map', 'umbrella', 'postcard', 'notebook', 'plant', 'stamp_book'];
-  test('짐을 아직 안 쌌으면 짐 싸기부터(엽서 0) · 문항 7 · 답할 때마다 가방에 하나 · 진행 숫자 0 · [나중에 하기]는 뒤로', async () => {
+  test('엽서 먼저(QF2 Q2-11): 짐을 아직 안 쌌어도 소품 없는 엽서가 바로 나오고 [엽서 꾸미기]를 눌러야 짐 싸기 · 문항 7 · 답할 때마다 가방에 하나 · 진행 숫자 0 · [나중에 하기]는 엽서로 돌아감', async () => {
     const notes = createDeviceNotes();
     const tree = keep(await mount(<TypeCardScreen source={{ mine: async () => 'tt-07' }} notes={notes} />));
     await wait();
+    expect(has(tree, 'type-quiz')).toBe(false);
+    expect(has(tree, 'type-postcard')).toBe(true);
+    expect(textOf(tree, 'type-decorate-hint')).toBe(tx('TYPE_CARD.decorate.hint'));
+    expect(must(tree, 'type-decorate').props.label).toBe(tx('TYPE_CARD.decorate.open'));
+    expect(tree.root.findAll((n) => typeof n.props.testID === 'string' && /^type-postcard-item-/.test(n.props.testID))).toHaveLength(0); // 소품 0
+    expect(notes.get().typeBag).toEqual([]); // 엽서를 본다고 짐이 정해지지 않는다
+    await press(tree, 'type-decorate');
     expect(has(tree, 'type-quiz')).toBe(true);
     expect(has(tree, 'type-postcard')).toBe(false);
     expect(textOf(tree, 'type-quiz-intro')).toBe(tx('TYPE_CARD.quiz.intro'));
@@ -372,8 +379,10 @@ describe('IF-TYPE 내 여행 타입 화면 — 짐 싸기 → 엽서 → 뒷면'
     expect(has(tree, 'type-postcard')).toBe(true);
     const later = keep(await mount(<TypeCardScreen source={{ mine: async () => 'tt-07' }} notes={createDeviceNotes()} />));
     await wait();
+    await press(later, 'type-decorate');
     await press(later, 'type-quiz-later');
-    expect(mockRouter.back).toHaveBeenCalled();
+    expect(has(later, 'type-quiz')).toBe(false);
+    expect(has(later, 'type-postcard')).toBe(true); // 나중에 하기 = 엽서로 돌아감
   });
 
   test('엽서 앞: 타입 소재 하나 + 고른 짐 일곱 · 이름 · 앞면 한 줄 · 읽기 이름에 한 줄과 소품 / 뒷면: 설명 세 줄 · 노선도 두 역(이름 + 까닭) · 끝줄 · 대화 팁 0', async () => {

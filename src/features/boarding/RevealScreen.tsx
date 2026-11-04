@@ -14,6 +14,7 @@ import { Button } from '@/components/Button';
 import { Illustration } from '@/components/Illustration';
 import { Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { handOff } from '@/features/chat/openerPath';
 import { PhotoBox } from '@/features/recs/PhotoBox';
 import { regionText } from '@/features/recs/recsLogic';
 import { CoverTurn, Fade, MaskLine, scene2, Wipe } from '@/motion';
@@ -25,6 +26,7 @@ import { ArriveView } from './ArriveView';
 import { arriveWhen } from './boardingLogic';
 import { hrefOf } from './BoardingScreen';
 import { defaultOpenedRounds, useOpenedRounds, type OpenedRounds } from './openedRounds';
+import { OpenerEntry, type OpenerEntryDeps } from './OpenerEntry';
 
 // 사진: get_weekly_match 에는 사진 id 가 없어(0032) 만난 분의 얼굴 사진 id 를 api.facePhoto(get_candidate_profile)로 따로 얻는다
 export type RevealDeps = { api: Pick<BoardingApi, 'load'> & Partial<Pick<BoardingApi, 'facePhoto'>>; photoUrl: (photoId: string) => Promise<string | null>; opened?: OpenedRounds };
@@ -32,7 +34,8 @@ export type RevealDeps = { api: Pick<BoardingApi, 'load'> & Partial<Pick<Boardin
 const PHOTO = 240;
 const R = scene2.reveal;
 
-export function RevealScreen({ deps }: { deps: RevealDeps }) {
+//  opener(QF2 Q2-02): 첫마디 길 입구([대화 시작하기] 위 글자 단추 → 이야깃거리 시트). 없으면(시험 · 스위치 꺼짐) 입구 0
+export function RevealScreen({ deps, opener }: { deps: RevealDeps; opener?: OpenerEntryDeps }) {
   const router = useRouter();
   const [load, setLoad] = useState<BoardingLoad | null>(null);
   const [uri, setUri] = useState<string | null>(null);
@@ -111,6 +114,18 @@ export function RevealScreen({ deps }: { deps: RevealDeps }) {
             </AppText>
           </Wipe>
           <View style={styles.actions}>
+            {result.chatId && opener ? (
+              <Fade visible delay={play ? R.ctaDelay : 0} duration={play ? R.cta : 0} name="edOut">
+                <OpenerEntry
+                  roomId={result.chatId}
+                  deps={opener}
+                  onPick={(text) => {
+                    handOff({ roomId: String(result.chatId), draft: text }); // 주소가 아니라 앱 안 메모리로 — 입력창에 넣기만(바로 보내지 않음)
+                    router.push(hrefOf(`/chat/${result.chatId}`));
+                  }}
+                />
+              </Fade>
+            ) : null}
             {result.chatId ? (
               <Fade visible delay={play ? R.ctaDelay : 0} duration={play ? R.cta : 0} name="edOut">
                 <Button label={REVEAL.chat} onPress={() => router.push(hrefOf(`/chat/${result.chatId}`))} testID="reveal-chat" />

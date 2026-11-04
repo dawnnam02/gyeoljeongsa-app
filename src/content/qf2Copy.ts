@@ -1,0 +1,58 @@
+// QF2-B2(D-240 · 11-04) 새 글 — 마케팅/FA1/QF2_글표.md 를 옮긴 것. 원본은 마케팅/카피.md 14-9 표(scripts/check-copy.mjs 그룹 QF2 가 한 글자씩 대조).
+// 이 파일은 다른 파일을 가져오지 않는다(Node 가 바로 읽는다). {…} 자리는 함수 인자로 받는다.
+//  · SAJU.* · MILEAGE.* 새 글은 카피 24-17-1 표에서 if5Copy.ts 로 생성된다(여기에 없음)
+//  · 점수 · 서열 · 재촉 · 마음 표현 낱말 0 · 느낌표 0
+
+// ── 첫마디 길(Q2-02 · Q2-08) ──────────────────────────────────────────────
+export const OPENER_PATH = {
+  entry: '무슨 말부터 할지 같이 볼까요', // 공개 순간 T3 입구 글자 단추(방이 열려 있고 이야깃거리가 있을 때만)
+  carry: '대화방 입력창에 넣어 둘게요. 바로 보내지는 않아요.', // 칸을 눌렀을 때 안내(자동 전송 0)
+} as const;
+
+export const PROMPT_START = {
+  btn: '이 이야기로 시작하기', // 상대 프로필 질문 카드 안 글자 단추
+  a11y: (질문: string) => `‘${질문}’ 이야기로 대화 시작하기`,
+  failed: '대화방으로 가지 못했어요. 다시 눌러 주세요.',
+} as const;
+
+export const FIRST_FROM_CARD = {
+  chipA: (답: string) => `‘${답}’ 이야기를 조금 더 들려주실래요?`, // 방 해시로 A · B 번갈아
+  chipB: (답: string) => `프로필에 쓰신 ‘${답}’, 그 이야기를 들려주실래요?`,
+  chipA11y: (칩: string) => `${칩}, 입력창에 넣기`,
+  band: (질문: string) => `‘${질문}’ 이야기로 시작해요`, // 내 화면에만 보이는 확인 띠
+  bandA11y: (질문: string) => `내 화면에만 보이는 표시예요. ‘${질문}’ 카드에서 시작해요.`,
+} as const;
+
+// ── 알림 권한 안내 시트 버튼(사주 아침 알림 켜기 · 카피 12장 NOTIFY.primeAllow · primeLater · openSettings 의 확정 글) ────────────────
+export const NOTIFY_PRIME = {
+  allow: '알림 받기',
+  later: '나중에',
+  openSettings: '설정 열기',
+} as const;
+
+// ── 크레딧 · 마일리지 구분(Q2-10e) ───────────────────────────────────────────
+export const ACCOUNT = {
+  noSwap: '크레딧과 마일리지는 서로 바꿀 수 없어요.', // 두 화면 맨 아래 같은 한 줄
+} as const;
+
+export const SETTINGS = {
+  group: {
+    boarding: '탑승권과 크레딧', // 설정 목록: 크레딧 줄 위 그룹 제목
+    saju: '사주 마당과 마일리지', // 마일리지 줄 위 그룹 제목
+  },
+} as const;
+
+// ── 사진 슬롯 예시(Q2-10f) — 그림 자산이 없어 글로만 그린다(아이콘 check · decline 과 함께) ─────────────
+export const PHOTOS = {
+  example: {
+    open: '예시 보기',
+    face: { title: '얼굴 정면 사진 예시', good: '얼굴이 또렷한 정면 사진', avoid: '선글라스나 모자로 얼굴이 가려진 사진' },
+    full: { title: '전신 사진 예시', good: '머리부터 발끝까지 보이는 사진', avoid: '다른 분 얼굴이 함께 나온 사진' },
+    free: { title: '자유 사진 예시', good: '일상이 담긴 최근 사진', avoid: '연락처나 광고가 보이는 사진' },
+    goodLabel: '이렇게 올려 주세요',
+    avoidLabel: '이런 사진은 피해 주세요',
+  },
+  preview: {
+    open: '짝에게 보이는 모습 보기',
+  },
+} as const;

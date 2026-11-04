@@ -398,6 +398,7 @@ export const CHAT_V6: Readonly<Record<string, string>> = {
   'CHAT.UI.change': '바꾸기',
   'CHAT.UI.nextTopic': '다음 이야기 · {섹션}',
   'CHAT.UI.now': '지금 이야기',
+  'CHAT.UI.progressA11y': '설문 진행 상황, 지금은 {섹션}', // QF2 Q2-10a: 진행 막대 읽기 이름(숫자 0)
   'CHAT.UI.editHint': '지난 답은 말풍선을 눌러 언제든 고칠 수 있어요.',
   'CHAT.UI.stopped': '{월}월 {일}일 · 여기서 멈췄어요',
   'CHAT.UI.multiFull': '{n}개를 모두 골랐어요. 바꾸려면 하나를 빼 주세요.',

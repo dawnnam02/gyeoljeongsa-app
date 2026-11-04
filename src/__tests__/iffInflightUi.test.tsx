@@ -140,10 +140,10 @@ describe('IFF-04 홈 새 구성 — 상대 정보 0 · 숫자 0 · 접힌 채 �
     expect(ids(tree, /^home-B7-row-/)).toEqual(['home-B7-row-profile', 'home-B7-row-survey', 'home-B7-row-avoid']);
     expect(notes.get().homeFold).toBe(true); // 펼침은 기기에만
   });
-  test('내 여행 타입 칸(B6): 타입이 있어도 짐을 안 쌌으면 "짐을 싸면 엽서가 나와요" · 짐 일곱을 쌌으면 타입 이름 · 누르면 /type-card (3부-자)', async () => {
+  test('내 여행 타입 칸(B6): 타입이 있으면 짐을 안 쌌어도(엽서 먼저 · QF2 Q2-11) 타입 이름 · 짐을 싸도 같은 이름 · 누르면 /type-card (3부-자)', async () => {
     const a = await home('h6@email.com', 'before', {}, 'tt-04');
     expect(has(a.tree, 'home-B6-type')).toBe(true);
-    expect(textOf(a.tree, 'home-B6-type-line')).toBe(tx('TYPE_CARD.home.lineNone'));
+    expect(textOf(a.tree, 'home-B6-type-line')).toBe(tx('TYPE_CARD.home.line', { '타입 이름': '골목 산책 여행자' }));
     await act(async () => a.notes.set('typeBag', ['thermos', 'paper_map', 'umbrella', 'postcard', 'notebook', 'plant', 'stamp_book']));
     await wait();
     expect(textOf(a.tree, 'home-B6-type-line')).toBe(tx('TYPE_CARD.home.line', { '타입 이름': '골목 산책 여행자' }));

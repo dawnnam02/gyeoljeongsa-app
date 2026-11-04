@@ -200,7 +200,7 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
           <HomeBlock key={b} title={tx('HOME.me.title')} cellNames={aitOn ? [...names, ait('CONCERN.name')] : names} testID={`${testID}-B6`}>
             {cells.map((c) =>
               c === 'type' ? (
-                <HomeCell key={c} icon="suitcase" name={tx('TYPE_CARD.home.name')} line={type && packed ? tx('TYPE_CARD.home.line', { '타입 이름': type.name }) : tx('TYPE_CARD.home.lineNone')} onPress={() => nav.open('/type-card' as Href)} testID={`${testID}-B6-type`} />
+                <HomeCell key={c} icon="suitcase" name={tx('TYPE_CARD.home.name')} line={tx('TYPE_CARD.home.line', { '타입 이름': type?.name ?? '' })} onPress={() => nav.open('/type-card' as Href)} testID={`${testID}-B6-type`} />
               ) : (
                 <HomeCell key={c} icon="postmark" name={tx('PREVIEW_ME.home.name')} line={tx('PREVIEW_ME.home.line')} onPress={() => nav.open('/preview-me' as Href)} testID={`${testID}-B6-preview`} />
               ),

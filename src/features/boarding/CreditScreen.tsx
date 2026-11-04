@@ -11,8 +11,10 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Icon } from '@/components/Icon';
 import { Illustration } from '@/components/Illustration';
+import { LockNote } from '@/components/LockNote';
 import { Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ACCOUNT } from '@/content/qf2Copy';
 import { illustration } from '@/theme/illustrations';
 import { colors, size, space } from '@/theme/tokens';
 
@@ -60,6 +62,9 @@ export function CreditScreen({ deps }: { deps: { api: Pick<BoardingApi, 'ledger'
             <AppText variant="title" testID="credits-balance">
               {CREDITS.balance(load.balance)}
             </AppText>
+            <AppText variant="caption" testID="credits-identity">
+              {CREDITS.identity}
+            </AppText>
             <AppText variant="caption">{CREDITS.note}</AppText>
             {/* D-200 ③: 끝나는 날 표시 없음 — '기한 없이' 한 줄(카피 14-7 CREDITS.noExpiry) */}
             <AppText variant="caption" testID="credits-no-expiry">
@@ -95,6 +100,7 @@ export function CreditScreen({ deps }: { deps: { api: Pick<BoardingApi, 'ledger'
           <AppText variant="caption" testID="credits-refund">
             {CREDITS.refund}
           </AppText>
+          <LockNote text={ACCOUNT.noSwap} textTestID="credits-noswap" />
         </ScrollView>
       )}
     </Screen>

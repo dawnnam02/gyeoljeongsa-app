@@ -16,7 +16,7 @@ import { space } from '@/theme/tokens';
 
 import type { LaunchApi, LinkFailure } from './launchApi';
 import { normalizeApplicantNo, normalizeLinkCode } from './launchLogic';
-import { LINK_SHEET, PRELAUNCH } from './prelaunchCopy';
+import { LINK_SHEET } from './prelaunchCopy';
 
 type Props = {
   visible: boolean;
@@ -85,9 +85,6 @@ export function LinkSheet({ visible, api, onClose, onLinked, onAlready, testID =
       <Button label={LINK_SHEET.submit} onPress={submit} disabled={!normNo || !normCode} loading={busy} testID={id('submit')} />
       <AppText variant="caption" testID={id('same')}>
         {LINK_SHEET.same}
-      </AppText>
-      <AppText variant="caption" testID={id('notice')}>
-        {PRELAUNCH.notice}
       </AppText>
       <TextButton label={LINK_SHEET.close} onPress={close} disabled={busy} testID={id('close')} />
     </BottomSheet>
