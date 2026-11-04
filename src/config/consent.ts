@@ -15,7 +15,7 @@ export const CONSENT_TEXT_VERSIONS: Readonly<Record<ConsentCode, string>> = {
   CK4: "consent-2026.10.27-v2",
   CK5: "consent-2026.11.04-v1",
   CK6: "consent-2026.11.04-v1",
-  CK7: "consent-2026.10.14-v1",
+  CK7: "consent-2026.11.05-v1",
   CK8: "consent-2026.10.27-v1",
   CK9: "consent-2026.10.14-v3",
 };
@@ -42,13 +42,13 @@ export const CONSENT_TEXT_FINGERPRINTS: Readonly<Record<ConsentCode, string>> = 
   CK4: "802a2e095a09",
   CK5: "1953e0d3000f",
   CK6: "141b30953332",
-  CK7: "07b25c716338",
+  CK7: "8442d27cc555",
   CK8: "9c5d88f3e4ab",
   CK9: "2e5e24446387",
 };
 // 약관 · 처리방침: 표식 구간과 작업 표시를 걸러낸 글의 지문
 export const LEGAL_DOC_FINGERPRINTS = {
   terms: "85b7e609b4b1",
-  privacy: "f95f2b03f553",
+  privacy: "5d608b40cd87",
 } as const;
 // <fingerprints:end>

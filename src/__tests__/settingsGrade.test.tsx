@@ -185,9 +185,21 @@ describe('탈퇴 확인창 아래 줄 (v5, QP-A · 12-Q WITHDRAW.credit)', () =>
   test('구독자였던 사람도 구독 안내(NV36) · [구독 관리] 없이 크레딧 줄 하나만 있다', async () => {
     const { tree } = await open('shopsub');
     await tap(tree, 'settings-withdraw');
-    expect(textOf(tree, 'withdraw-confirm-note-text')).toBe('탈퇴하면 남은 크레딧은 더 쓸 수 없어요. 공개 전인 탑승권은 이용약관 제14조의2에 따라 처리해요.\n다시 가입해도 1년 동안은 지난 짝과 이어지지 않아요.'); // 3부-사 M8: 크레딧 줄 아래 다시 가입 줄
+    expect(textOf(tree, 'withdraw-confirm-note-text')).toBe('탈퇴하면 남은 크레딧은 더 쓸 수 없어요.\n다시 가입해도 1년 동안은 지난 짝과 이어지지 않아요.'); // 3부-사 M8: 크레딧 줄 아래 다시 가입 줄
     expect(find(tree, 'withdraw-confirm-note-action')).toBeNull();
     expect('WITHDRAW_SUB_NOTE' in shopCopy).toBe(false);
+  });
+
+  test('QF2-B5 FA3-02: 탑승권 시점에 따라 크레딧 줄이 셋 중 하나만 보인다(없음 · 마감 전 · 마감 뒤 공개 전)', async () => {
+    for (const [phase, line] of [['none', WITHDRAW.credit], ['before', WITHDRAW.creditBefore], ['after', WITHDRAW.creditAfter]] as const) {
+      const { tree, settingsDeps } = await open('plain');
+      settingsDeps.ticketPhase = async () => phase;
+      await tap(tree, 'settings-withdraw');
+      await flush();
+      expect(textOf(tree, 'withdraw-confirm-note-text')).toBe(`${line}\n${WITHDRAW.rejoinNote}`);
+      const shown = textOf(tree, 'withdraw-confirm-note-text');
+      for (const other of [WITHDRAW.creditBefore, WITHDRAW.creditAfter]) if (other !== line) expect(shown).not.toContain(other.slice(WITHDRAW.credit.length));
+    }
   });
 
   test('구독이 없으면 크레딧 줄(약관 제22조 ⑧, L17A)만 있다', async () => {

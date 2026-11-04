@@ -38,11 +38,13 @@ type Props = {
   /** IF5-F2: 탈퇴 확인창 마일리지 줄(23-13-3 · 법무 5-9 M7). 마일리지를 켜고 잔액이 있을 때만 — 없으면 줄 0 */
   mileage?: { total: number; paid: number; free: number } | null;
   onRefund?: () => void; // [환불 요청] — 고객센터 안내로
+  /** QF2-B5 FA3-02: 이번 회차 탑승권 시점 — 마감 전 / 마감 뒤 공개 전 / 탑승권 없음(못 읽어도 없음). 확인창 크레딧 줄이 시점에 맞는 하나만 보이게 */
+  ticketPhase?: () => Promise<'before' | 'after' | 'none'>;
   onCancel: () => void; // 탈퇴하지 않고 12 로
   onDone: () => Promise<void> | void; // 탈퇴 확정됨 — 부모가 로그인 정보를 지우고 01 로
 };
 
-export function WithdrawFlow({ visible, api, now, mileage, onRefund, onCancel, onDone }: Props) {
+export function WithdrawFlow({ visible, api, now, mileage, onRefund, ticketPhase, onCancel, onDone }: Props) {
   const [step, setStep] = useState<Step>('confirm');
   const [sentAt, setSentAt] = useState<number | null>(null);
   const [code, setCode] = useState('');
@@ -51,6 +53,7 @@ export function WithdrawFlow({ visible, api, now, mileage, onRefund, onCancel, o
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [tick, setTick] = useState(() => now());
+  const [phase, setPhase] = useState<'before' | 'after' | 'none'>('none');
   const alive = useRef(true);
 
   useEffect(() => {
@@ -59,6 +62,15 @@ export function WithdrawFlow({ visible, api, now, mileage, onRefund, onCancel, o
       alive.current = false;
     };
   }, []);
+
+  // 확인창이 열릴 때마다 탑승권 시점을 다시 읽는다(못 읽으면 탑승권 없음 줄)
+  useEffect(() => {
+    if (!visible || !ticketPhase) return;
+    ticketPhase().then(
+      (p) => alive.current && setPhase(p),
+      () => undefined,
+    );
+  }, [visible, ticketPhase]);
 
   // 재확인 단계가 열려 있는 동안 1초마다 남은 시간을 다시 센다
   useEffect(() => {
@@ -71,6 +83,7 @@ export function WithdrawFlow({ visible, api, now, mileage, onRefund, onCancel, o
   const expired = sentAt !== null && left === 0;
 
   const reset = () => {
+    setPhase('none'); // 다음에 열 때 옛 시점 글이 잠깐 보이지 않게
     setStep('confirm');
     setSentAt(null);
     setCode('');
@@ -145,7 +158,7 @@ export function WithdrawFlow({ visible, api, now, mileage, onRefund, onCancel, o
         body={WITHDRAW.body}
         sub={WITHDRAW.sub}
         note={{
-          text: [WITHDRAW.credit, WITHDRAW.rejoinNote, ...mileageLines(mileage)].join('\n'),
+          text: [phase === 'before' ? WITHDRAW.creditBefore : phase === 'after' ? WITHDRAW.creditAfter : WITHDRAW.credit, WITHDRAW.rejoinNote, ...mileageLines(mileage)].join('\n'),
           action: mileage && mileage.paid > 0 && onRefund ? { label: IF5_TEXT['MILEAGE.free.leave.refundBtn'], onPress: onRefund } : undefined,
         }} // 크레딧 줄 + 바로 아래 '다시 가입' 한 줄(카피.md 12-Q WITHDRAW.credit · rejoinNote(M8, 3부-사) · v5엔 구독 안내 NV36 없음, QP-A)
         confirmLabel={WITHDRAW.confirm}

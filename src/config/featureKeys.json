@@ -21,7 +21,7 @@
     { "key": "grade_pause", "group": "E", "id": "E18", "live": true },
     { "key": "sub_uprank", "group": "E", "id": "E19", "live": true },
     { "key": "region_widen", "group": "E", "id": "E22", "live": true },
-    { "key": "appearance_score", "group": "E", "id": "E23", "live": true },
+    { "key": "appearance_score", "group": "E", "id": "E23", "live": false },
 
     { "key": "survey_v2", "group": "S", "id": "S01", "live": false },
 

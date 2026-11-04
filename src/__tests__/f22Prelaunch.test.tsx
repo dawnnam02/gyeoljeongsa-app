@@ -534,13 +534,24 @@ describe('09 자리 분기(PrelaunchGate) · 대기 화면', () => {
   });
 
   test('함께하기 어려워요: 사유 글 + 정정 길 · 단계표 · 할 일 없음 · 수준 말 0', async () => {
-    for (const reason of ['under_24', 'married', 'fake', 'forged'] as const) {
+    for (const reason of ['under_24', 'married', 'fake'] as const) {
       const tree = await render(depsWith(okLoad({ review: { status: 'declined', steps: [], decline_reason: reason } })));
       expect(textOf(tree, 'prelaunch-declined-reason')).toBe(PRELAUNCH.declined[reason]);
       expect(has(tree, 'prelaunch-steps')).toBe(false);
       expect(has(tree, 'prelaunch-tasks')).toBe(false);
       expect(screenTexts(tree)).not.toMatch(/학력|연봉|소득|자산|외모|직업|수준/);
     }
+  });
+
+  test('QF2-B5 P05: 서류 인증이 꺼진 동안 받은 forged 사유는 서류 말 없이 일반 글(declinedUnknown)로 · 켜지면 원래 글', async () => {
+    const forged = okLoad({ review: { status: 'declined', steps: [], decline_reason: 'forged' } });
+    const off = await render(depsWith(forged));
+    expect(textOf(off, 'prelaunch-declined-reason')).toBe(PRELAUNCH.declinedUnknown);
+    expect(has(off, 'prelaunch-declined-next')).toBe(false);
+    expect(screenTexts(off)).not.toContain('서류');
+    const on = await render(depsWith(forged, { flags: flagsOn({ avoid_org: true, doc_verify: true }) }));
+    expect(textOf(on, 'prelaunch-declined-reason')).toBe(PRELAUNCH.declined.forged);
+    expect(textOf(on, 'prelaunch-declined-next')).toBe(PRELAUNCH.declinedNext.forged);
   });
 
   test('미룸 공지: 서버 미룸 횟수가 본 것보다 늘면 맨 위 카드 한 번(새 날짜 · 고마워요 · 사과 말 0) → [확인했어요] 뒤 사라지고 날짜 줄은 새 날짜', async () => {
@@ -777,7 +788,7 @@ describe('데모 모의 서버의 기능 스위치(D-134): get_feature_flags 가
 
   test('v4off 장면은 live 처음값(E 7 · review_required · prelaunch 켜짐, 새 기능 꺼짐) · 로그인 없으면 못 읽음(live 값)', async () => {
     const off = await createFeatureFlagsApi(await signedIn('v4off@email.com')).load();
-    expect(FEATURE_KEYS.filter((k) => off.on[k])).toEqual(['grade_engine', 'grade_view', 'grade_badge', 'grade_pause', 'sub_uprank', 'region_widen', 'appearance_score', 'review_required', 'prelaunch']);
+    expect(FEATURE_KEYS.filter((k) => off.on[k])).toEqual(['grade_engine', 'grade_view', 'grade_badge', 'grade_pause', 'sub_uprank', 'region_widen', 'review_required', 'prelaunch']);
     const anon = await createFeatureFlagsApi(createDemoClient(createDemoBackend({ now: () => T0 }))).load();
     expect(anon.loaded).toBe(false);
   });

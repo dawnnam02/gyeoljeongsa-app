@@ -8,7 +8,7 @@
 //  · 서버와 다른 점 하나: get_ticket_state 에 now(장면 시각)를 더 보낸다 — 시계와 상관없이 같은 화면(서버 0030 에는 없는 키, 앱은 있으면 쓴다)
 //  장면(이메일 앞부분 또는 데모 줄):
 //   (기본) onsale 판매 중 · 탑승권 없음 · 크레딧 0     boardbefore 판매 전     boardcredit 판매 중 · 크레딧 1장(지난 회차 짝이 맞지 않아 돌려받음)
-//   boardfull 내 성별 좌석이 모두 참     boardon 탑승 완료(기다림)     boardmatch 수요일 18:00 공개 — 만난 분 있음     boardnone 공개 — 완벽한 사람을 찾지 못함 + 크레딧
+//   boardfull 내 성별 좌석이 모두 참     boardon 탑승 완료(기다림)     boardmatch 수요일 18:00 공개 — 만난 분 있음     boardnone 공개 — 맞는 분을 찾지 못함 + 크레딧
 //   boardclosed 판매가 끝났고 탑승권 없음     boardpolitics 정치 성향 문항이 비어 살 수 없음(profile_incomplete)     boardlate 탑승 완료 · 판매 마감 뒤(취소 없음)
 //   boardoncredit 크레딧으로 탑승 완료(취소하면 크레딧 1장 돌려받음)
 //  · 회차 1 = 2026-12-23(수) 18:00 KST 첫 매칭(T-24). 크레딧 장면은 회차 2(12-30). 데모의 '지금'은 장면마다 정해 둔 시각

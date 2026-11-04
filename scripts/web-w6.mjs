@@ -4,7 +4,7 @@
 //  2 T1 판매 중: 상태 카드 · 탑승권 한 장(회차 · 출발 · 만나는 때 '12월 23일 수요일 오후 6시') · 재촉 · 카운트다운 · 남은 좌석 0
 //  3 사기: [탑승권 사기] → 시트(회차 · 매칭 시각 · 26,900원 · 규칙 3줄 · 데모 결제 안내) → [결제하기] → 토스트 · 로고 타일 찍힘 · '3일 뒤에 만나요'(T2 기다림) · 할 일
 //  4 공개(데모 줄 '수요일 18:00 공개'): [만난 분 보기] → T3(회차 · 제목 · 사진 · 이름 줄 · [대화 시작하기] · [프로필 자세히 보기]) → 10 상대 상세
-//  5 찾지 못함 → '완벽한 사람을 찾지 못했어요' + 크레딧 → T5(잔액 1장 · 내역 · 스토어 환불 한 줄) · 좌석 모두 참 · 판매 전 · 정치 문항 빈칸
+//  5 찾지 못함 → '이번 주에는 맞는 분을 찾지 못했어요' + 크레딧 → T5(잔액 1장 · 내역 · 스토어 환불 한 줄) · 좌석 모두 참 · 판매 전 · 정치 문항 빈칸
 //  6 동작 줄이기: 공개 순간에 이동(transform) 0
 //  7 사전 오픈 → 탑승권: 확정 전에는 탑승권 탭에 대기 화면(첫 매칭 '12월 23일 수요일 오후 6시') → 확정 장면이면 탑승권(판매 전)
 //  (IF2-F 10-28) 1 ~ 6 가입 이메일 w6plainif2off = 기내 서비스 스위치(그룹 IF2)를 끈 데모 장면 — 지금 T1 · T2(새 홈 전, live 처음값과 같은 모습)를 본다. 새 홈은 web-if2
@@ -162,7 +162,7 @@ try {
 
   // ═══ 5. 찾지 못함 · 크레딧 · 다른 장면 ═══
   await scene('none');
-  check('5', `'완벽한 사람을 찾지 못했어요' + 크레딧으로 돌려드림 + [크레딧 보기] · 이유 줄 없음(카피 14-5-2)`, (await visText('boarding-status-title')) === '완벽한 사람을 찾지 못했어요' && (await visText('boarding-status-body')).startsWith('탑승권 1장을 크레딧으로 돌려드렸어요.') && !(await vis('boarding-nomatch-reason')) && (await vis('boarding-open-credits')), await visText('boarding-status-body'));
+  check('5', `'이번 주에는 맞는 분을 찾지 못했어요' + 크레딧으로 돌려드림 + [크레딧 보기] · 이유 줄 없음(카피 14-5-2)`, (await visText('boarding-status-title')) === '이번 주에는 맞는 분을 찾지 못했어요' && (await visText('boarding-status-body')).startsWith('탑승권 1장을 크레딧으로 돌려드렸어요.') && !(await vis('boarding-nomatch-reason')) && (await vis('boarding-open-credits')), await visText('boarding-status-body'));
   await shot('T1_찾지못함');
   await tap('boarding-open-credits');
   check('5', `T5 크레딧: 잔액 '1장' · 내역 '짝을 찾지 못해 돌려받음 · +1장'(카피 14-5-2) · 스토어 환불 한 줄`, (await wait(`location.pathname === '/credits' && !!${visQ('credits-balance')}`, 6000)) && (await visText('credits-balance')) === '1장' && (await visText('credits-row-0')).includes('짝을 찾지 못해 돌려받음') && (await visText('credits-row-0-delta')) === '+1장' && (await vis('credits-refund')), await visText('credits-row-0'));

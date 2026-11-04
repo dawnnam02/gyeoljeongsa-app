@@ -28,6 +28,7 @@ import type { GradeApi } from '@/lib/gradeApi';
 import type { SettingsApi } from '@/lib/settingsApi';
 import { gradeApi, settingsApi } from '@/lib/services';
 import { resetGradeSettings } from '@/store/gradeSettingsStore';
+import { dismissAllNow } from '@/navigation/go';
 import { resolveDest } from '@/navigation/resolve';
 import { useSignupStore } from '@/store';
 import { forgetMyFace } from '@/store/myFaceStore';
@@ -65,6 +66,7 @@ export type SettingsDeps = SupportDeps & {
   pushStatus: () => Promise<PushStatus>; // 지금 푸시 권한(묻지 않음)
   requestPush: () => Promise<PushStatus>; // 시스템 권한 창(서비스 알림을 켤 때, 안내 글을 먼저 보인 뒤)
   contact?: () => ContactPorts; // 12-5 지인 차단 기기 연결(주소록 · 해시, 3부-바). 없으면 지인 차단 줄은 '준비 중'
+  ticketPhase?: () => Promise<'before' | 'after' | 'none'>; // QF2-B5 FA3-02: 탈퇴 확인창 크레딧 줄 — 이번 회차 탑승권이 마감 전 / 마감 뒤 공개 전 / 없음
   boarded?: () => Promise<boolean>; // 3부-아: 판매 마감 전 · 이번 회차 탑승권이 있나(동의 관리 CK4 · CK15 끄기 확인창 한 줄). 없으면 그 줄 없음
   mileage?: () => boolean; // IF5-F2: 12-1 '마일리지' 줄(스위치 mileage 가 켜졌을 때만). 없으면 줄 없음
   sajuYard?: () => boolean; // IF5-F1: 12-1 '사주 마당' 줄(스위치 saju_yard 가 켜졌을 때만). 없으면 줄 없음
@@ -86,6 +88,7 @@ export function defaultSettingsDeps(): SettingsDeps {
     requestPush: requestPushPermission,
     contact: contactPorts, // 누를 때 처음 만든다(기기 모듈을 미리 읽지 않음)
     boarded: boardedNow,
+    ticketPhase: ticketPhaseNow,
     ck17: ck17Now,
     morning: morningNow,
     skyBook: skyBookNow,
@@ -121,6 +124,18 @@ async function boardedNow(): Promise<boolean> {
   /* eslint-enable @typescript-eslint/no-require-imports */
   const r = await boardingServices().api.load();
   return r.ok && canCancel(r.state);
+}
+
+// 탈퇴 확인창 크레딧 줄(법무 FA3-02): 이번 회차 탑승권이 판매 마감 전인지, 마감 뒤 공개 전인지(서버가 준 판매 상태로 가른다). 못 읽으면 없음
+async function ticketPhaseNow(): Promise<'before' | 'after' | 'none'> {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const { boardingServices } = require('@/features/boarding/boardingServices') as typeof import('@/features/boarding/boardingServices');
+  const { canCancel } = require('@/features/boarding/boardingLogic') as typeof import('@/features/boarding/boardingLogic');
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  const r = await boardingServices().api.load();
+  if (!r.ok || !r.state.ticket || !r.state.round || r.state.ticket.roundNo !== r.state.round.no) return 'none';
+  if (canCancel(r.state)) return 'before';
+  return r.state.phase === 'revealed' ? 'none' : 'after';
 }
 
 // D-238: 스위치 한 키의 지금 값(앱 공용 저장소). 처음값 꺼짐 — 셀피 · 서류 입구는 실서버 · 데모 모두 안 보인다
@@ -290,7 +305,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
     await forgetSajuDevice(); // IF5-F1: 내 시각 · 곳(이 휴대폰에만 둔 값)도 지운다(IFF5-31)
     const target = resolveDest('01');
     if (target.kind === 'href') {
-      if (router.canDismiss()) router.dismissAll();
+      dismissAllNow(router); // 웹에서는 걷어 내기의 뒤늦은 popstate 가 옛 화면을 되살리지 않게(navigation/go.ts, Q2-35)
       router.replace(target.href);
     }
   };
@@ -416,6 +431,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
         api={deps.api}
         now={deps.now}
         mileage={withdrawOpen ? withdrawMileage : null}
+        ticketPhase={deps.ticketPhase}
         onRefund={() => {
           setWithdrawOpen(false);
           setPage('support'); // [환불 요청] — 고객센터 안내로(P0: 결제 · 환불 호출 0)

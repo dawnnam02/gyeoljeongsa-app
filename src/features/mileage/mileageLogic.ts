@@ -56,10 +56,11 @@ export function usedKey(feature: string | null): If5Key | null {
   }
 }
 /** 마일리지 가격표(QF2 Q2-10d): 서버 차감표(costs)에서 '쓰는 흐름 순서' 세 줄을 만든다 — AI 맞춤 풀이 · 사주 이야기 한 번 · 날짜 설명.
+ *  QF2-B5(FA3-12): 시험판 기능이 앱에 있을 때(ait = aitEnabled)만 두 줄 더 — 연애 고민 정리 한 번 말할 때(counsel_turn) · 문장 다듬기(polish_short · polish_long, 값이 다르면 '부터').
  *  값은 서버 응답 그대로(앱에 마일리지 수 0). 풀이처럼 기능마다 값이 다르면 가장 작은 값에 '부터'(from). 서버가 안 준 기능의 줄은 빠진다. 인기 · 추천 · 할인 표시 0 */
-export type PriceRow = { key: 'read' | 'talk' | 'pick'; cost: number; from: boolean };
+export type PriceRow = { key: 'read' | 'talk' | 'pick' | 'concern' | 'polish'; cost: number; from: boolean };
 const READ_FEATURES = ['saju_reading', 'daewoon', 'sinyeon', 'compat', 'saju_full'];
-export function priceRows(costs: readonly Pick<CostInfo, 'feature' | 'cost'>[]): PriceRow[] {
+export function priceRows(costs: readonly Pick<CostInfo, 'feature' | 'cost'>[], ait = false): PriceRow[] {
   const of = (features: string[]) => costs.filter((c) => features.includes(c.feature)).map((c) => c.cost);
   const rows: PriceRow[] = [];
   const read = of(READ_FEATURES);
@@ -68,6 +69,12 @@ export function priceRows(costs: readonly Pick<CostInfo, 'feature' | 'cost'>[]):
   if (talk.length > 0) rows.push({ key: 'talk', cost: talk[0], from: false });
   const pick = of(['taekil_explain']);
   if (pick.length > 0) rows.push({ key: 'pick', cost: pick[0], from: false });
+  if (ait) {
+    const concern = of(['counsel_turn']);
+    if (concern.length > 0) rows.push({ key: 'concern', cost: concern[0], from: false });
+    const polish = of(['polish_short', 'polish_long']);
+    if (polish.length > 0) rows.push({ key: 'polish', cost: Math.min(...polish), from: new Set(polish).size > 1 });
+  }
   return rows;
 }
 

@@ -289,6 +289,35 @@ describe('Q2-10d 마일리지 가격표', () => {
     expect(priceRows([{ feature: 'saju_reading', cost: 800 }])).toEqual([{ key: 'read', cost: 800, from: false }]);
     expect(priceRows([])).toEqual([]);
   });
+
+  test('QF2-B5 FA3-12: 시험판 기능이 있을 때만 연애 고민 정리 · 문장 다듬기 두 줄이 더해진다(값은 서버 응답, 다듬기는 길이에 따라 다르면 "부터")', () => {
+    const costs = [
+      { feature: 'saju_reading', cost: 800 },
+      { feature: 'saju_chat_turn', cost: 200 },
+      { feature: 'taekil_explain', cost: 30 },
+      { feature: 'counsel_turn', cost: 250 },
+      { feature: 'polish_short', cost: 10 },
+      { feature: 'polish_long', cost: 300 },
+    ];
+    expect(priceRows(costs).map((r) => r.key)).toEqual(['read', 'talk', 'pick']);
+    expect(priceRows(costs, true)).toEqual([
+      { key: 'read', cost: 800, from: false },
+      { key: 'talk', cost: 200, from: false },
+      { key: 'pick', cost: 30, from: false },
+      { key: 'concern', cost: 250, from: false },
+      { key: 'polish', cost: 10, from: true },
+    ]);
+    expect(priceRows([{ feature: 'polish_short', cost: 10 }], true)).toEqual([{ key: 'polish', cost: 10, from: false }]);
+    expect(priceRows([{ feature: 'counsel_turn', cost: 250 }])).toEqual([]);
+  });
+
+  test('쓰는 곳 한 줄은 시험판 기능이 있을 때만 다섯 곳을 말하고, 줄 이름은 내역 낱말과 같다', () => {
+    expect(IF5_TEXT['MILEAGE.shop.lead']).toBe('AI 맞춤 풀이 · 사주 이야기 · 날짜 설명에 써요. 탑승권에는 쓰지 않아요.');
+    expect(IF5_TEXT['MILEAGE.shop.leadAit']).toBe('AI 맞춤 풀이 · 사주 이야기 · 날짜 설명 · 연애 고민 정리 · 문장 다듬기에 써요. 탑승권에는 쓰지 않아요.');
+    expect(IF5_TEXT['MILEAGE.table.polish']).toBe(IF5_TEXT['MILEAGE.log.use.polish']);
+    expect(IF5_TEXT['MILEAGE.table.concern']).toContain(IF5_TEXT['MILEAGE.log.use.concern']);
+    expect(`${IF5_TEXT['MILEAGE.shop.lead']}${IF5_TEXT['MILEAGE.shop.leadAit']}`).not.toMatch(/[0-9!]/);
+  });
 });
 
 // ── 6. 정적 점검 ──────────────────────────────────────────────────────────

@@ -83,7 +83,7 @@ describe('스위치 키 한 목록(K19 2-5) · 앱이 87키를 읽는다', () =>
   });
 
   test('live 값: 구현된 기능(E) 7개 + review_required · prelaunch(켜짐이 닫힌 쪽, D-126 · K20 1-3)만 켜짐 · 팀장 판단 전 키 0(D-122)', () => {
-    expect(FEATURE_KEYS.filter(liveDefault)).toEqual(['grade_engine', 'grade_view', 'grade_badge', 'grade_pause', 'sub_uprank', 'region_widen', 'appearance_score', 'review_required', 'prelaunch']);
+    expect(FEATURE_KEYS.filter(liveDefault)).toEqual(['grade_engine', 'grade_view', 'grade_badge', 'grade_pause', 'sub_uprank', 'region_widen', 'review_required', 'prelaunch']);
     expect(FEATURE_KEYS.filter(isPendingKey)).toEqual([]);
     expect(isFeatureKey('waitlist')).toBe(false); // review_required 로 이름이 정해짐(D-126)
     expect(isFeatureKey('featured_pick')).toBe(true);

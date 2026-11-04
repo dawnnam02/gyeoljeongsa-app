@@ -164,8 +164,8 @@ describe('IF5-F1 ⑤ 스위치 20키 (기획/IF5_스위치.md — 서버 이름 
 });
 
 describe('IF5-F1 ⑦ 글 사본 틀', () => {
-  test('351키 · 값 틀 자리 채우기 · 조사', () => {
-    expect(Object.keys(IF5_TEXT)).toHaveLength(351); // 337 + QF2-B2 새 키 45(24-17-1) - 태어난 곳 31(Q2-31)
+  test('354키 · 값 틀 자리 채우기 · 조사', () => {
+    expect(Object.keys(IF5_TEXT)).toHaveLength(354); // 337 + QF2-B2 새 키 45(24-17-1) + QF2-B5 새 키 3 - 태어난 곳 31(Q2-31)
     expect(t5('SAJU.cal.month', { 년: 2027, 월: 3 })).toBe('2027년 3월');
     expect(t5('SAJU.guide.help.title', { 낱말: '다섯 기운' })).toBe('다섯 기운 이 뭐예요?');
   });

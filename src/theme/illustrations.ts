@@ -11,7 +11,7 @@ export type IllustrationScene =
   | 'waiting' // T2 기다림(탑승 완료 · 비행 중) — features/boarding 'boarded'
   | 'ticket' // T1 탑승권(판매 중) — features/boarding 'on_sale'
   | 'reveal' // T3 공개 순간 · 만난 분 있음 — features/boarding 'matched' · RevealScreen
-  | 'noMatch' // 크레딧 · 완벽한 사람을 찾지 못함 — features/boarding 'no_match' · RevealScreen
+  | 'noMatch' // 크레딧 · 맞는 분을 찾지 못함 — features/boarding 'no_match' · RevealScreen
   | 'error' // 오류 · 인터넷 끊김 — components/StateArt OfflineArt · features/boarding 불러오기 실패
   | 'preopen' // 사전 오픈 대기(첫 회차 판매 전) — features/boarding 'before_sale'
   | 'chatEmpty' // 채팅 빈 목록 — features/chat ChatListScreen

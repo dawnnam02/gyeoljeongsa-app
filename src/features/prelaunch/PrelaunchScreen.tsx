@@ -64,6 +64,8 @@ export function PrelaunchScreen({ state, failure, onRetry, onChanged, api, flags
   const declined = status === 'declined';
   const when = state && showsLaunchDay(state) ? firstRecWhen(state) : null; // 공개 뒤(review · region_wait)에는 지난 날짜라 쓰지 않는다
   const docsOn = isOn('doc_verify'); // D-238: 서류 인증이 꺼지면 서류 칸 · 서류 보완 글이 보이지 않는다(서버 응답은 5칸 그대로)
+  // FA3-06(P05): 'forged'(서류가 사실과 다름)는 서류를 받는 동안에만 서버가 보낼 수 있다 — 서류 인증이 꺼진 동안 받으면 서류 말이 없는 일반 글로 보인다
+  const declineKey = review?.declineReason === 'forged' && !docsOn ? null : (review?.declineReason ?? null);
   const steps = review ? review.steps.filter((s) => s.step !== 'docs' || docsOn) : [];
   const fixKey = review?.fixReason && (docsOn || !review.fixReason.startsWith('doc_')) ? review.fixReason : null;
   const fixLine = fixKey ? PRELAUNCH.fixReason[fixKey] : null; // S18 review.fix_reason — 보완 이유 한 줄
@@ -132,11 +134,11 @@ export function PrelaunchScreen({ state, failure, onRetry, onChanged, api, flags
           <Card style={styles.gap8} testID="prelaunch-declined">
             <AppText variant="title">{PRELAUNCH.declinedTitle}</AppText>
             <AppText variant="body" testID="prelaunch-declined-reason">
-              {review.declineReason ? PRELAUNCH.declined[review.declineReason] : PRELAUNCH.declinedUnknown}
+              {declineKey ? PRELAUNCH.declined[declineKey] : PRELAUNCH.declinedUnknown}
             </AppText>
-            {review.declineReason && PRELAUNCH.declinedNext[review.declineReason] ? (
+            {declineKey && PRELAUNCH.declinedNext[declineKey] ? (
               <AppText variant="caption" tone="text" testID="prelaunch-declined-next">
-                {PRELAUNCH.declinedNext[review.declineReason]}
+                {PRELAUNCH.declinedNext[declineKey]}
               </AppText>
             ) : null}
           </Card>

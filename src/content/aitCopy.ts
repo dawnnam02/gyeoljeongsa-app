@@ -139,7 +139,7 @@ export const AIT_TEXT = {
   'CONCERN_CARD.soft.l1': '많이 힘드시군요. 말씀해 주셔서 고마워요.',
   'AIT_SET.row': '시험용 AI 코드',
   'AIT_SET.rowLine': '코드를 넣으면 AI가 새로 쓴 글로 보여 줘요.',
-  'AIT_SET.lead': '시험에 함께하는 분께만 드린 코드예요. 코드를 넣으면 AI 기능이 새로 쓴 글로 보이고, 코드가 없으면 미리 쓴 글이에요.',
+  'AIT_SET.lead': '시험에 함께하는 분께만 드린 코드예요. 코드를 넣으면 AI 기능이 새로 쓴 글로 보여요. 코드가 없으면 미리 쓴 글이 있는 기능만 그 글로 보이고, 연애 고민 정리와 문장 다듬기는 쓸 수 없어요.',
   'AIT_SET.label': '접근 코드',
   'AIT_SET.placeholder': '받은 코드를 붙여 넣어 주세요',
   'AIT_SET.a11y.field': '접근 코드 입력, 입력한 글자는 가려져요',

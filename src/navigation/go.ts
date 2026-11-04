@@ -1,13 +1,21 @@
 // 화면 이동 보조(앞으로 · 뒤로 · 상점 쪽 열기 · 연 화면으로 돌아가기). 이동 목적지는 navigation/flow.ts · resolve.ts · stage.ts 가 정하고, 여기는 '쌓는 방법'만 정한다.
 import type { Href, useRouter } from 'expo-router';
+import { Platform } from 'react-native';
 
 type Router = ReturnType<typeof useRouter>;
 
 // 앞으로 나아가는 이동(진행 단계가 바뀐 뒤: 03 → 04 등): 지나온 화면(01 · 02 · 03)을 쌓아 두지 않고 갈아 끼운다.
 // 뒤로가기로 이미 끝낸 동의 화면 같은 곳에 돌아오지 못하게 한다.
 export function goForward(router: Router, href: Href): void {
-  if (router.canDismiss()) router.dismissAll();
+  dismissAllNow(router);
   router.replace(href);
+}
+
+// 쌓인 화면을 모두 걷어 낸다. 웹(테스트 웹 · 데모)에서는 걷어 내기(dismissAll)가 브라우저 기록을 되감는 일이라 popstate 가 *뒤늦게* 와서,
+//  바로 이어 갈아 끼운 화면(replace) 위에 옛 화면 주소를 다시 올려 버린다(Q2-35: 부하가 큰 때 AI 정리 › 내 성향 뒤 스스로 설문 01 로 되돌아옴 — 이동 기록에서 확인).
+//  기기(iOS · Android)에는 브라우저 기록이 없어 같은 순서로 바로 처리되므로 경합이 없다. 웹에서는 걷어 내지 않고 갈아 끼우기만 한다.
+export function dismissAllNow(router: Router): void {
+  if (Platform.OS !== 'web' && router.canDismiss()) router.dismissAll();
 }
 
 // 뒤로: 쌓인 화면이 있으면 한 칸 뒤로, 없으면(앱을 다시 켜서 바로 이 화면이 열린 경우) fallback 으로 갈아 끼운다.

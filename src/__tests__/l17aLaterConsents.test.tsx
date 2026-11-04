@@ -66,8 +66,11 @@ describe('글 — 동의문구 1-1 · 4-11 ~ 4-16 (gen:legal)', () => {
     expect(LEGAL_TERMS.length).toBeGreaterThan(a!.blocks.length);
   });
   test('탈퇴 크레딧 줄은 해요체 한 줄 · 약관 제22조 ⑧ 뜻(남은 크레딧 못 씀) — 카피.md 12-Q 확정 글(QPM 2장 #7)', () => {
-    expect(WITHDRAW.credit).toBe('탈퇴하면 남은 크레딧은 더 쓸 수 없어요. 공개 전인 탑승권은 이용약관 제14조의2에 따라 처리해요.');
-    expect(WITHDRAW.credit).not.toMatch(/[!]|합니다/);
+    expect(WITHDRAW.credit).toBe('탈퇴하면 남은 크레딧은 더 쓸 수 없어요.'); // QF2-B5 FA3-02: 옛 둘째 문장(조 번호만 있고 결과가 없음)을 빼고 시점별 두 줄을 따로 둔다
+    for (const line of [WITHDRAW.credit, WITHDRAW.creditBefore, WITHDRAW.creditAfter]) {
+      expect(line.startsWith(WITHDRAW.credit)).toBe(true);
+      expect(line).not.toMatch(/[!]|합니다|돌려드리지/);
+    }
   });
 });
 

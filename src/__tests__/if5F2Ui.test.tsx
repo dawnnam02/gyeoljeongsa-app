@@ -700,6 +700,33 @@ describe('IF5-QF F-04 AI 맞춤: 잔액이 모자라면 확인 시트 전에 부
   });
 });
 
+describe('QF2-B5 FA3-12 마일리지 화면: 쓰는 곳 한 줄 · 가격표는 시험판 기능이 있을 때만 다섯 곳', () => {
+  const prev = process.env.EXPO_PUBLIC_DEMO_MODE;
+  afterEach(() => {
+    if (prev === undefined) delete process.env.EXPO_PUBLIC_DEMO_MODE;
+    else process.env.EXPO_PUBLIC_DEMO_MODE = prev;
+  });
+  test('시험판이 아니면 세 곳 한 줄 · 가격표 두 줄 없음 / 시험판이면 다섯 곳 한 줄 · 가격표에 고민 정리 · 다듬기 줄(값은 서버 응답)', async () => {
+    delete process.env.EXPO_PUBLIC_DEMO_MODE;
+    const store = keep(await mount(<MileageScreen deps={mileageRig({ rounds: 1 }).deps} />));
+    await wait();
+    expect(textOf(store, 'mileage-lead')).toBe(IF5_TEXT['MILEAGE.shop.lead']);
+    expect(has(store, 'mileage-table-concern')).toBe(false);
+    expect(has(store, 'mileage-table-polish')).toBe(false);
+    process.env.EXPO_PUBLIC_DEMO_MODE = '1';
+    const test = keep(await mount(<MileageScreen deps={mileageRig({ rounds: 1 }).deps} />));
+    await wait();
+    expect(textOf(test, 'mileage-lead')).toBe(IF5_TEXT['MILEAGE.shop.leadAit']);
+    expect(has(test, 'mileage-table-concern')).toBe(true);
+    expect(has(test, 'mileage-table-polish')).toBe(true);
+    const all = allTexts(test);
+    expect(all).toContain(IF5_TEXT['MILEAGE.table.concern']);
+    expect(all).toContain(IF5_TEXT['MILEAGE.table.polish']);
+    expect(all).toContain('250 마일리지');
+    expect(all).toContain('10 마일리지부터');
+  });
+});
+
 describe('QF2-B4 L03 마일리지 내역: 더 오래된 내역 · 더 읽기 실패', () => {
   const item = (id: number, at: number) => ({ id, at: new Date(at).toISOString(), kind: 'use' as const, amount: -100, feature: 'saju_chat_turn', state: null });
   test('다음 묶음이 있으면 [더 오래된 내역] → 이어 붙고, 끝이면 단추가 사라진다', async () => {

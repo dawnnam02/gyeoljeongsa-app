@@ -17,6 +17,7 @@ import { IF5_TEXT, t5 } from '@/content/if5Copy';
 import { SUPPORT } from '@/content/copy';
 import { ACCOUNT } from '@/content/qf2Copy';
 import { LockNote } from '@/components/LockNote';
+import { aitEnabled } from '@/features/ait/aitEnabled';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { If5Icon } from '@/features/saju/If5Icon';
 import { openSettingsPage } from '@/features/settings/settingsIntent';
@@ -104,19 +105,19 @@ function Shop({ deps }: { deps: MileageDeps }) {
                 {splitLine(s.free, s.paid)}
               </AppText>
               <AppText variant="body" testID="mileage-lead">
-                {IF5_TEXT['MILEAGE.shop.lead']}
+                {IF5_TEXT[aitEnabled() ? 'MILEAGE.shop.leadAit' : 'MILEAGE.shop.lead']}
               </AppText>
               <AppText variant="caption" testID="mileage-unlimited">
                 {IF5_TEXT['MILEAGE.unlimited']}
               </AppText>
             </View>
 
-            {priceRows(s.costs).length > 0 ? (
+            {priceRows(s.costs, aitEnabled()).length > 0 ? (
               <View style={styles.card} testID="mileage-table">
                 <AppText variant="bodyBold" accessibilityRole="header" testID="mileage-table-title">
                   {IF5_TEXT['MILEAGE.table.title']}
                 </AppText>
-                {priceRows(s.costs).map((r, i) => {
+                {priceRows(s.costs, aitEnabled()).map((r, i) => {
                   const name = IF5_TEXT[`MILEAGE.table.${r.key}` as const];
                   const value = t5(r.from ? 'MILEAGE.table.valueFrom' : 'MILEAGE.table.value', { N: fmt(r.cost) });
                   return (

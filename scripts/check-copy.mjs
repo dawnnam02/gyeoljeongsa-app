@@ -1028,7 +1028,8 @@ try {
       const t = render(v) ?? '';
       for (const w of BANNED) if (t.includes(w)) diffsLG.push(`LOUNGE.${p}: 금지어 '${w}'`);
       if (/[!！]/.test(t)) diffsLG.push(`LOUNGE.${p}: 느낌표`);
-      if (/\d/.test(t)) diffsLG.push(`LOUNGE.${p}: 숫자`);
+      // FA3-19(법무 7장): 보관 기간 '7일'은 처리방침 R48 과 같은 값이라 info.lines.7 에만 'N일' 꼴 숫자를 허용한다(상수 LOUNGE_PURGE_DAYS · LOUNGE_DELETED_KEEP_DAYS)
+      if (/\d/.test(p === 'info.lines.7' ? t.replace(/\d+일/g, '') : t)) diffsLG.push(`LOUNGE.${p}: 숫자`);
     }
     if (rows19.length !== 211) diffsLG.push(`카피 19장 표가 211줄이 아님(${rows19.length}줄)`);
     check('LG', `탑승객 라운지 글 ${rows19.length}줄(카피 19-1 ~ 19-10)이 loungeCopy.ts LOUNGE 와 같고 · 앱 글 ${leaves.length}개가 모두 19장에 있고 · 금지어 14 · 창가/통로/가운데 · 느낌표 · 숫자 0`, rows19.length === 211 && diffsLG.length === 0, diffsLG.join('\n') || `표 ${rows19.length}줄`);

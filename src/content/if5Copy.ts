@@ -1,4 +1,4 @@
-// 사주 마당 · 마일리지(IF5 · 카피 24장) 글의 앱 사본 — scripts/gen-if5-copy.mjs 가 마케팅/카피.md 24장에서 만든다(손으로 고치지 않는다). 351키.
+// 사주 마당 · 마일리지(IF5 · 카피 24장) 글의 앱 사본 — scripts/gen-if5-copy.mjs 가 마케팅/카피.md 24장에서 만든다(손으로 고치지 않는다). 354키.
 //  · 무료 층(F1)은 MILEAGE.* · SAJU.talk.* · REST_HINT.* · SAJU.card.aiButton 계열을 부르지 않는다 — 그 글은 마일리지 · AI 맞춤(F2)이 부른다. 아직 어느 화면도 안 부르는 키는 '앱 반영 전'(F1b 몫 포함).
 //  · 글이 {…} 하나뿐인 키(값 틀)는 AI 라이브러리 · 서버 값이 들어오는 자리다. 화면은 이 틀 대신 값을 쓴다.
 //  · check:copy IF5 그룹이 24장 표와 한 글자씩 대조한다. 이 파일은 check:copy 가 Node 로 바로 읽으므로 경로 별칭 없이 홀로 선다
@@ -78,10 +78,10 @@ export const IF5_TEXT = {
   'SAJU.input.zi': '밤 11시부터 새벽 1시 사이에 태어난 분은 시 기둥을 다음 날 기준으로 읽어요. 날 기둥은 태어난 날 그대로예요.',
   'SAJU.hour.unknown': '시각을 넣으면 더 자세해요',
   'SAJU.hour.add': '시각 넣기',
-  'SAJU.range.before': '아직 못 봐요. 1961년 8월 10일 이전에 태어난 분은 아직 볼 수 없어요.',
-  'SAJU.range.abroad': '아직 못 봐요. 한국 밖에서 태어난 분은 아직 볼 수 없어요.',
-  'SAJU.range.lunar': '아직 못 봐요. 음력으로 넣는 건 아직 안 돼요. 양력 날짜로 넣어 주세요.',
-  'SAJU.range.sonEopneun': '아직 못 봐요. 손 없는 날은 아직 보여 드리지 않아요.',
+  'SAJU.range.before': '아직 못 봐요. 1961년 8월 10일 이전에 태어난 분은 볼 수 없어요. 그때는 표준시가 달랐어요.',
+  'SAJU.range.abroad': '아직 못 봐요. 한국 밖에서 태어난 분은 볼 수 없어요.',
+  'SAJU.range.lunar': '아직 못 봐요. 음력으로 넣는 건 안 돼요. 양력 날짜로 넣어 주세요.',
+  'SAJU.range.sonEopneun': '아직 못 봐요. 손 없는 날은 보여 드리지 않아요.',
   'SAJU.range.partner': '아직 못 봐요. 1961년 8월 10일 이후 생일만 볼 수 있어요.',
   'SAJU.pillars.title': '내 네 기둥',
   'SAJU.pillars.lead': '태어난 해 · 달 · 날 · 시를 글자 두 개씩 적은 표예요.',
@@ -185,7 +185,7 @@ export const IF5_TEXT = {
   'SAJU.partner.gone': '이 화면을 닫으면 넣은 생일이 지워져요.',
   'SAJU.partner.go': '맞춰 보기',
   'SAJU.partner.again': '생일 다시 넣기',
-  'SAJU.partner.minor': '이 분과는 맞춰 보지 않아요. 만 19세 미만의 생일은 이 앱에서 맞춰 보지 않기로 했어요.',
+  'SAJU.partner.minor': '이 분과는 맞춰 볼 수 없어요. 만 19세 미만의 생일은 이 앱에서 다루지 않기로 했어요.',
   'SAJU.partner.hourUnknown': '상대 시각을 모르면 시에 관한 줄만 빼고 맞춰 봐요.',
   'SAJU.partner.result.title': '둘이 맞춰 보기',
   'SAJU.partner.result.me': '나',
@@ -231,6 +231,7 @@ export const IF5_TEXT = {
   'MILEAGE.shop.balance': '지금 가진 마일리지',
   'MILEAGE.shop.history': '내역 보기',
   'MILEAGE.shop.lead': 'AI 맞춤 풀이 · 사주 이야기 · 날짜 설명에 써요. 탑승권에는 쓰지 않아요.',
+  'MILEAGE.shop.leadAit': 'AI 맞춤 풀이 · 사주 이야기 · 날짜 설명 · 연애 고민 정리 · 문장 다듬기에 써요. 탑승권에는 쓰지 않아요.',
   'MILEAGE.noCash': '현금으로 바꾸거나 다른 사람에게 보낼 수 없어요.',
   'MILEAGE.shop.noExpire': '산 마일리지는 기한이 없어요.',
   'MILEAGE.shop.once': '한 번 충전하면 끝이에요. 자동으로 다시 결제되지 않아요.',
@@ -312,7 +313,7 @@ export const IF5_TEXT = {
   'SAJU.input.minUnit': '{n}분',
   'SAJU.life.age': '{n}세',
   'SAJU.pick.partner.toggle': '상대와 함께 보기',
-  'SAJU.pick.partner.hint': '상대 생일을 넣었을 때만 쓸 수 있어요. 두 사람 모두 그날의 글자와 부딪히지 않고 쉬어 가는 날도 아닌 날을 둘 다 편한 날로 달력에 표시해요.',
+  'SAJU.pick.partner.hint': '상대 생일을 넣었을 때만 쓸 수 있어요. 두 사람 모두 쉬어 가는 날이 아니고 그날의 글자와도 부딪히지 않는 날을 찾아요. 그런 날을 \'둘 다 편한 날\'로 달력에 표시해요.',
   'SAJU.pick.partner.both': '둘 다 편한 날',
   'SAJU.pick.partner.need': '함께 보려면 상대 생일을 먼저 넣어 주세요.',
   'SAJU.pick.partner.bothCard': '두 사람 모두 그날의 글자와 부딪히지 않는 날이에요.',
@@ -362,6 +363,8 @@ export const IF5_TEXT = {
   'MILEAGE.table.read': 'AI 맞춤 풀이',
   'MILEAGE.table.talk': '사주 이야기 · 한 번 말할 때',
   'MILEAGE.table.pick': '날짜 설명',
+  'MILEAGE.table.concern': '연애 고민 정리 · 한 번 말할 때',
+  'MILEAGE.table.polish': '문장 다듬기',
   'MILEAGE.table.value': '{N} 마일리지',
   'MILEAGE.table.valueFrom': '{N} 마일리지부터',
   'MILEAGE.table.failed': '가격을 불러오지 못했어요. 다시 시도해 주세요.',

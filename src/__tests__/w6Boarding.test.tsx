@@ -99,7 +99,7 @@ describe('글 규칙', () => {
     // '등급 계산'은 설정 줄 이름('등급 계산 멈추기')과 같은 말이라 허용(카피.md 14-5-2 BOARDING.ineligible.paused, QPM 3-2)
     const bad = all.filter((t) => /[!！]|남은 (자리|좌석|시간)|매진|서두르|마감 임박|지금 바로|놓치지|\d+번째|\d+:\d\d|초 후|등급|점수|순위|죄송|미안|(습니다|입니다|합니다)\.?$/.test(t.split('등급 계산').join('')));
     expect(bad).toEqual([]);
-    expect(BOARDING.noMatch.title).toBe('완벽한 사람을 찾지 못했어요'); // 결정 14
+    expect(BOARDING.noMatch.title).toBe('이번 주에는 맞는 분을 찾지 못했어요'); // 결정 14 · FA3-01
   });
 });
 
@@ -230,7 +230,7 @@ describe('화면', () => {
     const n = await mount(<BoardingScreen deps={{ api: createBoardingApi(await demoClient('boardnone@email.com')), newId: () => 'x', opened: createOpenedRounds() }} />);
     await act(async () => undefined);
     expect(has(n, 'boarding-arrive')).toBe(false); // 못 찾은 회차는 도착 화면 없이 크레딧 안내
-    expect(textOf(n, 'boarding-status-title')).toBe('완벽한 사람을 찾지 못했어요');
+    expect(textOf(n, 'boarding-status-title')).toBe('이번 주에는 맞는 분을 찾지 못했어요');
     await press(n, 'boarding-open-credits');
     expect(mockRouter.push).toHaveBeenCalledWith('/credits');
     act(() => n.unmount());
@@ -263,7 +263,7 @@ describe('화면', () => {
     act(() => tree.unmount());
     const none = await mount(<RevealScreen deps={{ api: createBoardingApi(await demoClient('boardnone@email.com')), photoUrl: async () => null, opened: createOpenedRounds() }} />);
     await act(async () => undefined);
-    expect(textOf(none, 'reveal-title')).toBe('완벽한 사람을 찾지 못했어요');
+    expect(textOf(none, 'reveal-title')).toBe('이번 주에는 맞는 분을 찾지 못했어요');
     expect(has(none, 'reveal-credits')).toBe(true);
     act(() => none.unmount());
   });
