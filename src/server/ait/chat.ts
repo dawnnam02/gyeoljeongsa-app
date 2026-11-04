@@ -14,7 +14,7 @@ import type { FixedCard } from './fixed.ts';
 import { composeSafety, composeSafetyFromFlags } from './safety.ts';
 import {
   ALWAYS_LINE, CARD_NOTE, CHAT_FOOTER, CHAT_GUESS_NOTE, CRISIS_CARD, MINOR_CARD, MISUSE_CARD, MONEY_CAUTION,
-  PRACTICAL_LABEL, SESSION_END_CARD, SOFT_HELP_LINES, VIOLENCE_CARD, WEAK_LABEL,
+  PRACTICAL_LABEL, SESSION_END_CARD, SOFT_HELP_LINES, VERDICT_NOTE, VIOLENCE_CARD, WEAK_LABEL,
 } from './fixed.ts';
 import { CHAT_ALLOW_PHRASES, CHAT_RULES, checkText, contactHit } from './rules.ts';
 import type { EvidenceCard } from './cards.ts';
@@ -43,7 +43,7 @@ export const CHAT_LIMITS = {
   slotValueMax: 60,
 } as const;
 /** 단계별 max_tokens(thinking 포함). 보안 제안 ≤ 1,000은 JSON 틀 + 근거 인용 + thinking을 담기엔 모자라 단계별로 올림 */
-export const STAGE_MAX_TOKENS: Readonly<Record<StageId, number>> = { S1: 1500, S2: 1500, S3: 2500, S4: 1500, S5: 3000 };
+export const STAGE_MAX_TOKENS: Readonly<Record<StageId, number>> = { S1: 1500, S2: 1500, S3: 3500, S4: 1500, S5: 4000 };   // AI-FIX2 R3: S3 2,500 → 3,500 · S5 3,000 → 4,000 (평가에서 생각 토큰이 한도를 다 써 stop:max_tokens 3/91)
 
 // ---------------------------------------------------------------- 칩
 export type ChipCode =
@@ -286,6 +286,8 @@ export interface CallSpec {
   chip: ChipCode | null;
   /** 질문자가 진단을 물었다 → 응답에 '진단은 할 수 없어요 …' 행동 이야기로 돌리는 문장이 꼭 있어야 한다 */
   diagnosisAsked: boolean;
+  /** 질문자가 '헤어질지 정해 달라 · 점수로 말해 달라'를 물었다 → 모델이 거절 문장을 못 내도 서버가 고정 한 줄(VERDICT_NOTE)을 앞에 붙인다(AI-FIX2 A7) */
+  verdictAsked: boolean;
 }
 
 export type Prepared =
@@ -360,7 +362,8 @@ export function prepareTurn(envIn: ChatEnvelope, input: ChatInput): Prepared {
   const label = chip ? `[선택] ${CHIP_LABEL[chip]}` : '';
   const askerText = [label, mA.text].filter(Boolean).join(' ');
   const resolved = resolveStage(st);
-  if (resolved.stage === 'S5' && resolved.s5Delivered && resolved.chips.enough) {
+  // '충분해요'를 글과 함께 보냈으면(마지막 말) 모델이 그 글에 한 번 답한 뒤 끝낸다 — 글 없이 칩만이면 호출 없이 마침 카드(AI-FIX2 F5: 마지막 글이 안 읽히던 문제)
+  if (resolved.stage === 'S5' && resolved.s5Delivered && resolved.chips.enough && !askerRaw && !partnerRaw) {
     env.state = { ...resolved, ended: true };
     return { kind: 'end', code: 'ok', env, display: summaryCard(env) };
   }
@@ -393,6 +396,7 @@ export function prepareTurn(envIn: ChatEnvelope, input: ChatInput): Prepared {
     maskCount,
     chip,
     diagnosisAsked,
+    verdictAsked: hasVerdictRequest(askerRaw),
   };
   return { kind: 'call', env, call };
 }
@@ -416,6 +420,9 @@ export interface EvalResult {
 
 const REF_USER = /^내 말 ([1-9][0-9]*)$/;   // 턴 상한이 없어 세 자리 번호도 나온다
 const REF_CARD = /^K-[1-9][0-9]?$/;
+/** 사용자가 걱정하는 모양을 되짚는 말의 틀만(주어가 상대면 제외). 사용자 글에 같은 틀이 있을 때만 쓴다 — '사용자 글에 있던 말이면 봐주기'처럼 낱말 전체를 풀지 않는다 */
+const WORRY_FRAME = /(?<!(?:상대|그분|그 ?사람|그쪽)(?:이|가|은|는|도)? ?)예민(?:한 ?사람(?:처럼|으로)|해) ?(?:보일|비칠|보이|여겨질|느껴질|볼|생각할|여길)(?:까 ?봐|까 ?걱정|까 ?염려|까 ?두려|까 ?무서)/g;
+const WORRY_TEST = new RegExp(WORRY_FRAME.source);
 const HEDGE = /보여요|같아요|수 있어요|수도 있어요|가까워요|가까워 보여요|가능성|듯해요|라고 해요|이래요|나아 보여요/;
 const WEAK_MARK = /약하지만|말씀하신 (대목|내용|부분)만|확실하지|참고만|짐작/;
 const HEDGE_KINDS: readonly Kind[] = ['trait', 'reason', 'counter', 'direction'];
@@ -446,6 +453,7 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
   if (raw.sentences.length === 0 || raw.sentences.length > 20) { res.blockers.push('sentence_count'); return res; }
   res.flags = (raw.flags as unknown[]).filter((f): f is ModelFlag => typeof f === 'string' && (MODEL_FLAGS as readonly string[]).includes(f));
   const seenText = new Set<string>();
+  const worryOk = WORRY_TEST.test(ctx.userTexts[ctx.userTexts.length - 1]?.asker ?? '');
   const kept: Array<{ kind: Kind; ds: DisplaySentence }> = [];
 
   raw.sentences.forEach((s: unknown, index: number) => {
@@ -458,11 +466,13 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
     const len = charLen(text);
     if (len < CHAT_LIMITS.sentenceMin || len > CHAT_LIMITS.sentenceMax) return drop('length');
     // 금지어
-    const hits = checkText(text, CHAT_RULES, { allowPhrases: CHAT_ALLOW_PHRASES });
+    // 사용자가 직접 말한 걱정 틀("예민한 사람처럼 보일까 봐")을 되짚는 restate · problem_line 에서만 그 틀을 검사에서 뺀다(AI-FIX2 R2). 틀 밖의 말은 그대로 검사한다
+    const scan = (t: string): string => (worryOk && (kind === 'restate' || kind === 'problem_line') ? t.replace(WORRY_FRAME, '') : t);
+    const hits = checkText(scan(text), CHAT_RULES, { allowPhrases: CHAT_ALLOW_PHRASES });
     const ch = contactHit(text);
     if (ch) hits.push(ch);
     if (rawText !== text) {                         // 질문 칸에서 잘라 낸 뒷부분도 안전선(block)은 그대로 본다 — 형식 완화가 안전 규칙을 약하게 만들지 않게(AI-FIX1)
-      for (const h of checkText(rawText, CHAT_RULES, { allowPhrases: CHAT_ALLOW_PHRASES })) if (h.severity === 'block' && !hits.some((x) => x.id === h.id)) hits.push(h);
+      for (const h of checkText(scan(rawText), CHAT_RULES, { allowPhrases: CHAT_ALLOW_PHRASES })) if (h.severity === 'block' && !hits.some((x) => x.id === h.id)) hits.push(h);
       const rch = contactHit(rawText);
       if (rch && !ch) hits.push(rch);
     }
@@ -480,6 +490,7 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
     const quotesIn = Array.isArray(s.quotes) ? (s.quotes as unknown[]).filter(isRecord) : [];
     const refs: DisplayRef[] = [];
     let hasCard = false;
+    let badCard = false;
     for (const r of refsIn) {
       const mu = REF_USER.exec(r);
       if (mu) {
@@ -493,15 +504,15 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
       }
       if (REF_CARD.test(r)) {
         const card = ctx.cards.get(r);
-        if (!card) continue;
-        const stageOk = card.use_in.includes(ctx.plan.stage) && (!card.safety_only || ctx.state.safety);
-        if (!stageOk) continue;
+        const stageOk = !!card && card.use_in.includes(ctx.plan.stage) && (!card.safety_only || ctx.state.safety);
+        if (!card || !stageOk) { badCard = true; continue; }          // 없는 번호 · 이 단계에 못 쓰는 카드: 번호만 지우면 카드 말이 번호 없이 나가므로 문장을 지운다(AI-FIX2 F6)
         if (!refs.some((x) => x.label === r)) {
           refs.push({ label: r, type: 'card', cardId: card.id, citation: citationFor(card), limit: card.limit, practical: isPractical(card) });
           hasCard = true;
         }
       }
     }
+    if (badCard && !isQ) return drop('card_ref');
     if (!isQ && refs.length === 0) return drop('no_ref');
     // 조심스러운 말투 · 약한 근거 표시
     const weak = (kind === 'trait' || kind === 'reason') && !hasCard;
@@ -581,15 +592,20 @@ function nextChips(stage: StageId, state: ChatState, sentences: readonly Display
   return chips;
 }
 
-function buildNotes(stage: StageId, sentences: readonly DisplaySentence[], moneyHint: boolean, chip: ChipCode | null): string[] {
+const VERDICT_REFUSED = /대신 (?:내릴|정해|결정|판단|골라)|결정은 [^.]{0,12}(?:몫|본인)|정해 드릴 수 없/;
+function buildNotes(stage: StageId, sentences: readonly DisplaySentence[], moneyHint: boolean, chip: ChipCode | null, extra: { safetyLine: boolean; verdictAsked: boolean; ending: boolean }): string[] {
   const notes: string[] = [];
+  // 판정 요구(헤어질지 · 점수)에 모델이 거절 문장을 못 냈으면 서버가 앞에 한 줄을 붙인다 — 거절 문장이 검사에 떨어지고 '대신 …'만 남던 문제(AI-FIX2 A7)
+  if (extra.verdictAsked && !sentences.some((s) => VERDICT_REFUSED.test(s.text))) notes.push(VERDICT_NOTE);
   if (stage === 'S3' || stage === 'S5') notes.push(CHAT_GUESS_NOTE);
   if (sentences.some((s) => s.weak)) notes.push(WEAK_LABEL);
   if (sentences.some((s) => s.refs.some((r) => r.type === 'card'))) notes.push(CARD_NOTE);
   if (sentences.some((s) => s.refs.some((r) => r.practical))) notes.push(PRACTICAL_LABEL);
   if (moneyHint) notes.push(MONEY_CAUTION);
   if (chip === 'state_4') notes.push(...SOFT_HELP_LINES);
+  if (extra.ending) notes.push(...SESSION_END_CARD.lines);
   if (stage === 'S5') notes.push(CHAT_FOOTER, ALWAYS_LINE);
+  else if (extra.safetyLine) notes.push(ALWAYS_LINE);        // 위기 카드 · 폭력 트랙 뒤에는 S5 가 아니어도 매 턴 번호 줄(109 · 112 · 119 · 1366)이 이어진다(AI-FIX2 A2)
   return notes;
 }
 
@@ -623,6 +639,15 @@ export function foldEnvelope(env: ChatEnvelope): void {
   if (env.digest && first && first.role === 'user' && typeof first.content === 'string') {
     env.messages = [{ role: 'user', content: '<앞이야기>' + env.digest + '</앞이야기>\n' + first.content.replace(DIGEST_PREFIX, '') }, ...env.messages.slice(1)];
   }
+}
+
+const CONCLUSION_KINDS: readonly Kind[] = ['direction', 'option', 'first_action'];
+/** 결론 뒤 후속 턴이 방향 · 선택지 · 첫 행동을 새로 냈으면 마침 카드(summaryCard)에 그것이 들어가게 합친다 — 마침 카드가 첫 결론의 복사본이라 후속 답이 사라지던 문제(AI-FIX2 F5) */
+export function mergeConclusion(old: DisplaySentence[] | null, fresh: readonly DisplaySentence[]): DisplaySentence[] | null {
+  const newer = fresh.filter((s) => CONCLUSION_KINDS.includes(s.kind));
+  if (newer.length === 0) return old;
+  const kept = (old ?? []).filter((s) => !newer.some((n) => n.kind === s.kind));
+  return [...kept, ...newer].sort((a, b) => CONCLUSION_KINDS.indexOf(a.kind) - CONCLUSION_KINDS.indexOf(b.kind));
 }
 
 /** 업체 응답을 검사해 새 봉투와 화면용 턴을 만든다. 통과 못 하면 blocked(재호출 0 · 턴 안 올림) */
@@ -668,20 +693,22 @@ export function finishTurn(prep: Extract<Prepared, { kind: 'call' }>, resp: ApiR
   const isFirstConclusion = call.stage === 'S5' && !st.s5Delivered;
   if (call.stage === 'S5') st.s5Delivered = true;
   st.blocked = 0;                // 검사 탈락은 '연속' 수 — 정상 답이 나오면 센 것을 지운다
+  const endedByEnough = call.chip === 'enough' && call.stage === 'S5';      // 마지막 말에 답한 뒤 끝낸다
+  if (endedByEnough) st.ended = true;
   const assistantContent = resp.content;
   const out: ChatEnvelope = {
     state: st,
     digest: env.digest ?? '',
     userTexts,
     messages: [...call.messages, { role: 'assistant', content: assistantContent }],
-    conclusion: isFirstConclusion ? ev.sentences : env.conclusion,
+    conclusion: isFirstConclusion ? ev.sentences : call.stage === 'S5' ? mergeConclusion(env.conclusion, ev.sentences) : env.conclusion,
   };
   foldEnvelope(out);
   const display: DisplayTurn = {
     stage: call.stage,
     progress: STAGE_ORDER.indexOf(call.stage) + 1,
     sentences: ev.sentences,
-    notes: buildNotes(call.stage, ev.sentences, call.moneyHint, call.chip),
+    notes: buildNotes(call.stage, ev.sentences, call.moneyHint, call.chip, { safetyLine: st.crisisCards > 0 || st.safety, verdictAsked: call.verdictAsked, ending: endedByEnough }),
     chips: st.ended ? [] : nextChips(call.stage, st, ev.sentences),
     ended: st.ended,
   };

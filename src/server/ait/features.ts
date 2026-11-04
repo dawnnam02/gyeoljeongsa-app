@@ -5,7 +5,7 @@ import type { ModelId } from './types.ts';
 import { FEATURE_MODEL } from './types.ts';
 import type { ResponseCode } from './codes.ts';
 import type { FixedCard } from './fixed.ts';
-import { COACH_NOTE, COMPAT_NOTE, CRISIS_CARD, FUN_FOOTER, MINOR_CARD } from './fixed.ts';
+import { COACH_NOTE, COMPAT_NOTE, CONTACT_NOTE, CRISIS_CARD, FUN_FOOTER, MINOR_CARD } from './fixed.ts';
 import { charLen, endsWithHaeyo, hasResidualPii, maskText, quoteInSource, sanitize, splitSentences } from './text.ts';
 import { classifyHits, hasMinorProfileHint } from './lexicon.ts';
 import { composeSafety } from './safety.ts';
@@ -160,7 +160,7 @@ export function prepareCoach(raw: unknown): OneShotPrep {
   if (n > ONE_SHOT_LIMITS.coachTextMax) return { kind: 'reject', code: 'too_long', why: 'length' };
   const m = maskText(text);
   if (hasResidualPii(m.text)) return { kind: 'reject', code: 'bad_request', why: 'residual_pii' };
-  return { kind: 'call', spec: ONE_SHOT.coach, userContent: '<문구>' + JSON.stringify({ field: raw.field, text: m.text }) + '</문구>', input: { field: raw.field, text: m.text } };
+  return { kind: 'call', spec: ONE_SHOT.coach, userContent: '<문구>' + JSON.stringify({ field: raw.field, text: m.text }) + '</문구>', input: { field: raw.field, text: m.text, masked: m.count } };
 }
 
 export interface CoachFinding { quote: string; point: string; ask: string; options: string[] }
@@ -168,13 +168,18 @@ export interface CoachDisplay { keep: string; findings: CoachFinding[]; notes: s
 
 const OPTION_RULE_IDS = ['k_exclaim', 'k_emoji', 'k_looks', 'k_grade', 'k_condition', 'k_gender', 'k_rush', 'k_trans', 'k_formal', 'k_pro', 'k_praise', 'k_auto'];   // AI-FIX1: 고친 안에도 번역투 · 합쇼체 검사(평가에서 '~에 대해'가 고친 안으로 통과)
 
-export function finishCoach(resp: ApiResultLike, input: { field: string; text: string }): OneShotDone<CoachDisplay> {
+/** 연락 수단을 짚거나 칭찬하는 말 — 가린 연락처가 있던 글에서는 이런 말이 든 짚기를 버린다(AI-FIX2 A6: 모델이 "연락 방법을 먼저 밝히고 있어서 …"라고 칭찬하던 것) */
+const CONTACT_WORDS = ['연락', '카톡', '카카오', '전화', '문자', '메일', '인스타', '아이디', '링크', '주소', '번호', 'SNS', '[연락처]', '[링크]', '[번호]', '[이름]'];
+const mentionsContact = (s: string): boolean => CONTACT_WORDS.some((w) => s.includes(w));
+
+export function finishCoach(resp: ApiResultLike, input: { field: string; text: string; masked?: number }): OneShotDone<CoachDisplay> {
   const p = parseJson(resp);
   if (!p.ok) return { kind: 'blocked', code: 'blocked_output', reasons: [p.reason] };
   const o = p.value;
   if (!isRecord(o) || !onlyKeys(o, ['keep', 'findings']) || typeof o.keep !== 'string' || !Array.isArray(o.findings)) return { kind: 'blocked', code: 'blocked_output', reasons: ['shape'] };
   const reasons: string[] = [];
-  const keep = o.keep.trim();
+  const masked = (input.masked ?? 0) > 0 || ['[연락처]', '[링크]'].some((w) => input.text.includes(w));            // 연락처 · 링크가 있어 서버가 가린 글
+  const keep = masked ? '' : o.keep.trim();                                          // 그런 글은 칭찬(살릴 점)을 내지 않는다
   const text = input.text;
   const checkLine = (s: string, rules: typeof COACH_RULES): boolean => {
     let bad = false;
@@ -202,13 +207,14 @@ export function finishCoach(resp: ApiResultLike, input: { field: string; text: s
       if (checkLine(opt, COACH_RULES.filter((r) => OPTION_RULE_IDS.includes(r.id)))) bad = true;
     }
     if (checkLine(point, COACH_RULES) || checkLine(ask, COACH_RULES)) bad = true;
+    if (masked && [quote, point, ask, ...options].some(mentionsContact)) continue;   // 연락 수단을 짚는 항목은 버리되 응답 전체 탈락은 아니다
     if (bad) { droppedAny = true; continue; }
     findings.push({ quote, point, ask, options });
   }
   const hardRules = reasons.filter((r) => r.startsWith('rule:k_pro') || r.startsWith('rule:k_auto') || r === 'contact');
   if (hardRules.length) return { kind: 'blocked', code: 'blocked_output', reasons: [...new Set(hardRules)] };
-  if (o.findings.length > 0 && findings.length === 0 && droppedAny) return { kind: 'blocked', code: 'blocked_output', reasons: [...new Set(['findings', ...reasons])] };
-  return { kind: 'ok', code: 'ok', display: { keep: reasons.includes('keep') ? '' : keep, findings: findings.slice(0, 3), notes: [COACH_NOTE], autoApply: false } };
+  if (o.findings.length > 0 && findings.length === 0 && droppedAny && !masked) return { kind: 'blocked', code: 'blocked_output', reasons: [...new Set(['findings', ...reasons])] };
+  return { kind: 'ok', code: 'ok', display: { keep: reasons.includes('keep') ? '' : keep, findings: findings.slice(0, 3), notes: masked ? [CONTACT_NOTE, COACH_NOTE] : [COACH_NOTE], autoApply: false } };
 }
 
 // ================================================================ 별자리 · 사주 AI 풀이 (A2 · Haiku 5.5)

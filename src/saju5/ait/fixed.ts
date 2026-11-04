@@ -125,6 +125,10 @@ export const SOFT_HELP_LINES: readonly string[] = [
   LINE_109,
 ];
 
+/** 헤어질지 · 점수를 정해 달라는 말에 모델이 거절 문장을 못 냈을 때 서버가 앞에 붙이는 한 줄(AI-FIX2 A7). 글은 마케팅 확정 대기 — 모델이 평가에서 스스로 낸 말과 같은 꼴 */
+export const VERDICT_NOTE = '그 결정은 제가 대신 내릴 수 없어요.';
+/** 코치 글에 연락처 · 링크가 있어 서버가 가렸을 때 붙이는 고정 한 줄(AI-FIX2 A6). 글은 마케팅 확정 대기 */
+export const CONTACT_NOTE = '연락처나 링크는 소개글에 쓸 수 없어요. 가린 채로 봐 드렸어요.';
 export const COACH_NOTE = 'AI가 쓴 제안이에요. 마음에 드는 것을 골라 내가 직접 고쳐 쓰세요. 자동으로 바뀌지 않아요.';
 export const COMPAT_NOTE = 'AI가 쓴 글이에요. 두 분이 모두 공개한 같은 값으로만 만들었어요.';
 export const FUN_FOOTER = '재미로 보는 이야기예요.';
