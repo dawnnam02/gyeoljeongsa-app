@@ -13,7 +13,7 @@ import { checkAccessCode, consume, consumeChatCall, featureCosts, logRecord, ref
 import type { MessagesBody } from './request.ts';
 import { buildChatRequest, buildOneShotRequest, pickChatModel } from './request.ts';
 import type { ChatEnvelope, ChatInput } from './chat.ts';
-import { applyCrisisCard, finishTurn, newSession, prepareTurn } from './chat.ts';
+import { applyCrisisCard, applyMisuseCard, finishTurn, newSession, prepareTurn } from './chat.ts';
 import { finishCoach, finishCompat, finishHoroscope, prepareCoach, prepareCompat, prepareHoroscope, buildCompatSystem } from './features.ts';
 import type { ApiResultLike } from './features.ts';
 import { activeCards, buildChatSystem, cardIndex, parseCards } from './cards.ts';
@@ -24,7 +24,7 @@ import type { SealedBundle } from './seal.ts';
 import { asApiResult, mockChatOutput, mockCoachOutput, mockCompatOutput, mockHoroscopeOutput } from './mock.ts';
 import { classifyUpstream, shouldLockLive } from './upstream.ts';
 import { JUDGE_TIMEOUT_MS, buildInputJudgeRequest, buildOutputJudgeRequest, parseInputJudge, parseOutputJudge } from './judge.ts';
-import { CRISIS_CARD, JUDGE_RETRY_LINE, MISUSE_CARD, VIOLENCE_CARD } from './fixed.ts';
+import { ALWAYS_LINE, CRISIS_CARD, JUDGE_RETRY_LINE, MISUSE_CARD, VIOLENCE_CARD } from './fixed.ts';
 import { COACH_REFUSED_CARD, applyOneShotJudge, buildCoachInputJudgeRequest, buildOneShotOutputJudgeRequest, parseCoachInputJudge, parseOneShotOutputJudge, planOneShotJudge } from './judge_oneshot.ts';
 import type { UpstreamFailure } from './upstream.ts';
 
@@ -187,13 +187,18 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
   if (prep.kind === 'card') {
     // AI-FIX6 ④: 폭력 낱말이 걸린 글은 입력 판정을 함께 불러, 글쓴이가 하는 쪽(가해, harm)이면 피해자용 폭력 카드 대신 오용 카드로 보낸다.
     //  판정이 실패하거나 harm 이 아니거나 연타 한도에 걸리면 폭력 안전 카드를 **그대로** 낸다(안전한 쪽). 위기 · 가해 의도 카드는 prepareTurn 에서 이 앞에 이미 돌았다.
-    if (prep.violenceJudge && mode === 'live' && consumeChatCall(deps.counters, POOL, deps.now(), deps.guard ?? GUARD, 0).ok) {
-      const vReq = buildInputJudgeRequest(prep.violenceJudge.texts);
+    const cardJudge = prep.violenceJudge ?? prep.crisisJudge;      // 폭력 낱말 글 · 오용 사전 글 둘 다 위기가 끼었는지 본다(위기가 언제나 먼저)
+    if (cardJudge && mode === 'live' && consumeChatCall(deps.counters, POOL, deps.now(), deps.guard ?? GUARD, 0).ok) {
+      const vReq = buildInputJudgeRequest(cardJudge.texts);
       let vj = await judgeCall(deps, vReq, parseInputJudge);
       if (!vj.ok && (vj.code === 'upstream' || vj.code === 'timeout' || vj.code === 'rate')) vj = await judgeCall(deps, vReq, parseInputJudge);
-      if (vj.ok && vj.value === 'harm') {
+      if (vj.ok && vj.value === 'crisis') {                      // AI-FIX7 ①: 위기가 언제나 먼저다 — 폭력 낱말 옆에 "그냥 빨리 가고 싶어요"가 있으면 폭력 카드가 아니라 위기 카드(번호 줄 109 포함)
+        emit('chat', { code: 'crisis' });
+        return replyCard('crisis', CRISIS_CARD, mode, await seal(applyCrisisCard(cardJudge.plainEnv)));
+      }
+      if (prep.violenceJudge && vj.ok && vj.value === 'harm') {
         emit('chat', { code: 'refused_intent' });
-        return replyCard('refused_intent', MISUSE_CARD, mode, await seal(prep.violenceJudge.plainEnv));
+        return replyCard('refused_intent', MISUSE_CARD, mode, await seal(applyMisuseCard(prep.violenceJudge.plainEnv)));
       }
     }
     emit('chat', { code: prep.code });                       // 로그에는 코드만(낱말 · 판정 0)
@@ -219,13 +224,13 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
   //  앞서 한 말 최대 두 개를 맥락으로 함께 넣는다(AI-FIX5 D2 — 본 호출 이력에 이미 있는 글이라 새로 보내는 범위가 아니다).
   if (mode === 'live' && (prep.call.newTexts.asker.trim() || prep.call.newTexts.partner.trim())) {
     const prevTexts = prep.env.userTexts.map((u) => u.asker).filter((x) => x.trim()).slice(-2);
-    const inReq = buildInputJudgeRequest({ ...prep.call.newTexts, prev: prevTexts });
+    const inReq = buildInputJudgeRequest({ ...prep.call.newTexts, prev: prevTexts, closed: prep.env.state.misuse ?? 0 });
     let j = await judgeCall(deps, inReq, parseInputJudge);
     if (!j.ok && (j.code === 'upstream' || j.code === 'timeout' || j.code === 'rate')) j = await judgeCall(deps, inReq, parseInputJudge);   // 일시 연결 오류 한 번 더
     if (j.ok && j.value === 'harm') {
       refundCount(deps.counters, POOL, 'chat_call', est);
       emit('chat', { code: 'refused_intent' });
-      return replyCard('refused_intent', MISUSE_CARD, mode, await seal(prep.env));
+      return replyCard('refused_intent', MISUSE_CARD, mode, await seal(applyMisuseCard(prep.env)));
     }
     if (j.ok && j.value === 'crisis') {                        // AI-FIX6 ⑤: 사전이 못 잡은 간접 위기 표현 — 위기 카드를 올리는 방향으로만 쓴다(내리는 일 없음)
       refundCount(deps.counters, POOL, 'chat_call', est);
@@ -237,10 +242,12 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
       refundCount(deps.counters, POOL, 'chat_call', est);       // 챗봇을 부르지 않았으니 이 턴은 차감 0 · 봉투는 그대로(새 서명 묶음 없음)
       if (prep.call.softMisuse) {                          // 사전이 걸렸는데 판정도 못 했다 → 안전한 쪽(사전 결과: 오용 카드)
         emit('chat', { code: 'refused_intent' });
-        return replyCard('refused_intent', MISUSE_CARD, mode, await seal(prep.env));
+        return replyCard('refused_intent', MISUSE_CARD, mode, await seal(applyMisuseCard(prep.env)));
       }
       emit('chat', { code: 'timeout' });
-      return replyError('timeout', mode, { text: JUDGE_RETRY_LINE });
+      // AI-FIX7 ③: 위기 · 폭력 카드를 이미 낸 세션에서 판정이 두 번 실패해도 번호 줄(112 · 119 · 109 · 1366)은 빠지지 않는다
+      const sess = prep.call.stateAfterResolve;
+      return replyError('timeout', mode, { text: sess.crisisCards > 0 || sess.safety ? `${JUDGE_RETRY_LINE} ${ALWAYS_LINE}` : JUDGE_RETRY_LINE });
     }
   }
 

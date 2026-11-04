@@ -8,7 +8,7 @@
 import type { ApiMessage, ChatSlots, Kind, ModelFlag, StageId } from './types.ts';
 import { KINDS, MODEL_FLAGS } from './types.ts';
 import type { ResponseCode } from './codes.ts';
-import { charLen, endsWithHaeyo, hasResidualPii, maskText, quoteInSource, sanitize, wrapState, wrapTurn } from './text.ts';
+import { charLen, endsWithHaeyo, hasResidualPii, maskText, quoteInSource, sanitize, strayScriptChars, wrapState, wrapTurn } from './text.ts';
 import { MANIPULATE_OBJ, classifyHits, hasDiagnosisAsk, hasDiagnosisRequest, hasInjectionShape, hasMoneyHint, hasVerdictRequest } from './lexicon.ts';
 import type { FixedCard } from './fixed.ts';
 import { composeSafety, composeSafetyFromFlags } from './safety.ts';
@@ -43,7 +43,13 @@ export const CHAT_LIMITS = {
   slotValueMax: 60,
 } as const;
 /** 단계별 max_tokens(thinking 포함). 보안 제안 ≤ 1,000은 JSON 틀 + 근거 인용 + thinking을 담기엔 모자라 단계별로 올림 */
-export const STAGE_MAX_TOKENS: Readonly<Record<StageId, number>> = { S1: 1500, S2: 1500, S3: 3500, S4: 1500, S5: 4000 };   // AI-FIX2 R3: S3 2,500 → 3,500 · S5 3,000 → 4,000 (평가에서 생각 토큰이 한도를 다 써 stop:max_tokens 3/91)
+export const STAGE_MAX_TOKENS: Readonly<Record<StageId, number>> = { S1: 2000, S2: 2000, S3: 3500, S4: 2000, S5: 4000 };   // AI-FIX2 R3: S3 2,500 → 3,500 · S5 3,000 → 4,000 (평가에서 생각 토큰이 한도를 다 써 stop:max_tokens 3/91)
+
+/** 직전 시도가 길이 한도(stop:max_tokens)로 막혔으면 이번 시도의 한도를 1,000 토큰씩 키운다. 위 한도는 S5(4,000)를 넘지 않는다 — 요청 하나의 하드 상한(limits.ts)이 그대로다 */
+export function boostedMaxTokens(stage: StageId, boost: number | undefined): number {
+  const base = STAGE_MAX_TOKENS[stage];
+  return Math.min(Math.max(base, STAGE_MAX_TOKENS.S5), base + 1000 * Math.max(0, Math.min(3, boost ?? 0)));
+}
 
 // ---------------------------------------------------------------- 칩
 export type ChipCode =
@@ -101,6 +107,10 @@ export interface ChatState {
   checked?: boolean;
   /** 방금 검사에 걸려 보여 주지 못한 답에서 걸린 낱말(최대 6개) — 다음 시도에서 모델이 그 낱말을 피해 풀어 쓰게 상태 줄로 알린다(막다른 길 줄이기, AI-FIX6 ②) */
   avoid?: string[];
+  /** 이 세션에서 가해 의도(오용) 카드로 닫은 글의 수. 닫은 글은 이력에 남지 않아 "아까 말한 대로 할게요" 같은 글이 앞 말 창에 안 보이므로, 2번 이상이면 입력 판정을 엄하게 한다(AI-FIX7 ⑤). 서명 봉투 안이라 사용자가 못 지운다 */
+  misuse?: number;
+  /** 연속으로 stop:max_tokens 로 막힌 수 — 다음 시도의 max_tokens 를 키운다(AI-FIX7 ②, 같은 글이 3번 연속 길이 한도로 막히던 것) */
+  boost?: number;
   slots: StoredSlots;
   chips: { problem_confirmed?: boolean; reaction?: 'yes' | 'some' | 'no'; my_state?: number; unknown?: boolean; stage_code?: string; enough?: boolean };
 }
@@ -200,7 +210,7 @@ export function planFor(state: ChatState): Plan {
   const allowed = Array.from(new Set(items.flatMap((i) => i.kinds.filter(() => true)))) as Kind[];
   // min/max가 0인 종류는 허용 목록에서 뺀다
   const reallyAllowed = allowed.filter((k) => items.some((i) => i.kinds.includes(k) && i.max > 0));
-  return { stage, t, items, allowed: reallyAllowed, maxTokens: STAGE_MAX_TOKENS[stage] };
+  return { stage, t, items, allowed: reallyAllowed, maxTokens: boostedMaxTokens(stage, state.boost) };
 }
 
 /** 모델에게 보이는 need 글: ["restate:1-2","question:1"] */
@@ -298,7 +308,7 @@ export interface CallSpec {
 
 export type Prepared =
   | { kind: 'reject'; code: ResponseCode; why: string }
-  | { kind: 'card'; code: 'crisis' | 'refused_intent'; card: FixedCard; env: ChatEnvelope; violenceJudge?: { texts: { asker: string; partner: string }; plainEnv: ChatEnvelope } }
+  | { kind: 'card'; code: 'crisis' | 'refused_intent'; card: FixedCard; env: ChatEnvelope; violenceJudge?: { texts: { asker: string; partner: string }; plainEnv: ChatEnvelope }; /** 사전이 오용으로 닫은 글에도 위기가 끼어 있을 수 있어("요즘자살이 떠올라요. 그 사람을 조종하고 싶어요") 위기 판정만 함께 본다 — 위기가 언제나 먼저(AI-FIX7 ①) */ crisisJudge?: { texts: { asker: string; partner: string }; plainEnv: ChatEnvelope } }
   | { kind: 'end'; code: 'ok'; env: ChatEnvelope; display: DisplayTurn }
   | { kind: 'call'; env: ChatEnvelope; call: CallSpec };
 
@@ -307,6 +317,13 @@ export function applyCrisisCard(env: ChatEnvelope): ChatEnvelope {
   const e = cloneEnv(env);
   e.state.crisisCards += 1;
   if (e.state.crisisCards >= CHAT_LIMITS.maxCrisisCards) e.state.ended = true;
+  return e;
+}
+
+/** 가해 의도(오용) 카드를 낸 봉투 — 이 세션에서 닫은 글 수를 센다(AI-FIX7 ⑤). 닫은 글 자체는 이력에 넣지 않는다 */
+export function applyMisuseCard(env: ChatEnvelope): ChatEnvelope {
+  const e = cloneEnv(env);
+  e.state.misuse = (e.state.misuse ?? 0) + 1;
   return e;
 }
 
@@ -363,7 +380,12 @@ export function prepareTurn(envIn: ChatEnvelope, input: ChatInput): Prepared {
   if (hits.includes('misuse')) {
     const whole = askerRaw + ' ' + partnerRaw;
     if ((VICTIM_FEELING.test(whole) || THIRD_DISSUADE.test(whole)) && !HARM_ASK.test(whole)) softMisuse = true;
-    else return { kind: 'card', code: 'refused_intent', card: MISUSE_CARD, env };
+    else {
+      const plainEnv = cloneEnv(env);                                          // 위기 판정이 crisis 면 오용 횟수를 올리지 않은 봉투로 위기 카드를 낸다
+      st.misuse = (st.misuse ?? 0) + 1;
+      const kn = { partnerNames: [] as string[] };
+      return { kind: 'card', code: 'refused_intent', card: MISUSE_CARD, env, crisisJudge: { texts: { asker: maskText(askerRaw, kn).text, partner: maskText(partnerRaw, kn).text }, plainEnv } };
+    }
   }
   if (hits.includes('minor')) { st.ended = true; return { kind: 'card', code: 'refused_intent', card: MINOR_CARD, env }; }
 
@@ -457,7 +479,7 @@ const HARM_ASK = /방법|하는\s?법|알려\s?줘|알려\s?주세요|가르쳐/
 const REF_USER = /^내 말 ([1-9][0-9]*)$/;   // 턴 상한이 없어 세 자리 번호도 나온다
 const REF_CARD = /^K-[1-9][0-9]?$/;
 /** 사용자가 걱정하는 모양을 되짚는 말의 틀만(주어가 상대면 제외). 사용자 글에 같은 틀이 있을 때만 쓴다 — '사용자 글에 있던 말이면 봐주기'처럼 낱말 전체를 풀지 않는다 */
-const WORRY_FRAME = /(?<!(?:상대방?|그분|그 ?사람|그쪽|걔|그이|그 ?애|남자 ?친구|여자 ?친구|남친|여친|애인|남편|아내|연인|배우자)(?:이|가|은|는|도|께서)? ?)예민(?:한 ?사람(?:처럼|으로)|해) ?(?:보일|비칠|보이|여겨질|느껴질|볼|생각할|여길)(?:까 ?봐|까 ?걱정|까 ?염려|까 ?두려|까 ?무서)/g;
+const WORRY_FRAME = /(?<!(?:상대방?|그분|그 ?사람|그쪽|걔|그이|그 ?애|남자 ?친구|여자 ?친구|남친|여친|애인|남편|아내|연인|배우자|[가-힣]{1,6}분|친구|동료|부모님|어머니|아버지|엄마|아빠|가족|형|언니|오빠|선배|후배)(?:이|가|은|는|도|께서)? ?)예민(?:한 ?사람(?:처럼|으로)|해) ?(?:보일|비칠|보이|여겨질|느껴질|볼|생각할|여길)(?:까 ?봐|까 ?걱정|까 ?염려|까 ?두려|까 ?무서)/g;
 const WORRY_TEST = new RegExp(WORRY_FRAME.source);
 /** 피해를 서술하는 틀(상대가 나를 …하는 것 같다 · …당한다)만. 조언 꼴("조종하는 법" · "조종해 보세요" · "길들이는 방법")은 이 틀에 없다 */
 const VICTIM_FRAME = /(?:조종|길들)(?:당하|당했|여지|여진|이려는|이려고|이려 ?해|이려 ?한|이려 ?하는|이는 ?것 ?같|이는 ?느낌|이는 ?듯|하려는|하려고|하려 ?해|하려 ?한|하려 ?하는|하는 ?것 ?같|하는 ?느낌|하는 ?듯|처럼|같은 ?느낌|같이)|질투(?:를|가)? ?(?:나게|하게|유발)(?: ?만[들드든][가-힣]{0,3})?/g;
@@ -467,13 +489,14 @@ const VICTIM_REPORT_SOFT = /(?:느낌|마음|말|생각|일)[^.]{0,14}(?:것으�
 const VICTIM_QUESTION_ECHO = /(?:느끼|느껴|하셨|말씀|들으|들었|쓰셨)/;
 const FIT_USER = /안\s?맞|맞지\s?않|잘\s?맞/;
 const FIT_STEM = /안 ?맞|맞지 않|잘 ?맞/g;
-const FIT_PAIR = /두 ?분|상대|사이|사람|서로|우리|관계|궁합|성격|성향|둘이|연인|그분|그 ?사람/;
-const FIT_PAIR_AFTER = /사이|사람|관계|궁합/;
+const FIT_PAIR = /두 ?분|상대|사이|사람|서로|우리|관계|궁합|성격|성향|둘이|둘은|둘의|연인|그분|그 ?사람|그쪽|저랑|나랑|저와|나와/;   // AI-FIX7 ④: 둘은 · 그쪽 · 저랑 — 짝을 가리키는 말이 목록 밖이라 면제를 통과하던 것(IND6 X)
+const FIT_PAIR_AFTER = /사이|사람|관계|궁합|조합|분(?:이|은|께|과|으로)|짝/;
 /** 사용자가 쓴 말을 보고형으로 되짚을 때 검사에서 빼는 낱말(사용자 글에 같은 낱말이 있을 때만) */
-const ECHO_EXEMPT: ReadonlyArray<{ user: RegExp; strip: RegExp }> = [
-  { user: /자존감/, strip: /자존감 ?(?:이 ?)?(?:바닥|낮|없|문제)/g },          // c_symptom
-  { user: /떠보/, strip: /떠보/g },                                            // c_manip
+const ECHO_EXEMPT: ReadonlyArray<{ user: RegExp; strip: RegExp; ext: number }> = [
+  { user: /자존감/, strip: /자존감 ?(?:이 ?)?(?:바닥|낮|없|문제)/g, ext: 0 },    // c_symptom — 사용자가 쓴 그 꼴("자존감이 바닥") 그대로일 때만
+  { user: /떠보/, strip: /떠보/g, ext: 2 },                                     // c_manip — "떠보는 말"처럼 뒤 두 글자까지 사용자 글과 같을 때만
 ];
+const normQ = (s: string): string => s.replace(/[^가-힣a-z0-9]/gi, '');
 const VICTIM_ADVICE = /보세요|해 ?보|해 ?주세요|하세요|방법|쪽으로|좋겠|권해|보시면|볼 ?수|드릴게|효과|좋다고|좋아요|낫|나아 ?보|도움이 ?되|유용|해야|돼요|하면 ?돼|하는 ?게 ?좋|전해 ?보/;
 /** 틀 뒤에 조건 꼴(면 · 듯이 · 하면서 · 려면)이 오거나, 틀 가까이에 사람 · 성향 · 타입 같은 낙인 꼴이 오면 풀지 않는다(AI-FIX4 M1: "조종하려는 느낌을 주면 …" · "길들이려는 성향의 사람") */
 const VICTIM_AFTER_BAD = /면[\s,]|듯이|하면서|려면/;
@@ -525,6 +548,13 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
   const seenText = new Set<string>();
   const lastAsker = ctx.userTexts[ctx.userTexts.length - 1]?.asker ?? '';
   const allAsker = ctx.userTexts.map((t) => t.asker).join(' ');          // 이 세션에서 사용자가 쓴 말 전부 — 앞 턴에 쓴 낱말(자존감이 바닥)을 모델이 다음 턴에도 되짚는 길(실호출 E1R7 m4 T2 · T3 막다른 길)
+  const userNorm = ctx.userTexts.map((u) => normQ(u.asker)).join('|');
+  /** 문장 속 m(whole[off..])와 그 뒤 ext 글자가 사용자 글에 그대로(띄어쓰기 · 문장부호 무시) 있나 */
+  const echoQuoted = (whole: string, off: number, m: string, ext: number): boolean => {
+    const need = normQ(m).length;
+    const probe = normQ(whole.slice(off)).slice(0, need + ext);
+    return probe.length >= need && userNorm.includes(probe);
+  };
   const worryOk = WORRY_TEST.test(lastAsker);
   const victimStems = ['조종', '길들', '질투'].filter((st) => lastAsker.includes(st));            // 사용자가 직접 쓴 낱말만(모델이 먼저 꺼낸 낱말은 풀지 않는다)
   const kept: Array<{ kind: Kind; ds: DisplaySentence }> = [];
@@ -548,16 +578,20 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
       let u = worryOk ? t.replace(WORRY_FRAME, '') : t;
       if (victimStems.length) u = unwrapVictimFrame(u, victimStems, kind === 'question');
       // 사용자가 쓴 말을 되짚는 보고형 문장에서만, 그 말의 낱말을 사전에서 뺀다(AI-FIX5 D4 · AI-FIX6 ① ②). 보고형 = 끝말(군요 · 셨어요 …)이 있고 조언 낱말이 없음. 질문은 느낌을 되묻는 꼴만.
-      const reportForm = !VICTIM_ADVICE.test(t) && (kind === 'question' ? /\?\s*$/.test(t.trim()) && VICTIM_QUESTION_ECHO.test(t) : VICTIM_REPORT_END.test(t.trim()) || VICTIM_REPORT_SOFT.test(t.trim()));
+      const advice = VICTIM_ADVICE.test(t);
+      const reportForm = !advice && (kind === 'question' ? /\?\s*$/.test(t.trim()) && VICTIM_QUESTION_ECHO.test(t) : VICTIM_REPORT_END.test(t.trim()) || VICTIM_REPORT_SOFT.test(t.trim()));
       if (reportForm) {
         // c_fit: "안 맞는 / 맞지 않는" 앞뒤에 짝(두 분 · 상대 · 사이 · 사람 · 관계 …)이 있으면 AI 가 짝을 판정하는 문장이라 면제하지 않는다. "양가 일정이 안 맞는다" 같은 일정 · 시간 이야기만 풀어 준다
         if (FIT_USER.test(lastAsker)) u = u.replace(FIT_STEM, (m, off: number, whole: string) => (FIT_PAIR.test(whole.slice(Math.max(0, off - 14), off)) || FIT_PAIR_AFTER.test(whole.slice(off + m.length, off + m.length + 8)) ? m : ''));
-        // 사용자가 직접 쓴 낱말(자존감이 바닥 · 떠보는 말투)을 되짚는 말은 그 낱말만 뺀다 — 피해를 털어놓는 첫 글이 3연속 막히던 것
-        for (const e of ECHO_EXEMPT) if (e.user.test(allAsker)) u = u.replace(e.strip, '');
       }
+      // 사용자가 직접 쓴 말을 **그대로 인용한 구간**만 사전에서 뺀다(AI-FIX7 ② ④). 문장 끝말(군요 · 셨어요)이 아니라 인용 일치로 본다 — "…자존감이 바닥이라서 더 힘드시겠어요"도 풀리고,
+      //  "상대는 자존감이 낮아서 …"처럼 사용자가 쓰지 않은 꼴은 안 풀린다. 조언 꼴(보세요 · 방법 …)이 든 문장은 어느 쪽이든 풀지 않는다. 그 뒤 판단은 출력 판정(Haiku)이 한 번 더 한다.
+      if (!advice) for (const e of ECHO_EXEMPT) if (e.user.test(allAsker)) u = u.replace(e.strip, (m: string, off: number, whole: string) => (echoQuoted(whole, off, m, e.ext) ? '' : m));
       return u;
     };
     const hits = checkText(scan(text), CHAT_RULES, { allowPhrases: CHAT_ALLOW_PHRASES });
+    const stray = strayScriptChars(rawText, allAsker);
+    if (stray.length) return drop('garbled');                       // 가나 · 한자가 섞여 깨진 낱말("설レ셨다") — 사용자가 직접 쓴 글자가 아니면 화면에 내지 않는다(AI-FIX7 ⑨)
     const ch = contactHit(text);
     if (ch) hits.push(ch);
     if (rawText !== text) {                         // 질문 칸에서 잘라 낸 뒷부분도 안전선(block)은 그대로 본다 — 형식 완화가 안전 규칙을 약하게 만들지 않게(AI-FIX1)
@@ -754,6 +788,7 @@ export function finishTurn(prep: Extract<Prepared, { kind: 'call' }>, resp: ApiR
     const e = cloneEnv(env);
     e.state.blocked += 1;
     if (words.length) e.state.avoid = [...words]; else delete e.state.avoid;
+    if (reasons.includes('stop:max_tokens')) e.state.boost = Math.min(3, (e.state.boost ?? 0) + 1); else delete e.state.boost;    // 길이 한도로 연달아 막히면 다음 시도의 한도를 키운다(AI-FIX7 ②)
     if (e.state.blocked >= CHAT_LIMITS.maxBlocked) e.state.ended = true;
     return { kind: 'blocked', code: 'blocked_output', reasons, env: e };
   };
@@ -794,6 +829,7 @@ export function finishTurn(prep: Extract<Prepared, { kind: 'call' }>, resp: ApiR
   if (call.stage === 'S5') st.s5Delivered = true;
   st.blocked = 0;                // 검사 탈락은 '연속' 수 — 정상 답이 나오면 센 것을 지운다
   delete st.avoid;
+  delete st.boost;
   const endedByEnough = call.chip === 'enough' && call.stage === 'S5';      // 마지막 말에 답한 뒤 끝낸다
   if (endedByEnough) st.ended = true;
   // AI-FIX2: 이력에는 글(text) 블록만 넣는다. 생각(thinking) 블록은 서명이 앞 이력과 묶여 있어, 접기(foldEnvelope)가 앞 턴을 자르거나 첫 메시지에 digest 를 붙이면 업체가 400 'Invalid signature in thinking block' 으로 거절한다 —

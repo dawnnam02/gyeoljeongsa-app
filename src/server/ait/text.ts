@@ -173,3 +173,11 @@ export function endsWithHaeyo(sentence: string): boolean {
   }
   return s.endsWith('요') || s.endsWith('죠');
 }
+
+/** 한글 문장 안에 섞인 가나 · 한자 · 키릴 글자(모델이 낱말을 깨뜨린 것: "설レ셨다"). 사용자가 같은 글자를 직접 쓴 글(allowFrom)이면 그 글자는 인용으로 보고 뺀다 */
+const STRAY_SCRIPT = /[\u3040-\u30ff\u31f0-\u31ff\uff66-\uff9f\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u0400-\u04ff]/;
+export function strayScriptChars(text: string, allowFrom = ''): string[] {
+  const out: string[] = [];
+  for (const ch of text) if (STRAY_SCRIPT.test(ch) && !allowFrom.includes(ch) && !out.includes(ch)) out.push(ch);
+  return out;
+}

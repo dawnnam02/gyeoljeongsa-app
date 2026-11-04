@@ -6,7 +6,7 @@ import { FEATURE_MODEL } from './types.ts';
 import type { ResponseCode } from './codes.ts';
 import type { FixedCard } from './fixed.ts';
 import { COACH_NOTE, COMPAT_NOTE, CONTACT_NOTE, CRISIS_CARD, FUN_FOOTER, MINOR_CARD } from './fixed.ts';
-import { charLen, endsWithHaeyo, hasResidualPii, maskText, quoteInSource, sanitize, splitSentences } from './text.ts';
+import { charLen, endsWithHaeyo, hasResidualPii, maskText, quoteInSource, sanitize, splitSentences, strayScriptChars } from './text.ts';
 import { classifyHits, hasMinorProfileHint } from './lexicon.ts';
 import { composeSafety } from './safety.ts';
 import { COACH_RULES, RULESETS, checkText, contactHit, newDigitRuns } from './rules.ts';
@@ -133,6 +133,7 @@ export function finishCompat(resp: ApiResultLike): OneShotDone<CompatDisplay> {
   for (const t of topics) if (charLen(t) < 6 || charLen(t) > 45) reasons.push('topic_len');
   for (const s of [same, ...topics]) {
     if (!endsWithHaeyo(s)) reasons.push('ending');
+    if (strayScriptChars(s).length) reasons.push('garbled');
     for (const h of checkText(s, RULESETS.compat)) reasons.push('rule:' + h.id);
     if (COMPAT_DIFF.test(s)) reasons.push('rule:diff');
     if (contactHit(s)) reasons.push('contact');
@@ -174,6 +175,9 @@ const mentionsContact = (s: string): boolean => CONTACT_WORDS.some((w) => s.incl
 /** 서버 가리기(maskText)가 못 가리는 연락 수단 — 카톡 · 인스타 아이디를 말로 알려 주는 꼴, 'instagram.com/…' 같은 주소 앞 http 없는 꼴. 이런 글도 연락처 글과 똑같이 다룬다(평가 E1R2: 가리지 못한 채 모델에게 갔다) */
 const CONTACT_GIVEN = /(?:아이디|카톡|카카오톡|카카오|인스타|오픈채팅|라인|텔레그램)[^가-힣]{0,6}[A-Za-z0-9._@-]{4,}|[A-Za-z0-9-]{2,}[.](?:com|kr|net|me|io)(?:[/][^ ]*)?/i;
 
+/** 상대를 서열 · 조건으로 가르거나 연락을 막는 문구, 사실을 숨기고 속이려는 문구 — 이런 글에는 살릴 점(keep) 칭찬 줄을 내지 않는다(AI-FIX7 ⑦: "상위 1% 스펙 아니면 연락하지 마세요"에 "기준을 분명하게 밝힌 점"이라고 칭찬한 것). 출력 판정 앞의 서버 쪽 안전망이다 */
+const KEEP_BLOCK_INPUT = /(?:상위|스펙|연봉|학벌|직업|외모|키|조건)[^.!?]{0,24}(?:아니면|이하|미만|못하면|안 ?되면|사절|제외|거르|걸러|연락\s?(?:하지|마))|(?:눈|수준|급)\s?낮[^.!?]{0,12}(?:사절|거절|제외|연락\s?(?:하지|마))|상위\s?\d+\s?%|사절|(?:나이|혼인|결혼|이혼|기혼|유부|돌싱|직업|사는 ?곳|연봉|학력)[^.!?]{0,14}(?:숨기|숨겨|속이|속여|속였|거짓|꾸며|안 ?밝히|비밀로)|(?:숨기|숨겨|속이|속여)[^.!?]{0,14}(?:나이|혼인|결혼|이혼|기혼|유부|돌싱|직업|연봉|학력)/;
+
 export function finishCoach(resp: ApiResultLike, input: { field: string; text: string; masked?: number }): OneShotDone<CoachDisplay> {
   const p = parseJson(resp);
   if (!p.ok) return { kind: 'blocked', code: 'blocked_output', reasons: [p.reason] };
@@ -181,13 +185,14 @@ export function finishCoach(resp: ApiResultLike, input: { field: string; text: s
   if (!isRecord(o) || !onlyKeys(o, ['keep', 'findings']) || typeof o.keep !== 'string' || !Array.isArray(o.findings)) return { kind: 'blocked', code: 'blocked_output', reasons: ['shape'] };
   const reasons: string[] = [];
   const masked = (input.masked ?? 0) > 0 || ['[연락처]', '[링크]'].some((w) => input.text.includes(w)) || CONTACT_GIVEN.test(input.text);   // 연락처 · 링크가 있어 서버가 가린 글(+ 가리지 못한 아이디 · 주소 꼴)
-  const keep = masked ? '' : o.keep.trim();                                          // 그런 글은 칭찬(살릴 점)을 내지 않는다
+  const keep = masked || KEEP_BLOCK_INPUT.test(input.text) ? '' : o.keep.trim();                                          // 그런 글은 칭찬(살릴 점)을 내지 않는다
   const text = input.text;
   const checkLine = (s: string, rules: typeof COACH_RULES): boolean => {
     let bad = false;
     for (const h of checkText(s, rules, { input: text })) { reasons.push('rule:' + h.id); bad = true; }
     if (contactHit(s)) { reasons.push('contact'); bad = true; }
     if (newDigitRuns(s, text).length) { reasons.push('new_digit'); bad = true; }
+    if (strayScriptChars(s, text).length) { reasons.push('garbled'); bad = true; }          // 가나 · 한자가 섞여 깨진 낱말(AI-FIX7 ⑨)
     return bad;
   };
   if (charLen(keep) > 90 || (keep && !endsWithHaeyo(keep)) || (keep && checkLine(keep, COACH_RULES))) reasons.push('keep');
@@ -251,6 +256,7 @@ export function finishHoroscope(resp: ApiResultLike): OneShotDone<HoroscopeDispl
     for (const x of sents) if (!endsWithHaeyo(x)) reasons.push('ending');
     for (const h of checkText(s, RULESETS.horoscope)) reasons.push('rule:' + h.id);
     if (/재미로 보는/.test(s)) reasons.push('footer_duplicate');
+    if (strayScriptChars(s).length) reasons.push('garbled');
     if (contactHit(s)) reasons.push('contact');
   }
   if (reasons.length) return { kind: 'blocked', code: 'blocked_output', reasons: [...new Set(reasons)] };
