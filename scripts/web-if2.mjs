@@ -152,12 +152,10 @@ try {
   check('1', '할 일 줄(지금 T2) 0 — 새 구성으로 바뀜', !(await vis('boarding-tasks')), '');
   check('1', "위 탑승권 칸도 같은 장면(탑승 완료 — '탑승권 사기' 0)", !(await b.evaluate(`document.body.innerText.includes('탑승권 사기')`)), '');
   check('1', "홈 탑승권 표: 회차 번호 0 — '이번 주'(QP-44)", (await visText('ticket-round')) === '이번 주' && !/[0-9]+회차/.test(await b.evaluate(`document.body.innerText`)), await visText('ticket-round'));
-  check('1', '첫 회차 같은 취미 띠', await vis('home-hobby-notice'), await visText('home-hobby-notice'));
+  check('1', '같은 취미 띠 0(D-248: 켜고 끄기 뺌)', !(await vis('home-hobby-notice')), '');
   await words('홈 비행 중', ['home-blocks']);
   await measure('홈 비행 중');
   await b.shot(`IF2_홈_비행중_${width}.png`);
-  await tap('home-hobby-keep');
-  check('1', '[그대로 두기] → 띠 닫힘', await waitGone('home-hobby-notice'), '');
   // ═══ 2. 기내지 ═══
   await tap('home-B3-mag');
   check('2', '/magazine 표지', await b.waitFor(`location.pathname === '/magazine' && !!${visQ('mag-cover')}`, 10000), await b.evaluate('location.pathname'));
@@ -349,11 +347,9 @@ try {
   await waitVis('home-B7-toggle', 8000);
   await tap('home-B7-toggle');
   await tap('home-B7-row-profile');
-  check('6', '접힘 줄 [프로필] → 08', await b.waitFor(`location.pathname === '/profile' && !!${visQ('toggle-sameHobby')}`, 10000), await b.evaluate('location.pathname'));
-  check('6', "'같은 취미' 줄 처음 켜짐", (await b.evaluate(`(${visQ('toggle-sameHobby')}).getAttribute('aria-checked')`)) === 'true', '');
-  await b.evaluate(`(${visQ('toggle-sameHobby')}).scrollIntoView({ block: 'center' })`);
-  await measure('08 같은 취미 줄');
-  await b.shot(`IF2_08같은취미_${width}.png`);
+  check('6', '접힘 줄 [프로필] → 08', await b.waitFor(`location.pathname === '/profile' && !!document.querySelector('[data-testid="profile-first-confirm"], [data-testid="profile-save"], [data-testid="toggle-A06"]')`, 10000), await b.evaluate('location.pathname'));
+  check('6', "'같은 취미' 켜고 끄는 줄 0(D-248)", !(await vis('toggle-sameHobby')), '');
+  await measure('08 공개 범위');
 
   const external = [...b.requests.values()].filter((r) => !r.url.startsWith(b.origin) && !r.url.startsWith('data:') && !r.url.startsWith('blob:'));
   check('7', '콘솔 오류 0 · 바깥 요청 0', b.errors.length === 0 && external.length === 0, [...b.errors.slice(0, 2), ...external.slice(0, 2).map((r) => r.url)].join(' | '));

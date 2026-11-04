@@ -134,7 +134,6 @@ export function createDemoInflight(o: DemoInflightOptions) {
         blocks.push('B4');
         out.status = { head, cells, writable: head === 'arrival' };
       }
-      out.hobby_notice = stage === 'inflight' && on('same_points') && acct.sameHobby; // 데모 1회차 = 처음 탄 회차
       if (stage === 'overlap' && room) {
         blocks.push('B5');
         out.pair = { room_id: room, cells: [on('pair_card') ? 'pair_card' : null, on('meet_prep') ? 'meet_prep' : null, on('meet_memo') ? 'meet_memo' : null].filter(Boolean) };
@@ -262,7 +261,7 @@ export function createDemoInflight(o: DemoInflightOptions) {
     const flags = await o.flags(u);
     if (!flags.profile_preview) return off();
     const acct = o.account(u);
-    return ok({ profile: { user_id: u.id, answers: acct.previewAnswers, photos: [], reasons: [] }, ck17b: acct.consentOn('CK17B'), same_hobby: acct.sameHobby });
+    return ok({ profile: { user_id: u.id, answers: acct.previewAnswers, photos: [], reasons: [] }, ck17b: acct.consentOn('CK17B') });
   }
 
   // 궁합 카드(0043 get_pair_card): 열린 방만 · 같은 취미(두 분 켬 · 스위치) · 사주 · 별자리 줄은 두 분 CK17B + 계산 값이 있을 때만(데모 짝은 CK17B 켬)

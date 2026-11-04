@@ -247,7 +247,6 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
                   router.push(hrefOf(`/chat/${encodeURIComponent(roomId)}`));
                 },
                 settings: (page) => openSettingsPage(router, page),
-                profileSameHobby: () => router.push(hrefOf('/profile?focus=sameHobby')),
               }}
             />
           ) : view === 'boarded' || view === 'matched' || view === 'no_match' || view === 'before_sale' ? (

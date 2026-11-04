@@ -526,7 +526,7 @@ describe('데모 모의 서버 = 0043 응답 모양(같은 파서로 읽힘)', (
     const l = await r.api.preQuestions();
     expect(l.ok && l.data.state).toBe('landing');
     const p = await r.api.preview();
-    expect(p.ok && p.data.ck17b && p.data.sameHobby).toBe(true);
+    expect(p.ok && p.data.ck17b).toBe(true);
     const chat = createDemoChatApi({ who: async () => r.user, replyMs: 20 });
     const a = createInflightApi(chat.if2Rpc);
     const rooms = await chat.listRooms();

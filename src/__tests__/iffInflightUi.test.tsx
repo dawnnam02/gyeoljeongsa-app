@@ -86,7 +86,7 @@ async function home(email: string, sc: string, over: Record<string, boolean> = {
   const b = await r.boardingApi.load();
   const h = await r.api.home();
   if (!b.ok || !h.ok) throw new Error('불러오지 못함');
-  const nav = { open: jest.fn(), chat: jest.fn(), settings: jest.fn(), profileSameHobby: jest.fn() };
+  const nav = { open: jest.fn(), chat: jest.fn(), settings: jest.fn() };
   const tree = keep(await mount(<InflightHome deps={{ api: r.api, ck17: r.ck17, type: { mine: async () => typeId }, isOn: r.isOn, notes: r.notes }} home={h.data} boarding={b.state as BoardingState} nav={nav} onToast={() => undefined} />));
   await wait();
   return { ...r, tree, nav, home: h.data as HomeState };
@@ -111,16 +111,13 @@ describe('IFF-04 홈 새 구성 — 상대 정보 0 · 숫자 0 · 접힌 채 �
     await press(tree, 'home-B2-chat');
     expect(nav.chat).toHaveBeenCalledWith(expect.stringMatching(/^demo-chat-1-\d+$/));
   });
-  test('비행 중: B3 좌석 앞 주머니(기내지 · 이번 주 카드) · B4 도착 준비 · 첫 회차 같은 취미 띠 → [그대로 두기]면 닫히고 다시 0', async () => {
-    const { tree, notes } = await home('h2@email.com', 'inflight');
+  test('비행 중: B3 좌석 앞 주머니(기내지 · 이번 주 카드) · B4 도착 준비 · 같은 취미 띠(옛 D-224)는 D-248부터 0', async () => {
+    const { tree } = await home('h2@email.com', 'inflight');
     expect(ids(tree, /^home-B\d$/)).toEqual(['home-B3', 'home-B4', 'home-B7']);
     expect(textOf(tree, 'home-B3-mag-line')).toBe(tx('HOME.pocket.magLine', { 여행지: '경주' }));
     expect(textOf(tree, 'home-B3-card-line')).toBe(tx('HOME.pocket.cardBefore'));
     expect(must(tree, 'home-B3-title').props.accessibilityLabel).toBe(tx('HOME.blockA11y', { '블록 머리': tx('HOME.pocket.title'), '칸 이름 차례': [tx('HOME.pocket.mag'), tx('HOME.pocket.card')].join(', ') }));
-    expect(has(tree, 'home-hobby-notice')).toBe(true);
-    await press(tree, 'home-hobby-keep');
     expect(has(tree, 'home-hobby-notice')).toBe(false);
-    expect(notes.get().hobbyNotice).toBe(true);
     expect(allTexts(tree).filter((t) => /\d/.test(t))).toEqual([]);
   });
   test('착륙 준비: 머리만 바뀌고(착륙 준비 중이에요) 자리 그대로 · 두 칸은 보기만 글', async () => {
@@ -307,13 +304,14 @@ describe('IFF-08 내 여행 타입 · IFF-13 짝에게 보이는 내 모습 · I
     await wait();
     expect(textOf(none, 'type-none')).toBe(IF3_TEXT['TYPE_CARD.state.none']); // 22-14: 타입이 아직 없음 = 실패가 아니라 사실 한 문장
   });
-  test('미리 보기는 서버 응답 그대로 그린다(앱 공개 범위 필터 0) · 등급 · 신고 · 차단 0 · CK17B · 같은 취미 한 줄', async () => {
+  test('미리 보기는 서버 응답 그대로 그린다(앱 공개 범위 필터 0) · 등급 · 신고 · 차단 0 · CK17B · 같은 취미 켜 둠 말 0(D-248)', async () => {
     const r = rig('v1@email.com');
     const tree = keep(await mount(<PreviewScreen api={r.api} />));
     await wait();
     expect(textOf(tree, 'preview-head')).toContain('이OO');
     expect(allTexts(tree)).toContain('무교'); // 서버가 보이게 둔 칸
-    expect(has(tree, 'preview-ck17') && has(tree, 'preview-hobby')).toBe(true);
+    expect(has(tree, 'preview-ck17')).toBe(true);
+    expect(has(tree, 'preview-hobby')).toBe(false);
     expect(ids(tree, /grade|report|block/)).toEqual([]);
   });
   test('첫 만남 준비: 먼저 챙길 것 = 12 안전 안내 1 ~ 6줄 원문(같은 키) · [챙겼어요]는 기기에만(개수 0) · 만남 계획 공유는 safe_share 일 때만', async () => {
@@ -436,21 +434,14 @@ describe('대화방 칸(IFF-05 · IFF-06 · IFF-07 · IFF-09)', () => {
   });
 });
 
-describe('IFF-16 08 같은 취미 줄', () => {
-  test('처음 켜짐 · 누르면 바로 저장(끔) · 끈 때만 아래 한 줄 · 스위치 same_points 가 꺼지면 줄 0', async () => {
-    const data = { name: '이하나', birthDate: '1995-03-12', region: '서울 마포구', verification: 'unverified' as const, photos: [], visibility: initialToggles(), answers: {}, sameHobby: true };
-    const save = jest.fn(async () => ({ ok: true as const }));
-    const api = { load: async () => ({ ok: true as const, data }), saveVisibility: async () => ({ ok: true as const }), photoUrl: async () => null, ackReview: async () => undefined, saveSameHobby: save };
+describe('D-248 08 같은 취미 켜고 끄기 줄 없음', () => {
+  test('스위치 same_points 가 켜져 있어도 줄 · 설명 0(취미는 항상 보이는 항목) · 미리 보기 단추는 그대로', async () => {
+    const data = { name: '이하나', birthDate: '1995-03-12', region: '서울 마포구', verification: 'unverified' as const, photos: [], visibility: initialToggles(), answers: {} };
+    const api = { load: async () => ({ ok: true as const, data }), saveVisibility: async () => ({ ok: true as const }), photoUrl: async () => null, ackReview: async () => undefined };
     const tree = keep(await mount(<ProfileScreen deps={{ api, now: () => Date.UTC(2026, 9, 28), if2: { isOn: (k) => k === 'same_points' || k === 'profile_preview' } }} />));
     await wait();
-    expect(state(tree, 'toggle-sameHobby').checked).toBe(true);
-    expect(textOf(tree, 'profile-same-hobby-desc')).toBe(tx('PROFILE.sameHobby.desc'));
-    await press(tree, 'toggle-sameHobby');
-    expect(save).toHaveBeenCalledWith(false);
-    expect(has(tree, 'profile-same-hobby-off')).toBe(true);
+    expect(has(tree, 'toggle-sameHobby')).toBe(false);
+    expect(has(tree, 'profile-same-hobby')).toBe(false);
     expect(has(tree, 'profile-preview')).toBe(true);
-    const off = keep(await mount(<ProfileScreen deps={{ api, now: () => Date.UTC(2026, 9, 28), if2: { isOn: () => false } }} />));
-    await wait();
-    expect(has(off, 'profile-same-hobby')).toBe(false);
   });
 });

@@ -22,6 +22,7 @@ import { createDeviceNotes } from '@/features/inflight/deviceNotes';
 import { HomeCell } from '@/features/inflight/If2Parts';
 import { Ck17Sheet } from '@/features/inflight/If2Sheets';
 import { isPacked, PACK_COUNT, PACK_QUIZ, packedItems, sameLines, travelTypeOf, tripPlaceOf } from '@/features/inflight/if2Library';
+import { IF2_COPY } from '@/features/inflight/if2CopyData';
 import { tx, txSeq } from '@/features/inflight/if2Text';
 import type { InflightApi, Magazine } from '@/features/inflight/inflightApi';
 import { magazineNoneKind } from '@/features/inflight/inflightLogic';
@@ -148,9 +149,8 @@ describe('T4 작별 엽서(기획 화면 요구 287 · 정책 PF-57 · 팀장 10
 });
 
 describe('QP-45 · QP-46 카피 반영', () => {
-  test('같은 취미 끈 글(21-17): 1.0 같은 점은 취미뿐이라 다른 같은 점 말 0 · 첫마디 실마리도 빠진다고 말함', () => {
-    expect(tx('PROFILE.sameHobby.offNote')).toBe('꺼 두면 짝과 같은 취미가 궁합 카드와 첫마디 실마리에 나오지 않아요.');
-    expect(tx('PROFILE.sameHobby.offNote')).not.toContain('다른 같은 점');
+  test('같은 취미 켜고 끄기 글(21-17)은 D-248부터 앱에 0', () => {
+    expect(IF2_COPY['PROFILE.sameHobby.offNote' as keyof typeof IF2_COPY]).toBeUndefined();
   });
   test('기내지 ① 쪽 버튼 글 = 동의하고 보기 · 옛 [동의 관리 열기] 키 0', () => {
     expect(tx('FUN.ck17.agreeView')).toBe('동의하고 보기');

@@ -84,7 +84,7 @@ async function home(email: string, sc: string, ait?: boolean, typeId: string | n
   const b = await r.boardingApi.load();
   const h = await r.api.home();
   if (!b.ok || !h.ok) throw new Error('불러오지 못함');
-  const nav = { open: jest.fn(), chat: jest.fn(), settings: jest.fn(), profileSameHobby: jest.fn() };
+  const nav = { open: jest.fn(), chat: jest.fn(), settings: jest.fn() };
   const tree = keep(await mount(<InflightHome deps={{ api: r.api, ck17: r.ck17, type: { mine: async () => typeId }, isOn: r.isOn, notes: r.notes, ait }} home={h.data as HomeState} boarding={b.state as BoardingState} nav={nav} onToast={() => undefined} />));
   await wait();
   return { ...r, tree, nav };

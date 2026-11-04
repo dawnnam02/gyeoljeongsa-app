@@ -6,7 +6,7 @@
 //   get_my_birth_week()                    → {ok, state ready, birthday_week 참/거짓, set 1~4(참일 때만 · 0049)} | {ok, state none} | {ok:false, code not_ready} — 3부-카(G-07 · 0046) · 날짜 · 별자리 · 나이 · 묶음 번호 0(질문 묶음은 발행일로 앱이 정함)
 //   get_week_card() · pick_week_card(p_slot) → {state none | face_down | revealed(slot, card) | not_ready} · {ok, slot, card} | {ok:false, code already_picked(slot, card) | invalid_slot | none | not_ready}
 //   pre_answer_questions()                 → {state none | open | landing | not_ready, questions[20 id]}
-//   preview_my_profile()                   → {profile(짝이 get_candidate_profile 로 받는 값 그대로), ck17b, same_hobby}
+//   preview_my_profile()                   → {profile(짝이 get_candidate_profile 로 받는 값 그대로), ck17b}
 //   get_pair_card(p_room)                  → {ok, card{same[{code} | {group}], saju | null, star | null, ck17_mine, made_at}} | {ok:false, code not_found}
 //   opener_chips(p_room)                   → {ok, show, chips[{id ct-.. | ch-.., hobby?{code | group}}]}
 //   talk_topics(p_room)                    → {ok, depths[light · taste · life · values], questions[그날 10 id], together_used} | {ok:false, code not_found | room_closed | not_ready}
@@ -51,7 +51,6 @@ export type MeCell = 'type' | 'preview';
 export type HomeState = {
   stage: HomeStage;
   blocks: HomeBlock[];
-  hobbyNotice: boolean;
   pocket: PocketCell[] | null;
   status: { head: 'arrival' | 'landing' | 'meet'; cells: StatusCell[]; writable: boolean } | null;
   pair: { roomId: string; cells: PairCell[] } | null;
@@ -86,7 +85,6 @@ export function parseHomeState(raw: unknown): HomeState | null {
   return {
     stage,
     blocks,
-    hobbyNotice: raw.hobby_notice === true,
     pocket: isRecord(raw.pocket) ? parsePocket(raw.pocket.cells) : null,
     status: st && head ? { head, cells: strs(st.cells).filter((c): c is StatusCell => ['postcard', 'pre_answer', 'meet_prep', 'meet_memo'].includes(c)), writable: st.writable === true } : null,
     pair: pr && roomId ? { roomId, cells: strs(pr.cells).filter((c): c is PairCell => ['pair_card', 'values_talk', 'meet_prep', 'meet_memo'].includes(c)) } : null,
@@ -137,7 +135,7 @@ export function parseWeekCard(raw: unknown): WeekCard | null {
 
 // ── 미리 답해 두는 질문 · 미리보기 ─────────────────────────────────────────
 export type PreQuestions = { state: 'none' | 'open' | 'landing' | 'not_ready'; questions: string[] };
-export type PreviewMe = { profile: Record<string, unknown>; ck17b: boolean; sameHobby: boolean };
+export type PreviewMe = { profile: Record<string, unknown>; ck17b: boolean };
 
 // ── 궁합 카드 · 칩 · 이야깃거리 ────────────────────────────────────────────
 export type HobbyItem = { code: string } | { group: string };
@@ -252,7 +250,7 @@ export function createInflightApi(call: RpcCall): InflightApi {
         },
         'if2.pre.fail',
       ),
-    preview: () => read('preview_my_profile', {}, (d) => (isRecord(d) && isRecord(d.profile) ? { profile: d.profile, ck17b: d.ck17b === true, sameHobby: d.same_hobby === true } : null), 'if2.preview.fail'),
+    preview: () => read('preview_my_profile', {}, (d) => (isRecord(d) && isRecord(d.profile) ? { profile: d.profile, ck17b: d.ck17b === true } : null), 'if2.preview.fail'),
     pairCard: (roomId) => read('get_pair_card', { p_room: roomId }, parsePairCard, 'if2.pair.fail'),
     openerChips: (roomId) =>
       read(

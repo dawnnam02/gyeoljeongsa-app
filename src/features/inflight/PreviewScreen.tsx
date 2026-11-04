@@ -34,11 +34,11 @@ export function PreviewScreen({ api: given }: { api?: Pick<InflightApi, 'preview
   const router = useRouter();
   const api = given ?? inflightServices().api;
   const [coach, setCoach] = useState(false); // AIT-F: 문장 다듬기 시트(데모 판에서만 입구)
-  const [data, setData] = useState<{ profile: CandidateData; ck17b: boolean; sameHobby: boolean } | 'loading' | 'failed'>('loading');
+  const [data, setData] = useState<{ profile: CandidateData; ck17b: boolean } | 'loading' | 'failed'>('loading');
   const fetchPreview = useCallback(() => {
     void api.preview().then((r) => {
       const p = r.ok ? parseCandidate(r.data.profile) : null;
-      setData(r.ok && p ? { profile: p, ck17b: r.data.ck17b, sameHobby: r.data.sameHobby } : 'failed');
+      setData(r.ok && p ? { profile: p, ck17b: r.data.ck17b } : 'failed');
     });
   }, [api]);
   useEffect(fetchPreview, [fetchPreview]);
@@ -67,11 +67,6 @@ export function PreviewScreen({ api: given }: { api?: Pick<InflightApi, 'preview
         {typeof data === 'object' && data.ck17b ? (
           <AppText variant="caption" testID="preview-ck17">
             {tx('PREVIEW_ME.ck17Note')}
-          </AppText>
-        ) : null}
-        {typeof data === 'object' && data.sameHobby ? (
-          <AppText variant="caption" testID="preview-hobby">
-            {tx('PREVIEW_ME.hobbyNote')}
           </AppText>
         ) : null}
         <Button label={tx('PREVIEW_ME.edit')} onPress={() => router.push('/profile' as Href)} testID="preview-edit" />

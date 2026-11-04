@@ -47,7 +47,6 @@ export type InflightHomeNav = {
   open: (href: Href) => void;
   chat: (roomId: string, draft?: string) => void;
   settings: (page: 'avoid' | 'safety' | 'consent-management' | 'ait-code') => void;
-  profileSameHobby: () => void;
 };
 
 type Sheet = 'none' | 'hello' | 'pre' | 'pair' | 'talk' | 'prep' | 'memo' | 'share' | 'ck17' | 'concern';
@@ -247,27 +246,6 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
   return (
     <View style={if2Styles.gap} testID={`${testID}-blocks`}>
       <View testID={`${testID}-state-${code}`} />
-      {home.hobbyNotice && !n.hobbyNotice ? (
-        <View style={styles.band} testID={`${testID}-hobby-notice`}>
-          <AppText variant="small">{tx('PROFILE.sameHobby.notice')}</AppText>
-          <View style={styles.bandButtons}>
-            <View style={if2Styles.flex}>
-              <Button
-                label={tx('PROFILE.sameHobby.noticeOpen')}
-                variant="secondary"
-                onPress={() => {
-                  notes.set('hobbyNotice', true);
-                  nav.profileSameHobby();
-                }}
-                testID={`${testID}-hobby-open`}
-              />
-            </View>
-            <View style={if2Styles.flex}>
-              <Button label={tx('PROFILE.sameHobby.noticeKeep')} variant="secondary" onPress={() => notes.set('hobbyNotice', true)} testID={`${testID}-hobby-keep`} />
-            </View>
-          </View>
-        </View>
-      ) : null}
       {shown.map((b) => cellsOf(b))}
 
       {roomId ? (
@@ -337,8 +315,6 @@ function FoldBlock({ rows, open, onToggle, onRow, boarding, testID }: { rows: Fo
 
 const styles = StyleSheet.create({
   full: { width: '100%', gap: space.s8 },
-  band: { backgroundColor: colors.accentSoft, borderRadius: radius.lg, padding: space.s16, gap: space.s12 },
-  bandButtons: { flexDirection: 'row', gap: space.s8 },
   strip: { minHeight: size.touchMin, maxHeight: 56, flexDirection: 'row', alignItems: 'center', gap: space.s12, paddingHorizontal: space.s16, backgroundColor: colors.accentSoft, borderRadius: radius.lg },
   fold: { backgroundColor: colors.bg, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.line, overflow: 'hidden' },
   foldRow: { minHeight: if2Look.foldRowH, flexDirection: 'row', alignItems: 'center', gap: space.s12, paddingHorizontal: space.s16 },

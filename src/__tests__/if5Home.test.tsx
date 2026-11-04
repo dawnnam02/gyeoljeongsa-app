@@ -50,7 +50,7 @@ async function open(opts: { ck17: boolean; over?: Record<string, boolean>; cells
     revoke: async () => ({ ok: true }),
   };
   const api = { home: async () => (calls.push('home'), { ok: true as const, data: home(opts.cells ?? ['preview']) as never }), pairCard: async () => ({ ok: false as const, code: 'x' }), preQuestions: async () => ({ ok: false as const, code: 'x' }) } as unknown as Pick<InflightApi, 'home' | 'pairCard' | 'preQuestions'>;
-  const nav = { open: jest.fn(), chat: jest.fn(), settings: jest.fn(), profileSameHobby: jest.fn() };
+  const nav = { open: jest.fn(), chat: jest.fn(), settings: jest.fn() };
   const h = home(opts.cells ?? ['preview']);
   if (!h) throw new Error('home');
   const tree = await mount(

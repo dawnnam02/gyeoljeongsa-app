@@ -115,7 +115,6 @@ export const IF2_COPY = {
   "PREVIEW_ME.banner": "짝에게는 이렇게 보여요. 공개 범위를 바꾸면 이 화면도 함께 바뀌어요.",
   "PREVIEW_ME.hiddenNote": "보이지 않게 한 항목은 이 화면에도 나오지 않아요.",
   "PREVIEW_ME.ck17Note": "짝과 둘 다 동의하면 궁합 카드에 별자리 · 사주 이야기가 보여요.",
-  "PREVIEW_ME.hobbyNote": "같은 취미를 켜 두어서, 짝과 같은 취미가 있으면 그 이름이 궁합 카드에 보여요.",
   "PREVIEW_ME.edit": "공개 범위 바꾸기",
   "PREVIEW_ME.loadFailed": "미리 보기를 불러오지 못했어요. 다시 시도해 주세요.",
   "PREVIEW_ME.a11y": "짝에게 보이는 내 모습 미리 보기",
@@ -380,13 +379,6 @@ export const IF2_COPY = {
   "MEET_MEMO.deleted": "메모를 지웠어요.",
   "MEET_MEMO.gone": "메모를 남겨 둘 수 있는 때가 지나 지웠어요.",
   "MEET_MEMO.a11y.prompt": "{질문 틀}, 내 메모 {글}",
-  "PROFILE.sameHobby.name": "같은 취미",
-  "PROFILE.sameHobby.desc": "짝과 같은 취미가 있으면 그 취미 이름만 궁합 카드와 첫마디 실마리에 보여요. 두 분 모두 켜 두었을 때만 보이고, 봉사 · 종교 활동은 보이지 않아요.",
-  "PROFILE.sameHobby.a11y": "같은 취미, 짝에게 보이기",
-  "PROFILE.sameHobby.offNote": "꺼 두면 짝과 같은 취미가 궁합 카드와 첫마디 실마리에 나오지 않아요.",
-  "PROFILE.sameHobby.notice": "같은 취미는 처음에 켜져 있어서, 짝과 같은 취미가 있으면 그 이름이 궁합 카드에 보여요. 공개 범위에서 끌 수 있어요.",
-  "PROFILE.sameHobby.noticeOpen": "공개 범위 보기",
-  "PROFILE.sameHobby.noticeKeep": "그대로 두기",
 } as const;
 
 export const IF2_PENDING_KEYS: readonly string[] = [];

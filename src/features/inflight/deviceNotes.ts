@@ -16,7 +16,7 @@ export const NOTE_KEYS = {
   memos: 'if2.memos.v1',
   typeBag: 'if2.typeBag.v1',
   wordSafety: 'if2.wordSafety.v1',
-  hobbyNotice: 'if2.hobbyNotice.v1',
+  hobbyNotice: 'if2.hobbyNotice.v1', // D-248: 앱은 더 쓰지 않아요. 옛 값이 기기에 남아 있을 수 있어 지우기(clearAll)용으로만 둬요
   homeFold: 'if2.homeFold.v1',
 } as const;
 export type NoteKind = keyof typeof NOTE_KEYS;
