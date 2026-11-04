@@ -262,10 +262,7 @@ export const SINSAL_NEUTRAL: Readonly<Record<string, readonly [string, string]>>
   dohwa: ['매력의 기운', '사람을 끌어당기는 분위기를 가진 기운이에요'],
   yeokma: ['움직임의 기운', '자리를 옮기고 새 곳을 향하는 걸 좋아하는 기운이에요'],
   hwagae: ['고요한 몰입의 기운', '혼자 깊이 빠져드는 시간이 힘이 되는 기운이에요'],
-  baekho: ['과감한 추진의 기운', '한번 마음먹으면 밀고 나가는 기운이에요'],
   goegang: ['강한 결단의 기운', '선택을 또렷하게 하는 기운이에요'],
-  wonjin: ['엇갈려 보이는 끌림의 기운', '가까운데도 서로 어긋난다고 느끼기 쉬운 기운이래요'],
-  gwimun: ['예민하고 섬세한 감각의 기운', '작은 신호를 잘 알아채는 기운이에요'],
   gongmang: ['비어 있어 채워 가는 자리', '아직 채워질 여지가 큰 자리라는 뜻이에요'],
   samjae: ['쉬어 가며 정비하는 시기', '새로 벌이기보다 정리하고 다지기 좋은 시기래요'],
 };
@@ -276,10 +273,7 @@ const arr12 = (r: Record<number, number>): number[] => Array.from({ length: 12 }
 const DOHWA_OF_TRIAD = arr12({ 0: 9, 8: 9, 4: 9, 2: 3, 6: 3, 10: 3, 5: 6, 9: 6, 1: 6, 11: 0, 3: 0, 7: 0 });
 const YEOKMA_OF_TRIAD = arr12({ 0: 2, 8: 2, 4: 2, 2: 8, 6: 8, 10: 8, 5: 11, 9: 11, 1: 11, 11: 5, 3: 5, 7: 5 });
 const HWAGAE_OF_TRIAD = arr12({ 0: 4, 8: 4, 4: 4, 2: 10, 6: 10, 10: 10, 5: 1, 9: 1, 1: 1, 11: 7, 3: 7, 7: 7 });
-const BAEKHO = new Set([ganji_idx(0, 4), ganji_idx(1, 7), ganji_idx(2, 10), ganji_idx(3, 1), ganji_idx(4, 4), ganji_idx(8, 10), ganji_idx(9, 1)]);
 const GOEGANG = new Set([ganji_idx(6, 4), ganji_idx(6, 10), ganji_idx(8, 4), ganji_idx(4, 10)]);
-const WONJIN = pairSet([[0, 7], [1, 6], [2, 9], [3, 8], [4, 11], [5, 10]]);
-const GWIMUN = pairSet([[0, 9], [1, 6], [2, 7], [3, 8], [4, 11], [5, 10]]);
 const SAMJAE_YEARS: Record<number, number[]> = {
   8: [2, 3, 4], 0: [2, 3, 4], 4: [2, 3, 4], 2: [8, 9, 10], 6: [8, 9, 10], 10: [8, 9, 10],
   5: [11, 0, 1], 9: [11, 0, 1], 1: [11, 0, 1], 11: [5, 6, 7], 3: [5, 6, 7], 7: [5, 6, 7],
@@ -403,15 +397,7 @@ export function sinsal(chart: Chart): Sinsal[] {
       }
     }
   }
-  if (BAEKHO.has(P.day)) add('baekho', 'day');
   if (GOEGANG.has(P.day)) add('goegang', 'day');
-  const dayb = P.day % 12;
-  for (const pos of POS_ORDER) {
-    const v = P[pos]; if (v === null || pos === 'day') continue;
-    const pair = pk(dayb, v % 12);
-    if (WONJIN.has(pair)) add('wonjin', pos);
-    if (GWIMUN.has(pair)) add('gwimun', pos);
-  }
   const gm = gongmang_branches(P.day);
   for (const pos of POS_ORDER) {
     const v = P[pos]; if (v === null || pos === 'day') continue;
@@ -554,15 +540,15 @@ export function iljin(chart: Chart, whenDn: number): Rec {
 // ---------------------------------------------------------------- 택일 (건제 12신 하나 · 점수 0)
 export const OFFICERS = ['건', '제', '만', '평', '정', '집', '파', '위', '성', '수', '개', '폐'] as const;
 export const PURPOSES: Readonly<Record<string, readonly [string, ReadonlySet<string>]>> = {
-  wedding: ['결혼식', new Set(['평', '정', '성'])],
+  wedding: ['결혼식', new Set(['정', '성'])],
   moving: ['이사 · 입주', new Set(['만', '정', '성', '개'])],
-  business: ['개업 · 계약', new Set(['만', '정', '집', '성', '개', '수'])],
+  business: ['개업 · 계약', new Set(['만', '정', '집', '성', '개'])],
   travel: ['여행 · 출발', new Set(['건', '성', '개'])],
-  new_start: ['새 시작(입학 · 새 일)', new Set(['건', '정', '성', '수', '개'])],
+  new_start: ['새 시작(입학 · 새 일)', new Set(['건', '정', '성', '개'])],
   cleanup: ['정리 · 청소', new Set(['제', '파'])],
-  important_talk: ['중요한 대화', new Set(['평', '정', '성', '수'])],   // 가안(calc5.py 와 같음) — 역술 자문 검수 전
+  important_talk: ['중요한 대화', new Set(['정', '성', '개'])],   // 가안(calc5.py 와 같음) — 11-04 FA1 검증으로 고침(평 · 수 뺌, 개 더함)
 };
-const REST_OFFICERS = new Set(['위', '폐', '파']);
+const REST_OFFICERS = new Set(['파', '폐', '평', '수']);   // 11-04 FA1 검증: 協紀辨方書 卷十一 忌 日(위는 忌 없음)
 export const OFFICER_LABEL: Readonly<Record<string, string>> = { good: '좋아요', neutral: '무난해요', rest: '쉬어 가는 날' };
 export const WEEKDAYS_KO = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
 /** 요일(월 = 0) — 1970-01-01 은 목요일 */

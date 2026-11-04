@@ -92,15 +92,15 @@ describe('IF5-F1 ② 앱 안 계산 기본값', () => {
 });
 
 describe('IF5-F1 ④ 미리 쓴 글 조각 · 이름표', () => {
-  test('판 2026-10-31.3 · 조각 478(고르는 자리별 글) · 이름표 판 같음', () => {
+  test('판 2026-10-31.3 · 조각 466(고르는 자리별 글) · 이름표 판 같음', () => {
     expect(FRAGMENTS5.version).toBe('2026-10-31.3');
     expect(NAMES5.version).toBe('2026-10-31.3');
-    // 조각 478 = 고르는 자리별 글 칸(공통 조각은 한 번씩) — 그 가운데 7칸은 일부러 비워 둔 칸(글 0)이라 글이 있는 칸은 471
+    // 조각 466 = 고르는 자리별 글 칸(공통 조각은 한 번씩) — 그 가운데 7칸은 일부러 비워 둔 칸(글 0)이라 글이 있는 칸은 459 (AI 연애풀이 이전 12신 표 고침 · 신살 9개로 478 → 466; sync-if5 2026-11-04)
     const own = allNodes5().filter((n) => !n.ref).flatMap((n) => Object.values(n.node.map));
     const shared = sharedNodes5().flatMap((n) => Object.values(n.node.map));
     const all = [...own, ...shared];
-    expect(all).toHaveLength(478);
-    expect(all.filter((t) => t !== '')).toHaveLength(471);
+    expect(all).toHaveLength(466);
+    expect(all.filter((t) => t !== '')).toHaveLength(459);
   });
   test('조각 전부가 순화 검사기(check_text5 · 미리 쓴 글 단계)를 통과한다', () => {
     const bad: string[] = [];
