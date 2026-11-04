@@ -3,7 +3,11 @@
 
 import type { StageId } from './types.ts';
 
-export type ReviewStatus = 'pending_human' | 'human_verified' | 'retired';
+/** 검증 상태. 본인 결정 D-242: 사람이 확인하는 일은 없다 → 사람이 확인했다는 값(human_verified · pending_human)은 없앴다.
+ *  ai_verified = AI 검증 직원이 원문 · 공식 초록과 대조해 통과(약한 통과 포함) 또는 고침 반영을 마친 카드(사람 확인 아님). retired = 뺀 카드(지시문에 안 들어간다). */
+export type ReviewStatus = 'ai_verified' | 'retired';
+/** AI 검증 표시에 쓰는 유일한 `by` 값 — 사람이 확인했다는 글이 들어가지 못하게 읽을 때 이 값과 같은지 본다 */
+export const REVIEW_BY_AI = 'AI 검증(사람 확인 아님)';
 
 export interface EvidenceCard {
   id: string;                       // 'K-12'
@@ -18,7 +22,8 @@ export interface EvidenceCard {
   in_prompt: boolean;
   source: { authors: string; year: number; title: string; venue: string; publisher: string; doi_or_isbn: string | null };
   verification: { status: string; checked_on: string; method: string; urls: string[]; note: string };
-  review: { status: ReviewStatus; by: string | null; on: string | null };
+  /** basis = 통과 · 통과(약) · 고침 반영 · 뺌 / level = 확인한 원문 수준(전문 · 초록 · 2차 · 목록) / note = 내부 칸(화면에 안 나감; 약한 통과는 '2차 자료로 확인') */
+  review: { status: ReviewStatus; by: string; on: string; basis: string; level: string; url: string; note?: string };
 }
 
 const STAGES: readonly string[] = ['S1', 'S2', 'S3', 'S4', 'S5'];
@@ -38,8 +43,8 @@ export function parseCards(json: unknown): EvidenceCard[] {
     const useIn = raw.use_in;
     if (!Array.isArray(useIn) || !useIn.every((s) => STAGES.includes(String(s)))) throw new Error('cards:use_in');
     if (typeof raw.summary_ko !== 'string' || raw.summary_ko.length < 10) throw new Error('cards:summary');
-    const review = raw.review as { status?: string } | undefined;
-    if (!review || !['pending_human', 'human_verified', 'retired'].includes(String(review.status))) throw new Error('cards:review');
+    const rv = raw.review as { status?: string; by?: unknown } | undefined;
+    if (!rv || !['ai_verified', 'retired'].includes(String(rv.status)) || rv.by !== REVIEW_BY_AI) throw new Error('cards:review');   // human_verified · pending_human · 사람이 확인했다는 by 는 읽을 때 던진다
     const src = raw.source as Record<string, unknown> | undefined;
     if (!src || typeof src.authors !== 'string' || typeof src.year !== 'number' || typeof src.title !== 'string') throw new Error('cards:source');
     const ver = raw.verification as { status?: string } | undefined;
@@ -49,9 +54,10 @@ export function parseCards(json: unknown): EvidenceCard[] {
   return out;
 }
 
-/** 지시문에 넣을 수 있는 카드. allowPending=true(비공개 시험)면 사람 검수 대기 카드도 쓴다. 공개 전에는 false. */
-export function activeCards(cards: readonly EvidenceCard[], opts: { allowPending: boolean }): EvidenceCard[] {
-  return cards.filter((c) => c.in_prompt && c.review.status !== 'retired' && (c.review.status === 'human_verified' || opts.allowPending));
+/** 지시문에 넣을 수 있는 카드: AI 검증을 마친(ai_verified) 카드 가운데 지시문용(in_prompt)인 것. 뺀(retired) 카드는 안 들어간다.
+ *  옛 두 번째 인자(allowPending: 사람 검수 대기 카드를 시험 때만 허용)는 사람 검수가 없어져(D-242) 뜻이 없다 — 호출하는 쪽을 안 깨려고 받기만 하고 쓰지 않는다. */
+export function activeCards(cards: readonly EvidenceCard[], _opts?: { allowPending?: boolean }): EvidenceCard[] {
+  return cards.filter((c) => c.in_prompt && c.review.status === 'ai_verified');
 }
 
 /** 번호 -> 카드 (활성 카드만) */

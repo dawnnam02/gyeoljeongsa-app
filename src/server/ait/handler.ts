@@ -25,7 +25,8 @@ import { asApiResult, mockChatOutput, mockCoachOutput, mockCompatOutput, mockHor
 import { classifyUpstream, shouldLockLive } from './upstream.ts';
 import type { UpstreamFailure } from './upstream.ts';
 
-export const MAX_BODY_BYTES = 32 * 1024;
+/** 요청 본문 상한. AI-FIX1: 32KB → 96KB. 서명 묶음(seal.ts SEAL_MAX_BYTES 80KB)이 본문에 실려 돌아오므로 그보다 커야 한다 — 32KB 일 때 9턴째에 413 이 났다 */
+export const MAX_BODY_BYTES = 96 * 1024;
 
 /** 호출하는 쪽이 서버 변수에서 이 이름들만 골라 넘긴다(값은 어디에도 적지 않는다) */
 export interface HandlerEnv { AI_ACCESS_CODE?: string; AIT_SIGN_KEY?: string; AIT_MODE?: string; AIT_CHAT_MODEL?: string }
@@ -59,7 +60,7 @@ const POOL = 'pool';
 let cache: { cards: EvidenceCard[]; index: Map<string, EvidenceCard>; chatSystem: string } | null = null;
 function loaded() {
   if (!cache) {
-    const cards = activeCards(parseCards(CARDS_JSON), { allowPending: true });   // 비공개 시험: 사람 검수 대기 카드도 씀. 공개 전에는 false
+    const cards = activeCards(parseCards(CARDS_JSON));   // AI 검증을 마친 카드만(D-242: 사람 확인은 없다)
     cache = { cards, index: cardIndex(cards), chatSystem: buildChatSystem(PROMPTS.chat, cards) };
   }
   return cache;

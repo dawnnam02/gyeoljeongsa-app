@@ -16,6 +16,9 @@ export interface OpenedBundle { env: ChatEnvelope; nonce: string; seq: number; i
 
 export const SEAL_MAX_AGE_MS = 90 * 60 * 1000;   // 세션 최대 시간(제안 90분)
 export const SEAL_MAX_PAYLOAD = 160 * 1024;     // 이력 크기 상한(글자). 넘으면 거절
+/** 묶음 하나가 요청 본문(handler.ts MAX_BODY_BYTES 96KB)에 다시 실려 돌아오므로, 서버가 내주는 묶음은 JSON 으로 쓴 바이트 수(한글 3바이트 · 따옴표 이스케이프 포함)로도 이 안이어야 한다.
+ *  AI-FIX1: 평가에서 묶음이 턴마다 3~10KB 늘어 9턴째에 요청이 옛 상한 32KB 를 넘어 413 `too_long` 이 났다. 글자 수 상한(160K)은 바이트로는 그 상한보다 훨씬 커서 어긋나 있었다. */
+export const SEAL_MAX_BYTES = 80 * 1024;
 const MIN_SECRET_CHARS = 32;                     // 무작위 32바이트(base64 약 43자)를 기대한다
 
 const enc = new TextEncoder();
@@ -54,7 +57,9 @@ export async function sealEnvelope(secret: string, env: ChatEnvelope, ctx: { non
   const payload = JSON.stringify({ v: 1, feature, nonce: ctx.nonce, seq: ctx.seq, iat: ctx.now, prev: ctx.prev, env });
   if (payload.length > SEAL_MAX_PAYLOAD) throw new AitError('limit');
   const sig = await crypto.subtle.sign('HMAC', key, signInput(feature, payload));
-  return { payload, mac: b64url(new Uint8Array(sig)) };
+  const sealed = { payload, mac: b64url(new Uint8Array(sig)) };
+  if (enc.encode(JSON.stringify(sealed)).length > SEAL_MAX_BYTES) throw new AitError('limit');   // 내준 묶음이 요청 본문 상한에 걸려 돌아오지 못하는 일이 없게
+  return sealed;
 }
 
 /** 새 세션의 첫 묶음 */

@@ -1,4 +1,4 @@
-// AIT-A · 업체 오류 분류(보안 AC-23 · AT-24): 재시도 0 · 한도 도달을 구분 · 본문 · 머리는 읽지 않고 버린다.
+// AIT-A · 업체 오류 분류(보안 AC-23 · AT-24): 재시도 0 · 한도 도달 · 충전액 소진을 구분 · 본문 · 머리는 읽지 않고 버린다.
 // 앱 서버 함수가 SDK 오류에서 아래 모양의 값만 뽑아 넘긴다: status(숫자) · errorType(문자열 이름) · messageHead(앞 40자) · timeout(true/false).
 // 요청 머리 · 키 · 응답 본문은 이 함수로 들어오지 않는다.
 
@@ -14,6 +14,8 @@ export interface UpstreamFailure {
 }
 
 export const SPEND_LIMIT_HEAD = 'You have reached your specified';
+/** 충전한 금액(크레딧)이 바닥났을 때 업체가 400 invalid_request_error 로 주는 문구의 앞부분. 평가(EV-1) 때 이 오류가 `bad_request` 로 나뉘어 '요청을 읽지 못했어요'가 뜨고 live 잠금도 안 걸리는 것을 찾았다(AI-FIX1) */
+export const CREDIT_LOW_HEAD = 'Your credit balance is too low';
 
 export function classifyUpstream(f: UpstreamFailure): Extract<ResponseCode, 'spend_limit' | 'rate' | 'bad_request' | 'unavailable' | 'upstream' | 'timeout'> {
   if (f.timeout) return 'timeout';
@@ -22,6 +24,9 @@ export function classifyUpstream(f: UpstreamFailure): Extract<ResponseCode, 'spe
   // ① 조직 등급 상한: 429 + enforced_spend_limit_reached(retry-after 없음)  ② 직접 건 지출 한도: 400 + 'You have reached your specified …'
   if (s === 429 && f.errorType === 'enforced_spend_limit_reached') return 'spend_limit';
   if (s === 400 && head.startsWith(SPEND_LIMIT_HEAD)) return 'spend_limit';
+  // ③ 충전액 소진: 400 + 'Your credit balance is too low …'(문구 앞 40자 안에 들어온다) 또는 결제 오류 402 / billing_error — 사용자에게는 '이번 달 시험 이용분을 다 썼어요'(spend_limit)가 맞다
+  if (s === 400 && /credit balance/i.test(head)) return 'spend_limit';   // CREDIT_LOW_HEAD 의 앞 40자 안
+  if (s === 402 || f.errorType === 'billing_error') return 'spend_limit';
   if (s === 429) return 'rate';
   if (s === 401 || s === 403) return 'unavailable';
   if (s === 400 || s === 404 || s === 413 || s === 422) return 'bad_request';

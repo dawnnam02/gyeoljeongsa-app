@@ -7,7 +7,7 @@ import type { ResponseCode } from './codes.ts';
 import type { FixedCard } from './fixed.ts';
 import { COACH_NOTE, COMPAT_NOTE, CRISIS_CARD, FUN_FOOTER, MINOR_CARD } from './fixed.ts';
 import { charLen, endsWithHaeyo, hasResidualPii, maskText, quoteInSource, sanitize, splitSentences } from './text.ts';
-import { classifyHits } from './lexicon.ts';
+import { classifyHits, hasMinorProfileHint } from './lexicon.ts';
 import { composeSafety } from './safety.ts';
 import { COACH_RULES, RULESETS, checkText, contactHit, newDigitRuns } from './rules.ts';
 
@@ -153,7 +153,8 @@ export function prepareCoach(raw: unknown): OneShotPrep {
   const hits = classifyHits(text);
   const safe = composeSafety(hits);                               // A-QF2: 위기 + 폭력 · 위기 + 미성년이면 확정 번호 줄을 합친 카드
   if (safe && safe.kinds[0] === 'crisis') return { kind: 'card', code: 'crisis', card: safe.card };
-  if (hits.includes('minor')) return { kind: 'card', code: 'refused_intent', card: MINOR_CARD };
+  // AI-FIX1: 코치 입력은 '내 공개 문구'라 첫 사람 표현('저는') 없이 쓰는 글이 많다 → 챗봇 사전(좁게)에 더해, 자기 소개 글에 한해 학교 · 학년 꼴을 한 번 더 본다(챗봇처럼 모델 표지라는 둘째 그물이 코치에는 없다)
+  if (hits.includes('minor') || hasMinorProfileHint(text)) return { kind: 'card', code: 'refused_intent', card: MINOR_CARD };
   const n = charLen(text);
   if (n < ONE_SHOT_LIMITS.coachTextMin) return { kind: 'reject', code: 'bad_request', why: 'short' };
   if (n > ONE_SHOT_LIMITS.coachTextMax) return { kind: 'reject', code: 'too_long', why: 'length' };
@@ -165,7 +166,7 @@ export function prepareCoach(raw: unknown): OneShotPrep {
 export interface CoachFinding { quote: string; point: string; ask: string; options: string[] }
 export interface CoachDisplay { keep: string; findings: CoachFinding[]; notes: string[]; autoApply: false }
 
-const OPTION_RULE_IDS = ['k_exclaim', 'k_emoji', 'k_looks', 'k_grade', 'k_condition', 'k_gender', 'k_rush', 'k_pro', 'k_praise', 'k_auto'];
+const OPTION_RULE_IDS = ['k_exclaim', 'k_emoji', 'k_looks', 'k_grade', 'k_condition', 'k_gender', 'k_rush', 'k_trans', 'k_formal', 'k_pro', 'k_praise', 'k_auto'];   // AI-FIX1: 고친 안에도 번역투 · 합쇼체 검사(평가에서 '~에 대해'가 고친 안으로 통과)
 
 export function finishCoach(resp: ApiResultLike, input: { field: string; text: string }): OneShotDone<CoachDisplay> {
   const p = parseJson(resp);

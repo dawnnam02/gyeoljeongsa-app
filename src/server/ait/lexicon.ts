@@ -406,6 +406,20 @@ export function classifyHits(text: string): HitClass[] {
   return out;
 }
 
+/** 코치(프로필 문구 다듬기) 전용 보조 그물(AI-FIX1). 코치 입력은 사용자가 자기를 소개하는 글이라 '저는' 없이 쓴다("고등학교 이학년이에요" · "중학생이지만 …") — 챗봇 사전(MINOR_FAMILIES)은 첫 사람 표현이 있어야 걸어서 평가에서 둘 다 놓쳤다.
+ *  챗봇에는 쓰지 않는다(부모 · 교사 얘기가 많아 오탐 비용이 큰 대화라서). 위기 사전(DB 낱말 · 0052)과 무관한 미성년 사전이므로 DB 와 같은 날 맞출 일이 없다. */
+export const MINOR_PROFILE_FAMILIES: readonly PatternFamily[] = [
+  { id: 'mp_school_kind', label: '중학생 · 고등학생 · 초등학생 · 중딩 · 고딩 · 초딩 (자기 소개 글)', risk: '중간', note: '때 · 시절 · 자녀 · 교사 · 연상 같은 말이 뒤에 오거나 가족 말이 앞에 있으면 제외',
+    re: new RegExp(`(?:중학생|고등학생|초등학생|중딩|고딩|초딩)${NOT_NOW}`), unless: UNLESS_RELATIVE_NEAR },
+  { id: 'mp_school_grade', label: '고등학교 이학년 · 중학교 2학년 (학교 + 학년)', risk: '낮음', note: '담임 · 교사 · 학부모 같은 말이 뒤에 오면 제외',
+    re: /(?:중학교|고등학교|초등학교)(?:[1-6]|[일이삼사오육])학년(?!담임|담당|교사|선생|학부모|가르|이었|였|때|시절)/, unless: UNLESS_RELATIVE_NEAR },
+  { id: 'mp_grade_end', label: '고2예요 · 중3이에요 (글 어디서든)', risk: '중간', note: '가족 말 바로 뒤면 제외', re: new RegExp(`(?:고[1-3]|중[1-3]|초[1-6])(?:예요|이에요|입니다|이야|인데|이라서|이라|야|이지만)`), unless: UNLESS_RELATIVE },
+];
+export function hasMinorProfileHint(text: string): boolean {
+  const key = crisisKey(text);
+  return MINOR_PROFILE_FAMILIES.some((f) => matchesFamily(key, f));
+}
+
 /** 위기 · 폭력 · 가해 의도 · 오용 · 미성년 낱말 문. 가장 먼저 처리할 갈래 하나만 돌려준다(안전 먼저 순서) */
 export function classifyHit(text: string): HitClass | null {
   return classifyHits(text)[0] ?? null;

@@ -23,10 +23,12 @@ import { citationFor, isPractical } from './cards.ts';
 // ---------------------------------------------------------------- 상수 (10-31 본인 결정 D-236: 턴 상한 뗌)
 // 단계별 횟수(STAGE_CAPS S1~S4)는 흐름의 짜임이고 사용자 한도가 아니다. 결론(S5) 뒤에는 사용자가 '충분해요'를 고르기 전까지 이어 말할 수 있다.
 // 오래된 턴은 원문 대신 짧은 digest 로 접어 한 요청의 크기가 턴 수와 무관하게 묶인다(아래 FOLD_*).
-export const FOLD_AT_TURNS = 14;      // 원문으로 들고 있는 턴이 이 수를 넘으면
-export const FOLD_TURNS = 6;          // 가장 오래된 이 수의 턴을 digest 로 접는다
+export const FOLD_AT_TURNS = 10;      // 원문으로 들고 있는 턴이 이 수를 넘으면 (AI-FIX1: 14 → 10 — 서명 묶음이 턴마다 3~10KB 늘어 14턴보다 먼저 요청 본문 상한에 닿았다)
+export const FOLD_TURNS = 4;          // 가장 오래된 이 수의 턴을 digest 로 접는다
 export const FOLD_CLIP = 80;          // 접힌 턴의 말은 이 글자 수만 남긴다(모델이 보는 것 = 서버가 인용 대조에 쓰는 것)
 export const DIGEST_MAX_CHARS = 2400; // digest 상한(넘치면 오래된 앞쪽부터 잘라 낸다)
+export const FOLD_BYTES = 40 * 1024;  // 원문 이력(messages + userTexts)이 UTF-8 로 이 크기를 넘으면 턴 수와 상관없이 접는다 — 묶음이 80KB(seal.ts SEAL_MAX_BYTES)에 못 닿게
+const FOLD_ENC = new TextEncoder();
 export const STAGE_ORDER: readonly StageId[] = ['S1', 'S2', 'S3', 'S4', 'S5'];
 export const STAGE_CAPS: Readonly<Record<StageId, number>> = { S1: 3, S2: 2, S3: 2, S4: 3, S5: Number.POSITIVE_INFINITY };   // S5 = 상한 없음
 export const CHAT_LIMITS = {
@@ -34,7 +36,7 @@ export const CHAT_LIMITS = {
   partnerMax: 800,      // 상대가 보낸 말 칸 한 번 (보안 제안 1,500자)
   aliasMax: 20,
   maxCrisisCards: 5,    // 위기 카드가 이만큼 나오면 세션을 닫는다
-  maxBlocked: 4,        // 검사 탈락(blocked_output)이 이만큼 쌓이면 세션을 닫는다(재전송 반복으로 돈이 새는 길 차단)
+  maxBlocked: 6,        // 검사 탈락(blocked_output)이 연속 이만큼 쌓이면 세션을 닫는다(재전송 반복으로 돈이 새는 길 차단). AI-FIX1: 4 → 6 — 평가에서 질문 칸 형식 때문에 4연속 탈락으로 일반 세션이 전부 S2 에서 닫혔다
   sentenceMax: 140,
   sentenceMin: 4,
   quoteMax: 60,
@@ -422,6 +424,18 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
+/** 질문 칸 형식(AI-FIX1 · 형식 규칙만 — 안전 규칙은 그대로). 평가에서 질문 칸의 77%(76/99)가 "~까요? 모르면 모른다고 하셔도 괜찮아요"처럼 물음표 뒤에 안내 문장을 덧붙여 물음표로 안 끝났다는 이유로 지워졌다.
+ *  ① 물음표가 있고 그 뒤에 글이 더 있으면 마지막 물음표까지만 남긴다(버려지는 쪽은 안내 말이라 새로 보이는 글이 없다 — 오히려 줄어든다).
+ *  ② 물음표가 없어도 '~적어 주세요 · ~들려주실래요' 같은 부탁 꼴로 끝나면 질문으로 본다. 그 밖의 평서문은 그대로 탈락. 금지어 · 근거 · 해요체 검사는 이 뒤에 그대로 돈다. */
+const QUESTION_REQUEST_END = /(?:주세요|주실래요|주시겠어요|주실 수 있을까요|보세요|볼래요)[.\s]*$/;
+export function normalizeQuestionText(t: string): string {
+  const i = t.lastIndexOf('?');
+  return i >= 0 && i < t.length - 1 ? t.slice(0, i + 1).trim() : t;
+}
+export function isQuestionForm(t: string): boolean {
+  return /\?\s*$/.test(t) || QUESTION_REQUEST_END.test(t);
+}
+
 /** 모델 출력 하나를 검사한다. 문장마다: 종류 허용 · 길이 · 금지어 · 해요체 · 근거 번호(내 말 n은 원문 인용 대조, K-n은 카드 목록 · 단계) · 조심스러운 말투. */
 export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
   const res: EvalResult = { ok: false, sentences: [], dropped: [], blockers: [], flags: [], slotsPatch: {} };
@@ -439,20 +453,26 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
     if (!isRecord(s)) return drop('shape');
     const kind = s.kind as Kind;
     if (!(KINDS as readonly string[]).includes(kind) || !ctx.plan.allowed.includes(kind)) return drop('kind');
-    const text = typeof s.text === 'string' ? s.text.trim() : '';
+    const rawText = typeof s.text === 'string' ? s.text.trim() : '';
+    const text = kind === 'question' ? normalizeQuestionText(rawText) : rawText;     // 질문 칸 형식 규칙(AI-FIX1): 마지막 물음표 뒤에 덧붙은 안내 말은 버린다
     const len = charLen(text);
     if (len < CHAT_LIMITS.sentenceMin || len > CHAT_LIMITS.sentenceMax) return drop('length');
     // 금지어
     const hits = checkText(text, CHAT_RULES, { allowPhrases: CHAT_ALLOW_PHRASES });
     const ch = contactHit(text);
     if (ch) hits.push(ch);
+    if (rawText !== text) {                         // 질문 칸에서 잘라 낸 뒷부분도 안전선(block)은 그대로 본다 — 형식 완화가 안전 규칙을 약하게 만들지 않게(AI-FIX1)
+      for (const h of checkText(rawText, CHAT_RULES, { allowPhrases: CHAT_ALLOW_PHRASES })) if (h.severity === 'block' && !hits.some((x) => x.id === h.id)) hits.push(h);
+      const rch = contactHit(rawText);
+      if (rch && !ch) hits.push(rch);
+    }
     if (hits.length > 0) {
       for (const h of hits) if (h.severity === 'block') res.blockers.push(h.id);
       return drop('rule:' + hits[0].id);
     }
     // 문장 끝
     const isQ = kind === 'question';
-    if (isQ !== /\?\s*$/.test(text)) return drop(isQ ? 'question_mark' : 'stray_question');
+    if (isQ ? !isQuestionForm(text) : /\?\s*$/.test(text)) return drop(isQ ? 'question_mark' : 'stray_question');
     if (!endsWithHaeyo(text)) return drop('ending');
     if (seenText.has(text)) return drop('duplicate');
     // 근거
@@ -579,7 +599,9 @@ const DIGEST_PREFIX = /^<앞이야기>[\s\S]*?<\/앞이야기>\n/;
 /** 원문 턴이 FOLD_AT_TURNS 를 넘으면 가장 오래된 FOLD_TURNS 턴을 digest 로 접는다(결정적 · 업체 호출 0). 접힌 턴의 userTexts 는 digest 와 같은 앞 80자만 남겨 인용 대조가 그대로 된다. */
 export function foldEnvelope(env: ChatEnvelope): void {
   const st = env.state;
-  while (st.userTurns - st.folded > FOLD_AT_TURNS) {
+  // 턴 수 말고 크기로도 접는다(AI-FIX1): 글을 길게 쓰는 사람은 10턴 전에 요청 본문 상한(서명 묶음 SEAL_MAX_BYTES)에 닿으므로, 원문이 FOLD_BYTES 를 넘으면 FOLD_TURNS 턴이 남을 때까지 더 접는다
+  const tooBig = (): boolean => st.userTurns - st.folded > FOLD_TURNS && FOLD_ENC.encode(JSON.stringify({ m: env.messages, u: env.userTexts.slice(st.folded) })).length > FOLD_BYTES;
+  while (st.userTurns - st.folded > FOLD_AT_TURNS || tooBig()) {
     const from = st.folded;
     const lines: string[] = [];
     for (let i = from; i < from + FOLD_TURNS; i++) {
@@ -592,6 +614,10 @@ export function foldEnvelope(env: ChatEnvelope): void {
     env.digest = all.length <= DIGEST_MAX_CHARS ? all.join('') : all.slice(all.length - DIGEST_MAX_CHARS).join('');
     env.messages = env.messages.slice(FOLD_TURNS * 2);
     st.folded += FOLD_TURNS;
+    // digest 에서 밀려난 아주 오래된 턴의 글은 비운다(번호 자리는 남겨 userTexts.length === userTurns 를 지킨다). 모델이 더는 볼 수 없는 말이라 인용 근거로도 못 쓰고,
+    // 안 비우면 접힌 턴마다 앞 80자 두 칸(한글 최대 480바이트)이 계속 쌓여 긴 대화가 묶음 크기 상한에 닿는다(AI-FIX1)
+    const kept = new Set(Array.from(env.digest.matchAll(/(?:^|\n)내 말 (\d+):/g), (m) => Number(m[1]) - 1));
+    for (let i = 0; i < st.folded; i++) if (!kept.has(i) && (env.userTexts[i].asker || env.userTexts[i].partner)) env.userTexts[i] = { asker: '', partner: '' };
   }
   const first = env.messages[0];
   if (env.digest && first && first.role === 'user' && typeof first.content === 'string') {

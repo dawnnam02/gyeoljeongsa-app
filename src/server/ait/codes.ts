@@ -8,18 +8,19 @@ export const RESPONSE_CODES = [
 
 export type ResponseCode = (typeof RESPONSE_CODES)[number];
 
-/** 앱이 보여 줄 고정 문구 가안(마케팅 · 법무 확정 대기). 남은 횟수 숫자 · 재촉 말 없음. */
+/** 앱이 보여 줄 고정 문구. 마케팅 카피 `AIT.code.*`(app/src/content/aitCopy.ts)와 같은 글로 맞췄다(AI-FIX1, 마케팅/FA1/QF2_글표.md · AI/FA1/사람검수_자료.md A-1 ~ A-8). 남은 횟수 숫자 · 재촉 말 없음.
+ *  '미리 쓴 글로 보여 드려요' 줄은 미리 쓴 글이 있는 기능에서만 앱이 `AIT.code.fallback` 으로 덧붙인다 — 서버 글에는 넣지 않는다. */
 export const CODE_TEXT_KO: Readonly<Record<ResponseCode, string>> = {
-  auth: '접근 코드를 다시 확인해 주세요.',
-  rate: '잠시 뒤에 다시 시도해 주세요.',
-  spend_limit: '이번 달 시험 이용분이 모두 찼어요. 지금은 미리 쓴 글로 보여 드려요.',
-  limit: '이 대화 기록이 오래됐거나 너무 커졌어요. 새 대화로 이어 가 주세요.',
-  unavailable: '지금은 AI를 쓸 수 없어요. 미리 쓴 글로 보여 드려요.',
+  auth: "접근 코드가 맞지 않아요. 설정의 '시험용 AI 코드'에서 다시 확인해 주세요.",
+  rate: '요청이 많았어요. 잠시 뒤에 다시 보내 주세요.',
+  spend_limit: '이번 달 시험 이용분을 다 썼어요. 다음 달에 다시 시도해 주세요.',
+  limit: '이 대화 기록이 너무 길어졌어요. 새 대화로 시작할 수 있어요.',
+  unavailable: 'AI를 쓸 수 없어요. 잠시 뒤에 다시 시도해 주세요.',
   too_long: '글이 너무 길어요. 조금 줄여서 다시 보내 주세요.',
   bad_request: '요청을 읽지 못했어요. 화면을 새로 열어 다시 시도해 주세요.',
-  upstream: 'AI가 지금 바빠요. 잠시 뒤에 다시 시도해 주세요.',
-  timeout: '답이 늦어지고 있어요. 이번 시도는 횟수에서 빼고, 다시 보내 주세요.',
-  blocked_output: '이번 답은 안전 점검을 통과하지 못해서 보여 드리지 않아요. 같은 글을 다시 보내 주세요. 횟수는 줄지 않아요.',
+  upstream: 'AI가 바빠요. 잠시 뒤에 다시 시도해 주세요.',
+  timeout: '답이 늦어지고 있어요. 이번 시도는 횟수에 넣지 않으니 다시 보내 주세요.',
+  blocked_output: '이번 답은 안전 문제로 보여 드리지 않아요. 횟수는 줄지 않으니 같은 글을 다시 보내 주세요.',
   crisis: '',
   refused_intent: '',
   ok: '',
