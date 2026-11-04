@@ -423,6 +423,8 @@ const REF_CARD = /^K-[1-9][0-9]?$/;
 /** 사용자가 걱정하는 모양을 되짚는 말의 틀만(주어가 상대면 제외). 사용자 글에 같은 틀이 있을 때만 쓴다 — '사용자 글에 있던 말이면 봐주기'처럼 낱말 전체를 풀지 않는다 */
 const WORRY_FRAME = /(?<!(?:상대|그분|그 ?사람|그쪽)(?:이|가|은|는|도)? ?)예민(?:한 ?사람(?:처럼|으로)|해) ?(?:보일|비칠|보이|여겨질|느껴질|볼|생각할|여길)(?:까 ?봐|까 ?걱정|까 ?염려|까 ?두려|까 ?무서)/g;
 const WORRY_TEST = new RegExp(WORRY_FRAME.source);
+/** 피해를 서술하는 틀(상대가 나를 …하는 것 같다 · …당한다)만. 조언 꼴("조종하는 법" · "조종해 보세요" · "길들이는 방법")은 이 틀에 없다 */
+const VICTIM_FRAME = /(?:조종|길들)(?:당하|당했|여지|여진|이려는|이려고|이려 ?해|하려는|하려고|하려 ?해|하는 ?것 ?같|하는 ?느낌|하는 ?듯)/g;
 const HEDGE = /보여요|같아요|수 있어요|수도 있어요|가까워요|가까워 보여요|가능성|듯해요|라고 해요|이래요|나아 보여요/;
 const WEAK_MARK = /약하지만|말씀하신 (대목|내용|부분)만|확실하지|참고만|짐작/;
 const HEDGE_KINDS: readonly Kind[] = ['trait', 'reason', 'counter', 'direction'];
@@ -453,7 +455,9 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
   if (raw.sentences.length === 0 || raw.sentences.length > 20) { res.blockers.push('sentence_count'); return res; }
   res.flags = (raw.flags as unknown[]).filter((f): f is ModelFlag => typeof f === 'string' && (MODEL_FLAGS as readonly string[]).includes(f));
   const seenText = new Set<string>();
-  const worryOk = WORRY_TEST.test(ctx.userTexts[ctx.userTexts.length - 1]?.asker ?? '');
+  const lastAsker = ctx.userTexts[ctx.userTexts.length - 1]?.asker ?? '';
+  const worryOk = WORRY_TEST.test(lastAsker);
+  const victimStems = ['조종', '길들'].filter((st) => lastAsker.includes(st));            // 사용자가 직접 쓴 낱말만(모델이 먼저 꺼낸 낱말은 풀지 않는다)
   const kept: Array<{ kind: Kind; ds: DisplaySentence }> = [];
 
   raw.sentences.forEach((s: unknown, index: number) => {
@@ -467,7 +471,13 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
     if (len < CHAT_LIMITS.sentenceMin || len > CHAT_LIMITS.sentenceMax) return drop('length');
     // 금지어
     // 사용자가 직접 말한 걱정 틀("예민한 사람처럼 보일까 봐")을 되짚는 restate · problem_line 에서만 그 틀을 검사에서 뺀다(AI-FIX2 R2). 틀 밖의 말은 그대로 검사한다
-    const scan = (t: string): string => (worryOk && (kind === 'restate' || kind === 'problem_line') ? t.replace(WORRY_FRAME, '') : t);
+    //  같은 꼴로 피해를 말한 사용자("저를 조종하려고 해요" · "길들여지는 것 같아요")의 말을 되짚는 restate · problem_line 은 c_manip 에서 그 틀만 뺀다(AI-FIX2 A1: 피해 꼴 5건 중 2건이 이 때문에 연속 탈락). 가스라이팅 같은 낙인 낱말(c_label)은 그대로 막는다.
+    const scan = (t: string): string => {
+      if (kind !== 'restate' && kind !== 'problem_line') return t;
+      let u = worryOk ? t.replace(WORRY_FRAME, '') : t;
+      if (victimStems.length) u = u.replace(VICTIM_FRAME, (m) => (victimStems.some((st) => m.startsWith(st)) ? '' : m));
+      return u;
+    };
     const hits = checkText(scan(text), CHAT_RULES, { allowPhrases: CHAT_ALLOW_PHRASES });
     const ch = contactHit(text);
     if (ch) hits.push(ch);

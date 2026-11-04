@@ -171,6 +171,8 @@ const OPTION_RULE_IDS = ['k_exclaim', 'k_emoji', 'k_looks', 'k_grade', 'k_condit
 /** 연락 수단을 짚거나 칭찬하는 말 — 가린 연락처가 있던 글에서는 이런 말이 든 짚기를 버린다(AI-FIX2 A6: 모델이 "연락 방법을 먼저 밝히고 있어서 …"라고 칭찬하던 것) */
 const CONTACT_WORDS = ['연락', '카톡', '카카오', '전화', '문자', '메일', '인스타', '아이디', '링크', '주소', '번호', 'SNS', '[연락처]', '[링크]', '[번호]', '[이름]'];
 const mentionsContact = (s: string): boolean => CONTACT_WORDS.some((w) => s.includes(w));
+/** 서버 가리기(maskText)가 못 가리는 연락 수단 — 카톡 · 인스타 아이디를 말로 알려 주는 꼴, 'instagram.com/…' 같은 주소 앞 http 없는 꼴. 이런 글도 연락처 글과 똑같이 다룬다(평가 E1R2: 가리지 못한 채 모델에게 갔다) */
+const CONTACT_GIVEN = /(?:아이디|카톡|카카오톡|카카오|인스타|오픈채팅|라인|텔레그램)[^가-힣]{0,6}[A-Za-z0-9._@-]{4,}|[A-Za-z0-9-]{2,}[.](?:com|kr|net|me|io)(?:[/][^ ]*)?/i;
 
 export function finishCoach(resp: ApiResultLike, input: { field: string; text: string; masked?: number }): OneShotDone<CoachDisplay> {
   const p = parseJson(resp);
@@ -178,7 +180,7 @@ export function finishCoach(resp: ApiResultLike, input: { field: string; text: s
   const o = p.value;
   if (!isRecord(o) || !onlyKeys(o, ['keep', 'findings']) || typeof o.keep !== 'string' || !Array.isArray(o.findings)) return { kind: 'blocked', code: 'blocked_output', reasons: ['shape'] };
   const reasons: string[] = [];
-  const masked = (input.masked ?? 0) > 0 || ['[연락처]', '[링크]'].some((w) => input.text.includes(w));            // 연락처 · 링크가 있어 서버가 가린 글
+  const masked = (input.masked ?? 0) > 0 || ['[연락처]', '[링크]'].some((w) => input.text.includes(w)) || CONTACT_GIVEN.test(input.text);   // 연락처 · 링크가 있어 서버가 가린 글(+ 가리지 못한 아이디 · 주소 꼴)
   const keep = masked ? '' : o.keep.trim();                                          // 그런 글은 칭찬(살릴 점)을 내지 않는다
   const text = input.text;
   const checkLine = (s: string, rules: typeof COACH_RULES): boolean => {
