@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   // 고를 수 있는 칩: 좌우 여백 = 왼쪽 8 + 체크 16 + 4(같은 값을 오른쪽에도) → 글자는 늘 가운데, 체크는 왼쪽 여백 안 8 자리에 겹친다
   pick: { borderWidth: 1, paddingHorizontal: space.s8 + space.s16 + space.s4, alignItems: 'center' },
   pickCheck: { position: 'absolute', left: space.s8, top: 0, bottom: 0, justifyContent: 'center' },
-  touch: { minHeight: size.touchMin, justifyContent: 'center', alignSelf: 'flex-start' },
+  touch: { minHeight: size.touchMin, minWidth: size.touchMin, justifyContent: 'center', alignSelf: 'flex-start' }, // 짧은 글자('음력' 등)도 가로 48 이상
   chip: { minHeight: size.chip, borderRadius: radius.pill, paddingHorizontal: space.s12, justifyContent: 'center', alignSelf: 'flex-start' },
   withCheck: { flexDirection: 'row', alignItems: 'center', gap: space.s4, paddingLeft: space.s8 },
 });

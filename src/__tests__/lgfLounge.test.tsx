@@ -10,7 +10,7 @@ import { ChatListScreen } from '@/features/chat/ChatListScreen';
 import { createLoungeApi, type LoungeApi } from '@/features/lounge/loungeApi';
 import { LOUNGE } from '@/features/lounge/loungeCopy';
 import { LoungeScreen } from '@/features/lounge/LoungeScreen';
-import { memberA11y } from '@/features/lounge/loungeLogic';
+import { deleteErrorText, empathyErrorText, hideErrorText, memberA11y, pickErrorText, reportErrorText, sendErrorText } from '@/features/lounge/loungeLogic';
 import type { LoungeDeps } from '@/features/lounge/loungeService';
 import { COMMON, CRISIS_LINE, crisisNote, REPORT_SHEET, SAFETY } from '@/content/copy';
 import { reduceMotionStore } from '@/lib/reduceMotion';
@@ -472,5 +472,84 @@ describe('LG-F T6 상태별(셈표) · 소등 · 착륙 준비(LGF-07 · 15) · 
     await press(tree, 'lounge-stub-tear');
     await wait(300);
     expect(textOf(tree, 'lounge-seat-assigned')).toBe(LOUNGE.seat.assigned(DEMO_LOUNGE_MY_SEAT));
+  });
+});
+
+describe('QF2-B4 I04 ~ I06 라운지 쓰기 · 공감 · 신고 · 숨기기 오류', () => {
+  test('보내기 오류 코드마다 정해진 글이 나온다(거르기는 연락처 > 링크 > 돈 > 거친 말 차례)', () => {
+    const E = LOUNGE.error;
+    const table: [string, readonly string[], string][] = [
+      ['filtered', ['contact'], E.contact],
+      ['filtered', ['url'], E.link],
+      ['filtered', ['money'], E.money],
+      ['filtered', ['abuse'], E.abuse],
+      ['filtered', [], E.abuse],
+      ['read_only', [], E.readOnly],
+      ['lights_out', [], E.lightsOut],
+      ['closed', [], E.closed],
+      ['paused', [], E.paused],
+      ['empty', [], E.empty],
+      ['too_long', [], E.tooLong],
+      ['rate_minute', [], E.rate],
+      ['rate_day', [], E.daily],
+      ['quote_invalid', [], E.quoteInvalid],
+      ['answer_invalid', [], E.answerInvalid],
+      ['network', [], E.offline],
+      ['server', [], E.sendFailed],
+      ['left', [], E.sendFailed],
+    ];
+    for (const [code, codes, text] of table) expect([code, sendErrorText(code, codes)]).toEqual([code, text]);
+    expect(sendErrorText('filtered', ['abuse', 'url'])).toBe(E.link);
+    expect(empathyErrorText('lights_out')).toBe(E.empathyLightsOut);
+    expect(empathyErrorText('closed')).toBe(E.empathyClosed);
+    expect(empathyErrorText('not_found')).toBe(E.notFound);
+    expect(empathyErrorText('server')).toBe(E.empathy);
+    expect([hideErrorText('not_found'), hideErrorText('server')]).toEqual([E.notFound, E.hide]);
+    expect([reportErrorText('not_found'), reportErrorText('server')]).toEqual([E.notFound, E.report]);
+    expect([deleteErrorText('not_found'), deleteErrorText('server')]).toEqual([E.notFound, E.delete]);
+    expect([pickErrorText('pick_closed'), pickErrorText('server')]).toEqual([E.pickClosed, E.balance]);
+    for (const text of Object.values(E)) expect(text).not.toMatch(/[!！0-9]|죄송|미안/);
+  });
+
+  test('공감 · 숨기기 · 신고 · 지우기가 실패하면 글이 그대로 남고 정해진 글이 보인다(토스트 또는 창 안 한 줄)', async () => {
+    const { tree, api } = await open('loungeon@email.com');
+    const st = await api.state();
+    const posts = st.ok ? st.data.posts : [];
+    const otherIdx = posts.findIndex((p) => p.kind !== 'captain' && !p.mine);
+    const mineIdx = posts.findIndex((p) => p.kind !== 'captain' && p.mine);
+    const fail = { ok: false as const, code: 'server' as const };
+    jest.spyOn(api, 'empathy').mockResolvedValue(fail);
+    jest.spyOn(api, 'hide').mockResolvedValue(fail);
+    jest.spyOn(api, 'report').mockResolvedValue(fail);
+    jest.spyOn(api, 'remove').mockResolvedValue(fail);
+    // 공감 실패 → 토스트, 누른 표시는 그대로(꺼짐)
+    await press(tree, `lounge-post-${otherIdx}-empathy`);
+    await wait();
+    expect(textOf(tree, 'lounge-toast-text')).toBe(LOUNGE.error.empathy);
+    expect(must(tree, `lounge-post-${otherIdx}-empathy`).props.selected).toBe(false);
+    // 숨기기 실패 → 확인창 안 한 줄, 창은 열린 채
+    await press(tree, `lounge-post-${otherIdx}-more`);
+    await press(tree, 'lounge-msg-hide');
+    await press(tree, 'lounge-hide-confirm');
+    await wait();
+    expect(textOf(tree, 'lounge-hide-error')).toBe(LOUNGE.error.hide);
+    expect(isOpen(tree, 'lounge-hide')).toBe(true);
+    await press(tree, 'lounge-hide-cancel');
+    // 신고 실패 → 신고 창 안 한 줄
+    await press(tree, `lounge-post-${otherIdx}-more`);
+    await press(tree, 'lounge-msg-report');
+    await press(tree, 'lounge-report-RP5');
+    await press(tree, 'lounge-report-submit');
+    await wait();
+    expect(textOf(tree, 'lounge-report-error')).toBe(LOUNGE.error.report);
+    expect(isOpen(tree, 'lounge-report')).toBe(true);
+    // 내 글 지우기 실패 → 확인창 안 한 줄, 글은 그대로
+    const mine = posts[mineIdx].kind !== 'captain' ? (posts[mineIdx] as { body: string }).body : '';
+    await press(tree, `lounge-post-${mineIdx}-more`);
+    await press(tree, 'lounge-msg-delete');
+    await press(tree, 'lounge-delete-confirm');
+    await wait();
+    expect(textOf(tree, 'lounge-delete-error')).toBe(LOUNGE.error.delete);
+    expect(allTexts(tree)).toContain(mine);
   });
 });

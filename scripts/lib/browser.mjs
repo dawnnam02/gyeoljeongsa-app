@@ -245,8 +245,38 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
   const viewport = (w, h) => cdp.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 2, mobile: true });
   await viewport(width, height);
 
+  // QF2-B4: 누르기 전에 요소가 멈추고 맨 위에 있는지 본다. 위치(가운데 · 크기)가 연속 두 번 같고 elementFromPoint 가 이 요소(안쪽 · 바깥 포함)일 때 그 좌표를 돌려준다.
+  //  CLICK_SETTLE_MS(기본 2000) 안에 못 맞으면 마지막 좌표를 그대로 돌려 예전처럼 누른다(일부러 가린 요소를 시험하는 점검이 막히지 않게). 없으면 null
+  let clickWaits = 0;
+  const settle = async (selector) => {
+    const limit = Date.now() + Number(process.env.CLICK_SETTLE_MS ?? 2000);
+    const sample = () =>
+      evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null; const c = window.__center(el); const hit = document.elementFromPoint(c.x, c.y); c.top = !!hit && (hit === el || el.contains(hit) || hit.contains(el)); return c; })()`);
+    let prev = null;
+    let waited = false;
+    for (;;) {
+      await sleep(prev ? 70 : 60);
+      const cur = await sample();
+      if (!cur) return null;
+      const same = prev !== null && Math.abs(cur.x - prev.x) < 1 && Math.abs(cur.y - prev.y) < 1 && Math.abs(cur.w - prev.w) < 1 && Math.abs(cur.h - prev.h) < 1;
+      if (same && cur.top) {
+        if (waited) clickWaits += 1;
+        return cur;
+      }
+      if (prev !== null) waited = true; // 첫 재기는 비교 대상이 없을 뿐이라 기다림으로 세지 않는다
+      prev = cur;
+      if (Date.now() >= limit) {
+        clickWaits += 1;
+        return cur;
+      }
+    }
+  };
+
   const api = {
     origin: web.origin,
+    get clickWaits() {
+      return clickWaits;
+    },
     cdp,
     evaluate,
     errors,
@@ -291,13 +321,14 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
     mouse: (type, x, y) => cdp.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, clickCount: 1 }),
     // 요소(css 선택자)의 가운데를 마우스로 누른다. holdMs 동안 누르고 있는다
     // QF2-A(T1-09): 기다린 뒤 누르는 사이에 화면이 바뀌어 요소가 잠깐 없을 수 있다(07 내 성향 [이대로 확정] 등) → 20초(CLICK_RETRY_MS)까지 0.25초마다 '찾기 → 위치 다시 재기'를 통째로 다시 한다(컴퓨터가 바빠 화면 다시 그리기가 늦을 때도 견딘다)
+    // QF2-B4(N06 · 가입 도우미 간헐 멈춤): 요소가 있어도 화면 이동 · 시트 닫힘 · 스크롤이 끝나기 전에 누르면 좌표가 어긋나 눌림이 사라진다 →
+    //  위치가 두 번 연속 같고 그 자리에서 맨 위 요소가 이 요소(또는 안쪽)일 때까지 기다린 뒤 누른다(최대 CLICK_SETTLE_MS=2초, 그래도 안 맞으면 예전처럼 누른다). 기다린 횟수는 api.clickWaits
     async click(selector, holdMs = 80) {
       let fresh = null;
       for (const end = Date.now() + Number(process.env.CLICK_RETRY_MS ?? 20000); ; ) {
         const info = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null; el.scrollIntoView({ block: 'center' }); return window.__center(el); })()`);
         if (info) {
-          await sleep(60);
-          fresh = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); return el ? window.__center(el) : null; })()`);
+          fresh = await settle(selector);
           if (fresh) break;
         }
         if (Date.now() >= end) throw new Error(`누를 요소가 없어요: ${selector} (경로 ${await evaluate('location.pathname').catch(() => '?')})`);

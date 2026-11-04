@@ -278,3 +278,50 @@ describe('화면', () => {
     act(() => tree.unmount());
   });
 });
+
+describe('QF2-B4 E13 크레딧 내역: 빈 · 오류 · 이유 11종', () => {
+  type Reason = keyof typeof CREDITS.reasons;
+  const okLoad = (balance: number, items: { at: number | null; delta: number; reason: Reason; roundNo: number | null }[]) => ({ ok: true as const, balance, items });
+
+  test('내역 0건이면 "아직 크레딧 내역이 없어요." (잔액이 0이든 아니든)', async () => {
+    for (const balance of [0, 2]) {
+      const tree = await mount(<CreditScreen deps={{ api: { ledger: async () => okLoad(balance, []) } }} />);
+      await act(async () => undefined);
+      expect(textOf(tree, 'credits-empty')).toBe(CREDITS.empty);
+      expect(has(tree, 'credits-list')).toBe(false);
+      expect(textOf(tree, 'credits-balance')).toBe(`${balance}장`);
+      act(() => tree.unmount());
+    }
+  });
+
+  test('불러오기 실패 → 오류 글 한 줄 + [다시 시도] → 다시 읽어 내역이 나온다', async () => {
+    const ledger = jest.fn<Promise<ReturnType<typeof okLoad> | { ok: false; reason: 'network' | 'server' }>, []>();
+    ledger.mockResolvedValueOnce({ ok: false, reason: 'network' });
+    ledger.mockResolvedValueOnce(okLoad(1, [{ at: null, delta: 1, reason: 'balance', roundNo: 2 }]));
+    const tree = await mount(<CreditScreen deps={{ api: { ledger } }} />);
+    await act(async () => undefined);
+    expect(has(tree, 'credits-error')).toBe(true);
+    expect(allTexts(tree)).toContain(CREDITS.failed);
+    expect(has(tree, 'credits-balance')).toBe(false);
+    await press(tree, 'credits-retry');
+    await act(async () => undefined);
+    expect(ledger).toHaveBeenCalledTimes(2);
+    expect(has(tree, 'credits-error')).toBe(false);
+    expect(textOf(tree, 'credits-row-0-delta')).toBe('+1장');
+    act(() => tree.unmount());
+  });
+
+  test('내역 이유 11종이 모두 그려지고, 짝 못 찾음 3종은 같은 한 문장이다', async () => {
+    const reasons = Object.keys(CREDITS.reasons) as Reason[];
+    expect(reasons).toHaveLength(11);
+    const items = reasons.map((reason, i) => ({ at: Date.UTC(2026, 10, 1 + i), delta: reason === 'used' || reason === 'refund_taken' ? -1 : 1, reason, roundNo: i + 1 }));
+    const tree = await mount(<CreditScreen deps={{ api: { ledger: async () => okLoad(3, items) } }} />);
+    await act(async () => undefined);
+    const shown = allTexts(tree);
+    for (const reason of reasons) expect(shown).toContain(CREDITS.reasons[reason]);
+    for (let i = 0; i < reasons.length; i++) expect(textOf(tree, `credits-row-${i}-delta`)).toBe(items[i].delta > 0 ? '+1장' : '-1장');
+    expect(new Set([CREDITS.reasons.balance, CREDITS.reasons.no_fit, CREDITS.reasons.gap]).size).toBe(1);
+    expect(shown.join(' ')).not.toMatch(/[!！]/);
+    act(() => tree.unmount());
+  });
+});

@@ -118,6 +118,13 @@ describe('Chip 3종', () => {
     });
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+  test('QF2-B4: 글자가 짧은 칩(음력 · 양력)도 터치 영역이 가로 · 세로 모두 48 이상이다(탭 칸 · 고르는 칩 · 보통 칩)', async () => {
+    for (const variant of ['tab', 'selected', 'inactive', 'tag'] as const) {
+      const tree = await mount(<Chip label="음력" variant={variant} onPress={() => undefined} testID="c" />);
+      const s = styleOf(must(tree, 'c'));
+      expect([variant, s.minHeight, s.minWidth]).toEqual([variant, size.touchMin, size.touchMin]);
+    }
+  });
 });
 
 describe('D8 M1: 읽기 화면(LegalReader) 탭 칩이 공통 Chip 이다', () => {

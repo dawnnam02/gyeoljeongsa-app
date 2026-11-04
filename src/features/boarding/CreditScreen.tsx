@@ -75,11 +75,9 @@ export function CreditScreen({ deps }: { deps: { api: Pick<BoardingApi, 'ledger'
             {CREDITS.historyTitle}
           </AppText>
           {load.items.length === 0 ? (
-            load.balance === 0 ? (
-              <AppText variant="body" tone="sub" testID="credits-empty">
-                {CREDITS.empty}
-              </AppText>
-            ) : null
+            <AppText variant="body" tone="sub" testID="credits-empty">
+              {CREDITS.empty}
+            </AppText>
           ) : (
             <View testID="credits-list">
               {load.items.map((x, i) => (

@@ -551,6 +551,54 @@ describe('AIT-F ⑥ 연애 고민 정리 (카피 23-4 · 23-5 · ATF-12 ~ 15 · 
     expect(has(tree, 'concern-error-retry')).toBe(true);
   });
 
+  test('검사 탈락(blocked_output): [다시 시도]가 같은 글을 서버가 준 묶음과 함께 그대로 다시 보낸다 · 입력 유지 · 횟수 말 0 · 성공하면 그때 말풍선으로 옮긴다', async () => {
+    await grant();
+    const f = serve(err('blocked_output', { bundle: { payload: 'p1', mac: 'm1' } }), err('blocked_output', { bundle: { payload: 'p2', mac: 'm2' } }), ok(D1));
+    const tree = await open();
+    await typeInto(tree, 'concern-mine', '글 하나');
+    await typeInto(tree, 'concern-partner', '상대 글');
+    await sendFirst(tree);
+    expect(textOf(tree, 'concern-error-text')).toBe(AIT_TEXT['AIT.code.blocked_output']);
+    expect(AIT_TEXT['AIT.code.blocked_output']).toContain('같은 글을 다시 보내');
+    expect(AIT_TEXT['AIT.code.blocked_output']).toContain('횟수는 줄지 않으니');
+    expect(must(tree, 'concern-mine').props.value).toBe('글 하나');
+    expect(must(tree, 'concern-partner').props.value).toBe('상대 글');
+    await press(tree, 'concern-error-retry');
+    await flush();
+    expect(sent(f, 1).body).toMatchObject({ asker_text: '글 하나', partner_text: '상대 글', bundle: { payload: 'p1', mac: 'm1' } }); // 같은 글 + 첫 탈락 때 받은 묶음
+    expect(must(tree, 'concern-mine').props.value).toBe('글 하나'); // 두 번째 탈락에도 지워지지 않는다
+    await press(tree, 'concern-error-retry');
+    await flush();
+    expect(sent(f, 2).body).toMatchObject({ asker_text: '글 하나', partner_text: '상대 글', bundle: { payload: 'p2', mac: 'm2' } });
+    expect(has(tree, 'concern-error-text')).toBe(false);
+    expect(must(tree, 'concern-mine').props.value).toBe(''); // 통과해서 말풍선으로 옮겨진 뒤에야 칸이 비워진다
+    expect(allTexts(tree)).toContain('글 하나');
+    expect(allTexts(tree).join('')).not.toMatch(/남은|\d+\s*번|\d+\s*회/);
+  });
+
+  test('검사 탈락이 연속 6번 쌓이면 서버가 세션을 닫고, 앱은 끝 화면을 보인다(5번째까지는 계속 같은 안내 · 입력 유지)', async () => {
+    await grant();
+    const blocked = [1, 2, 3, 4, 5, 6].map((n) => err('blocked_output', { bundle: { payload: `p${n}`, mac: `m${n}` } }));
+    const f = serve(...blocked, ok({ stage: 'S5', progress: 5, sentences: [], notes: [], chips: [], ended: true }));
+    const tree = await open();
+    await typeInto(tree, 'concern-mine', '글 하나');
+    await sendFirst(tree);
+    for (let n = 1; n <= 5; n++) {
+      expect(textOf(tree, 'concern-error-text')).toBe(AIT_TEXT['AIT.code.blocked_output']);
+      expect(must(tree, 'concern-mine').props.value).toBe('글 하나');
+      await press(tree, 'concern-error-retry');
+      await flush();
+    }
+    expect(f).toHaveBeenCalledTimes(6);
+    expect(textOf(tree, 'concern-error-text')).toBe(AIT_TEXT['AIT.code.blocked_output']); // 6번째 탈락 화면도 같은 안내
+    expect(sent(f, 5).body).toMatchObject({ asker_text: '글 하나', bundle: { payload: 'p5', mac: 'm5' } });
+    await press(tree, 'concern-error-retry'); // 7번째: 서버가 닫힌 세션의 마침 카드를 돌려준다
+    await flush();
+    expect(sent(f, 6).body).toMatchObject({ asker_text: '글 하나', bundle: { payload: 'p6', mac: 'm6' } });
+    expect(textOf(tree, 'concern-end-title')).toBe(AIT_TEXT['CONCERN.end.title']);
+    expect(has(tree, 'concern-error-text')).toBe(false);
+  });
+
   test('오류 limit(대화 기록이 너무 길어짐): 새 글 · 다시 시도 0 · [새 고민 시작하기]가 입력 화면으로 돌려보낸다 (카피 23-13-1)', async () => {
     await grant();
     serve(err('limit', { text: '서버 문장' }));

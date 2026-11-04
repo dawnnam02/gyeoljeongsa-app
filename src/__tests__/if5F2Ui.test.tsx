@@ -699,3 +699,38 @@ describe('IF5-QF F-04 AI 맞춤: 잔액이 모자라면 확인 시트 전에 부
     expect(textOf(t, 'saju-kyeol-ai-low-need')).toBe('필요한 건 800, 지금 가진 건 0이에요.');
   });
 });
+
+describe('QF2-B4 L03 마일리지 내역: 더 오래된 내역 · 더 읽기 실패', () => {
+  const item = (id: number, at: number) => ({ id, at: new Date(at).toISOString(), kind: 'use' as const, amount: -100, feature: 'saju_chat_turn', state: null });
+  test('다음 묶음이 있으면 [더 오래된 내역] → 이어 붙고, 끝이면 단추가 사라진다', async () => {
+    const r = mileageRig({ email: 'mzero@email.com' });
+    const history = jest.spyOn(r.api, 'history');
+    history.mockResolvedValueOnce({ ok: true, data: { items: [item(30, 3_000), item(29, 2_900)], next: 29 } });
+    history.mockResolvedValueOnce({ ok: true, data: { items: [item(28, 2_800)], next: null } });
+    const tree = keep(await mount(<MileageLogScreen deps={r.deps} />));
+    await wait(60);
+    expect(has(tree, 'mileage-log-item-30') && has(tree, 'mileage-log-item-29')).toBe(true);
+    expect(has(tree, 'mileage-log-older')).toBe(true);
+    await press(tree, 'mileage-log-older');
+    await wait(60);
+    expect(history).toHaveBeenLastCalledWith(29);
+    expect(has(tree, 'mileage-log-item-28') && has(tree, 'mileage-log-item-30')).toBe(true);
+    expect(has(tree, 'mileage-log-older')).toBe(false);
+  });
+  test('더 읽다가 실패하면 오류 줄 + [다시 시도]가 나오고, 다시 시도하면 처음부터 읽는다', async () => {
+    const r = mileageRig({ email: 'mzero@email.com' });
+    const history = jest.spyOn(r.api, 'history');
+    history.mockResolvedValueOnce({ ok: true, data: { items: [item(10, 1_000)], next: 10 } });
+    history.mockResolvedValueOnce({ ok: false, code: 'network' });
+    history.mockResolvedValueOnce({ ok: true, data: { items: [item(10, 1_000)], next: null } });
+    const tree = keep(await mount(<MileageLogScreen deps={r.deps} />));
+    await wait(60);
+    await press(tree, 'mileage-log-older');
+    await wait(60);
+    expect(has(tree, 'mileage-log-fail')).toBe(true);
+    await press(tree, 'mileage-log-retry');
+    await wait(60);
+    expect(has(tree, 'mileage-log-fail')).toBe(false);
+    expect(has(tree, 'mileage-log-item-10')).toBe(true);
+  });
+});
