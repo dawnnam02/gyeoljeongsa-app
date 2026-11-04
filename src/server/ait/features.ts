@@ -59,7 +59,7 @@ export const COMPAT_DICT: Readonly<Record<string, { label: string; values: Reado
     label: '취미',
     values: {
       sport: '운동이나 헬스', travel: '여행', outdoor: '캠핑이나 등산', food: '맛집과 카페', culture: '영화, 공연, 전시',
-      reading: '독서나 공부', game: '게임', music: '음악이나 악기', cooking: '요리나 베이킹', pet: '반려동물',
+      reading: '독서나 공부', game: '게임', music: '음악', cooking: '요리나 베이킹', pet: '반려동물',
       volunteer: '봉사 활동', home: '집에서 쉬는 시간', other: '그 밖의 취미',
     },
   },

@@ -9,11 +9,11 @@ import type { ApiMessage, ChatSlots, Kind, ModelFlag, StageId } from './types.ts
 import { KINDS, MODEL_FLAGS } from './types.ts';
 import type { ResponseCode } from './codes.ts';
 import { charLen, endsWithHaeyo, hasResidualPii, maskText, quoteInSource, sanitize, wrapState, wrapTurn } from './text.ts';
-import { classifyHits, hasDiagnosisAsk, hasDiagnosisRequest, hasInjectionShape, hasMoneyHint, hasVerdictRequest } from './lexicon.ts';
+import { MANIPULATE_OBJ, classifyHits, hasDiagnosisAsk, hasDiagnosisRequest, hasInjectionShape, hasMoneyHint, hasVerdictRequest } from './lexicon.ts';
 import type { FixedCard } from './fixed.ts';
 import { composeSafety, composeSafetyFromFlags } from './safety.ts';
 import {
-  ALWAYS_LINE, CARD_NOTE, CHAT_FOOTER, CHAT_GUESS_NOTE, CRISIS_CARD, MINOR_CARD, MISUSE_CARD, MONEY_CAUTION,
+  ALWAYS_LINE, CARD_NOTE, FALLBACK_QUESTION, CHAT_FOOTER, CHAT_GUESS_NOTE, CRISIS_CARD, MINOR_CARD, MISUSE_CARD, MONEY_CAUTION,
   PRACTICAL_LABEL, SESSION_END_CARD, SOFT_HELP_LINES, VERDICT_NOTE, VIOLENCE_CARD, WEAK_LABEL,
 } from './fixed.ts';
 import { CHAT_ALLOW_PHRASES, CHAT_RULES, checkText, contactHit } from './rules.ts';
@@ -190,7 +190,7 @@ export function planFor(state: ChatState): Plan {
         ]
         : [
           { kinds: ['restate', 'because', 'option', 'first_action', 'change_if'], min: 1, max: 6 },
-          { kinds: ['question'], min: 0, max: 1 },
+          { kinds: ['question'], min: 0, max: state.chips.enough === true ? 0 : 1 },   // AI-FIX3 N3: '충분해요' 뒤 마지막 답은 끝나는 턴이라 답할 곳 없는 질문을 달지 않는다
         ];
   }
   const allowed = Array.from(new Set(items.flatMap((i) => i.kinds.filter(() => true)))) as Kind[];
@@ -421,10 +421,17 @@ export interface EvalResult {
 const REF_USER = /^내 말 ([1-9][0-9]*)$/;   // 턴 상한이 없어 세 자리 번호도 나온다
 const REF_CARD = /^K-[1-9][0-9]?$/;
 /** 사용자가 걱정하는 모양을 되짚는 말의 틀만(주어가 상대면 제외). 사용자 글에 같은 틀이 있을 때만 쓴다 — '사용자 글에 있던 말이면 봐주기'처럼 낱말 전체를 풀지 않는다 */
-const WORRY_FRAME = /(?<!(?:상대|그분|그 ?사람|그쪽)(?:이|가|은|는|도)? ?)예민(?:한 ?사람(?:처럼|으로)|해) ?(?:보일|비칠|보이|여겨질|느껴질|볼|생각할|여길)(?:까 ?봐|까 ?걱정|까 ?염려|까 ?두려|까 ?무서)/g;
+const WORRY_FRAME = /(?<!(?:상대방?|그분|그 ?사람|그쪽|걔|그이|그 ?애|남자 ?친구|여자 ?친구|남친|여친|애인|남편|아내|연인|배우자)(?:이|가|은|는|도|께서)? ?)예민(?:한 ?사람(?:처럼|으로)|해) ?(?:보일|비칠|보이|여겨질|느껴질|볼|생각할|여길)(?:까 ?봐|까 ?걱정|까 ?염려|까 ?두려|까 ?무서)/g;
 const WORRY_TEST = new RegExp(WORRY_FRAME.source);
 /** 피해를 서술하는 틀(상대가 나를 …하는 것 같다 · …당한다)만. 조언 꼴("조종하는 법" · "조종해 보세요" · "길들이는 방법")은 이 틀에 없다 */
-const VICTIM_FRAME = /(?:조종|길들)(?:당하|당했|여지|여진|이려는|이려고|이려 ?해|하려는|하려고|하려 ?해|하는 ?것 ?같|하는 ?느낌|하는 ?듯|처럼|같은 ?느낌|같이)/g;
+const VICTIM_FRAME = /(?:조종|길들)(?:당하|당했|여지|여진|이려는|이려고|이려 ?해|이려 ?한|하려는|하려고|하려 ?해|하려 ?한|하는 ?것 ?같|하는 ?느낌|하는 ?듯|처럼|같은 ?느낌|같이)/g;
+/** 피해 틀을 풀어 주는 조건(AI-FIX3 N1): 사용자의 느낌을 되짚는 보고형으로 끝나고, 조언 낱말이 없고, 상대를 겨눈 목적어 꼴(상대를 조종…)이 아닐 때만 */
+const VICTIM_REPORT_END = /(?:군요|셨어요|셨네요|셨죠|들려요|들렸어요|들렸네요|들리네요|느껴져요|느껴졌어요|느껴지네요|말씀이에요|말씀이시죠|나 ?봐요|이에요|예요|이었어요|였어요|같아요|들었어요|들었네요|읽혀요|읽히네요|거네요|거로 ?보여요)[.\s]*$/;
+const VICTIM_ADVICE = /보세요|해 ?보|해 ?주세요|하세요|방법|쪽으로|좋겠|권해|보시면|볼 ?수|드릴게|효과|좋다고|좋아요|낫|나아 ?보|도움이 ?되|유용|해야|돼요|하면 ?돼|하는 ?게 ?좋|전해 ?보/;
+const victimFrameOk = (t: string): boolean => VICTIM_REPORT_END.test(t.trim()) && !VICTIM_ADVICE.test(t) && !MANIPULATE_OBJ.test(t.replace(/[^가-힣a-z0-9]/gi, ''));
+/** 문장(마침표 · 물음표 단위)마다 따로 본다 — 한 칸에 보고 문장과 군더더기 문장이 같이 있어도, 틀은 보고형으로 끝나는 그 문장에서만 푼다 */
+const unwrapVictimFrame = (text: string, stems: readonly string[]): string =>
+  text.split(/(?<=[.?!])\s+/).map((c) => (victimFrameOk(c) ? c.replace(VICTIM_FRAME, (m) => (stems.some((st) => m.startsWith(st)) ? '' : m)) : c)).join(' ');
 const HEDGE = /보여요|같아요|수 있어요|수도 있어요|가까워요|가까워 보여요|가능성|듯해요|라고 해요|이래요|나아 보여요/;
 const WEAK_MARK = /약하지만|말씀하신 (대목|내용|부분)만|확실하지|참고만|짐작/;
 const HEDGE_KINDS: readonly Kind[] = ['trait', 'reason', 'counter', 'direction'];
@@ -459,9 +466,10 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
   const worryOk = WORRY_TEST.test(lastAsker);
   const victimStems = ['조종', '길들'].filter((st) => lastAsker.includes(st));            // 사용자가 직접 쓴 낱말만(모델이 먼저 꺼낸 낱말은 풀지 않는다)
   const kept: Array<{ kind: Kind; ds: DisplaySentence }> = [];
+  let qDropped = false;
 
   raw.sentences.forEach((s: unknown, index: number) => {
-    const drop = (reason: string) => { res.dropped.push({ index, reason }); };
+    const drop = (reason: string) => { res.dropped.push({ index, reason }); if (isRecord(s) && s.kind === 'question') qDropped = true; };
     if (!isRecord(s)) return drop('shape');
     const kind = s.kind as Kind;
     if (!(KINDS as readonly string[]).includes(kind) || !ctx.plan.allowed.includes(kind)) return drop('kind');
@@ -475,7 +483,7 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
     const scan = (t: string): string => {
       if (kind !== 'restate' && kind !== 'problem_line') return t;
       let u = worryOk ? t.replace(WORRY_FRAME, '') : t;
-      if (victimStems.length) u = u.replace(VICTIM_FRAME, (m) => (victimStems.some((st) => m.startsWith(st)) ? '' : m));
+      if (victimStems.length) u = unwrapVictimFrame(u, victimStems);
       return u;
     };
     const hits = checkText(scan(text), CHAT_RULES, { allowPhrases: CHAT_ALLOW_PHRASES });
@@ -547,6 +555,12 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
   ctx.plan.items.forEach((it, idx) => {
     if ((counts.get(idx) ?? 0) < it.min) res.blockers.push('composition:' + it.kinds.join('|'));
   });
+  // 질문 칸만 형식 규칙(글자 수 · 물음표 · 3인칭 낱말 등 drop)에 걸려 떨어졌고 다른 막힘이 없으면, 답 전체를 버리지 않고 서버 고정 질문을 단계별로 단다(AI-FIX3). 안전 규칙(block)으로 떨어진 경우에는 쓰지 않는다
+  if (qDropped && res.blockers.length === 1 && res.blockers[0] === 'composition:question' && ctx.plan.stage in FALLBACK_QUESTION) {
+    out.push({ kind: 'question', text: FALLBACK_QUESTION[ctx.plan.stage as keyof typeof FALLBACK_QUESTION], refs: [], weak: false });
+    res.blockers.pop();
+    res.dropped.push({ index: -1, reason: 'question_fixed' });
+  }
   // 진단을 물었으면 행동 이야기로 돌리는 문장이 있어야 한다(법무 16-2 낙인)
   if (ctx.diagnosisAsked && !out.some((x) => CHAT_ALLOW_PHRASES.some((ph) => x.text.includes(ph)))) res.blockers.push('diagnosis_redirect');
   // 그룹(trait|reason, restate|because|… 후속)에서 같은 칸을 여러 종류가 나눠 쓸 수 있도록 findIndex 첫 항목에 모은다
