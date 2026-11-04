@@ -31,8 +31,8 @@ export const BOARDING = {
     credits: (n: number) => `쓸 수 있는 크레딧이 ${n}장 있어요.`,
   },
   full: {
-    title: '이번 회차 좌석이 모두 찼어요',
-    body: (next: string) => `같은 지역 남녀 수를 맞추느라 좌석을 정해 두고 있어요. 다음 회차 탑승권은 ${next}부터 살 수 있어요.`,
+    title: '이번 회차는 마감했어요', // QF2 F-05: 청사진 3-1 '이번 회차 마감(숫자 없음)'. '좌석이 모두 찼어요'는 매진으로 읽혀 뺌
+    body: (next: string) => `다음 회차 탑승권은 ${next}부터 살 수 있어요.`,
   },
   closed: {
     title: '이번 회차 판매가 끝났어요',
@@ -106,13 +106,14 @@ export const BOARDING = {
     ],
     pay: '결제하기',
     payCredit: '크레딧 1장으로 타기',
+    payClosed: '탑승권 결제는 아직 열리지 않았어요.', // [초안 Q2-21] payment_mode closed 일 때 [결제하기] 자리에 사실 한 줄(마케팅 확인 전)
     close: '닫기',
     demo: '데모 결제예요. 실제 돈은 나가지 않아요.',
     contract: '결혼중개 계약 설명 보기', // [제안 L17A · D-190 ⑤] 약관 제14조의2 ③(BR09) — 누르면 약관 제14조의2 글 그대로(TermsArticleSheet)
   },
   bought: '탑승했어요. 수요일 오후 6시에 만나요.',
   buyErrors: {
-    sold_out: '이번 회차 좌석이 모두 찼어요. 결제되지 않았어요.',
+    sold_out: '이번 회차는 마감했어요. 결제되지 않았어요.',
     already: '이번 회차 탑승권이 이미 있어요.',
     closed: '이번 회차 판매가 끝났어요. 결제되지 않았어요.',
     not_eligible: '지금은 탑승권을 살 수 없어요.',

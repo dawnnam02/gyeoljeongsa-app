@@ -171,7 +171,7 @@ try {
   await b.evaluate('history.back()');
   await wait(`location.pathname === '/boarding' && !!${visQ('boarding-scroll')}`, 6000);
   await scene('full');
-  check('5', `좌석 모두 참: 다음 판매 시각만 · [탑승권 사기] 없음 · 남은 좌석 숫자 0`, (await visText('boarding-status-title')) === '이번 회차 좌석이 모두 찼어요' && (await visText('boarding-status-body')).endsWith('12월 24일 목요일 오전 0시부터 살 수 있어요.') && !(await vis('boarding-buy')) && !PUSHY.test(await screenText('screen-boarding')), await visText('boarding-status-body'));
+  check('5', `좌석 모두 참: 다음 판매 시각만 · [탑승권 사기] 없음 · 남은 좌석 숫자 0`, (await visText('boarding-status-title')) === '이번 회차는 마감했어요' && (await visText('boarding-status-body')).endsWith('12월 24일 목요일 오전 0시부터 살 수 있어요.') && !(await vis('boarding-buy')) && !PUSHY.test(await screenText('screen-boarding')), await visText('boarding-status-body'));
   await shot('T1_좌석모두참');
   await scene('before');
   check('5', `판매 전: '탑승권 판매 전이에요' · '12월 17일 목요일 오전 0시부터'`, (await visText('boarding-status-title')) === '탑승권 판매 전이에요' && (await visText('boarding-status-body')).startsWith('12월 17일 목요일 오전 0시부터'), await visText('boarding-status-body'));

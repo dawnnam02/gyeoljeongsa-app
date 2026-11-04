@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { demoDefault, FEATURE_KEY_LIST, FEATURE_KEYS, isFeatureKey, isPendingKey, liveDefault } from '@/config/featureKeys';
+import { demoDefault, FEATURE_KEY_LIST, FEATURE_KEYS, isFeatureKey, isPendingKey, liveDefault, LV2_OFF_KEYS } from '@/config/featureKeys';
 import { TOAST_MAX_CHARS, TOAST_MS, toastFits } from '@/config/toast';
 import { CONTACT_HINT } from '@/content/contactHintCopy';
 import { createFlagsStore } from '@/hooks/useFeatureFlags';
@@ -87,7 +87,8 @@ describe('스위치 키 한 목록(K19 2-5) · 앱이 87키를 읽는다', () =>
   });
 
   test('demo 처음값: review_required · prelaunch 만 꺼짐(테스트 웹은 지금 동작 · 심사를 끈 데모, 정책 1-2 7번) · avoid_org 켜짐(K20 4-3) · 셀피 · 서류 · 만남 피드백 · 지인 확인 13개 꺼짐(D-238) · 목록 밖은 꺼짐', () => {
-    expect(FEATURE_KEYS.filter((k) => !isPendingKey(k) && !demoDefault(k))).toEqual(['meet_feedback', 'doc_verify', 'selfie_verify', 'meet_feedback_plus', 'selfie_required', 'review_required', 'verify_steps', 'doc_marital', 'job_mail_verify', 'doc_license', 'doc_income', 'doc_parent', 'verify_detail', 'prelaunch', 'vouch', ...V5_KEYS, ...R_KEYS, 'type_card_share', 'pair_card_ai']); // V5: 숨긴 v4 화면은 데모에서도 꺼짐(v4on 장면만 켜짐) · R: chat_push 데모도 꺼짐 · IF2: 바깥 공유 · AI판은 데모도 꺼짐(PF-91)
+    expect(FEATURE_KEYS.filter((k) => !isPendingKey(k) && !demoDefault(k) && !LV2_OFF_KEYS.includes(k))).toEqual(['meet_feedback', 'doc_verify', 'selfie_verify', 'meet_feedback_plus', 'selfie_required', 'review_required', 'verify_steps', 'doc_marital', 'job_mail_verify', 'doc_license', 'doc_income', 'doc_parent', 'verify_detail', 'prelaunch', 'vouch', ...V5_KEYS, ...R_KEYS, 'type_card_share', 'pair_card_ai']); // V5: 숨긴 v4 화면은 데모에서도 꺼짐(v4on 장면만 켜짐) · R: chat_push 데모도 꺼짐 · IF2: 바깥 공유 · AI판은 데모도 꺼짐(PF-91)
+    expect(LV2_OFF_KEYS.every((k) => !demoDefault(k))).toBe(true); // 운세 정리(D-245): 날짜 고르기 · 달력 · 만난 날의 하늘 · 하늘 도감 · 창밖 하늘 · 생일 엽서 · 이번 주 타로
     expect(demoDefault('avoid_org')).toBe(true);
     for (const k of ['doc_verify', 'selfie_verify', 'selfie_required', 'verify_steps', 'doc_marital', 'job_mail_verify', 'doc_license', 'doc_income', 'doc_parent', 'verify_detail', 'meet_feedback', 'meet_feedback_plus', 'vouch']) expect(demoDefault(k)).toBe(false); // D-238: 스위치를 켜면 돌아온다(코드 · 서버 그대로)
     expect(demoDefault('rude_warn')).toBe(true); // 넣고 꺼 둔 키(live 꺼짐) — 데모 시드처럼 켜짐

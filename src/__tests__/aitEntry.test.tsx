@@ -5,6 +5,7 @@ import { act, type ReactTestRenderer } from 'react-test-renderer';
 import { Text } from 'react-native';
 
 import { demoDefault, FEATURE_KEYS } from '@/config/featureKeys';
+import { FORTUNE_TRIM } from '@/config/fortuneTrim';
 import { AIT_TEXT } from '@/content/aitCopy';
 import { createDemoBoarding } from '@/demo/boardingDemo';
 import { createDemoInflight } from '@/demo/inflightDemo';
@@ -158,6 +159,13 @@ describe('AIT-F 입구 — 홈 B6 셋째 칸 · 궁합 카드 시트 안 AI 칸'
 });
 
 describe('AIT-F 입구 — 기내지 ① 쪽 AI 풀이 · 문장 다듬기', () => {
+  // 운세 정리(D-245): 기내지 안 별자리 · 사주 AI 시험판은 코드 상수로 꺼짐 — 이 묶음은 켰을 때 그대로 도는 것을 본다(꺼진 쪽은 qf2aFortune.test.tsx)
+  beforeEach(() => {
+    FORTUNE_TRIM.inflightAiTrial = true;
+  });
+  afterEach(() => {
+    FORTUNE_TRIM.inflightAiTrial = false;
+  });
   test('기내지 ① 쪽: [AI가 쓴 풀이 보기] → 별자리 코드 + 오행 코드만 보낸다', async () => {
     await aitStore.load();
     await aitStore.setCode(CODE);

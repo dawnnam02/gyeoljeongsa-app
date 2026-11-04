@@ -236,7 +236,7 @@ describe('화면', () => {
     act(() => n.unmount());
     const f = await mount(<BoardingScreen deps={{ api: createBoardingApi(await demoClient('boardfull@email.com')), newId: () => 'x' }} />);
     await act(async () => undefined);
-    expect(textOf(f, 'boarding-status-body')).toBe('같은 지역 남녀 수를 맞추느라 좌석을 정해 두고 있어요. 다음 회차 탑승권은 12월 24일 목요일 오전 0시부터 살 수 있어요.');
+    expect(textOf(f, 'boarding-status-body')).toBe('다음 회차 탑승권은 12월 24일 목요일 오전 0시부터 살 수 있어요.');
     expect(has(f, 'boarding-buy')).toBe(false);
     act(() => f.unmount());
   });

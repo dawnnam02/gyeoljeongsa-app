@@ -22,6 +22,8 @@ type Props = {
   onClose: () => void;
   dismissable?: boolean;
   core?: boolean; // 핵심 순간(탑승권 받기)의 결제 시트 — 열림 · 닫힘이 조금 더 길고 edInOut
+  // false 이면 시트가 내용을 스크롤하지 않는다 — 자식이 [스크롤 칸(flexShrink 1)] + [아래 고정 단추 줄]을 직접 그린다(QF2 F-01 · F-02: 결제 · 동의 단추가 작은 화면에서 밖으로 밀리지 않게)
+  scroll?: boolean;
   children: ReactNode;
   testID?: string;
 };
@@ -33,7 +35,7 @@ export function shouldDragClose(dy: number, height: number, velocityY: number): 
   return dy > height * scene.sheetDrag.closeRatio || velocityY > scene.sheetDrag.closeVelocity;
 }
 
-export function BottomSheet({ visible, onClose, dismissable = true, core = false, children, testID }: Props) {
+export function BottomSheet({ visible, onClose, dismissable = true, core = false, scroll = true, children, testID }: Props) {
   const reduce = useReduceMotion();
   const { height: windowHeight } = useWindowDimensions();
   const [mounted, setMounted] = useState(visible);
@@ -112,9 +114,13 @@ export function BottomSheet({ visible, onClose, dismissable = true, core = false
               <View style={styles.handle} />
             </View>
           </GestureDetector>
-          <ScrollView bounces={false} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-            {children}
-          </ScrollView>
+          {scroll ? (
+            <ScrollView bounces={false} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+              {children}
+            </ScrollView>
+          ) : (
+            <View style={[styles.body, styles.fixedBody]}>{children}</View>
+          )}
         </Animated.View>
       </GestureHandlerRootView>
     </Modal>
@@ -135,4 +141,5 @@ const styles = StyleSheet.create({
   grab: { height: size.sheetHandleTouch, alignItems: 'center', justifyContent: 'center' },
   handle: { width: size.sheetHandleW, height: size.sheetHandleH, borderRadius: radius.pill, backgroundColor: colors.line },
   body: { gap: space.s12, paddingBottom: space.s12 },
+  fixedBody: { flexShrink: 1 }, // 스크롤 칸은 남는 높이만큼 줄고, 아래 단추 줄은 늘 보임
 });

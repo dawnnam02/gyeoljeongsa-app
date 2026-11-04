@@ -3,7 +3,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 
-import { demoDefault, FEATURE_KEYS } from '@/config/featureKeys';
+import { demoDefault, FEATURE_KEYS, LV2_OFF_KEYS } from '@/config/featureKeys';
 import { createDemoBoarding } from '@/demo/boardingDemo';
 import { createDemoInflight, DEMO_SKY_ISSUE } from '@/demo/inflightDemo';
 import { demoShared } from '@/demo/inflightShared';
@@ -25,7 +25,8 @@ jest.mock('react-native-safe-area-context', () => {
 jest.mock('@/lib/services', () => ({ likesApi: {}, settingsApi: {}, recsApi: {}, profileApi: {}, aiApi: {}, authApi: {}, supabase: {} }));
 jest.setTimeout(60_000);
 
-const flagsAll = (over: Record<string, boolean> = {}) => ({ ...Object.fromEntries(FEATURE_KEYS.map((k) => [k, demoDefault(k)])), ...over }) as Record<string, boolean>;
+// 운세 정리(D-245): 끈 7개는 데모 처음값이 꺼짐 — 이 파일은 켰을 때 모의 서버가 그대로 도는 것을 본다(꺼진 처음값은 qf2aFortune.test.tsx)
+const flagsAll = (over: Record<string, boolean> = {}) => ({ ...Object.fromEntries(FEATURE_KEYS.map((k) => [k, demoDefault(k) || LV2_OFF_KEYS.includes(k)])), ...over }) as Record<string, boolean>;
 
 function rig(email: string, over: Record<string, boolean> = {}, birth: string | null = '1997-03-12', consent = true) {
   const user = { id: `u-${email.split('@')[0]}`, email };

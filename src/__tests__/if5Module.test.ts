@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { demoDefault, FEATURE_KEY_LIST, liveDefault } from '@/config/featureKeys';
+import { demoDefault, FEATURE_KEY_LIST, liveDefault, LV2_OFF_KEYS } from '@/config/featureKeys';
 import { IF5_TEXT, t5 } from '@/content/if5Copy';
 import { checkText5 } from '@/saju5/check_text5';
 import { allNodes5, FRAGMENTS5, sharedNodes5 } from '@/saju5/fragments5';
@@ -143,7 +143,8 @@ describe('IF5-F1 ⑤ 스위치 20키 (기획/IF5_스위치.md — 서버 이름 
     expect(FEATURE_KEY_LIST.filter((k) => k.group === 'IF5')).toHaveLength(17);
   });
   test('데모에서는 켬(IF5-F2: 마일리지 · AI 맞춤 · 사주 이야기가 생겨 saju_ai · saju_talk · mileage_charge 도 데모 켬 — 실호출 · 실결제는 접근 코드 · 가상 잔액 뒤에서만)', () => {
-    for (const k of [...NEW17, ...KEEP3]) expect(demoDefault(k)).toBe(true);
+    // 운세 정리(D-245, LV-2 2장 '끔'): 날짜 고르기 · 달력 · 만난 날의 하늘은 데모 처음값도 꺼짐(LV2_OFF_KEYS) — 켜진 스위치만 켜짐으로 본다
+    for (const k of [...NEW17, ...KEEP3]) expect(demoDefault(k)).toBe(!LV2_OFF_KEYS.includes(k));
   });
   test('check_sec2 IF5-m2: 서버 스위치 3키(saju_yard · mileage · mileage_charge)가 앱 목록에 있다', () => {
     const flat = JSON.stringify(JSON.parse(fs.readFileSync(path.join(APP, 'src', 'config', 'featureKeys.json'), 'utf8')));

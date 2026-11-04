@@ -5,7 +5,7 @@
 //  · 쪽마다 끝줄(① ② ④ ⑤ 재미 끝줄 · ③ 연애 이야기 끝줄 · ⑥ AI 작성 알림 — PF-04 · PF-20) · 글은 IF2 글 + AI 라이브러리(id) · AI 호출 0
 //  · 내 별자리 이름은 나만 보는 기내지에서만(PF-14) · 일간 글자 · 큰 한자 · 부적 꼴 0
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, ScrollView, StyleSheet, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
 import { AppText } from '@/components/AppText';
@@ -18,6 +18,7 @@ import { SIGN_CUSP, t3 } from '@/content/if3Copy';
 import type { BoardingState } from '@/features/boarding/boardingApi';
 import { BOARDING } from '@/features/boarding/boardingCopy';
 import { aitEnabled } from '@/features/ait/aitEnabled';
+import { FORTUNE_TRIM } from '@/config/fortuneTrim';
 import { StarAiBlock } from '@/features/ait/StarAiBlock';
 import { openSettingsPage } from '@/features/settings/settingsIntent';
 import { Rise, TOAST_MS } from '@/motion';
@@ -60,7 +61,10 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
   const [birth, setBirth] = useState<BirthWeek | null>(null); // G-07: ④ 쪽에 닿았을 때 한 번만 부른다(스위치 birth_card 켜짐일 때) · 이 화면 메모리뿐
   const birthAsked = useRef(false);
   const pager = useRef<ScrollView>(null);
-  const startPage = params.page === 'card' ? MAG_PAGES.indexOf('card') : 0;
+  // 이번 주 타로(스위치 inflight_tarot) 꺼짐: 기내지에서 '카드' 쪽을 뺀다(LV-2 D-245). isOn 을 안 받은 쪽(시험 · 옛 호출)은 예전처럼 모두 보인다
+  const tarotOn = deps.isOn ? deps.isOn('inflight_tarot') : true;
+  const pages = useMemo(() => MAG_PAGES.filter((p) => p !== 'card' || tarotOn), [tarotOn]);
+  const startPage = params.page === 'card' ? Math.max(0, pages.indexOf('card')) : 0;
   const round = Number(params.round ?? '0') || 0;
 
   const boardingOf = deps.boarding;
@@ -80,13 +84,13 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
   const birthOn = (deps.isOn ?? (() => false))('birth_card');
   const birthFetch = deps.api.birthWeek;
   useEffect(() => {
-    if (!birthOn || !birthFetch || MAG_PAGES[page] !== 'question' || birthAsked.current) return;
+    if (!birthOn || !birthFetch || pages[page] !== 'question' || birthAsked.current) return;
     birthAsked.current = true;
     void birthFetch().then(
       (r) => setBirth(r.ok ? r.data : null),
       () => undefined,
     );
-  }, [birthOn, birthFetch, page]);
+  }, [birthOn, birthFetch, page, pages]);
   useEffect(() => {
     if (!toast) return undefined;
     const t = setTimeout(() => setToast(null), TOAST_MS);
@@ -101,10 +105,10 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
   // 쪽을 넘길 뿐 — 동의 시트는 쪽에 닿아도 저절로 띄우지 않는다. ① 쪽의 [동의하고 보기]를 누를 때만(정책 PF-16 · PF-23, QP-46)
   const arrive = (next: number) => setPage(next);
   const goTo = (n: number) => {
-    const next = Math.max(0, Math.min(MAG_PAGES.length - 1, n));
+    const next = Math.max(0, Math.min(pages.length - 1, n));
     arrive(next);
     pager.current?.scrollTo({ x: next * width, animated: true });
-    AccessibilityInfo.announceForAccessibility?.(tx('MAGAZINE.a11y.page', { '쪽 이름': pageName(MAG_PAGES[next]), 여행지: trip }));
+    AccessibilityInfo.announceForAccessibility?.(tx('MAGAZINE.a11y.page', { '쪽 이름': pageName(pages[next]), 여행지: trip }));
   };
   const onLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
@@ -122,7 +126,7 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
   const head = (
     <View style={styles.head}>
       <AppText variant="captionMedium" tone="sub" style={if2Styles.flex} testID="mag-page-name">
-        {issued ? pageName(MAG_PAGES[page]) : ''}
+        {issued ? pageName(pages[page]) : ''}
       </AppText>
       <Pressable accessibilityRole="button" accessibilityLabel={tx('MAGAZINE.a11y.close')} onPress={close} effect="none" style={({ pressed }) => [styles.close, pressed && styles.pressed]} testID="mag-close">
         <AppText variant="bodyMedium" tone="accent">
@@ -214,7 +218,7 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
                   <AppText variant="body">{stemIntro(issued.grain.stem) ?? ''}</AppText>
                   <AppText variant="body">{sajuText(issued.grain.saju) ?? ''}</AppText>
                 </View>
-                {aitEnabled() ? <StarAiBlock signs={issued.sky.signs} stem={issued.grain.stem} onSettings={() => openSettingsPage(router, 'ait-code')} /> : null}
+                {FORTUNE_TRIM.inflightAiTrial && aitEnabled() ? <StarAiBlock signs={issued.sky.signs} stem={issued.grain.stem} onSettings={() => openSettingsPage(router, 'ait-code')} /> : null}
                 {isOn('my_ways') && waysApi ? <MyWaysFold api={{ myWays: waysApi }} onAgree={() => setSheet('ck17')} /> : null}
               </>
             ) : (
@@ -259,7 +263,7 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
               </AppText>
             ))}
             {deps.preOn && pre && pre.state !== 'none' ? <Button label={tx('MAGAZINE.question.preAnswer')} variant="secondary" onPress={() => setSheet('pre')} testID="mag-pre" /> : null}
-            {isOn('birth_card') && birthApi ? <BirthCard week={birth} issueDate={issued.issueDate} active={MAG_PAGES[page] === 'question'} /> : null}
+            {isOn('birth_card') && birthApi ? <BirthCard week={birth} issueDate={issued.issueDate} active={pages[page] === 'question'} /> : null}
             <Footnote text={tx('FUN.footer')} />
           </View>
         );
@@ -306,16 +310,16 @@ export function MagazineScreen({ deps }: { deps: MagazineDeps }) {
       {/* key: 불러오는 중 칸(같은 자리 View)을 이어 쓰지 않고 새로 붙인다 — 웹(react-native-web)은 처음 붙을 때 onLayout 이 없으면 크기 관찰을 하지 않아 쪽 폭이 0 으로 남는다 */}
       <View key="mag-pages" style={if2Styles.flex} onLayout={onLayout}>
         <ScrollView ref={pager} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={onScrollEnd} scrollEventThrottle={16} testID="mag-pager">
-          {MAG_PAGES.map((p) => (
-            <ScrollView key={p} style={width > 0 ? { width } : styles.hidden} contentContainerStyle={styles.pagePad} accessibilityElementsHidden={MAG_PAGES[page] !== p} importantForAccessibility={MAG_PAGES[page] === p ? 'auto' : 'no-hide-descendants'}>
-              {MAG_PAGES[page] === p ? <Rise axis="x" distance={space.s16} duration={if2Look.flipMs / 2}>{pageBody(p)}</Rise> : pageBody(p)}
+          {pages.map((p) => (
+            <ScrollView key={p} style={width > 0 ? { width } : styles.hidden} contentContainerStyle={styles.pagePad} accessibilityElementsHidden={pages[page] !== p} importantForAccessibility={pages[page] === p ? 'auto' : 'no-hide-descendants'}>
+              {pages[page] === p ? <Rise axis="x" distance={space.s16} duration={if2Look.flipMs / 2}>{pageBody(p)}</Rise> : pageBody(p)}
             </ScrollView>
           ))}
         </ScrollView>
       </View>
       <View style={styles.nav}>
         {page > 0 ? <TextButton label={tx('MAGAZINE.a11y.prev')} onPress={() => goTo(page - 1)} testID="mag-prev" /> : <View />}
-        {page < MAG_PAGES.length - 1 ? <TextButton label={tx('MAGAZINE.a11y.next')} onPress={() => goTo(page + 1)} testID="mag-next" /> : <View />}
+        {page < pages.length - 1 ? <TextButton label={tx('MAGAZINE.a11y.next')} onPress={() => goTo(page + 1)} testID="mag-next" /> : <View />}
       </View>
       <Ck17Sheet
         visible={sheet === 'ck17'}

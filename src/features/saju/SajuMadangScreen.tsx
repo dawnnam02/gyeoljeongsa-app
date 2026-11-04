@@ -14,6 +14,7 @@ import { Chip } from '@/components/Chip';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { FORTUNE_TRIM } from '@/config/fortuneTrim';
 import { IF3_TEXT } from '@/content/if3Copy';
 import { IF5_TEXT, t5 } from '@/content/if5Copy';
 import { Footnote } from '@/features/inflight/If2Parts';
@@ -190,9 +191,9 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
         {on('saju_year') ? yearBlock() : null}
         {on('saju_calendar') && cards.month ? <SummaryCard id="saju-month" label={IF5_TEXT['SAJU.month.label']} one={cards.month.one} lines={cards.month.three} more={cards.month.more} /> : null}
         {on('saju_reading') && cards.love ? loveBlock(cards.love) : null}
-        {on('saju_reading') ? workBlock() : null}
+        {on('saju_reading') && FORTUNE_TRIM.workMoneyPeople ? workBlock() : null}
         {on('saju_season') ? seasonBlock() : null}
-        {aiOn && deps.ai && luck?.daewoon && consent.items.gender ? (
+        {FORTUNE_TRIM.fullReading && aiOn && deps.ai && luck?.daewoon && consent.items.gender ? (
           <View style={styles.card} testID="saju-full-card">
             <AiBlock
               id="saju-full"
@@ -314,7 +315,7 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
     ].filter((x): x is string => !!x);
     return (
       <SummaryCard id="saju-year" label={IF5_TEXT['SAJU.year.label']} one={y.year?.one ?? null} lines={y.year?.three ?? []} more={y.year?.more ?? []} bottom={aiBlock('saju-year', 'sinyeon')}>
-        {y.zodiac?.one ? <AppText variant="body">{y.zodiac.one}</AppText> : null}
+        {FORTUNE_TRIM.zodiacLine && y.zodiac?.one ? <AppText variant="body">{y.zodiac.one}</AppText> : null}
         {months.length > 0 ? (
           <View style={sajuStyles.gapSmall}>
             <AppText variant="bodyMedium">{IF5_TEXT['SAJU.year.mtitle']}</AppText>

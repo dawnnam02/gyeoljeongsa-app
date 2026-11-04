@@ -67,6 +67,8 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   const [sheet, setSheet] = useState(false);
   const [contract, setContract] = useState(false); // 결혼중개 계약 설명(약관 제14조의2, L17A)
   const [busy, setBusy] = useState(false);
+  // 같은 틱에 두 번 눌러도 한 번만(QF2 F-03 · F-14 같은 꼴): busy state 는 다음 렌더에야 바뀌어 연타를 못 막는다 → ref 로 먼저 잠근다
+  const busyRef = useRef(false);
   const [error, setError] = useState<Exclude<BuyFailure, 'ack_required'> | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [stamp, setStamp] = useState(0); // 탑승권을 받은 순간 로고 타일을 한 번 찍는다
@@ -119,23 +121,35 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
   };
 
   const buy = async (useCredit: boolean) => {
-    if (busy || !state?.round) return;
+    if (busyRef.current || busy || !state?.round) return;
+    busyRef.current = true;
     setBusy(true);
     setError(null);
-    const ackFail = await ackFirst(state.round.no);
-    if (ackFail) {
+    const unlock = () => {
+      busyRef.current = false;
       setBusy(false);
+    };
+    const ackFail = await ackFirst(state.round.no).catch((): 'server' => 'server');
+    if (ackFail) {
+      unlock();
       setError(ackFail);
       return;
     }
-    let r = await deps.api.buy(deps.newId(), useCredit, state.round.no);
-    if (!r.ok && r.reason === 'ack_required' && deps.api.ackContract) {
-      // 0039 관문(contract_ack_required): 확인 기록을 다시 남기고 한 번만 다시 — 같은 요약 블록을 이미 보였으니 같은 판
-      acked.current = null;
-      const again = await ackFirst(state.round.no, true);
-      r = again ? { ok: false, reason: again } : await deps.api.buy(deps.newId(), useCredit, state.round.no);
+    let r: Awaited<ReturnType<typeof deps.api.buy>>;
+    try {
+      r = await deps.api.buy(deps.newId(), useCredit, state.round.no);
+      if (!r.ok && r.reason === 'ack_required' && deps.api.ackContract) {
+        // 0039 관문(contract_ack_required): 확인 기록을 다시 남기고 한 번만 다시 — 같은 요약 블록을 이미 보였으니 같은 판
+        acked.current = null;
+        const again = await ackFirst(state.round.no, true);
+        r = again ? { ok: false, reason: again } : await deps.api.buy(deps.newId(), useCredit, state.round.no);
+      }
+    } catch {
+      unlock(); // 던진 호출이 잠금을 쥔 채로 끝나지 않게
+      setError('server');
+      return;
     }
-    setBusy(false);
+    unlock();
     if (!r.ok) {
       setError(r.reason === 'ack_required' ? 'server' : r.reason);
       if (r.reason === 'sold_out' || r.reason === 'closed' || r.reason === 'already' || r.reason === 'credited' || r.reason === 'not_eligible') reload();
@@ -239,55 +253,67 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
           {homeOn && deps.inflightBar ? deps.inflightBar(reload) : null}
         </ScrollView>
       )}
-      <BottomSheet visible={sheet} core onClose={() => (busy ? undefined : setSheet(false))} testID="boarding-sheet">
+      <BottomSheet visible={sheet} core scroll={false} onClose={() => (busy ? undefined : setSheet(false))} testID="boarding-sheet">
         {state?.round ? (
-          <View style={styles.gap}>
-            <MaskLine variant="title" accessibilityRole="header" delay={scene2.ticket.sheetTitleDelay} duration={scene2.ticket.sheetTitle}>{BOARDING.sheet.title}</MaskLine>
-            <AppText variant="body" testID="boarding-sheet-summary">
-              {BOARDING.sheet.summary(CREDITS.round(state.round.no), whenText(state.round.matchAt))}
-            </AppText>
-            <View style={styles.priceRow}>
-              <AppText variant="body" tone="sub">
-                {BOARDING.sheet.priceLabel}
+          <>
+            {/* 위: 읽을 것(스크롤) · 아래: 가격 · 오류 · 마감 안내 · 결제 단추는 시트 바닥에 고정(QF2 F-01 — 360 · 390 에서 단추가 화면 밖으로 밀리던 것) */}
+            <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.gap} bounces={false} testID="boarding-sheet-scroll">
+              <MaskLine variant="title" accessibilityRole="header" delay={scene2.ticket.sheetTitleDelay} duration={scene2.ticket.sheetTitle}>{BOARDING.sheet.title}</MaskLine>
+              <AppText variant="body" testID="boarding-sheet-summary">
+                {BOARDING.sheet.summary(CREDITS.round(state.round.no), whenText(state.round.matchAt))}
               </AppText>
-              <AppText variant="bodyBold" testID="boarding-sheet-price">
-                {BOARDING.sheet.price}
-              </AppText>
-            </View>
-            {BOARDING.sheet.rules.map((r) => (
-              <AppText key={r} variant="caption">
-                {r}
-              </AppText>
-            ))}
-            {/* 결혼중개 계약 설명 요약 블록(D-199 · 카피 14-6 · 동의문구 5-8). 값이 빈 자리 글({신고번호})이 든 줄은 숨김 */}
-            <Card style={styles.gapTiny} testID="boarding-contract-summary">
-              <AppText variant="bodyBold" accessibilityRole="header">
-                {BOARDING.sheet.contractSummaryTitle}
-              </AppText>
-              {summary.map((l) => (
-                <AppText key={l.i} variant="caption" tone="text" testID={`boarding-contract-summary-${l.i}`}>
-                  {l.text}
+              {BOARDING.sheet.rules.map((r) => (
+                <AppText key={r} variant="caption">
+                  {r}
                 </AppText>
               ))}
-            </Card>
-            <TextButton label={BOARDING.sheet.contract} onPress={() => setContract(true)} testID="boarding-contract" />
-            {error ? (
-              <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" testID="boarding-sheet-error">
-                {/* credited(0030 paid_no_seat): 결제는 됐지만 자리를 못 받아 크레딧 1장 — 카피 14-7 전용 글 buyErrors.credited(D46-A 덧붙임) */}
-                {BOARDING.buyErrors[error]}
+              {/* 결혼중개 계약 설명 요약 블록(D-199 · 카피 14-6 · 동의문구 5-8). 값이 빈 자리 글({신고번호})이 든 줄은 숨김 */}
+              <Card style={styles.gapTiny} testID="boarding-contract-summary">
+                <AppText variant="bodyBold" accessibilityRole="header">
+                  {BOARDING.sheet.contractSummaryTitle}
+                </AppText>
+                {summary.map((l) => (
+                  <AppText key={l.i} variant="caption" tone="text" testID={`boarding-contract-summary-${l.i}`}>
+                    {l.text}
+                  </AppText>
+                ))}
+              </Card>
+              <TextButton label={BOARDING.sheet.contract} onPress={() => setContract(true)} testID="boarding-contract" />
+            </ScrollView>
+            <View style={styles.sheetFooter} testID="boarding-sheet-footer">
+              <View style={styles.priceRow}>
+                <AppText variant="body" tone="sub">
+                  {BOARDING.sheet.priceLabel}
+                </AppText>
+                <AppText variant="bodyBold" testID="boarding-sheet-price">
+                  {BOARDING.sheet.price}
+                </AppText>
+              </View>
+              {error ? (
+                <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" testID="boarding-sheet-error">
+                  {/* credited(0030 paid_no_seat): 결제는 됐지만 자리를 못 받아 크레딧 1장 — 카피 14-7 전용 글 buyErrors.credited(D46-A 덧붙임) */}
+                  {BOARDING.buyErrors[error]}
+                </AppText>
+              ) : null}
+              <AppText variant="captionMedium" tone="text" testID="boarding-sheet-deadline">
+                {BOARDING.sheet.deadlineNote}
               </AppText>
-            ) : null}
-            <AppText variant="captionMedium" tone="text" testID="boarding-sheet-deadline">
-              {BOARDING.sheet.deadlineNote}
-            </AppText>
-            {canUseCredit(state) ? <Button label={BOARDING.sheet.payCredit} onPress={() => void buy(true)} loading={busy} testID="boarding-pay-credit" /> : null}
-            <Button label={BOARDING.sheet.pay} variant={canUseCredit(state) ? 'secondary' : 'primary'} onPress={() => void buy(false)} loading={busy} testID="boarding-pay" />
-            {state.paymentMode === 'demo' ? (
-              <AppText variant="caption" testID="boarding-sheet-demo">
-                {BOARDING.sheet.demo}
-              </AppText>
-            ) : null}
-          </View>
+              {canUseCredit(state) ? <Button label={BOARDING.sheet.payCredit} onPress={() => void buy(true)} loading={busy} testID="boarding-pay-credit" /> : null}
+              {state.paymentMode === 'closed' ? (
+                // Q2-21: 결제가 닫힌 때 [결제하기]를 누르면 '판매가 끝났어요'로 읽혔다 → 결제 단추 대신 사실 한 줄([초안] 마케팅 확인 전)
+                <AppText variant="bodyMedium" tone="text" testID="boarding-sheet-payclosed">
+                  {BOARDING.sheet.payClosed}
+                </AppText>
+              ) : (
+                <Button label={BOARDING.sheet.pay} variant={canUseCredit(state) ? 'secondary' : 'primary'} onPress={() => void buy(false)} loading={busy} testID="boarding-pay" />
+              )}
+              {state.paymentMode === 'demo' ? (
+                <AppText variant="caption" testID="boarding-sheet-demo">
+                  {BOARDING.sheet.demo}
+                </AppText>
+              ) : null}
+            </View>
+          </>
         ) : null}
       </BottomSheet>
       <ConfirmDialog
@@ -445,6 +471,8 @@ const styles = StyleSheet.create({
   gap: { gap: space.s16 },
   gapSmall: { gap: space.s12 },
   gapTiny: { gap: space.s4 },
+  sheetScroll: { flexShrink: 1 },
+  sheetFooter: { gap: space.s12, paddingTop: space.s12, borderTopWidth: 1, borderTopColor: colors.line },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   stamp: { position: 'absolute', right: space.s16, top: space.s16 },
 });

@@ -2,7 +2,7 @@
 //  · 나만 쓰는 글 · 표시는 기기에만(deviceNotes — SecureStore · 웹은 메모리) · 서버 0 · 로그 0
 //  · 숫자 · 개수 · '아직' · 판정 0(PF-02 · PF-03) · 쪽 · 카드마다 끝줄(PF-04) · 글은 IF2 글(tx · 카피 21장)과 기존 키(12 안전 안내 · 만남 계획 공유)만
 //  · 궁합 카드 시트는 캡처 막기 대상(P6-11 · IFF-15 — 12 보안 '상대 화면 캡처 차단'이 켜져 있을 때) · 상대 이름 · 사진 · 나이 · 별자리 이름 · 일간 · 띠 0(IFF-01)
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
@@ -40,7 +40,7 @@ type Ck17Props = { visible: boolean; initial?: { a: boolean; b: boolean }; onClo
 export function Ck17Sheet(props: Ck17Props) {
   const testID = props.testID ?? 'if2-ck17';
   return (
-    <BottomSheet visible={props.visible} onClose={props.onClose} testID={testID}>
+    <BottomSheet visible={props.visible} onClose={props.onClose} scroll={false} testID={testID}>
       {props.visible ? <Ck17Body {...props} testID={testID} /> : null}
     </BottomSheet>
   );
@@ -68,8 +68,10 @@ function Ck17Body({ initial, onClose, onSave, testID = 'if2-ck17' }: Ck17Props) 
   const [more, setMore] = useState<'none' | 'summary' | 'full'>('none');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+  const going = useRef(false); // 같은 틱 연타 막기(busy state 는 다음 렌더에야 바뀜)
   const go = async () => {
-    if (busy) return;
+    if (busy || going.current) return;
+    going.current = true;
     setBusy(true);
     setError(false);
     const ok = await onSave(a, a && b);
@@ -80,6 +82,7 @@ function Ck17Body({ initial, onClose, onSave, testID = 'if2-ck17' }: Ck17Props) 
         // 기기 저장소를 못 써도 이번 실행 동안은 메모리 값으로 쓴다
       }
     }
+    going.current = false;
     setBusy(false);
     if (!ok) setError(true);
   };
@@ -93,7 +96,8 @@ function Ck17Body({ initial, onClose, onSave, testID = 'if2-ck17' }: Ck17Props) 
   return (
     <>
       <SheetHead title={CK17.title} closeLabel={CK17.close} onClose={() => (busy ? undefined : onClose())} testID={testID} />
-      <ScrollView style={styles.sheetScroll} contentContainerStyle={if2Styles.gap}>
+      {/* 항목은 스크롤 · [이어 가기]는 시트 바닥에 고정(QF2 F-02 — 360 · 390 · 430 에서 단추가 화면 밖이던 것) */}
+      <ScrollView style={styles.ck17Scroll} contentContainerStyle={if2Styles.gap} testID={`${testID}-scroll`}>
         <AppText variant="body" testID={`${testID}-lead`}>
           {CK17.lead}
         </AppText>
@@ -123,13 +127,15 @@ function Ck17Body({ initial, onClose, onSave, testID = 'if2-ck17' }: Ck17Props) 
             ))}
           </View>
         ) : null}
+      </ScrollView>
+      <View style={styles.ck17Footer}>
         {error ? (
           <AppText variant="captionMedium" tone="accent" accessibilityRole="alert" testID={`${testID}-error`}>
             {CONSENT_MANAGE.saveFailed}
           </AppText>
         ) : null}
         <Button label={CK17.go} loading={busy} onPress={() => void go()} testID={`${testID}-go`} />
-      </ScrollView>
+      </View>
     </>
   );
 }
@@ -576,6 +582,8 @@ function MemoBody({ roomId, closedAt, onClose, onToast, notes = deviceNotes(), s
 
 const styles = StyleSheet.create({
   sheetScroll: { maxHeight: size.touchMin * 12 },
+  ck17Scroll: { flexShrink: 1 },
+  ck17Footer: { gap: space.s12, paddingTop: space.s12, borderTopWidth: 1, borderTopColor: colors.line },
   fullBody: { gap: space.s12, padding: size.screenPadding },
   checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.s12, minHeight: size.touchMin, paddingVertical: space.s8 },
   pressed: { opacity: alpha.pressed },

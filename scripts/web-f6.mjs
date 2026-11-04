@@ -97,18 +97,18 @@ try {
   check('A', "탭바 '호감' → 11, 처음 탭은 받은 호감", await toLikes(), `경로 ${await path0()}`);
   let t = await text();
   check('A', '머리 "호감" · 안전 한 줄 · 탭 3개(보낸 호감 · 받은 호감 · 연결됨)', t.includes(LIKES.headerTitle) && (await inner('likes-safety')) === SAFETY.line && (await inner('likes-tabs')).replace(/\s/g, '') === '보낸호감받은호감연결됨' && (await b.evaluate(`window.__q('likes-tab-received').getAttribute('aria-selected')`)) === 'true', await inner('likes-tabs'));
-  check('A', '받은 호감 2행 최신순: 박OO(2시간 전 · 자정 직후면 어제) → 윤OO(어제 · 2일 전, R12 달력 기준), [수락][거절] · 만료까지 남은 날', (await rows('received')) === 2 && (await inner('like-head-received-0')) === '박OO · 29 · 경기 성남' && (await inner('like-head-received-1')) === '윤OO · 34 · 서울 서초' && /^(2시간 전|어제) · 받은 호감$/.test(await inner('like-sub-received-0')) && /^(어제|2일 전) · 받은 호감$/.test(await inner('like-sub-received-1')) && (await inner('like-expiry-received-0')) === '6일 뒤 만료' && (await q('like-accept-received-0')) && (await q('like-decline-received-0')) && (await q('like-more-received-0')), `${await inner('like-sub-received-0')} / ${await inner('like-expiry-received-0')}`);
+  check('A', '받은 호감 2행 최신순: 박OO(2시간 전 · 자정 직후면 어제) → 윤OO(어제 · 2일 전, R12 달력 기준), [수락][거절] · 만료까지 남은 날', (await rows('received')) === 2 && (await inner('like-head-received-0')) === '박OO · 29 · 경기 성남시' && (await inner('like-head-received-1')) === '윤OO · 34 · 서울 서초구' && /^(2시간 전|어제) · 받은 호감$/.test(await inner('like-sub-received-0')) && /^(어제|2일 전) · 받은 호감$/.test(await inner('like-sub-received-1')) && (await inner('like-expiry-received-0')) === '6일 뒤 만료' && (await q('like-accept-received-0')) && (await q('like-decline-received-0')) && (await q('like-more-received-0')), `${await inner('like-sub-received-0')} / ${await inner('like-expiry-received-0')}`);
   check('A', '화면에 등급 · 점수 · 순위 말이 없다', await noScore(), '');
   await measure('11 받은 호감');
   await note('F6_11_받은호감_360x740.png');
 
   await b.click(sel('likes-tab-sent'));
-  check('A', '보낸 호감: 10 에서 방금 보낸 김OO(1분 전) → 문OO(3일 전) · "수락 대기" · 버튼 없음', (await b.waitFor(`!!window.__q('like-row-sent-1')`)) && (await inner('like-head-sent-0')) === '김OO · 32 · 서울 강남' && (await inner('like-sub-sent-0')) === '1분 전 · 수락 대기' && /^[34]일 전 · 수락 대기$/.test(await inner('like-sub-sent-1')) && !(await q('like-accept-sent-0')), `${await inner('like-head-sent-0')}`);
+  check('A', '보낸 호감: 10 에서 방금 보낸 김OO(1분 전) → 문OO(3일 전) · "수락 대기" · 버튼 없음', (await b.waitFor(`!!window.__q('like-row-sent-1')`)) && (await inner('like-head-sent-0')) === '김OO · 32 · 서울 강남구' && (await inner('like-sub-sent-0')) === '1분 전 · 수락 대기' && /^[34]일 전 · 수락 대기$/.test(await inner('like-sub-sent-1')) && !(await q('like-accept-sent-0')), `${await inner('like-head-sent-0')}`);
   await measure('11 보낸 호감');
   await note('F6_11_보낸호감_360x740.png');
 
   await b.click(sel('likes-tab-connected'));
-  check('A', '연결됨: 한OO · "서로 수락했어요 · 연락 방법은 준비 중이에요" · 버튼 없음 · 안전 한 줄은 그대로', (await b.waitFor(`!!window.__q('like-row-connected-0')`)) && (await inner('like-head-connected-0')) === '한OO · 31 · 서울 강서' && (await inner('like-sub-connected-0')) === LIKES.connectedNote && (await inner('likes-safety')) === SAFETY.line, '');
+  check('A', '연결됨: 한OO · "서로 수락했어요 · 연락 방법은 준비 중이에요" · 버튼 없음 · 안전 한 줄은 그대로', (await b.waitFor(`!!window.__q('like-row-connected-0')`)) && (await inner('like-head-connected-0')) === '한OO · 31 · 서울 강서구' && (await inner('like-sub-connected-0')) === LIKES.connectedNote && (await inner('likes-safety')) === SAFETY.line, '');
   await measure('11 연결됨');
   await note('F6_11_연결됨_360x740.png');
 
@@ -118,6 +118,7 @@ try {
   await b.click(sel('like-accept-received-0'));
   check('A', '[수락] → 토스트 "서로 수락했어요 · 연락 방법은 준비 중이에요" · 받은 호감 1행 · 탭은 그대로', (await b.waitFor(`document.body.innerText.includes(${JSON.stringify(LIKES.acceptDone)}) && document.querySelectorAll('[data-testid^="like-row-received-"]').length === 1`)) && (await b.evaluate(`window.__q('likes-tab-received').getAttribute('aria-selected')`)) === 'true', '');
   await note('F6_11_수락토스트_360x740.png');
+  await b.waitFor(`!document.body.innerText.includes(${JSON.stringify(LIKES.acceptDone)})`, 20000); // 토스트가 탭 위를 덮는 동안은 탭이 눌리지 않는다
   await b.click(sel('likes-tab-connected'));
   check('A', '연결됨 탭 맨 위에 박OO 이 생기고 서버(모의)에 연결이 남았다', (await b.waitFor(`window.__q('like-head-connected-0')?.innerText.includes('박OO')`)) && ((await peek(EMAIL_A))?.connected ?? []).includes('demo-liker-1'), JSON.stringify(await peek(EMAIL_A)));
 

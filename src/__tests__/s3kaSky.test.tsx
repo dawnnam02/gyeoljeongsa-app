@@ -392,7 +392,7 @@ describe('기내지 ④ 쪽 G-07 생일 주간 엽서 · 뒤표지 하늘 도감
     const goBack = async (d: ReturnType<typeof makeDeps>) => {
       const tree = keep(await mount(<MagazineScreen deps={d.deps as never} />));
       await wait();
-      for (let i = 0; i < 6; i += 1) await press(tree, 'mag-next');
+      for (let i = 0; i < 7 && has(tree, 'mag-next'); i += 1) await press(tree, 'mag-next'); // 타로 쪽이 빠져도(inflight_tarot 꺼짐, LV-2 D-245) 끝 쪽까지
       return tree;
     };
     const on = await goBack(makeDeps());

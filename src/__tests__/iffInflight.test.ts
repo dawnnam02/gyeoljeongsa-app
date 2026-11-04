@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { demoDefault, demoSceneDefault, FEATURE_KEY_LIST, FEATURE_KEYS } from '@/config/featureKeys';
+import { demoDefault, demoSceneDefault, FEATURE_KEY_LIST, FEATURE_KEYS, LV2_OFF_KEYS } from '@/config/featureKeys';
 import { MONEY_SAFETY_DICT_VERSION, MONEY_SAFETY_WORDS } from '@/content/moneySafetyWords';
 import lib from '@/content/if2Library.json';
 import { createDemoBoarding } from '@/demo/boardingDemo';
@@ -37,7 +37,8 @@ const STEM_CHARS = ['갑', '을', '병', '정', '무', '기', '경', '신', '임
 const PARTNER_KEYS = ['name', 'partner', 'partner_id', 'user_id', 'age', 'photo', 'photos', 'face_photo_id', 'region', 'sign', 'stem', 'day_stem', 'birth', 'birth_date', 'round_no', 'seat', 'answer', 'body', 'zodiac', 'sign_name', 'hobbies', 'A12', 'A01'];
 const keysDeep = (v: unknown): string[] => (Array.isArray(v) ? v.flatMap(keysDeep) : v && typeof v === 'object' ? Object.entries(v).flatMap(([k, x]) => [k, ...keysDeep(x)]) : []);
 
-const allOn = async () => Object.fromEntries(FEATURE_KEYS.map((k) => [k, demoDefault(k)])) as Record<string, boolean>;
+// 운세 정리(D-245): 끈 7개는 데모 처음값이 꺼짐 — 이 파일은 켰을 때 모의 서버가 그대로 도는 것을 본다(꺼진 처음값은 qf2aFortune.test.tsx)
+const allOn = async () => Object.fromEntries(FEATURE_KEYS.map((k) => [k, demoDefault(k) || LV2_OFF_KEYS.includes(k)])) as Record<string, boolean>;
 function rig(email: string, opts: { consents?: string[]; sameHobby?: boolean; birth?: string } = {}) {
   const user = { id: `u-${email.split('@')[0]}`, email };
   const consents = new Set(opts.consents ?? ['CK17A', 'CK17B']);

@@ -210,10 +210,38 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
     const timeout = new Promise((_, reject) => {
       timer = setTimeout(() => reject(new Error(`브라우저가 ${evalTimeoutMs / 1000}초 동안 답하지 않음(페이지 멈춤 또는 연결 끊김) — 식: ${String(expression).slice(0, 80)}`)), evalTimeoutMs);
     });
-    const r = await Promise.race([cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }), timeout]).finally(() => clearTimeout(timer));
+    let r;
+    try {
+      r = await Promise.race([cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }), timeout]).finally(() => clearTimeout(timer));
+    } catch (error) {
+      if (String(error?.message).includes('동안 답하지 않음')) hardStop(String(error.message)); // T1-10: 시간 초과를 낸 뒤에도 node 가 남던 것 — 브라우저를 닫고 10초 안에 끝낸다
+      throw error;
+    }
     if (r.exceptionDetails) throw new Error(`브라우저 식 오류: ${r.exceptionDetails.exception?.description ?? r.exceptionDetails.text}`);
     return r.result.value;
   };
+  // T1-10(QF2-A): 점검 전체 시간 상한(기본 10분, WEB_TOTAL_MS) · 브라우저가 답하지 않을 때 모두 브라우저(프로세스 나무)를 닫고 프로세스를 끝낸다 — 남은 node · Edge 가 다음 점검을 막지 않게
+  const totalMs = Number(process.env.WEB_TOTAL_MS ?? 600000);
+  function hardStop(why) {
+    console.log(`[실패] ${why} — 브라우저를 닫고 끝내요`);
+    try {
+      api.close();
+    } catch {
+      /* 이미 닫힘 */
+    }
+    setTimeout(() => process.exit(1), 10000);
+  }
+  const guard = setTimeout(() => hardStop(`점검 전체 시간 ${Math.round(totalMs / 1000)}초 초과`), totalMs);
+  guard.unref();
+  const killTree = () => {
+    try {
+      if (process.platform === 'win32' && proc.pid) spawnSync('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+      else proc.kill();
+    } catch {
+      /* 이미 끝남 */
+    }
+  };
+  process.once('exit', killTree); // 어떤 길로 끝나도 남은 Edge 한 벌이 없게
   const viewport = (w, h) => cdp.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 2, mobile: true });
   await viewport(width, height);
 
@@ -262,11 +290,19 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
     },
     mouse: (type, x, y) => cdp.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, clickCount: 1 }),
     // 요소(css 선택자)의 가운데를 마우스로 누른다. holdMs 동안 누르고 있는다
+    // QF2-A(T1-09): 기다린 뒤 누르는 사이에 화면이 바뀌어 요소가 잠깐 없을 수 있다(07 내 성향 [이대로 확정] 등) → 20초(CLICK_RETRY_MS)까지 0.25초마다 '찾기 → 위치 다시 재기'를 통째로 다시 한다(컴퓨터가 바빠 화면 다시 그리기가 늦을 때도 견딘다)
     async click(selector, holdMs = 80) {
-      const info = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null; el.scrollIntoView({ block: 'center' }); return window.__center(el); })()`);
-      if (!info) throw new Error(`누를 요소가 없어요: ${selector}`);
-      await sleep(60);
-      const fresh = await evaluate(`window.__center(document.querySelector(${JSON.stringify(selector)}))`);
+      let fresh = null;
+      for (const end = Date.now() + Number(process.env.CLICK_RETRY_MS ?? 20000); ; ) {
+        const info = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null; el.scrollIntoView({ block: 'center' }); return window.__center(el); })()`);
+        if (info) {
+          await sleep(60);
+          fresh = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); return el ? window.__center(el) : null; })()`);
+          if (fresh) break;
+        }
+        if (Date.now() >= end) throw new Error(`누를 요소가 없어요: ${selector} (경로 ${await evaluate('location.pathname').catch(() => '?')})`);
+        await sleep(250);
+      }
       await api.mouse('mouseMoved', fresh.x, fresh.y);
       await api.mouse('mousePressed', fresh.x, fresh.y);
       await sleep(holdMs);
@@ -274,8 +310,8 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
       await sleep(250);
     },
     // 이 글자를 가진 누를 수 있는 요소를 누른다(role 로 거른다)
-    // FB-012: 요소가 아직 없으면(데모 줄이 늦게 뜰 때 등) 5초까지 0.25초마다 다시 찾는다 — 처음 실행이 가끔 실패하던 것
-    async clickText(text, role = 'button', nth = 0, holdMs = 80, waitMs = 5000) {
+    // FB-012: 요소가 아직 없으면(데모 줄이 늦게 뜰 때 등) 20초(CLICK_RETRY_MS — QF2-A: 컴퓨터가 바쁠 때 5초로는 모자랐다)까지 0.25초마다 다시 찾는다 — 처음 실행이 가끔 실패하던 것
+    async clickText(text, role = 'button', nth = 0, holdMs = 80, waitMs = Number(process.env.CLICK_RETRY_MS ?? 20000)) {
       const tag = `data-click-${Date.now()}`;
       const find = () => evaluate(`(() => {
         const out = [];
@@ -307,6 +343,7 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
       await sleep(250);
     },
     close() {
+      clearTimeout(guard);
       try {
         ws.close();
       } catch {

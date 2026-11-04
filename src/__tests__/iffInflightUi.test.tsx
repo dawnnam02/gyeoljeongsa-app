@@ -51,7 +51,8 @@ jest.setTimeout(90_000);
 
 const wait = (ms = 30) => act(async () => new Promise((r) => setTimeout(r, ms)));
 const SIGN_NAMES = lib.codes.signs.map((s) => s.name);
-const flagsAll = (over: Record<string, boolean> = {}) => ({ ...Object.fromEntries(FEATURE_KEYS.map((k) => [k, demoDefault(k)])), ...over }) as Record<string, boolean>;
+// QF2-A(운세 정리 D-245): 이번 주 타로는 데모 처음값이 꺼졌다 — 이 파일은 켰을 때 기내지 · 주머니가 그대로 도는 것을 본다(꺼진 쪽은 qf2aFortune.test.tsx)
+const flagsAll = (over: Record<string, boolean> = {}) => ({ ...Object.fromEntries(FEATURE_KEYS.map((k) => [k, demoDefault(k)])), inflight_tarot: true, ...over }) as Record<string, boolean>;
 const mounted: ReactTestRenderer[] = [];
 const keep = (t: ReactTestRenderer) => (mounted.push(t), t);
 afterEach(async () => {

@@ -61,6 +61,10 @@ const gradOk = (g) => !!g && g.h > 0 && g.top <= 0 && g.w >= g.iw - 1 && /rgb\(2
 // 화면에 있는 transform 이 하나라도 이동 · 크기 · 회전인가(동작 줄이기 점검)
 const moving = (rootSel) =>
   b.evaluate(`(() => { const root = document.querySelector(${JSON.stringify(rootSel)}) ?? document.body; let n = 0; for (const el of root.querySelectorAll('*')) { const t = getComputedStyle(el).transform; if (t && t !== 'none' && t !== 'matrix(1, 0, 0, 1, 0, 0)') n += 1; } return n; })()`);
+// QF2-A Q2-14(T1-04): F21(흐르는 결정사 · 일러스트 새판) 뒤 온보딩 그림에 가만히 있는 transform(정적 배치) 2개가 늘 있다.
+//  '움직임'은 개수가 아니라 transform 값이 시간에 따라 바뀌는지로 본다 — 요소마다 transform 문자열을 차례대로 모아 두 시점을 견준다
+const tsig = (rootSel) =>
+  b.evaluate(`(() => { const root = document.querySelector(${JSON.stringify(rootSel)}) ?? document.body; const out = []; for (const el of root.querySelectorAll('*')) { const t = getComputedStyle(el).transform; if (t && t !== 'none') out.push(t); } return out.join('|'); })()`);
 async function measure(label) {
   const m = await b.evaluate('window.__metrics()');
   check('G', `${label}: ${width} 폭 가로 넘침 0 · 글자 13 이상 · 터치 48 이상`, m.scrollW <= m.innerW && m.over.length === 0 && m.minFont >= 13 && m.small.length === 0, `넘침 ${m.over.length}(${m.over.slice(0, 2).join(',')}) · 최소 글자 ${m.minFont} · 작은 터치 ${m.small.join(',') || '없음'}`);
@@ -124,11 +128,14 @@ try {
   await measure('01 온보딩');
   await tap('intro-dot-2');
   await sleep(120);
-  const obMoving = await moving(sel('intro-slide'));
+  const obMid = await tsig(sel('intro-slide'));
   await shot('02_온보딩_넘김중');
   await sleep(900);
   await shot('02_온보딩_2장_안착');
-  check('2', '점을 누르면 새 장이 옆에서 들어오며 그림이 안착한다(넘기는 중 transform 있음 · 끝나면 제자리)', obMoving > 0 && (await moving(sel('intro-slide'))) === 0, `넘기는 중 ${obMoving} · 끝 ${await moving(sel('intro-slide'))}`);
+  const obEnd = await tsig(sel('intro-slide'));
+  await sleep(300);
+  const obEnd2 = await tsig(sel('intro-slide'));
+  check('2', '점을 누르면 새 장이 옆에서 들어오며 그림이 안착한다(넘기는 중 transform 값이 바뀌고 · 끝나면 가만히)', obMid !== obEnd && obEnd === obEnd2, `넘기는 중과 끝이 ${obMid === obEnd ? '같음' : '다름'} · 끝 두 시점이 ${obEnd === obEnd2 ? '같음' : '다름'}`);
 
   // ═══ 3. 가입 화면 바탕 260 · 09 추천 3장 도착 ═══
   await signIn('f17plain@email.com');
@@ -230,9 +237,11 @@ try {
   check('8', '동작 줄이기: 스플래시 타일 · 글자에 이동 · 크기 변화 없음(투명도만)', rmSplash === 0, `움직이는 요소 ${rmSplash}`);
   check('8', '동작 줄이기: 펼침 없이 1.5초 안에 걷힌다', await wait(`!window.__q('splash') && !!window.__q('intro-title')`, 3000), '');
   await tap('intro-dot-3');
-  await sleep(60);
-  const rmSlide = await moving(sel('intro-slide'));
-  check('8', '동작 줄이기: 온보딩 넘김에 옆 이동 · 그림 크기 변화 없음', rmSlide === 0, `움직이는 요소 ${rmSlide}`);
+  await sleep(200); // 투명도 150ms 가 끝난 뒤부터 — 그 뒤에는 transform 값이 바뀌지 않아야 한다
+  const rmMid = await tsig(sel('intro-slide'));
+  await sleep(700);
+  const rmEnd = await tsig(sel('intro-slide'));
+  check('8', '동작 줄이기: 온보딩 넘김에 옆 이동 · 그림 크기 변화 없음(transform 값이 시간에 따라 바뀌지 않음)', rmMid === rmEnd, `넘기는 중과 끝이 ${rmMid === rmEnd ? '같음' : '다름'}`);
   await shot('줄이기_온보딩_3장');
   await b.cdp.send('Emulation.setEmulatedMedia', { features: [] });
 

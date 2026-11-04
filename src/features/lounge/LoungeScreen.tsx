@@ -102,6 +102,18 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
   const [hiddenPostIds, setHiddenPostIds] = useState<Set<string>>(new Set()); // 숨긴 좌석의 글 id(인용 상자 '숨긴 좌석의 글이에요')
   const atBottom = useRef(true);
   const sendingRef = useRef(false);
+  // 같은 틱 연타 막기(QF2 F-14): busy · sending state 는 다음 렌더에야 바뀌어 두 번째 누름을 못 막는다 → 먼저 ref 로 잠근다
+  const busyRef = useRef(false);
+  const lockBusy = (): boolean => {
+    if (busyRef.current) return false;
+    busyRef.current = true;
+    setBusy(true);
+    return true;
+  };
+  const unlockBusy = () => {
+    busyRef.current = false;
+    setBusy(false);
+  };
   const scroll = useRef<ScrollView>(null);
 
   const st = view.kind === 'ready' ? view.st : null;
@@ -257,11 +269,9 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
 
   // ── 첫 입장: 약속 동의(버튼 하나) → 쪽지
   const agree = async () => {
-    if (!st?.rulesVersion || busy) return;
-    setBusy(true);
+    if (!st?.rulesVersion || !lockBusy()) return;
     setIntroError(null);
-    const r = await deps.api.agree(st.rulesVersion);
-    setBusy(false);
+    const r = await deps.api.agree(st.rulesVersion).finally(unlockBusy);
     if (r.ok) {
       setRulesChanged(false);
       await reload();
@@ -282,8 +292,10 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
   const tearO = useSharedValue(1);
   const tearStyle = useAnimatedStyle(() => ({ opacity: tearO.get(), transform: [{ translateX: tearX.get() }, { rotate: `${tearR.get()}deg` }] }));
   const [tearing, setTearing] = useState(false);
+  const tearRef = useRef(false);
   const tear = async () => {
-    if (tearing) return;
+    if (tearing || tearRef.current) return;
+    tearRef.current = true;
     setTearing(true);
     setIntroError(null);
     haptic.light();
@@ -295,6 +307,7 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
       tearO.set(withDelay(loungeLook.tear.ms - loungeLook.tear.fadeMs, withTiming(0, { duration: loungeLook.tear.fadeMs, easing: curve('std') })));
     }
     const [r] = await Promise.all([deps.api.takeSeat(), new Promise((res) => setTimeout(res, ms))]);
+    tearRef.current = false;
     setTearing(false);
     if (r.ok) {
       await reload();
@@ -311,7 +324,7 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
 
   // ── 글 보내기
   const send = async () => {
-    if (!st || sending) return;
+    if (!st || sending || sendingRef.current) return;
     const body = text.normalize('NFC').trim();
     if (body === '') {
       setSendError({ text: LOUNGE.error.empty, retry: false });
@@ -376,9 +389,8 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
     await reload(); // 그 좌석 글을 다시 보이려면 목록을 한 번 다시 읽는다(숨김을 거둘 때만)
   };
   const hideSeat = async (p: MemberPost) => {
-    setBusy(true);
-    const r = await deps.api.hide(p.id, true);
-    setBusy(false);
+    if (!lockBusy()) return;
+    const r = await deps.api.hide(p.id, true).finally(unlockBusy);
     if (!r.ok) {
       setDialogError(hideErrorText(r.code));
       return;
@@ -396,10 +408,8 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
     setToast({ text: LOUNGE.hide.done, action: { label: LOUNGE.hidden.unhide, onPress: () => void unhide(p.seat) } });
   };
   const report = async () => {
-    if (!target || !reason || busy) return;
-    setBusy(true);
-    const r = await deps.api.report(target.id, reason, note);
-    setBusy(false);
+    if (!target || !reason || !lockBusy()) return;
+    const r = await deps.api.report(target.id, reason, note).finally(unlockBusy);
     if (!r.ok) {
       setDialogError(reportErrorText(r.code));
       return;
@@ -415,10 +425,8 @@ export function LoungeScreen({ deps, toastMs = TOAST_MS }: { deps: LoungeDeps; t
     if (ask) setConfirm('reportHide');
   };
   const remove = async () => {
-    if (!target || busy) return;
-    setBusy(true);
-    const r = await deps.api.remove(target.id);
-    setBusy(false);
+    if (!target || !lockBusy()) return;
+    const r = await deps.api.remove(target.id).finally(unlockBusy);
     if (!r.ok) {
       setDialogError(deleteErrorText(r.code));
       return;

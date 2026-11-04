@@ -21,7 +21,7 @@ import { LINK_SHEET, PRELAUNCH, PRELAUNCH_TABS } from '@/features/prelaunch/prel
 import { PrelaunchGate, PrelaunchTabGate } from '@/features/prelaunch/PrelaunchGate';
 import type { PrelaunchServices } from '@/features/prelaunch/prelaunchServices';
 import { createFlagsStore } from '@/hooks/useFeatureFlags';
-import { demoDefault, isPendingKey } from '@/config/featureKeys';
+import { demoDefault, isPendingKey, LV2_OFF_KEYS } from '@/config/featureKeys';
 import { createDemoBackend, DEMO_OTP_CODE } from '@/lib/demoBackend';
 import { createDemoClient } from '@/lib/demoClient';
 import { createFeatureFlagsApi, FEATURE_KEYS, parseFlags } from '@/lib/featureFlagsApi';
@@ -768,7 +768,8 @@ describe('데모 모의 서버의 기능 스위치(D-134): get_feature_flags 가
     expect(flags.loaded).toBe(true);
     expect(FEATURE_KEYS.length).toBeGreaterThanOrEqual(87); // V5(A W10)가 숨김 키를 더함
     expect(FEATURE_KEYS.filter((k) => !isPendingKey(k)).every((k) => flags.on[k] === demoDefault(k) && flags.mode[k] === 'demo')).toBe(true);
-    expect(FEATURE_KEYS.filter((k) => !flags.on[k] && !k.startsWith('v4_'))).toEqual(['meet_feedback', 'doc_verify', 'selfie_verify', 'meet_feedback_plus', 'selfie_required', 'review_required', 'verify_steps', 'doc_marital', 'job_mail_verify', 'doc_license', 'doc_income', 'doc_parent', 'verify_detail', 'prelaunch', 'vouch', 'chat_push', 'type_card_share', 'pair_card_ai']); // D-238: 셀피 · 서류 · 만남 피드백 · 지인 확인 13개 데모도 꺼짐(키 목록 차례) // IF2-F: 바깥 공유 · AI판은 데모도 꺼짐(PF-91) // R-A: chat_push 데모도 꺼짐(토큰 등록 0) // V5 숨김 키(v4_*)는 A 몫 — 데모에서도 꺼짐
+    expect(FEATURE_KEYS.filter((k) => !flags.on[k] && !k.startsWith('v4_') && !LV2_OFF_KEYS.includes(k))).toEqual(['meet_feedback', 'doc_verify', 'selfie_verify', 'meet_feedback_plus', 'selfie_required', 'review_required', 'verify_steps', 'doc_marital', 'job_mail_verify', 'doc_license', 'doc_income', 'doc_parent', 'verify_detail', 'prelaunch', 'vouch', 'chat_push', 'type_card_share', 'pair_card_ai']); // D-238: 셀피 · 서류 · 만남 피드백 · 지인 확인 13개 데모도 꺼짐(키 목록 차례) // IF2-F: 바깥 공유 · AI판은 데모도 꺼짐(PF-91) // R-A: chat_push 데모도 꺼짐(토큰 등록 0) // V5 숨김 키(v4_*)는 A 몫 — 데모에서도 꺼짐
+    expect(LV2_OFF_KEYS.every((k) => flags.on[k] === false)).toBe(true); // 운세 정리(D-245): 끈 7개도 데모 처음값은 꺼짐
     expect(flags.on.survey_v2).toBe(true);
   });
 

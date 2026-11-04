@@ -146,7 +146,7 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
         );
       }
       case 'B3': {
-        const cells = (home.pocket ?? []).filter((c) => c.kind !== 'type' || !!type);
+        const cells = (home.pocket ?? []).filter((c) => (c.kind !== 'type' || !!type) && (c.kind !== 'card' || isOn('inflight_tarot'))); // 타로 카드 칸은 inflight_tarot 꺼짐이면 뺀다(LV-2 D-245)
         if (cells.length === 0) return null;
         return (
           <HomeBlock key={b} title={tx('HOME.pocket.title')} cellNames={cells.map((c) => (c.kind === 'mag' ? tx('HOME.pocket.mag') : c.kind === 'card' ? tx('HOME.pocket.card') : tx('HOME.pocket.type')))} testID={`${testID}-B3`}>

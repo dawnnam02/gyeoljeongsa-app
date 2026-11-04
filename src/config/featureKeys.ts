@@ -29,8 +29,11 @@ const V5_KEYS: readonly string[] = Object.values(V5_HIDE_KEYS);
 const IF2_KEYS: readonly string[] = FEATURE_KEY_LIST.filter((k) => k.group === 'IF2').map((k) => k.key);
 // 데모 장면: 이메일 앞부분에 v4on 이 있으면 숨긴 v4 화면 스위치를 켠다(예전 화면 웹 점검 web-f4 ~ f24 가 쓴다).
 //  if2off 가 있으면 IF2 스위치를 끈다(live 처음값과 같은 지금 T1 · T2 · T4 — 새 홈 전 화면을 보는 웹 점검 web-w6 이 쓴다). 그 밖은 데모 처음값
+//  LV-2(D-245): fortuneon 이 있으면 운세 정리로 끈 스위치 7개(LV2_OFF_KEYS)를 다시 켠다 — 끈 화면을 웹 점검으로 볼 때(web-saju · web-if2)
+export const LV2_OFF_KEYS: readonly string[] = ['saju_calendar', 'saju_pickday', 'meet_sky', 'sky_book', 'sky_week', 'birth_card', 'inflight_tarot'];
 export const demoSceneDefault = (key: FeatureKey, email: string | null | undefined): boolean => {
   const local = (email ?? '').split('@')[0].toLowerCase();
+  if (LV2_OFF_KEYS.includes(key) && local.includes('fortuneon')) return true;
   if (V5_KEYS.includes(key) && local.includes('v4on')) return true;
   if (IF2_KEYS.includes(key) && local.includes('if2off')) return false;
   return demoDefault(key);

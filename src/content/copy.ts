@@ -369,3 +369,10 @@ export const CANDIDATE = {
   unavailable: '이 프로필은 더 이상 볼 수 없어요.',
   confirm: '확인',
 } as const;
+
+// 없는 주소(웹 · 딥링크) 안내(QF2 F-13): 앱 말투 + 홈으로. 원본 = 마케팅/카피.md 25장
+export const NOT_FOUND = {
+  title: '찾을 수 없는 화면이에요',
+  body: '주소가 바뀌었거나 없어졌을 수 있어요.',
+  home: '홈으로',
+} as const;

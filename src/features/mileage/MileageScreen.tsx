@@ -4,7 +4,7 @@
 //  · P0 는 기기 안 가상 잔액 — 결제 호출 0(consumeAsync · acknowledgePurchase 0). 충전은 데모 모의 서버의 가상 충전(시험용 한 줄 `MILEAGE.shop.trial`). 서버 지급 응답이 오기 전에는 '지급됨' 글 0 — 응답 뒤 잔액을 다시 읽을 뿐
 //  · 보너스 · 할인 · 인기 · 한정 · 서두르세요 · 남은 시간 · 빨간 배지 · 숫자 굴리기 0. 재촉 0 · 푸시 0
 import { Redirect, useRouter, type Href } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
@@ -48,15 +48,19 @@ function Shop({ deps }: { deps: MileageDeps }) {
   const { slot, reload, retry } = useMileageState(deps.api);
   const [big, setBig] = useState<MileageProduct | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const chargingRef = useRef(false);
   const [failed, setFailed] = useState(false);
   const [lockedNow, setLockedNow] = useState(false); // 충전을 눌렀더니 서버가 잠갔다고 답함(charge_locked) — 잔액을 다시 읽을 때까지 이 화면에서만
   const back = () => (router.canGoBack() ? router.back() : router.replace('/boarding' as Href));
   const charge = async (p: MileageProduct) => {
-    if (busy) return; // 연타 0
+    if (busy || chargingRef.current) return; // 연타 0 — busy state 는 같은 틱 두 번째 누름을 못 막아 ref 로 먼저 잠근다(QF2 F-03)
+    chargingRef.current = true;
     setBig(null);
     setBusy(p.sku);
     setFailed(false);
-    const r = await deps.api.charge(p.sku);
+    const r = await deps.api.charge(p.sku).finally(() => {
+      chargingRef.current = false;
+    });
     setBusy(null);
     if (!r.ok && r.code === 'charge_locked') setLockedNow(true); // 까닭 · 기간은 글에 풀지 않는다(M-F2)
     else if (!r.ok) setFailed(true);

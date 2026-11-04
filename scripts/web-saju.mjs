@@ -1,7 +1,7 @@
 // IF5-F1 사주 마당 웹 점검(IF-MADANG · IF-SJ-IN · IF-SJ-PARTNER · IF-SJ-CAL · IF-SJ-TODAY · 12 설정 줄). 무료 · 네트워크 없음(로컬 서버 + 로컬 헤드리스 브라우저).
 //  먼저 데모 모드 웹 번들을 만든 뒤 쓴다(npm run check:web:demo → dist-demo/). 사람이 하는 순서대로 누른다.
 //  1 가입 → 12 설정 '사주 마당' 줄 → 사주 마당: 동의 전엔 카드 0 + [동의하고 보기](저절로 시트 0) → 동의 시트 → [내 정보 넣기] 시트(시각 모름 처음값 · 미리 체크 0 · 지점 23)
-//  2 저장하고 보기 → 카드 열한 장(순서) · 숫자 막대 라벨 0 · 점수 · 퍼센트 · 판정 · 재회 · 마일리지 0 · 시각 모름 줄 · 캡처 안내 줄 · [?] 풀이 시트
+//  2 저장하고 보기 → 카드 열 장(순서) · 숫자 막대 라벨 0 · 점수 · 퍼센트 · 판정 · 재회 · 마일리지 0 · 시각 모름 줄 · 캡처 안내 줄 · [?] 풀이 시트
 //  3 상대 생일 시트: CK20 확인 전 잠김 → 입력 → 결과 · 19세 미만 한 줄 · 닫으면 값 0 · 바깥 요청 0
 //  4 날짜 고르기(용도 칩 → 달력 색 두 가지 + 모양) · 만세력 달력(칸 글자 · 절기) · 오늘 하루
 //  5 화면마다 폭(SHOT_WIDTH, 기본 390) 가로 넘침 0 · 글자 13 이상 · 터치 48 이상 · 금지 낱말 0 · 느낌표 0 · 콘솔 오류 0 · 바깥 요청 0
@@ -89,7 +89,7 @@ async function signUp(email) {
 
 let exitCode = 0;
 try {
-  await signUp('sj1@email.com');
+  await signUp('sj1fortuneon@email.com'); // 운세 정리(D-245)로 끈 날짜 고르기 · 달력 스위치를 켜는 데모 장면(끈 모습은 web-qf2a.mjs)
   // ═══ 1. 설정 줄 → 사주 마당 · 동의 · 입력 시트 ═══
   await goto('/settings');
   await waitVis('settings-rows', 10000);
@@ -122,9 +122,9 @@ try {
 
   // ═══ 2. 카드 ═══
   check('2', '저장하고 보기 → 내 네 기둥(시각 모름 세 칸 + 흐린 칸)', (await waitVis('saju-pillars', 12000)) && (await vis('saju-pillar-table-hour-unknown')), '');
-  const ids = ['saju-pillars', 'saju-kyeol', 'saju-year', 'saju-month', 'saju-love', 'saju-work', 'saju-season', 'saju-pick', 'saju-partner-card', 'saju-cal-card', 'saju-guide-card', 'saju-end'];
+  const ids = ['saju-pillars', 'saju-kyeol', 'saju-year', 'saju-month', 'saju-love', 'saju-season', 'saju-pick', 'saju-partner-card', 'saju-cal-card', 'saju-guide-card', 'saju-end'];
   const present = await b.evaluate(`${JSON.stringify(ids)}.filter((id) => !!document.querySelector('[data-testid="' + id + '"]'))`);
-  check('2', '카드 열한 장 + 끝줄 모두 있음', present.length === ids.length, `${present.length}/${ids.length}`);
+  check('2', '카드 열 장 + 끝줄 모두 있음(일 · 돈 · 사람 카드는 D-245 로 숨김)', present.length === ids.length, `${present.length}/${ids.length}`);
   check('2', '캡처 안내 한 줄 · 재미 문구 · 짝에 쓰이지 않아요', (await pageText()).includes('이 화면은 캡처할 수 없어요') && (await pageText()).includes('재미로 보는 이야기예요') && (await pageText()).includes('쓰이지 않아요'), '');
   await words('사주 마당');
   await measure('사주 마당 위쪽');

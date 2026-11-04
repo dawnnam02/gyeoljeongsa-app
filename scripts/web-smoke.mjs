@@ -9,10 +9,12 @@
 //      '동작 줄이기'(prefers-reduced-motion) 에서는 크기 변화 없음 · 원 최대 0.5배
 //   E. 화면 이동: 01 의 [시작하기]를 눌러 02 로 간다
 //   (F1 이후: 01 · 02 · 03 · 15 의 본문 점검은 scripts/web-f1.mjs 가 데모 모드 번들로 한다. 이 점검은 F0 가 만든 것을 그대로 지킨다)
-// 사용: node scripts/web-smoke.mjs   (스크린샷은 확인/스크린샷/ 에 저장)
+// QF2-A Q2-14(T1-06): 기대값을 V5 구조(탑승권 · 채팅 · 설정 3탭, 09 · 10 · 11 · 13 · 14 · 16 은 스위치로 숨겨 홈으로, 탭 아이콘은 svg)에 맞췄다. 번들 폴더를 인자로 줄 수 있다.
+//    데모 번들(로그인 없이 직접 주소)에서 확인했다 — 서버를 쓰는 일반 번들에서는 돌려 보지 않았다(미확인).
+// 사용: node scripts/web-smoke.mjs [번들 폴더]   (스크린샷은 확인/스크린샷/ 에 저장)
 // 종료 코드: 0 통과 · 1 실패 · 2 브라우저가 없어 못 봄(미확인)
 import { Buffer } from 'node:buffer';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -20,7 +22,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const distDir = path.join(appDir, 'dist');
+const distDir = path.resolve(appDir, process.argv[2] ?? 'dist'); // 인자로 번들 폴더를 줄 수 있다(스크래치에 만든 번들 등)
 const shotDir = path.join(appDir, '확인', '스크린샷');
 
 const BROWSER = [
@@ -42,8 +44,6 @@ if (!BROWSER) {
 // 토큰 색(디자인/가이드.md 1장)을 브라우저가 돌려주는 rgb 꼴로 적는다. 값이 바뀌면 tokens.ts 와 함께 고친다.
 const ROSE = 'rgb(155, 59, 82)'; // accent #9B3B52
 const GRAY = 'rgb(117, 102, 95)'; // sub #75665F (F9 v2)
-const ROSE_20 = 'rgba(155, 59, 82, 0.2)';
-const WHITE_20 = 'rgba(255, 255, 255, 0.2)';
 
 const results = [];
 function check(group, title, ok, detail = '') {
@@ -130,13 +130,41 @@ const proc = spawn(
   { stdio: 'ignore' },
 );
 
+// T1-10(QF2-A): 브라우저가 답하지 않거나 전체 시간(기본 10분, WEB_TOTAL_MS)이 지나면 브라우저(프로세스 나무)를 닫고 끝낸다 · 끝난 뒤에도 남은 Edge 한 벌이 없게 한다
+const killBrowser = () => {
+  try {
+    if (process.platform === 'win32' && proc.pid) spawnSync('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+    else proc.kill();
+  } catch {
+    /* 이미 끝남 */
+  }
+};
+process.once('exit', killBrowser);
+const totalMs = Number(process.env.WEB_TOTAL_MS ?? 600000);
+function hardStop(why) {
+  console.log(`[실패] ${why} — 브라우저를 닫고 끝내요`);
+  killBrowser();
+  setTimeout(() => process.exit(1), 10000);
+}
+const guard = setTimeout(() => hardStop(`점검 전체 시간 ${Math.round(totalMs / 1000)}초 초과`), totalMs);
+guard.unref();
+
 const errors = []; // 콘솔 오류 · 예외
 const requests = new Map();
 let cdp;
 let ws;
 
 const evaluate = async (expression) => {
-  const r = await cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`브라우저가 60초 동안 답하지 않음 — 식: ${String(expression).slice(0, 80)}`)), Number(process.env.EVAL_TIMEOUT_MS ?? 60000));
+  });
+  const r = await Promise.race([cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }), timeout])
+    .catch((error) => {
+      if (String(error?.message).includes('동안 답하지 않음')) hardStop(String(error.message));
+      throw error;
+    })
+    .finally(() => clearTimeout(timer));
   if (r.exceptionDetails) throw new Error(`브라우저 식 오류: ${r.exceptionDetails.text}`);
   return r.result.value;
 };
@@ -262,7 +290,9 @@ try {
 
   // 앱 시작(A)까지의 요청만 "네트워크를 쓰지 않는다"로 센다. B 이후는 본문이 있는 화면(07 · 08 · 09 · 10 · 12 · 13)이 로그인 없이 열려 서버를 부르는 것이 정상이다
   const startupRequests = [...requests.values()];
-  // ── B. 16개 화면 (360 × 740)
+  // ── B. 화면 (360 × 740)
+  //  V5(D-152 · W10): 09 · 10 · 11 · 13 · 14 · 16 은 스위치로 숨겨 로그인 없이 직접 열면 홈(탑승권 /boarding)으로 간다 — 아래 별도 점검.
+  //  탑승권(/boarding) · 채팅(/chat)은 V5 에서 생긴 탭 화면이다.
   const SCREENS = [
     ['01', '온보딩', '/onboarding', false],
     ['02', '가입·로그인', '/sign-in', false],
@@ -272,22 +302,19 @@ try {
     ['06', 'AI 정리 중', '/analysis', false],
     ['07', '내 성향', '/traits', false],
     ['08', '내 프로필', '/profile', false], // F11: 탭이 아니라 탭 위에 열리는 화면(탭바 없음)
-    ['09', '오늘의 추천', '/recommendations', true],
-    ['10', '상대 프로필', '/candidate/preview', false],
-    ['11', '호감', '/likes', true],
     ['12', '설정', '/settings', true],
-    ['13', '추천 없음', '/recommendations-empty', true],
-    ['14', '호감 없음', '/likes-empty', true],
     ['15', '인증 실패', '/sign-in-code-error', false],
-    ['16', '상점', '/shop', true],
+    ['T1', '탑승권', '/boarding', true],
+    ['T4', '채팅', '/chat', true],
   ];
   await viewport(360, 740);
   const failedScreens = [];
   const overflow = [];
   const tinyText = [];
   const mismatchTab = [];
-  // 본문이 채워진 화면은 자리 표시 글('NN 이름') 대신 그 화면의 본문 글이 보인다(F1: 01 · 02 · 03 · 15, F3: 06 은 상단 바 제목, 07 은 로그인 · 정리 결과가 없으면 06 으로 되돌린다(K2 07)) · F4: 08 은 본문의 상단 바 제목(로그인이 없으면 불러오기 오류 상태)
-  const WANT = { '01': '시작하기', '02': '이메일로 시작해요', '03': '시작하려면 동의가 필요해요', '04': '설문', '05': '사진 등록', '06': 'AI 정리 중', '07': 'AI 정리 중', '08': '내 프로필', '09': '오늘의 추천', '10': '프로필', '11': '받은 호감', '12': '설정', '14': '받은 호감', '13': '오늘의 추천', '15': '인증번호가 맞지 않아요. 다시 확인해 주세요.', '16': '내 성향 리포트' };
+  // 본문이 채워진 화면은 자리 표시 글('NN 이름') 대신 그 화면의 본문 글이 보인다(F1: 01 · 02 · 03 · 15, F3: 06 은 상단 바 제목, 07 은 로그인 · 정리 결과가 없으면 06 으로 되돌린다(K2 07)) · F4: 08 은 본문의 상단 바 제목
+  const WANT = { '01': '시작하기', '02': '이메일로 시작해요', '03': '시작하려면 동의가 필요해요', '04': '설문', '05': '사진 등록', '06': 'AI 정리 중', '07': 'AI 정리 중', '08': '내 프로필', '12': '설정', '15': '인증번호가 맞지 않아요. 다시 확인해 주세요.', T1: '탑승권', T4: '채팅' };
+  const TAB_COUNT = `[...document.querySelectorAll('[role=tab]')].filter((el) => el.querySelector('svg')).length`;
   for (const [id, name, route, tabBar] of SCREENS) {
     const want = WANT[id] ?? `${id} ${name}`;
     // 07 은 로그인 · 정리 결과가 없으면 06 으로 되돌아가거나, 서버가 응답하지 않을 때 자기 상단 바 제목(내 성향)만 보인다
@@ -299,7 +326,7 @@ try {
     }
     await sleep(300);
     const m = await evaluate(`(() => {
-      const tabs = [...document.querySelectorAll('[role=tab]')].filter((el) => el.querySelector('img, div[style*="background-image"]')).length;
+      const tabs = ${TAB_COUNT};
       const over = document.documentElement.scrollWidth > window.innerWidth + 1 ||
         [...document.querySelectorAll('body *')].some((el) => { const s = getComputedStyle(el); if (s.position === 'absolute' && s.pointerEvents === 'none') return false; const r = el.getBoundingClientRect(); return r.width > 0 && (r.right > window.innerWidth + 1 || r.left < -1); });
       let minFont = 99;
@@ -313,86 +340,78 @@ try {
     if (m.minFont < 12) tinyText.push(`${id}(${m.minFont}px)`);
     if ((m.tabs > 0) !== tabBar) mismatchTab.push(id);
   }
-  check('B', '16개 주소가 모두 열려서 화면 이름이 보인다', failedScreens.length === 0, failedScreens.length ? `안 열림: ${failedScreens.join(', ')}` : '01~16');
-  check('B', '탭바(탭 칸)는 08 · 09 · 11 · 12 · 13 · 14 에만 있다', mismatchTab.length === 0, mismatchTab.length ? `어긋남: ${mismatchTab.join(', ')}` : '');
-  check('B', '폭 360 에서 가로 넘침 0 (16개 화면)', overflow.length === 0, overflow.length ? `넘침: ${overflow.join(', ')}` : '');
+  check('B', `${SCREENS.length}개 주소(01 ~ 08 · 12 · 15 · 탑승권 · 채팅)가 모두 열려서 화면 이름이 보인다`, failedScreens.length === 0, failedScreens.length ? `안 열림: ${failedScreens.join(', ')}` : SCREENS.map((x) => x[0]).join(' '));
+  check('B', '탭바(탭 칸)는 12 · 탑승권 · 채팅 에만 있다', mismatchTab.length === 0, mismatchTab.length ? `어긋남: ${mismatchTab.join(', ')}` : '');
+  check('B', `폭 360 에서 가로 넘침 0 (${SCREENS.length}개 화면)`, overflow.length === 0, overflow.length ? `넘침: ${overflow.join(', ')}` : '');
   check('B', '글자 크기가 모두 12 이상', tinyText.length === 0, tinyText.length ? tinyText.join(', ') : '');
+  // 숨긴 v4 화면(스위치 꺼짐): 로그인 없이 주소로 와도 홈으로
+  const hidden = [];
+  for (const route of ['/recommendations', '/candidate/preview', '/likes', '/recommendations-empty', '/likes-empty', '/shop']) {
+    const went = await open(route, `() => location.pathname === '/boarding'`); // 스위치를 읽은 뒤에 가므로 잠깐 기다린다
+    if (!went) hidden.push(route);
+  }
+  check('B', '숨긴 v4 화면 주소(09 · 10 · 11 · 13 · 14 · 16)를 직접 열면 홈(/boarding)으로 간다', hidden.length === 0, hidden.length ? `안 간 주소: ${hidden.join(', ')}` : '');
 
   // ── C. 탭바 (390 × 844)
+  //  V5: 로그인 없이 열면 탭은 탑승권 · 채팅 · 설정 3개(v4 탭 추천 · 호감 · 상점은 스위치로 숨김). 아이콘은 svg — 켜진 탭은 닫힌 면(accentSoft #F6E9EC), 꺼진 탭은 선만(D42-C)
   await viewport(390, 844);
-  await open('/recommendations', `() => document.body.innerText.includes('09 오늘의 추천')`);
+  await open('/boarding', `() => document.body.innerText.includes('탑승권')`);
   await installHelpers();
   await sleep(500);
-  const tabState = () => evaluate(`(() => [...document.querySelectorAll('[role=tab]')].filter((el) => el.querySelector('img, div[style*="background-image"]')).map((el) => {
+  const tabState = () => evaluate(`(() => [...document.querySelectorAll('[role=tab]')].filter((el) => el.querySelector('svg')).map((el) => {
     const label = [...el.querySelectorAll('*')].find((n) => [...n.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim()));
-    const img = el.querySelector('img');
-    const bg = el.querySelector('div[style*="background-image"]');
-    const src = img ? img.src : (bg ? getComputedStyle(bg).backgroundImage : '');
+    const svg = el.querySelector('svg');
+    const faced = [...svg.querySelectorAll('path')].some((p) => (p.getAttribute('fill') || '').toUpperCase() === '#F6E9EC' || getComputedStyle(p).fill === 'rgb(246, 233, 236)');
     const ls = label ? getComputedStyle(label) : null;
     const r = el.getBoundingClientRect();
     return { text: label ? label.textContent.trim() : '', x: Math.round(r.left), w: Math.round(r.width), h: Math.round(r.height), selected: el.getAttribute('aria-selected'),
-      family: ls ? ls.fontFamily : '', color: ls ? ls.color : '', size: ls ? ls.fontSize : '', icon: /on-filled/.test(src) ? 'filled' : /-off/.test(src) ? 'line' : src.slice(-40) };
+      family: ls ? ls.fontFamily : '', color: ls ? ls.color : '', size: ls ? ls.fontSize : '', icon: faced ? 'filled' : 'line' };
   }).sort((a, b) => a.x - b.x))()`);
   const t1 = await tabState();
-  check('C', '탭 4개: 추천 · 호감 · 상점 · 설정 순서(F11)', t1.map((t) => t.text).join(',') === '추천,호감,상점,설정', t1.map((t) => t.text).join(','));
+  check('C', '탭 3개: 탑승권 · 채팅 · 설정 순서(V5)', t1.map((t) => t.text).join(',') === '탑승권,채팅,설정', t1.map((t) => t.text).join(','));
   const active1 = t1.filter((t) => t.selected === 'true');
-  check('C', '현재 탭은 한 번에 1개(추천)이고 aria-selected 가 켜진다', active1.length === 1 && active1[0].text === '추천', `켜진 탭 ${active1.map((t) => t.text).join(',') || '없음'}`);
-  check('C', '현재 탭 = 채움 아이콘 + 라벨 Bold 장미색', t1[0].icon === 'filled' && /Pretendard-Bold/.test(t1[0].family) && t1[0].color === ROSE, `${t1[0].icon} · ${t1[0].family} · ${t1[0].color}`);
-  check('C', '나머지 3탭 = 선형 아이콘 + 라벨 Regular 회색', t1.slice(1).every((t) => t.icon === 'line' && /Pretendard-Regular/.test(t.family) && t.color === GRAY), t1.slice(1).map((t) => `${t.icon}/${t.color}`).join(' '));
-  check('C', '라벨 크기 12 · 탭 칸 높이 56 이상(터치 영역 44 이상)', t1.every((t) => t.size === '12px' && t.h >= 44), `높이 ${t1.map((t) => t.h).join(',')}`);
-  console.log(`       스크린샷 ${await shot('F0_09_추천_탭바_390x844.png')}`);
+  check('C', '현재 탭은 한 번에 1개(탑승권)이고 aria-selected 가 켜진다', active1.length === 1 && active1[0].text === '탑승권', `켜진 탭 ${active1.map((t) => t.text).join(',') || '없음'}`);
+  check('C', '현재 탭 = 닫힌 면 아이콘 + 라벨 Bold 장미색', !!t1[0] && t1[0].icon === 'filled' && /Pretendard-Bold/.test(t1[0].family) && t1[0].color === ROSE, t1[0] ? `${t1[0].icon} · ${t1[0].family} · ${t1[0].color}` : '탭 없음');
+  check('C', '나머지 2탭 = 선형 아이콘 + 라벨 Regular 회색', t1.length > 1 && t1.slice(1).every((t) => t.icon === 'line' && /Pretendard-Regular/.test(t.family) && t.color === GRAY), t1.slice(1).map((t) => `${t.icon}/${t.color}`).join(' '));
+  check('C', '라벨 크기 13 이상 · 탭 칸 높이 48 이상(터치 영역 48 이상, D22)', t1.length > 0 && t1.every((t) => parseFloat(t.size) >= 13 && t.h >= 48), `크기 ${t1.map((t) => t.size).join(',')} · 높이 ${t1.map((t) => t.h).join(',')}`);
+  console.log(`       스크린샷 ${await shot('F0_탑승권_탭바_390x844.png')}`);
 
   // 탭 누르기 → 이동 + 활성 이동
-  const likesPos = await evaluate(`(() => { const el = window.__find('호감', 'tab'); return el ? window.__center(el) : null; })()`);
-  if (likesPos) {
-    await mouse('mouseMoved', likesPos.x, likesPos.y);
-    await mouse('mousePressed', likesPos.x, likesPos.y);
+  const chatPos = await evaluate(`(() => { const el = window.__find('채팅', 'tab'); return el ? window.__center(el) : null; })()`);
+  if (chatPos) {
+    await mouse('mouseMoved', chatPos.x, chatPos.y);
+    await mouse('mousePressed', chatPos.x, chatPos.y);
     await sleep(120);
-    await mouse('mouseReleased', likesPos.x, likesPos.y);
+    await mouse('mouseReleased', chatPos.x, chatPos.y);
     await sleep(900);
   }
   const t2 = await tabState();
-  const onLikes = await evaluate('location.pathname');
-  check('C', '호감 탭을 누르면 /likes 로 가고 호감 탭만 채움 + Bold 가 된다', onLikes === '/likes' && t2[1].icon === 'filled' && /Bold/.test(t2[1].family) && t2.filter((t) => t.icon === 'filled').length === 1, `경로 ${onLikes}, 채움 ${t2.filter((t) => t.icon === 'filled').map((t) => t.text).join(',')}`);
-  for (const [route, tab, shotName] of [['/likes-empty', '호감', 'F0_14_호감없음_탭바_390x844.png'], ['/recommendations-empty', '추천', null], ['/shop', '상점', 'F11_상점_탭바_390x844.png'], ['/settings', '설정', null]]) {
-    await open(route, `() => [...document.querySelectorAll('[role=tab]')].filter((el) => el.querySelector('img, div[style*="background-image"]')).length === 4`);
+  const onChat = await evaluate('location.pathname');
+  check('C', '채팅 탭을 누르면 /chat 으로 가고 채팅 탭만 닫힌 면 + Bold 가 된다', onChat === '/chat' && t2.length > 1 && t2[1].icon === 'filled' && /Bold/.test(t2[1].family) && t2.filter((t) => t.icon === 'filled').length === 1, `경로 ${onChat}, 채움 ${t2.filter((t) => t.icon === 'filled').map((t) => t.text).join(',')}`);
+  for (const [route, tab] of [['/settings', '설정'], ['/boarding', '탑승권']]) {
+    await open(route, `() => ${TAB_COUNT} === 3`);
     await sleep(400);
     const t = await tabState();
     const on = t.filter((x) => x.icon === 'filled' && x.selected === 'true' && /Bold/.test(x.family)).map((x) => x.text);
     check('C', `${route} 에서 켜진 탭은 ${tab} 하나다`, on.length === 1 && on[0] === tab, `켜진 탭 ${on.join(',') || '없음'}`);
-    if (shotName) console.log(`       스크린샷 ${await shot(shotName)}`);
   }
 
-  // ── D. 눌림 효과
+  // ── D. 눌림 효과 (2안 '지면' D42-M 명세 4-1 press · 가이드 10-3, 앱 Pressable.tsx — 퍼지는 물결은 지웠다)
+  //  버튼 = 크기 0.985 로 살짝 줄었다 놓으면 1 · 탭 칸 = 크기 그대로 + text 6% 덮개 · 동작 줄이기 = 크기 변화 0
+  //  (QF2-A Q2-14: 옛 F0 기대 '0.96배 · 흰색 · 장미 20% 원'은 물결을 쓰던 때의 값이라 지금 규격으로 바꿨다)
   await viewport(390, 844);
   await open('/onboarding', `() => document.body.innerText.includes('시작하기')`);
   await installHelpers();
   await sleep(500);
   const primaryText = '시작하기'; // 01 의 주 버튼
-  const primaryBefore = await evaluate(`(() => { const el = window.__find(${JSON.stringify(primaryText)}, 'button'); const c = window.__circle(el); return { scale: window.__scale(el), circle: !!c, opacity: c ? Number(getComputedStyle(c).opacity) : null }; })()`);
-  check('D', '눌리기 전에는 크기 1 · 원이 보이지 않는다', primaryBefore && primaryBefore.scale === 1 && primaryBefore.opacity === 0, JSON.stringify(primaryBefore));
+  const primaryBefore = await evaluate(`(() => { const el = window.__find(${JSON.stringify(primaryText)}, 'button'); return { scale: window.__scale(el) }; })()`);
+  check('D', '눌리기 전에는 크기 1', primaryBefore && primaryBefore.scale === 1, JSON.stringify(primaryBefore));
 
-  // 주 버튼: 누르는 동안의 모습을 캡처하려고 눌러 둔 채로 찍는다
-  const primaryInfo = await evaluate(`(() => window.__center(window.__find(${JSON.stringify(primaryText)}, 'button')))()`);
-  await mouse('mouseMoved', primaryInfo.x, primaryInfo.y);
-  await mouse('mousePressed', primaryInfo.x, primaryInfo.y);
-  await sleep(110); // 퍼지는 중간
-  const mid = await evaluate(`(() => { const el = window.__find(${JSON.stringify(primaryText)}, 'button'); const c = window.__circle(el); return { scale: window.__scale(el), circleScale: window.__scale(c), opacity: Number(getComputedStyle(c).opacity) }; })()`);
-  console.log(`       스크린샷 ${await shot('F0_눌림_주버튼_퍼지는중_390x844.png')}`);
-  await sleep(350);
-  const primaryDuring = await evaluate(`(() => { const el = window.__find(${JSON.stringify(primaryText)}, 'button'); const c = window.__circle(el); const cs = getComputedStyle(c); const r = el.getBoundingClientRect(); const cr = c.getBoundingClientRect();
-    return { scale: window.__scale(el), bg: cs.backgroundColor, opacity: Number(cs.opacity), circleScale: window.__scale(c), diameter: c.offsetWidth, diag: Math.hypot(el.offsetWidth, el.offsetHeight), overflow: getComputedStyle(el).overflow, cx: cr.left + cr.width / 2 - (r.left + r.width / 2), cy: cr.top + cr.height / 2 - (r.top + r.height / 2) }; })()`);
-  console.log(`       스크린샷 ${await shot('F0_눌림_주버튼_다퍼짐_390x844.png')}`);
-  await mouse('mouseMoved', 2, 2);
-  await mouse('mouseReleased', 2, 2);
-  await sleep(800);
-  const primaryAfter = await evaluate(`(() => { const el = window.__find(${JSON.stringify(primaryText)}, 'button'); const c = window.__circle(el); return { scale: window.__scale(el), opacity: Number(getComputedStyle(c).opacity) }; })()`);
-  check('D', '주 버튼을 누르면 0.96배로 줄어든다', Math.abs(primaryDuring.scale - 0.96) < 0.005, `크기 ${primaryDuring.scale.toFixed(3)}`);
-  check('D', '주 버튼 위 원은 흰색 20%이고 요소 대각선 지름으로 가운데서 퍼진다', primaryDuring.bg === WHITE_20 && Math.abs(primaryDuring.circleScale - 1) < 0.02 && Math.abs(primaryDuring.diameter - primaryDuring.diag) < 1.5 && Math.abs(primaryDuring.cx) < 1 && Math.abs(primaryDuring.cy) < 1,
-    `색 ${primaryDuring.bg} · 원 크기 ${primaryDuring.circleScale.toFixed(2)} · 지름 ${primaryDuring.diameter}/대각선 ${primaryDuring.diag.toFixed(1)} · 가운데 차이 ${primaryDuring.cx.toFixed(1)},${primaryDuring.cy.toFixed(1)}`);
-  check('D', '퍼지는 중간(110ms)에는 원이 아직 작다', mid.circleScale > 0 && mid.circleScale < 0.95, `원 크기 ${mid.circleScale.toFixed(2)} · 버튼 ${mid.scale.toFixed(3)}`);
-  check('D', '원은 버튼 모양대로 잘린다(overflow hidden)', primaryDuring.overflow === 'hidden', primaryDuring.overflow);
-  check('D', '떼면 1배로 돌아오고 원이 투명해진다', Math.abs(primaryAfter.scale - 1) < 0.005 && primaryAfter.opacity < 0.01, `크기 ${primaryAfter.scale.toFixed(3)} · 원 불투명도 ${primaryAfter.opacity}`);
+  // 주 버튼: 누르는 동안의 모습을 캡처하려고 눌러 둔 채로 찍는다(pressProbe 가 400ms 누른 뒤 재고 떼서 크기 복귀를 잰다)
+  const primary = await pressProbe(primaryText, 'button', 0, 'F0_눌림_주버튼_누르는중_390x844.png');
+  check('D', '주 버튼을 누르면 0.985배로 줄어든다', primary && Math.abs(primary.during.scale - 0.985) < 0.004, primary ? `크기 ${primary.during.scale.toFixed(3)}` : '버튼을 못 찾음');
+  check('D', '주 버튼 위에는 퍼지는 원이 없다(물결 삭제)', primary && !primary.during.circle, primary ? `원 ${primary.during.circle}` : '');
+  check('D', '떼면 1배로 돌아온다', primary && Math.abs(primary.after.scale - 1) < 0.005, primary ? `크기 ${primary.after.scale.toFixed(3)}` : '');
 
   // 보조 버튼(강조 윤곽형): 02 의 [인증번호 받기]. 이메일 형식이 맞아야 켜지므로 이메일을 넣어 둔다(누른 채로 밖에서 떼므로 요청은 가지 않는다)
   await open('/sign-in', `() => document.body.innerText.includes('이메일로 시작해요')`);
@@ -402,15 +421,16 @@ try {
   await cdp.send('Input.insertText', { text: 'a@b.co' });
   await sleep(300);
   const sec = await pressProbe('인증번호 받기', 'button', 0);
-  check('D', '보조 버튼(02 [인증번호 받기]) 위 원은 장미 20%이고 크기도 0.96배', sec && sec.during.bg === ROSE_20 && Math.abs(sec.during.scale - 0.96) < 0.005, sec ? `색 ${sec.during.bg} · 크기 ${sec.during.scale.toFixed(3)}` : '버튼을 못 찾음');
+  check('D', '보조 버튼(02 [인증번호 받기])도 0.985배로 줄고 떼면 1배', sec && Math.abs(sec.during.scale - 0.985) < 0.004 && Math.abs(sec.after.scale - 1) < 0.005, sec ? `누를 때 ${sec.during.scale.toFixed(3)} · 뗀 뒤 ${sec.after.scale.toFixed(3)}` : '버튼을 못 찾음');
 
-  // 탭 칸: 크기 변화 없이 원만
-  await open('/recommendations', `() => document.body.innerText.includes('09 오늘의 추천')`);
+  // 탭 칸: 크기 변화 없이 text 6% 덮개만
+  await open('/boarding', `() => document.body.innerText.includes('탑승권')`);
   await installHelpers();
   await sleep(500);
-  const tab = await pressProbe('상점', 'tab', 0, 'F0_눌림_탭칸_다퍼짐_390x844.png');
-  check('D', '탭 칸은 크기가 변하지 않고 장미 20% 원만 퍼진다(칸 안에서 잘림)', tab && Math.abs(tab.during.scale - 1) < 0.005 && tab.during.bg === ROSE_20 && tab.during.circleW > tab.during.boxW * 0.9,
-    tab ? `크기 ${tab.during.scale.toFixed(3)} · 색 ${tab.during.bg} · 원 지름 ${tab.during.circleW.toFixed(0)}/칸 폭 ${tab.during.boxW.toFixed(0)}` : '탭을 못 찾음');
+  const tab = await pressProbe('설정', 'tab', 0, 'F0_눌림_탭칸_390x844.png');
+  check('D', '탭 칸은 크기가 변하지 않고 text 6% 덮개만 덮인다', tab && Math.abs(tab.during.scale - 1) < 0.005 && tab.during.circle && /, 0\.06\)$/.test(tab.during.bg) && tab.during.opacity > 0.9,
+    tab ? `크기 ${tab.during.scale.toFixed(3)} · 덮개 ${tab.during.bg} · 투명도 ${tab.during.opacity}` : '탭을 못 찾음');
+  check('D', '탭에서 떼면 덮개가 사라진다', tab && (!tab.after.circle || tab.after.opacity < 0.01), tab ? `투명도 ${tab.after.opacity}` : '');
 
   // 동작 줄이기
   await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
@@ -418,9 +438,7 @@ try {
   await installHelpers();
   await sleep(700);
   const reduced = await pressProbe(primaryText, 'button', 0, 'F0_눌림_동작줄이기_누르는중_390x844.png');
-  check('D', "'동작 줄이기'에서는 크기가 변하지 않는다", reduced && Math.abs(reduced.during.scale - 1) < 0.005, reduced ? `크기 ${reduced.during.scale.toFixed(3)}` : '버튼을 못 찾음');
-  check('D', "'동작 줄이기'에서는 원이 절반(0.5배)까지만 퍼지고 농도는 20% 그대로", reduced && Math.abs(reduced.during.circleScale - 0.5) < 0.02 && reduced.during.bg === WHITE_20,
-    reduced ? `원 크기 ${reduced.during.circleScale.toFixed(2)} · 색 ${reduced.during.bg}` : '');
+  check('D', "'동작 줄이기'에서는 버튼 크기가 변하지 않는다", reduced && Math.abs(reduced.during.scale - 1) < 0.005, reduced ? `크기 ${reduced.during.scale.toFixed(3)}` : '버튼을 못 찾음');
   await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
 
   // ── E. 화면 이동
@@ -452,11 +470,8 @@ try {
   } catch {
     /* 이미 닫힘 */
   }
-  try {
-    proc.kill();
-  } catch {
-    /* 이미 끝남 */
-  }
+  killBrowser();
+  server.closeAllConnections?.(); // 브라우저가 남긴 keep-alive 연결 때문에 server.close() 가 끝나지 않던 것
   server.close();
   setTimeout(() => {
     try {
@@ -470,3 +485,4 @@ try {
 const failedCount = results.filter((r) => !r.ok).length;
 console.log(`\n웹 스모크 점검: 통과 ${results.length - failedCount} · 실패 ${failedCount}`);
 process.exitCode = exitCode || (failedCount > 0 ? 1 : 0);
+setTimeout(() => process.exit(process.exitCode ?? 0), 3000).unref(); // 마지막 줄 뒤 무엇이 남아 있어도 3초 안에 끝낸다

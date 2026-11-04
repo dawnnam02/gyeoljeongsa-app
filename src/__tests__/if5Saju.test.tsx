@@ -3,6 +3,7 @@
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 
 import { demoDefault, FEATURE_KEYS } from '@/config/featureKeys';
+import { FORTUNE_TRIM } from '@/config/fortuneTrim';
 import { IF5_TEXT, t5 } from '@/content/if5Copy';
 import { createDemoSaju } from '@/demo/sajuDemo';
 import { createIf5ConsentStore } from '@/features/consent/if5Consent';
@@ -37,7 +38,11 @@ jest.setTimeout(90_000);
 const wait = (ms = 30) => act(async () => new Promise((r) => setTimeout(r, ms)));
 const mounted: ReactTestRenderer[] = [];
 const keep = (t: ReactTestRenderer) => (mounted.push(t), t);
+beforeEach(() => {
+  Object.assign(FORTUNE_TRIM, { workMoneyPeople: true, fullReading: true, zodiacLine: true });
+});
 afterEach(async () => {
+  Object.assign(FORTUNE_TRIM, { workMoneyPeople: false, fullReading: false, zodiacLine: false });
   await act(async () => mounted.splice(0).forEach((t) => t.unmount()));
   mockRouter.push.mockClear();
   mockForced.mockClear();
@@ -45,7 +50,9 @@ afterEach(async () => {
 });
 
 const NOW = Date.parse('2027-03-20T03:00:00Z'); // 한국 2027-03-20 정오
-const flagsAll = (over: Record<string, boolean> = {}) => ({ ...Object.fromEntries(FEATURE_KEYS.map((k) => [k, demoDefault(k)])), ...over }) as Record<string, boolean>;
+// QF2-A(운세 정리 D-245): 날짜 고르기 · 달력은 데모 처음값이 꺼졌고 일 · 돈 · 사람 카드는 코드에서 숨김 — 이 파일은 '꺼도 코드가 그대로 돌아간다'를 보려고 모두 켠다(꺼진 쪽은 qf2aFortune.test.tsx)
+const RESTORED = { saju_pickday: true, saju_calendar: true };
+const flagsAll = (over: Record<string, boolean> = {}) => ({ ...Object.fromEntries(FEATURE_KEYS.map((k) => [k, demoDefault(k)])), ...RESTORED, ...over }) as Record<string, boolean>;
 
 function rig(opts: { birth?: string | null; ck17?: boolean; flags?: Record<string, boolean>; email?: string } = {}) {
   const user = { id: 'u-saju', email: opts.email ?? 'sj@email.com' };

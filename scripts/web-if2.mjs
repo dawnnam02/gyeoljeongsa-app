@@ -146,7 +146,7 @@ const PAGE_NAMES = ['하늘과 결', '이번 주 카드', '연애 이야기', '�
 let exitCode = 0;
 try {
   // ═══ 1. 홈 새 구성(비행 중) ═══
-  check('1', '가입(데모 if2inflight)', await signUp(`if2inflight${width}@email.com`), '');
+  check('1', '가입(데모 if2inflight)', await signUp(`if2inflight${width}fortuneon@email.com`), '');
   check('1', '홈 블록이 보인다(스위치 inflight_home 데모 켜짐)', await waitVis('home-blocks', 12000), '');
   check('1', '홈 표시 inflight · 블록 B3 · B4 · B7(5 이하)', (await exists('home-state-inflight')) && JSON.stringify(await visIds(/^home-B\d$/)) === JSON.stringify(['home-B3', 'home-B4', 'home-B7']), (await visIds(/^home-B\d$/)).join(','));
   check('1', '할 일 줄(지금 T2) 0 — 새 구성으로 바뀜', !(await vis('boarding-tasks')), '');

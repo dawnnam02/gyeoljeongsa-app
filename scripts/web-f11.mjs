@@ -114,7 +114,7 @@ try {
   check('D', '07 확정 직후 08(처음 한 번): 탭바 없음 · 왼쪽 위 ‹ 있음 · 오른쪽 위 원형 사진 없음', tabs08 === 0 && (await q('profile-header-back')) && !(await q('profile-button')), `탭 ${tabs08}`);
   const foot = await rect(sel('profile-first-confirm'));
   const inner08 = await b.evaluate('window.innerHeight');
-  check('D', '08 저장 바(버튼)는 화면 바닥에 붙는다: 버튼 아래 여백 20', foot && Math.abs(inner08 - foot.b - 20) <= 1.5, foot ? `버튼 아래 ${Math.round(inner08 - foot.b)}` : '버튼 없음');
+  check('D', '08 저장 바(버튼)는 화면 바닥에 붙는다: 버튼 아래 여백 16(D42 새판)', foot && Math.abs(inner08 - foot.b - 16) <= 1.5, foot ? `버튼 아래 ${Math.round(inner08 - foot.b)}` : '버튼 없음');
   await note('F11_탭_08_처음확인_바닥저장바_360x740.png');
   await measure('08 처음 한 번');
   // ‹ → 쌓인 화면이 없으니(07 을 갈아 끼웠다) 09
@@ -125,26 +125,27 @@ try {
   check('A', '[확인했어요] → 09', await confirmFirst(), `경로 ${await path0()}`);
 
   const t1 = await tabs();
-  check('A', '탭 4개: 추천 · 호감 · 상점 · 설정 순서, 프로필 칸 없음', t1.map((t) => t.text).join(',') === '추천,호감,상점,설정' && t1.map((t) => t.text).join(',') === Object.values(TABS).join(','), t1.map((t) => t.text).join(','));
+  // V5 W6: 탭이 6개(탑승권 · 채팅 · 추천 · 호감 · 상점 · 설정). 프로필 칸은 여전히 없다. 탭 이름은 카피 TABS 와 BOARDING · 채팅 이름이 같아야 한다
+  check('A', '탭 6개: 탑승권 · 채팅 · 추천 · 호감 · 상점 · 설정 순서, 프로필 칸 없음', t1.map((t) => t.text).join(',') === '탑승권,채팅,추천,호감,상점,설정' && ['추천', '호감', '상점', '설정'].join(',') === Object.values(TABS).join(','), t1.map((t) => t.text).join(','));
   const on1 = t1.filter((t) => t.selected === 'true');
-  check('A', '현재 탭 1개(추천) = 면 accentSoft 아이콘 + Bold, 나머지 3개 = 선만(D42-C)', on1.length === 1 && on1[0].text === '추천' && on1[0].icon === 'filled' && /Bold/.test(on1[0].family) && t1.filter((t) => t.icon === 'line').length === 3, JSON.stringify(t1.map((t) => `${t.text}:${t.icon}`)));
+  check('A', '현재 탭 1개(추천) = 면 accentSoft 아이콘 + Bold, 나머지 5개 = 선만(D42-C)', on1.length === 1 && on1[0].text === '추천' && on1[0].icon === 'filled' && /Bold/.test(on1[0].family) && t1.filter((t) => t.icon === 'line').length === 5, JSON.stringify(t1.map((t) => `${t.text}:${t.icon}`)));
 
   // B. 09 머리 오른쪽 위 원형 사진
   const btn = await rect('[aria-label="내 프로필"]');
   const av = await rect(sel('profile-button-avatar'));
   const innerW = await b.evaluate('window.innerWidth');
-  check('B', '09 머리 오른쪽 위: 버튼 터치 44 × 44 · 사진 원 32 × 32, 원의 오른쪽 끝이 화면 끝에서 20(터치 끝은 14) · 원이 터치 영역 가운데', btn && av && Math.round(btn.w) === 44 && Math.round(btn.h) === 44 && Math.round(av.w) === 32 && Math.round(av.h) === 32 && Math.abs(innerW - av.r - 20) <= 1 && Math.abs(innerW - btn.r - 14) <= 1 && Math.abs(btn.l + 22 - (av.l + 16)) <= 1,
+  check('B', '09 머리 오른쪽 위: 버튼 터치 48 × 48 · 사진 원 32 × 32, 원의 오른쪽 끝이 화면 끝에서 20(터치 끝은 12) · 원이 터치 영역 가운데(D42 새판: 터치 최소 48)', btn && av && Math.round(btn.w) === 48 && Math.round(btn.h) === 48 && Math.round(av.w) === 32 && Math.round(av.h) === 32 && Math.abs(innerW - av.r - 20) <= 1 && Math.abs(innerW - btn.r - 12) <= 1 && Math.abs(btn.l + 24 - (av.l + 16)) <= 1,
     btn && av ? `버튼 ${Math.round(btn.w)}×${Math.round(btn.h)} 끝 ${Math.round(innerW - btn.r)} · 원 ${Math.round(av.w)}×${Math.round(av.h)} 끝 ${Math.round(innerW - av.r)}` : '못 찾음');
   const round = await b.evaluate(`getComputedStyle(window.__q('profile-button-avatar')).borderRadius`);
   check('B', '원은 둥글다(지름의 절반 둥글기)', parseFloat(round) >= 16, round);
   const head = await rect(sel('recs-header'));
-  check('B', '머리 높이 52 · 버튼은 머리 세로 가운데', head && btn && Math.round(head.h) === 52 && Math.abs((btn.t + btn.h / 2) - (head.t + head.h / 2)) <= 1, head ? `머리 ${Math.round(head.h)}` : '');
+  check('B', '머리 높이 56 · 버튼은 머리 세로 가운데', head && btn && Math.round(head.h) === 56 && Math.abs((btn.t + btn.h / 2) - (head.t + head.h / 2)) <= 1, head ? `머리 ${Math.round(head.h)}` : '');
   const label = await b.evaluate(`document.querySelector('[aria-label="내 프로필"]')?.getAttribute('role') + '|' + document.querySelector('[aria-label="내 프로필"]')?.getAttribute('aria-label')`);
   check('B', '접근성: 이름 "내 프로필" · 역할 버튼', label === `button|${A11Y.myProfile}`, label);
   // C. 다음 추천까지: 머리가 아니라 부제 아래
   const sub = await rect(sel('recs-subtitle'));
   const rem = await rect(sel('recs-remaining'));
-  check('C', '09 "다음 추천까지"는 머리 오른쪽이 아니라 부제 바로 아래 작은 글 한 줄(간격 4, 글자 12)', head && sub && rem && rem.t >= head.b && rem.t >= sub.b && rem.t - sub.b <= 8 && rem.t - sub.b >= 2 && (await b.evaluate(`parseFloat(getComputedStyle(window.__q('recs-remaining')).fontSize)`)) === 12 && /다음 추천까지/.test(await inner('recs-remaining')), sub && rem ? `부제 아래 ${Math.round(rem.t - sub.b)}` : '');
+  check('C', '09 "다음 추천까지"는 머리 오른쪽이 아니라 부제 바로 아래 작은 글 한 줄(알약, 간격 7, 글자 13)', head && sub && rem && rem.t >= head.b && rem.t >= sub.b && rem.t - sub.b <= 8 && rem.t - sub.b >= 2 && (await b.evaluate(`parseFloat(getComputedStyle(window.__q('recs-remaining')).fontSize)`)) === 13 && /다음 추천까지/.test(await inner('recs-remaining')), sub && rem ? `부제 아래 ${Math.round(rem.t - sub.b)}` : '');
   await b.waitFor(`!!window.__q('profile-button-avatar') && !window.__q('profile-button-avatar-default')`, 6000);
   check('F', '확인 중인 사진은 본인 화면에서 원 안에 사진으로 보인다(기본 그림이 아님)', (await avatarKind('profile-button-avatar')) === 'photo', await avatarKind('profile-button-avatar'));
   await measure('09 오늘의 추천');
@@ -157,7 +158,7 @@ try {
   check('D', '08: 탭바 없음 · ‹ 있음 · 제목 "내 프로필" · 원형 사진 버튼 없음(보이는 것 기준)', tabs08b === 0 && (await q('profile-header-back')) && (await has('내 프로필')) && (await visibleCount('[aria-label="내 프로필"]')) === 0, `보이는 탭 ${tabs08b}`);
   const save = await rect(sel('profile-save'));
   const ih = await b.evaluate('window.innerHeight');
-  check('D', '08 저장 바: 버튼이 화면 바닥에 붙는다(아래 여백 20, 좌우 20)', save && Math.abs(ih - save.b - 20) <= 1.5 && Math.abs(save.l - 20) <= 1 && Math.abs(360 - save.r - 20) <= 1, save ? `아래 ${Math.round(ih - save.b)} · 좌 ${Math.round(save.l)} · 우 ${Math.round(360 - save.r)}` : '');
+  check('D', '08 저장 바: 버튼이 화면 바닥에 붙는다(아래 여백 16, 좌우 20)', save && Math.abs(ih - save.b - 16) <= 1.5 && Math.abs(save.l - 20) <= 1 && Math.abs(360 - save.r - 20) <= 1, save ? `아래 ${Math.round(ih - save.b)} · 좌 ${Math.round(save.l)} · 우 ${Math.round(360 - save.r)}` : '');
   const big = await rect(sel('profile-face-avatar'));
   check('F', '08 큰 사진 칸 72 원(사진 확인 중이면 사진, 없으면 기본 그림)', big && Math.round(big.w) === 72 && Math.round(big.h) === 72, big ? `${Math.round(big.w)}×${Math.round(big.h)}` : '');
   await measure('08 내 프로필');
@@ -171,7 +172,8 @@ try {
   const on2 = t2.filter((t) => t.selected === 'true' && t.icon === 'filled' && /Bold/.test(t.family));
   check('A', '16 에서 켜진 탭은 상점 하나', on2.length === 1 && on2[0].text === '상점' && t2.filter((t) => t.icon === 'filled').length === 1, on2.map((t) => t.text).join(','));
   const t16 = await text();
-  check('E', '16 상점: 머리 "상점" · 카드 하나(내 성향 리포트 · 무료 · 한 줄 설명) · "준비 중" · 가격 · 등급 · 구독 말 없음', t16.includes(SHOP.headerTitle) && (await inner('shop-report-title')) === SHOP.reportTitle && (await inner('shop-report-free')) === SHOP.reportFree && (await inner('shop-report-body')) === SHOP.reportBody && !/준비 중|원|등급|구독|결제|구매/.test(await inner('screen-16')) && (await b.evaluate(`document.querySelectorAll('[data-testid="shop-report"]').length`)) === 1, '');
+  // F13 이후 16 상점은 무료 '내 성향 리포트' 행(shop-free) + 상품 목록이다. 카드 하나 · 준비 중 · 가격 · 등급 말 없음은 0단계(F11) 기대라 뺀다
+  check('E', '16 상점: 머리 "상점" · 무료 영역 한 칸(shop-free)에 내 성향 리포트 · 무료 · 한 줄 설명', t16.includes(SHOP.headerTitle) && (await inner('shop-report-title')) === SHOP.reportTitle && (await inner('shop-report-free')) === SHOP.reportFree && (await inner('shop-report-body')) === SHOP.reportBody && (await b.evaluate(`document.querySelectorAll('[data-testid="shop-report-title"]').length`)) === 1, '');
   const btn16 = await rect('[aria-label="내 프로필"]');
   check('B', '16 머리 오른쪽 위에도 같은 자리의 원형 사진', btn16 && Math.abs(btn16.r - btn.r) <= 0.5 && Math.abs(btn16.t - btn.t) <= 0.5, btn16 ? `끝 ${Math.round(360 - btn16.r)}` : '');
   await measure('16 상점');
@@ -239,7 +241,7 @@ try {
   await b.open('/profile', `!!window.__q('profile-header') || document.body.innerText.includes('내 프로필')`);
   check('D', '옛 프로필 탭 주소(/profile)를 바로 열어도 08 이 열린다(탭바 없음 · ‹ 있음)', (await path0()) === '/profile' && (await has('내 프로필')) && (await visibleCount('[role=tab]')) === 0 && (await q('profile-header-back')), `경로 ${await path0()}`);
   await b.click(sel('profile-header-back'));
-  check('D', '쌓인 화면이 없을 때 ‹ → 09(/recommendations)', await b.waitFor(`location.pathname === '/recommendations'`, 8000), `경로 ${await path0()}`);
+  check('D', '쌓인 화면이 없을 때 ‹ → 홈(/boarding · V5 W6 부터 홈이 탑승권)', await b.waitFor(`location.pathname === '/boarding'`, 8000), `경로 ${await path0()}`);
 
   // ═══ G. 공통 ═══
   const bad = b.errors.filter((e) => !/Failed to load resource/.test(e));

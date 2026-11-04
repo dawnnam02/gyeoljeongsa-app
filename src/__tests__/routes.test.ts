@@ -26,7 +26,7 @@ function routeFiles(dir: string, base = ''): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) return routeFiles(full, `${base}/${entry.name}`);
-    if (!entry.name.endsWith('.tsx') || entry.name.startsWith('_') || entry.name === 'index.tsx') return [];
+    if (!entry.name.endsWith('.tsx') || entry.name.startsWith('_') || entry.name.startsWith('+') || entry.name === 'index.tsx') return []; // +not-found(없는 주소 안내, QF2 F-13)는 화면 ID 가 아닌 특수 파일
     const route = `${base}/${entry.name.replace(/\.tsx$/, '')}`.replace(/\/\([^)]*\)/g, '');
     return [route];
   });
