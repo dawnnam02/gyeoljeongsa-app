@@ -9,11 +9,11 @@ import type { ResponseCode } from './codes.ts';
 import type { HttpReply, Mode } from './reply.ts';
 import { replyCard, replyError, replyOk } from './reply.ts';
 import type { Counters, Guard, LogRecord } from './limits.ts';
-import { checkAccessCode, consume, consumeChatCall, featureCosts, logRecord, refund, ACCESS_HEADER, GUARD } from './limits.ts';
+import { checkAccessCode, consume, consumeChatCall, featureCosts, logRecord, refund, refundCount, ACCESS_HEADER, GUARD } from './limits.ts';
 import type { MessagesBody } from './request.ts';
 import { buildChatRequest, buildOneShotRequest, pickChatModel } from './request.ts';
 import type { ChatEnvelope, ChatInput } from './chat.ts';
-import { finishTurn, newSession, prepareTurn } from './chat.ts';
+import { applyCrisisCard, finishTurn, newSession, prepareTurn } from './chat.ts';
 import { finishCoach, finishCompat, finishHoroscope, prepareCoach, prepareCompat, prepareHoroscope, buildCompatSystem } from './features.ts';
 import type { ApiResultLike } from './features.ts';
 import { activeCards, buildChatSystem, cardIndex, parseCards } from './cards.ts';
@@ -185,6 +185,17 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
   const prep = prepareTurn(env, input);
   if (prep.kind === 'reject') { emit('chat', { code: prep.code }); return replyError(plain(prep.code), mode); }
   if (prep.kind === 'card') {
+    // AI-FIX6 ④: 폭력 낱말이 걸린 글은 입력 판정을 함께 불러, 글쓴이가 하는 쪽(가해, harm)이면 피해자용 폭력 카드 대신 오용 카드로 보낸다.
+    //  판정이 실패하거나 harm 이 아니거나 연타 한도에 걸리면 폭력 안전 카드를 **그대로** 낸다(안전한 쪽). 위기 · 가해 의도 카드는 prepareTurn 에서 이 앞에 이미 돌았다.
+    if (prep.violenceJudge && mode === 'live' && consumeChatCall(deps.counters, POOL, deps.now(), deps.guard ?? GUARD, 0).ok) {
+      const vReq = buildInputJudgeRequest(prep.violenceJudge.texts);
+      let vj = await judgeCall(deps, vReq, parseInputJudge);
+      if (!vj.ok && (vj.code === 'upstream' || vj.code === 'timeout' || vj.code === 'rate')) vj = await judgeCall(deps, vReq, parseInputJudge);
+      if (vj.ok && vj.value === 'harm') {
+        emit('chat', { code: 'refused_intent' });
+        return replyCard('refused_intent', MISUSE_CARD, mode, await seal(prep.violenceJudge.plainEnv));
+      }
+    }
     emit('chat', { code: prep.code });                       // 로그에는 코드만(낱말 · 판정 0)
     return replyCard(prep.code, prep.card, mode, await seal(prep.env));
   }
@@ -199,7 +210,7 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
   }
 
   if (prep.call.softMisuse && mode !== 'live') {          // 판정 없이는 사전 결과(카드)로 닫는다
-    refund(deps.counters, POOL, 'chat_call', est);
+    refundCount(deps.counters, POOL, 'chat_call', est);
     emit('chat', { code: 'refused_intent' });
     return replyCard('refused_intent', MISUSE_CARD, mode, await seal(prep.env));
   }
@@ -212,13 +223,18 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
     let j = await judgeCall(deps, inReq, parseInputJudge);
     if (!j.ok && (j.code === 'upstream' || j.code === 'timeout' || j.code === 'rate')) j = await judgeCall(deps, inReq, parseInputJudge);   // 일시 연결 오류 한 번 더
     if (j.ok && j.value === 'harm') {
-      refund(deps.counters, POOL, 'chat_call', est);
+      refundCount(deps.counters, POOL, 'chat_call', est);
       emit('chat', { code: 'refused_intent' });
       return replyCard('refused_intent', MISUSE_CARD, mode, await seal(prep.env));
     }
+    if (j.ok && j.value === 'crisis') {                        // AI-FIX6 ⑤: 사전이 못 잡은 간접 위기 표현 — 위기 카드를 올리는 방향으로만 쓴다(내리는 일 없음)
+      refundCount(deps.counters, POOL, 'chat_call', est);
+      emit('chat', { code: 'crisis' });
+      return replyCard('crisis', CRISIS_CARD, mode, await seal(applyCrisisCard(prep.env)));
+    }
     if (!j.ok) {
       if (j.code === 'spend_limit') { emit('chat', { code: 'spend_limit' }); return replyError('spend_limit', mode); }
-      refund(deps.counters, POOL, 'chat_call', est);       // 챗봇을 부르지 않았으니 이 턴은 차감 0 · 봉투는 그대로(새 서명 묶음 없음)
+      refundCount(deps.counters, POOL, 'chat_call', est);       // 챗봇을 부르지 않았으니 이 턴은 차감 0 · 봉투는 그대로(새 서명 묶음 없음)
       if (prep.call.softMisuse) {                          // 사전이 걸렸는데 판정도 못 했다 → 안전한 쪽(사전 결과: 오용 카드)
         emit('chat', { code: 'refused_intent' });
         return replyCard('refused_intent', MISUSE_CARD, mode, await seal(prep.env));
@@ -288,12 +304,12 @@ async function handleOneShot(feature: Exclude<Feature, 'chat'>, body: Record<str
     let j = await judgeCall(deps, inReq, parseCoachInputJudge);
     if (!j.ok && (j.code === 'upstream' || j.code === 'timeout' || j.code === 'rate')) j = await judgeCall(deps, inReq, parseCoachInputJudge);
     if (j.ok && j.value !== 'normal') {
-      refund(deps.counters, POOL, feature, costOf[feature]);
+      refundCount(deps.counters, POOL, feature, costOf[feature]);
       emit(feature, { code: 'refused_intent' });
       return replyCard('refused_intent', COACH_REFUSED_CARD, mode);
     }
     if (!j.ok) {
-      refund(deps.counters, POOL, feature, costOf[feature]);
+      refundCount(deps.counters, POOL, feature, costOf[feature]);
       emit(feature, { code: j.code === 'spend_limit' ? 'spend_limit' : 'timeout' });
       return j.code === 'spend_limit' ? replyError('spend_limit', mode) : replyError('timeout', mode, { text: JUDGE_RETRY_LINE });
     }
@@ -326,13 +342,13 @@ async function handleOneShot(feature: Exclude<Feature, 'chat'>, body: Record<str
       if (plan.items.length > 0) {
         const j = await judgeCall(deps, buildOneShotOutputJudgeRequest(feature, plan), (r) => parseOneShotOutputJudge(feature, r, plan.items.length));
         if (!j.ok) {
-          refund(deps.counters, POOL, feature, costOf[feature]);
+          refundCount(deps.counters, POOL, feature, costOf[feature]);
           emit(feature, { code: j.code, ...usage });
           return replyError(j.code, mode);
         }
         const applied = applyOneShotJudge(feature, shown as never, plan, j.value);
         if (applied === null) {
-          refund(deps.counters, POOL, feature, costOf[feature]);
+          refundCount(deps.counters, POOL, feature, costOf[feature]);
           emit(feature, { code: 'blocked_output', ...usage });
           return replyError('blocked_output', mode);
         }

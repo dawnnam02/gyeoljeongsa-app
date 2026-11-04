@@ -99,6 +99,8 @@ export interface ChatState {
   blocked: number;
   /** 위기 카드 뒤 첫 일반 턴에 고정 점검 한 줄을 이미 보였나(AI-FIX4 R-a) */
   checked?: boolean;
+  /** 방금 검사에 걸려 보여 주지 못한 답에서 걸린 낱말(최대 6개) — 다음 시도에서 모델이 그 낱말을 피해 풀어 쓰게 상태 줄로 알린다(막다른 길 줄이기, AI-FIX6 ②) */
+  avoid?: string[];
   slots: StoredSlots;
   chips: { problem_confirmed?: boolean; reaction?: 'yes' | 'some' | 'no'; my_state?: number; unknown?: boolean; stage_code?: string; enough?: boolean };
 }
@@ -296,9 +298,17 @@ export interface CallSpec {
 
 export type Prepared =
   | { kind: 'reject'; code: ResponseCode; why: string }
-  | { kind: 'card'; code: 'crisis' | 'refused_intent'; card: FixedCard; env: ChatEnvelope }
+  | { kind: 'card'; code: 'crisis' | 'refused_intent'; card: FixedCard; env: ChatEnvelope; violenceJudge?: { texts: { asker: string; partner: string }; plainEnv: ChatEnvelope } }
   | { kind: 'end'; code: 'ok'; env: ChatEnvelope; display: DisplayTurn }
   | { kind: 'call'; env: ChatEnvelope; call: CallSpec };
+
+/** 입력 판정이 위기(crisis)로 읽은 글에 위기 카드를 내고 세는 새 봉투(AI-FIX6 ⑤). 위기를 올리는 방향으로만 쓴다 */
+export function applyCrisisCard(env: ChatEnvelope): ChatEnvelope {
+  const e = cloneEnv(env);
+  e.state.crisisCards += 1;
+  if (e.state.crisisCards >= CHAT_LIMITS.maxCrisisCards) e.state.ended = true;
+  return e;
+}
 
 function cloneEnv(env: ChatEnvelope): ChatEnvelope {
   return { ...env, state: { ...env.state, slots: { ...env.state.slots }, chips: { ...env.state.chips } } };
@@ -334,9 +344,14 @@ export function prepareTurn(envIn: ChatEnvelope, input: ChatInput): Prepared {
     return { kind: 'card', code: 'crisis', card: safe.card, env };
   }
   if (safe && safe.kinds[0] === 'violence' && !st.safety) {
+    // AI-FIX6 ④: 폭력 낱말이 든 **가해 문장**("제가 남친을 미행해 보려는데")에 피해자용 폭력 카드가 나가던 것 — 호출하는 쪽이 입력 판정을 함께 불러 harm 이면
+    //  오용 카드로 바꾼다(그때 쓰도록 안전 트랙을 켜기 전 봉투를 함께 돌려준다). 판정이 실패하면 이 폭력 카드를 그대로 낸다. 위기 · 가해 의도 카드는 이 앞에서 이미 돌았다.
+    const plainEnv = cloneEnv(env);
     st.safety = true;
     if (safe.endSession) st.ended = true;
-    return { kind: 'card', code: 'crisis', card: safe.card, env };
+    const kn = { partnerNames: [] as string[] };
+    const violenceJudge = safe.endSession ? undefined : { texts: { asker: maskText(askerRaw, kn).text, partner: maskText(partnerRaw, kn).text }, plainEnv };
+    return { kind: 'card', code: 'crisis', card: safe.card, env, violenceJudge };
   }
   if (st.ended) {
     return { kind: 'end', code: 'ok', env, display: summaryCard(env) };
@@ -347,7 +362,7 @@ export function prepareTurn(envIn: ChatEnvelope, input: ChatInput): Prepared {
   let softMisuse = false;
   if (hits.includes('misuse')) {
     const whole = askerRaw + ' ' + partnerRaw;
-    if (VICTIM_FEELING.test(whole) && !HARM_ASK.test(whole)) softMisuse = true;
+    if ((VICTIM_FEELING.test(whole) || THIRD_DISSUADE.test(whole)) && !HARM_ASK.test(whole)) softMisuse = true;
     else return { kind: 'card', code: 'refused_intent', card: MISUSE_CARD, env };
   }
   if (hits.includes('minor')) { st.ended = true; return { kind: 'card', code: 'refused_intent', card: MINOR_CARD, env }; }
@@ -396,6 +411,7 @@ export function prepareTurn(envIn: ChatEnvelope, input: ChatInput): Prepared {
     user_turn: userN,
     need: needStrings(plan),
     slots: resolved.slots,
+    ...(resolved.avoid && resolved.avoid.length ? { avoid: resolved.avoid } : {}),
   });
   const userContent = stateLine + '\n' + wrapTurn(userN, askerText, mP.text);
   const messages: ApiMessage[] = [...env.messages, { role: 'user', content: userContent }];
@@ -430,9 +446,13 @@ export interface EvalResult {
   blockers: string[];
   flags: ModelFlag[];
   slotsPatch: StoredSlots;
+  /** 사전이 건 낱말(문장을 떨구거나 답을 막은 것) — 최대 6개 · 12자 이하 */
+  hitWords: string[];
 }
 
 const VICTIM_FEELING = /무서|무섭|속상|힘들|불안|답답|서운|걱정|두렵|괴롭|당하|당했|당해|시달|스트레스|싫어|불편|것\s?같|거\s?같|느낌|듯해|제\s?(?:휴대폰|핸드폰|폰|카톡|계정|메시지|메신저|위치|사진)|저를|나를|저한테|나한테/;
+/** 제3자(친구 · 가족 …)가 복수 · 보복을 하겠다는데 말리고 싶다는 글 — 낱말(복수)로 바로 카드로 닫지 않고 입력 판정에 넘긴다(AI-FIX6 ③) */
+const THIRD_DISSUADE = /(?:친구|동생|언니|오빠|형|누나|지인|동료|후배|선배|가족|엄마|아빠|아들|딸|친척)(?:이|가|는|은)[^.]{0,40}(?:말리|말려|막고\s?싶|막아야|막을|그만두게|하지\s?못하게)|(?:말리|말려|막고\s?싶|막아야)[^.]{0,40}(?:친구|동생|언니|오빠|형|누나|지인|동료|가족)/;
 const HARM_ASK = /방법|하는\s?법|알려\s?줘|알려\s?주세요|가르쳐/;   // 방법을 묻는 말만 사전 그대로 카드. 하겠다는 말(~하려고 · ~할래)은 판정이 가린다
 const REF_USER = /^내 말 ([1-9][0-9]*)$/;   // 턴 상한이 없어 세 자리 번호도 나온다
 const REF_CARD = /^K-[1-9][0-9]?$/;
@@ -447,6 +467,13 @@ const VICTIM_REPORT_SOFT = /(?:느낌|마음|말|생각|일)[^.]{0,14}(?:것으�
 const VICTIM_QUESTION_ECHO = /(?:느끼|느껴|하셨|말씀|들으|들었|쓰셨)/;
 const FIT_USER = /안\s?맞|맞지\s?않|잘\s?맞/;
 const FIT_STEM = /안 ?맞|맞지 않|잘 ?맞/g;
+const FIT_PAIR = /두 ?분|상대|사이|사람|서로|우리|관계|궁합|성격|성향|둘이|연인|그분|그 ?사람/;
+const FIT_PAIR_AFTER = /사이|사람|관계|궁합/;
+/** 사용자가 쓴 말을 보고형으로 되짚을 때 검사에서 빼는 낱말(사용자 글에 같은 낱말이 있을 때만) */
+const ECHO_EXEMPT: ReadonlyArray<{ user: RegExp; strip: RegExp }> = [
+  { user: /자존감/, strip: /자존감 ?(?:이 ?)?(?:바닥|낮|없|문제)/g },          // c_symptom
+  { user: /떠보/, strip: /떠보/g },                                            // c_manip
+];
 const VICTIM_ADVICE = /보세요|해 ?보|해 ?주세요|하세요|방법|쪽으로|좋겠|권해|보시면|볼 ?수|드릴게|효과|좋다고|좋아요|낫|나아 ?보|도움이 ?되|유용|해야|돼요|하면 ?돼|하는 ?게 ?좋|전해 ?보/;
 /** 틀 뒤에 조건 꼴(면 · 듯이 · 하면서 · 려면)이 오거나, 틀 가까이에 사람 · 성향 · 타입 같은 낙인 꼴이 오면 풀지 않는다(AI-FIX4 M1: "조종하려는 느낌을 주면 …" · "길들이려는 성향의 사람") */
 const VICTIM_AFTER_BAD = /면[\s,]|듯이|하면서|려면/;
@@ -486,7 +513,7 @@ export function isQuestionForm(t: string): boolean {
 
 /** 모델 출력 하나를 검사한다. 문장마다: 종류 허용 · 길이 · 금지어 · 해요체 · 근거 번호(내 말 n은 원문 인용 대조, K-n은 카드 목록 · 단계) · 조심스러운 말투. */
 export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
-  const res: EvalResult = { ok: false, sentences: [], dropped: [], blockers: [], flags: [], slotsPatch: {} };
+  const res: EvalResult = { ok: false, sentences: [], dropped: [], blockers: [], flags: [], slotsPatch: {}, hitWords: [] };
   // 모델 표지(위기 · 폭력 · 미성년 …)는 문장이 비어 있거나 틀이 조금 어긋나도 먼저 읽는다 — 위기 표지를 단 모델이 문장을 비워 보내면(실호출 E1R4 crisis_cr07 3/3)
   //  카드가 아니라 탈락으로 끝나던 길을 막는다. 표지가 있으면 finishTurn 이 응답 전체를 고정 카드로 바꾼다(위기 흐름은 형식 때문에 막히지 않는다).
   if (isRecord(raw) && Array.isArray(raw.flags)) res.flags = (raw.flags as unknown[]).filter((f): f is ModelFlag => typeof f === 'string' && (MODEL_FLAGS as readonly string[]).includes(f));
@@ -519,8 +546,14 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
       if (kind !== 'restate' && kind !== 'problem_line' && kind !== 'question') return t;
       let u = worryOk ? t.replace(WORRY_FRAME, '') : t;
       if (victimStems.length) u = unwrapVictimFrame(u, victimStems, kind === 'question');
-      // AI-FIX5 D4: 사용자가 "안 맞아"라고 쓴 일을 되짚는 보고형 문장은 c_fit(잘 맞음/안 맞음 판정)에서 그 낱말만 뺀다 — 일정 · 시간이 안 맞는 이야기까지 판정 낱말로 지우지 않으려고
-      if (FIT_USER.test(lastAsker) && !VICTIM_ADVICE.test(t) && (kind === 'question' ? /\?\s*$/.test(t.trim()) && VICTIM_QUESTION_ECHO.test(t) : VICTIM_REPORT_END.test(t.trim()) || VICTIM_REPORT_SOFT.test(t.trim()))) u = u.replace(FIT_STEM, '');
+      // 사용자가 쓴 말을 되짚는 보고형 문장에서만, 그 말의 낱말을 사전에서 뺀다(AI-FIX5 D4 · AI-FIX6 ① ②). 보고형 = 끝말(군요 · 셨어요 …)이 있고 조언 낱말이 없음. 질문은 느낌을 되묻는 꼴만.
+      const reportForm = !VICTIM_ADVICE.test(t) && (kind === 'question' ? /\?\s*$/.test(t.trim()) && VICTIM_QUESTION_ECHO.test(t) : VICTIM_REPORT_END.test(t.trim()) || VICTIM_REPORT_SOFT.test(t.trim()));
+      if (reportForm) {
+        // c_fit: "안 맞는 / 맞지 않는" 앞뒤에 짝(두 분 · 상대 · 사이 · 사람 · 관계 …)이 있으면 AI 가 짝을 판정하는 문장이라 면제하지 않는다. "양가 일정이 안 맞는다" 같은 일정 · 시간 이야기만 풀어 준다
+        if (FIT_USER.test(lastAsker)) u = u.replace(FIT_STEM, (m, off: number, whole: string) => (FIT_PAIR.test(whole.slice(Math.max(0, off - 14), off)) || FIT_PAIR_AFTER.test(whole.slice(off + m.length, off + m.length + 8)) ? m : ''));
+        // 사용자가 직접 쓴 낱말(자존감이 바닥 · 떠보는 말투)을 되짚는 말은 그 낱말만 뺀다 — 피해를 털어놓는 첫 글이 3연속 막히던 것
+        for (const e of ECHO_EXEMPT) if (e.user.test(lastAsker)) u = u.replace(e.strip, '');
+      }
       return u;
     };
     const hits = checkText(scan(text), CHAT_RULES, { allowPhrases: CHAT_ALLOW_PHRASES });
@@ -532,7 +565,7 @@ export function evaluateChatOutput(raw: unknown, ctx: EvalContext): EvalResult {
       if (rch && !ch) hits.push(rch);
     }
     if (hits.length > 0) {
-      for (const h of hits) if (h.severity === 'block') res.blockers.push(h.id);
+      for (const h of hits) { if (h.severity === 'block') res.blockers.push(h.id); if (h.word && h.word.length <= 12 && !res.hitWords.includes(h.word) && res.hitWords.length < 6) res.hitWords.push(h.word); }
       return drop('rule:' + hits[0].id);
     }
     // 문장 끝
@@ -716,9 +749,10 @@ export function mergeConclusion(old: DisplaySentence[] | null, fresh: readonly D
 /** 업체 응답을 검사해 새 봉투와 화면용 턴을 만든다. 통과 못 하면 blocked(재호출 0 · 턴 안 올림) */
 export function finishTurn(prep: Extract<Prepared, { kind: 'call' }>, resp: ApiResult, cards: ReadonlyMap<string, EvidenceCard>, opts: { dropTexts?: ReadonlySet<string> } = {}): Finished {
   const { env, call } = prep;
-  const block = (reasons: string[]): Finished => {
+  const block = (reasons: string[], words: readonly string[] = []): Finished => {
     const e = cloneEnv(env);
     e.state.blocked += 1;
+    if (words.length) e.state.avoid = [...words]; else delete e.state.avoid;
     if (e.state.blocked >= CHAT_LIMITS.maxBlocked) e.state.ended = true;
     return { kind: 'blocked', code: 'blocked_output', reasons, env: e };
   };
@@ -744,7 +778,7 @@ export function finishTurn(prep: Extract<Prepared, { kind: 'call' }>, resp: ApiR
     const e = cloneEnv(env); e.state.ended = true;
     return { kind: 'card', code: 'refused_intent', card: MINOR_CARD, env: e };
   }
-  if (!ev.ok) return block([...new Set([...ev.blockers, ...ev.dropped.map((d) => d.reason)])]);
+  if (!ev.ok) return block([...new Set([...ev.blockers, ...ev.dropped.map((d) => d.reason)])], ev.hitWords.filter((w) => call.newTexts.asker.replace(/\s/g, '').includes(w.replace(/\s/g, ''))));   // 사용자가 직접 쓴 낱말만 '피할 낱말'로 돌려준다(모델이 낸 낱말은 서명 묶음 → 화면 쪽으로 새지 않게)
 
   // 새 봉투
   const st: ChatState = { ...call.stateAfterResolve, slots: { ...call.stateAfterResolve.slots }, chips: { ...call.stateAfterResolve.chips } };
@@ -758,6 +792,7 @@ export function finishTurn(prep: Extract<Prepared, { kind: 'call' }>, resp: ApiR
   const isFirstConclusion = call.stage === 'S5' && !st.s5Delivered;
   if (call.stage === 'S5') st.s5Delivered = true;
   st.blocked = 0;                // 검사 탈락은 '연속' 수 — 정상 답이 나오면 센 것을 지운다
+  delete st.avoid;
   const endedByEnough = call.chip === 'enough' && call.stage === 'S5';      // 마지막 말에 답한 뒤 끝낸다
   if (endedByEnough) st.ended = true;
   // AI-FIX2: 이력에는 글(text) 블록만 넣는다. 생각(thinking) 블록은 서명이 앞 이력과 묶여 있어, 접기(foldEnvelope)가 앞 턴을 자르거나 첫 메시지에 digest 를 붙이면 업체가 400 'Invalid signature in thinking block' 으로 거절한다 —

@@ -49,7 +49,7 @@ export const PARTNER: readonly Rule[] = [
 
 // ---------------------------------------------------------------- 챗봇 (본인 예외 10-30 · 보안 D-5)
 // block = 사용자에게 보이면 안 되는 안전선(응답 전체 탈락). drop = 문장만 탈락.
-export const CHAT_RULES: readonly Rule[] = [
+export const CHAT_RULES: readonly Rule[] = Object.freeze([   // AI-FIX6 ⑦: 실행 중에 바꿀 수 없다(타입만 readonly 이던 배열)
   // 안전선(block)
   R('c_diagnosis', '병명 · 진단명', '자기애성|반사회|경계선|사이코패스|소시오패스|우울증|우울장애|불안장애|공황|ADHD|PTSD|조울|양극성|강박(증|장애)|애착장애|인격장애|성격장애|정신질환|정신병|정신분열|조현|치매|(중독자|중독이에요|중독입니다)', 'block', false, 'i'),
   R('c_label', '진단처럼 들리는 성격 라벨(처음엔 금지 · 보안 D-5)', '나르시|자기애|사이코|소시오|가스라이|경계선|병적|(불안|회피|혼란|안정)형|애착 ?유형|MBTI|\\b[EI][NS][TF][JP]\\b', 'block', false, 'i'),
@@ -78,13 +78,13 @@ export const CHAT_RULES: readonly Rule[] = [
   R('c_trans', '번역투', '당신|그대(?!로)|되어지|하는 것이 중요|(?<!안|밖|위|아래|앞|뒤|옆|곳|집|방|근처|거리|거기|여기|내|속|곁|까이)에 있어서|에 의해', 'drop'),   // AI-FIX2 R4: 장소 뒤 '집 안에 있어서'는 번역투가 아님
   R('c_thirdperson', '사용자 3인칭(화면 글에서 사용자를 3인칭 사용자로 부름)', '사 ?용 ?자|질문자|유저|이용자|내담자|고객님|회원님|당사자', 'drop'),   // AI-FIX2 F9
   R('c_formal', '합쇼체', '니다[.?\\s]|니다$', 'drop'),
-];
+]);
 
 /** 챗봇 출력에서 이 말은 지워 놓고 검사한다(진단을 못 한다고 밝히는 안내문) */
-export const CHAT_ALLOW_PHRASES: readonly string[] = ['진단은 할 수 없어요', '진단할 수 없어요', '진단은 못 해요'];
+export const CHAT_ALLOW_PHRASES: readonly string[] = Object.freeze(['진단은 할 수 없어요', '진단할 수 없어요', '진단은 못 해요']);
 
 // ---------------------------------------------------------------- 코치(내 공개 문구 다듬기)
-export const COACH_RULES: readonly Rule[] = [
+export const COACH_RULES: readonly Rule[] = Object.freeze([
   R('k_exclaim', '느낌표', '[!！]', 'drop'),
   R('k_emoji', '이모티콘 · 웃음', '[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]|ㅋ{2,}|ㅎ{2,}', 'drop', false, 'u'),
   R('k_looks', '외모', '외모|예쁘|예뻐|잘생|몸매|날씬|뚱뚱|얼굴|피부|미모|키가|살이 찌|살찌|살을 빼|다이어트|성형|매력적', 'block', true),
@@ -97,7 +97,7 @@ export const COACH_RULES: readonly Rule[] = [
   R('k_pro', '상담 · 진단 · 치료 · 코치 · 전문가', '상담|진단|치료|처방|임상|코치|카운슬러|힐링|전문가', 'block'),
   R('k_praise', '과장 칭찬', '완벽|최고|훌륭|대단|멋지|최상', 'drop'),
   R('k_auto', '대신 해 주겠다는 말', '자동으로|대신 ?(써|쓰|해)|바꿔 ?드릴게|고쳐 ?드릴게|알아서', 'block'),
-];
+]);
 
 export const RULESETS = {
   horoscope: [...COMMON, ...FORTUNE],

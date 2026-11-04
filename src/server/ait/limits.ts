@@ -38,7 +38,7 @@ export async function checkAccessCode(provided: unknown, expected: unknown): Pro
 /** 최종 안전망은 콘솔 작업 공간 월 지출 상한(약 $7 ≈ 1만 원). 서버 카운터는 이 값을 강제하지 않는다. */
 export const BUDGET = { monthlyWon: 10000 } as const;
 /** 원가 계산이 전제하는 챗봇 시스템 지시문 글자 수(카드 포함, 실제 지시문이 이보다 길어지면 시험이 깨진다) */
-export const ASSUMED_CHAT_SYSTEM_CHARS = 10500;   // AI-FIX3: 10,500(예민한 편 풀어 쓰기 · K-28 한 줄 추가). AI-FIX2: 실제 10,320자(대화 규칙 네 줄 추가). AI-FIX1 9,966자(질문 칸 규칙 + AI 검증 카드 글) → 10,000, A-QF2 9,537자 → 9,600
+export const ASSUMED_CHAT_SYSTEM_CHARS = 10600;   // AI-FIX3: 10,500(예민한 편 풀어 쓰기 · K-28 한 줄 추가). AI-FIX2: 실제 10,320자(대화 규칙 네 줄 추가). AI-FIX1 9,966자(질문 칸 규칙 + AI 검증 카드 글) → 10,000, A-QF2 9,537자 → 9,600
 const CHAT_SYSTEM_TOKENS = (k: number) => ASSUMED_CHAT_SYSTEM_CHARS * k + 500;   // + 출력 틀(grammar) 약 500토큰
 
 function chatSessionWon(model: ModelId, scenario: 'base' | 'high', warm = false): number {
@@ -124,6 +124,14 @@ export function consume(counters: Counters, key: string, feature: Feature, nowMs
 /** 챗봇의 업체 호출 하나마다 부른다(턴 · 검사 탈락 · 사용자 재전송 포함). 횟수 한도는 없고 연타 · 분당만 본다. */
 export function consumeChatCall(counters: Counters, key: string, nowMs: number, guard: Guard = GUARD, estWon = 0): ConsumeResult {
   return take(counters, key + '|chat_call', guard.perMinute.chat, guard, nowMs, estWon);
+}
+
+/** 판정(심사) 때문에 챗봇 · 단발 본 호출을 안 부른 턴의 **차감만** 되돌린다(AI-FIX6 ⑥). 분 창(연타 간격 · 분당)에는 그대로 남겨, 판정 실패 · harm 로 같은 시각에 연타해도 한도에 걸리게 한다.
+ *  `refund` 는 업체가 청구하지 않은 실패에서 분 창의 마지막 기록까지 빼지만, 이쪽은 심사 호출(비용이 든다)이 이미 나갔으므로 분 창을 비우지 않는다 */
+export function refundCount(counters: Counters, key: string, bucket: Feature | 'chat_call', estWon = 0): void {
+  const k = key + '|' + bucket;
+  if ((counters.used[k] ?? 0) > 0) counters.used[k] -= 1;
+  counters.spentWon = Math.max(0, counters.spentWon - estWon);
 }
 
 /** 업체가 토큰을 청구하지 않은 실패(요청 전 거절 · 5xx 등)만 되돌린다(분 창의 마지막 기록을 뺀다). blocked_output · timeout 은 돈이 이미 들었을 수 있어 되돌리지 않는다. */

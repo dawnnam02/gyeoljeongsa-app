@@ -30,7 +30,7 @@ export const MASK_PATTERNS: readonly MaskPattern[] = [
   { name: 'long_digits', source: '\\d[\\d\\s-]{6,}\\d', flags: '', mask: '[번호]' },
   { name: 'photo', source: 'data:image\\/|base64,|\\.(?:jpe?g|png|gif|webp|heic)\\b|\\/storage\\/v1\\/', flags: 'i', mask: '[링크]' },
 ];
-const MASK_ORDER = ['email', 'phone', 'url', 'handle', 'birthdate', 'long_digits', 'birth_zodiac', 'birth_year', 'birth_date2', 'birth_compact', 'birth_pillars', 'birth_ganji', 'birth_time', 'photo'];
+const MASK_ORDER = ['email', 'phone', 'url', 'bare_domain', 'chat_id', 'handle', 'birthdate', 'long_digits', 'birth_zodiac', 'birth_year', 'birth_date2', 'birth_compact', 'birth_pillars', 'birth_ganji', 'birth_time', 'photo'];
 
 // ---- IC5-48 · 상담 글 속 생일 가리기 넓힘(F0-A, 2026-10-31). 기존 7개(MASK_PATTERNS)와 따로 둔다.
 // 이유: MASK_PATTERNS 는 hasResidualPii · hasContactShape(모델 출력 검사)에도 쓰여서, 여기에 넣으면 모델이 쓴 세운 날짜('병오년 3월 12일')가 연락처 모양으로 걸린다.
@@ -66,7 +66,13 @@ export const BIRTH_PATTERNS: readonly MaskPattern[] = [
   // 태어난 시각: '오후 3시 반에 태어난' · '새벽 2시생' · '자시에 태어난' · '생시는 오후 3시'
   { name: 'birth_time', source: '(?:' + TIME + '|' + SIJIN + ')\\s*' + BORNWORD + '|(?:생시|태어난\\s*(?:시각|시간)|출생\\s*(?:시각|시간))\\s*(?:은|는|이|가|:)?\\s*(?:' + TIME + '|' + SIJIN + ')', flags: '', mask: '[번호]' },
 ];
-const MASK_ALL: readonly MaskPattern[] = [...MASK_PATTERNS, ...BIRTH_PATTERNS];
+// ---- Q2-26 · 맨주소(http 없는 주소)와 카톡 · 인스타 아이디를 말로 알려 주는 꼴. 기존 7개(MASK_PATTERNS)와 따로 둔다 — hasResidualPii · hasContactShape(모델 출력 검사)에 섞이지 않게(BIRTH_PATTERNS 와 같은 이유).
+//  backend/functions/_shared/ai/mask.ts 에도 같은 두 항목을 옮기도록 백엔드에 넘긴다(표는 ai/AIT/README.md 'Q2-26').
+export const CONTACT_EXTRA_PATTERNS: readonly MaskPattern[] = [
+  { name: 'bare_domain', source: '(?<![A-Za-z0-9@.-])(?:[A-Za-z0-9-]{2,}\\.)+(?:com|kr|net|io|org|me|app|link)(?:\\/\\S*)?(?![A-Za-z0-9])', flags: 'i', mask: '[링크]' },
+  { name: 'chat_id', source: '(?:카톡|카카오톡|카카오|인스타그램|인스타|오픈채팅|텔레그램|디엠|DM)\\s*(?:아이디|ID|id|계정)?\\s*(?:[:：=]|은|는|이|가)?\\s*[A-Za-z][A-Za-z0-9._-]{3,}', flags: '', mask: '[연락처]' },
+];
+const MASK_ALL: readonly MaskPattern[] = [...MASK_PATTERNS, ...BIRTH_PATTERNS, ...CONTACT_EXTRA_PATTERNS];
 
 export interface KnownValues {
   name?: string | null;          // 질문자 이름(안다면)
