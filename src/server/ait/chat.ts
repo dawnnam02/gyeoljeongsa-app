@@ -695,7 +695,9 @@ export function finishTurn(prep: Extract<Prepared, { kind: 'call' }>, resp: ApiR
   st.blocked = 0;                // 검사 탈락은 '연속' 수 — 정상 답이 나오면 센 것을 지운다
   const endedByEnough = call.chip === 'enough' && call.stage === 'S5';      // 마지막 말에 답한 뒤 끝낸다
   if (endedByEnough) st.ended = true;
-  const assistantContent = resp.content;
+  // AI-FIX2: 이력에는 글(text) 블록만 넣는다. 생각(thinking) 블록은 서명이 앞 이력과 묶여 있어, 접기(foldEnvelope)가 앞 턴을 자르거나 첫 메시지에 digest 를 붙이면 업체가 400 'Invalid signature in thinking block' 으로 거절한다 —
+  // 실호출 재평가(E1R2) path12_01 이 11턴째 접힌 뒤 12턴째에 그렇게 죽었다. 지난 턴의 생각 블록은 다음 요청에 필요 없다(도구 호출 없음).
+  const assistantContent = resp.content.filter((b) => isRecord(b) && b.type === 'text');
   const out: ChatEnvelope = {
     state: st,
     digest: env.digest ?? '',
