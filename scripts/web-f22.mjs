@@ -117,13 +117,13 @@ try {
   await wait(`!!window.__q('prelaunch-no')`);
   await sleep(600);
   const no = await visText('prelaunch-no');
-  check('1', `머리 '출연 준비' · 신청 번호(접수 날짜 + 4자리) + '순서를 뜻하는 번호는 아니에요.'`, (await visText('prelaunch-header')).startsWith('출연 준비') && /^신청 번호 \d{4}-\d{4}$/.test(no) && (await visText('prelaunch-no-note')) === '순서를 뜻하는 번호는 아니에요.', no);
+  check('1', `머리 '탑승 준비'(Q2-10g: 출연 → 탑승) · 신청 번호(접수 날짜 + 4자리) + '순서를 뜻하는 번호는 아니에요.'`, (await visText('prelaunch-header')).startsWith('탑승 준비') && /^신청 번호 \d{4}-\d{4}$/.test(no) && (await visText('prelaunch-no-note')) === '순서를 뜻하는 번호는 아니에요.', no);
   const steps = [];
   for (const s of ['identity', 'photos', 'survey', 'confirm']) steps.push(await visText(`prelaunch-steps-${s}`));
   check('1', '단계표 4칸(D-238): 본인 확인 · 나이 확인됨 → 사진 확인 중 → 결혼관 설문 확인됨 → 확정 아직 · 서류 칸 · 셀피 글 0', steps.join(' / ') === '본인 확인 · 나이 확인됨 / 사진 확인 중 / 결혼관 설문 확인됨 / 확정 아직' && !(await vis('prelaunch-steps-docs')) && !/셀피|서류/.test(await screenText()), steps.join(' / '));
   check('1', "첫 추천: '12월 23일 수요일 오후 6시'(날짜 · 요일 · 시각만)", (await visText('prelaunch-first-rec-when')) === '12월 23일 수요일 오후 6시', await visText('prelaunch-first-rec-when'));
   check('1', '기다리는 동안 할 일: 아는 분 미리 피하기 · 신청 잇기만(서류 인증 · 지인 확인 입구 0, D-238)', (await vis('prelaunch-task-avoid')) && !(await vis('prelaunch-task-docs')) && !(await vis('prelaunch-task-vouch')) && (await vis('prelaunch-task-link')), '');
-  check('1', "'방송 아님' 고지 한 줄", (await visText('prelaunch-notice')) === "'출연'은 결정사에서 쓰는 말이에요. 방송이나 촬영은 없어요.", await visText('prelaunch-notice'));
+  check('1', "출연 설명 고지 0(Q2-10g: 앱에서 출연이 사라져 폐지) · 화면에 출연 · 방송 글 0", !(await vis('prelaunch-notice')) && !/출연|방송|촬영/.test(await b.evaluate('window.__text()')), await b.evaluate(`(window.__text().match(/출연|방송|촬영/) || [''])[0]`));
   check('1', '탭바는 그대로(추천 탭 켜짐)', await b.evaluate(`[...document.querySelectorAll('[role=tab]')].some((t) => t.getAttribute('aria-selected') === 'true' && t.innerText.includes('추천'))`), '');
   await shot('1_대기_확인중');
   await measure('대기 화면(확인 중)');
@@ -154,7 +154,7 @@ try {
   // ═══ 3. 신청 잇기 시트 ═══
   await b.evaluate(`(() => { const el = [...document.querySelectorAll('[data-testid="prelaunch-link-open"]')].find((e) => window.__visible(e)); if (el) el.scrollIntoView({ block: 'center' }); })()`);
   await tap('prelaunch-link-open');
-  check('3', '[신청 잇기] → 시트(번호 · 코드 6자리 · 같은 글 · 고지)', (await wait(`!!window.__q('prelaunch-link-no') && window.__visible(window.__q('prelaunch-link-no'))`)) && (await visText('prelaunch-link-notice')) === "'출연'은 결정사에서 쓰는 말이에요. 방송이나 촬영은 없어요." && (await visText('prelaunch-link-same')) === '잇지 않아도 쓰는 데 차이는 없어요.', '');
+  check('3', '[신청 잇기] → 시트(번호 · 코드 6자리 · 같은 글 · 출연 고지 0)', (await wait(`!!window.__q('prelaunch-link-no') && window.__visible(window.__q('prelaunch-link-no'))`)) && !(await vis('prelaunch-link-notice')) && (await visText('prelaunch-link-same')) === '잇지 않아도 쓰는 데 차이는 없어요.', '');
   await sleep(500);
   await shot('3_잇기_시트');
   await measure('신청 잇기 시트');
@@ -180,7 +180,7 @@ try {
 
   // ═══ 4. 장면 ═══
   await scene('confirmed');
-  check('4', '확정: 확정 카드(첫 추천 12월 23일 수요일 오후 6시 · 하루 세 분 추천) · 로고 타일 찍힘 · 고지는 카드 안 한 번 · 지인 확인 할 일 0(D-238)', (await visText('prelaunch-confirmed-body')) === '확정됐어요. 첫 매칭은 12월 23일 수요일 오후 6시에 열려요. 탑승권을 사면 그날 나와 수준이 가장 잘 맞는 한 분과 이어져요.' && (await vis('prelaunch-stamp')) && (await vis('prelaunch-confirmed-notice')) && !(await vis('prelaunch-notice')) && !(await vis('prelaunch-task-vouch')) && (await vis('prelaunch-task-avoid')), await visText('prelaunch-confirmed-body'));
+  check('4', '확정: 확정 카드(첫 추천 12월 23일 수요일 오후 6시 · 하루 세 분 추천) · 로고 타일 찍힘 · 출연 고지 0(카드 안 · 밖 모두) · 지인 확인 할 일 0(D-238)', (await visText('prelaunch-confirmed-body')) === '확정됐어요. 첫 매칭은 12월 23일 수요일 오후 6시에 열려요. 탑승권을 사면 그날 나와 수준이 가장 잘 맞는 한 분과 이어져요.' && (await vis('prelaunch-stamp')) && !(await vis('prelaunch-confirmed-notice')) && !(await vis('prelaunch-notice')) && !(await vis('prelaunch-task-vouch')) && (await vis('prelaunch-task-avoid')), await visText('prelaunch-confirmed-body'));
   await sleep(800);
   await shot('4_확정');
   await measure('확정');

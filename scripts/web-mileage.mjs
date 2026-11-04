@@ -120,14 +120,15 @@ try {
   await goto('/saju');
   await tap('saju-ck17-agree');
   await waitVis('if2-ck17', 8000);
-  const boxes = await b.evaluate(`['c', 'd', 'e'].map((k) => { const el = [...document.querySelectorAll('[data-testid="if2-ck17-' + k + '"]')].find((e) => window.__visible(e)); return el ? el.getAttribute('aria-checked') : 'none'; })`);
-  check('2', 'CK17A 시트에 ③ 태어난 시각 · ④ 태어난 곳 · ⑤ 성별 칸(미리 체크 0)', boxes.every((x) => x === 'false'), boxes.join(','));
+  // D-247: 동의 시트의 '태어난 곳' 칸이 빠져 체크 칸은 a(생년월일) · c(시각) · d(성별) — 곳 칸(옛 d/e)이 다시 생기면 아래 '없음' 확인이 실패한다
+  const boxes = await b.evaluate(`['c', 'd'].map((k) => { const el = [...document.querySelectorAll('[data-testid="if2-ck17-' + k + '"]')].find((e) => window.__visible(e)); return el ? el.getAttribute('aria-checked') : 'none'; })`);
+  const placeGone = await b.evaluate(`!document.querySelector('[data-testid="if2-ck17-e"]')`); // D-247: 옛 ⑤ 칸(곳)이 없어야 한다
+  check('2', 'CK17A 시트에 ③ 태어난 시각 · ④ 성별 칸(태어난 곳 칸은 D-247로 없음 · 미리 체크 0)', boxes.every((x) => x === 'false') && placeGone, boxes.join(',') + (placeGone ? '' : ' · 옛 곳 칸 e 가 남음'));
   await measure('CK17A 시트');
   await b.shot(`MILE_동의시트_${width}.png`);
   await tap('if2-ck17-a');
   await tap('if2-ck17-c');
   await tap('if2-ck17-d');
-  await tap('if2-ck17-e');
   await tap('if2-ck17-go');
   await tap('saju-fill');
   await waitVis('saju-in-time-unknown', 8000);

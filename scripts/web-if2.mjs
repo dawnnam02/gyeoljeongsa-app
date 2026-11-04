@@ -226,12 +226,27 @@ try {
     await measure(`장면 ${sc.name}`);
     await b.shot(`IF2_홈_${sc.name}_${width}.png`);
   }
-  // ═══ 8. 내 여행 타입(3부-자) — 장면 reflect(= 탑승 전, B6 나를 알기) ═══
-  const firstNone = cp('TYPE_CARD.home.lineNone');
-  check('8', '홈 B6 내 여행 타입 칸: 타입은 있고 짐을 안 쌌으면 "짐을 싸면 …"', (await vis('home-B6-type')) && (await visText('home-B6-type-line')) === firstNone, await visText('home-B6-type-line'));
+  // ═══ 8. 내 여행 타입(3부-자 · Q2-11 엽서 먼저) — 장면 reflect(= 탑승 전, B6 나를 알기) ═══
+  //  엽서는 짐을 싸기 전에도 먼저 나온다. 짐 싸기는 [엽서 꾸미기]로 여는 선택 단계이고, 다 싸면 엽서에 짐 그림 일곱이 더해진다(타입은 그대로).
+  const homeTypeLine = await visText('home-B6-type-line');
+  check('8', '홈 B6 내 여행 타입 칸: 짐을 싸기 전에도 타입 이름이 보임(엽서 먼저)', (await vis('home-B6-type')) && lib.travelTypes.some((t) => homeTypeLine.includes(t.name)), homeTypeLine);
   await tap('home-B6-type');
-  check('8', '/type-card 짐 싸기 첫 화면(엽서 0)', await b.waitFor(`location.pathname === '/type-card' && !!${visQ('type-quiz')}`, 10000), await b.evaluate('location.pathname'));
-  check('8', '짐 싸기: 안내 두 줄 + 첫 문항(라이브러리) · 진행 숫자 0', (await visText('type-quiz-intro')) === cp('TYPE_CARD.quiz.intro') && (await visText('type-quiz-note')) === cp('TYPE_CARD.quiz.picksNote') && (await visText('type-quiz-question')) === lib.packQuiz[0].q && !(await vis('type-postcard')), '');
+  check('8', '/type-card 첫 화면: 엽서가 먼저 나옴(짐 싸기 질문은 아직 0)', (await b.waitFor(`location.pathname === '/type-card' && !!${visQ('type-postcard')}`, 10000)) && !(await vis('type-quiz')), await b.evaluate('location.pathname'));
+  const typeName = await visText('type-name');
+  const typeLib = lib.travelTypes.find((t) => t.name === typeName);
+  check('8', '엽서 앞(짐 전): 타입 이름 · 앞면 한 줄 = 라이브러리 · 짐 그림 0', !!typeLib && (await visText('type-line')) === typeLib?.line && (await visIds(/^type-postcard-item-/)).length === 0, typeName);
+  check('8', '[엽서 꾸미기] 선택 단추 + 안내 "타입은 그대로예요"', (await vis('type-decorate')) && (await visText('type-decorate-hint')).includes('타입은 그대로예요'), await visText('type-decorate-hint'));
+  const geo0 = await b.evaluate(`(() => {
+    const card = ${visQ('type-postcard')}.getBoundingClientRect();
+    const t = document.querySelector('[data-testid="type-postcard-type"]').getBoundingClientRect();
+    return { ratio: card.width / card.height, inside: t.left >= card.left - 1 && t.right <= card.right + 1 && t.top >= card.top - 1 && t.bottom <= card.bottom + 1 };
+  })()`);
+  check('8', '엽서 앞면 배치(짐 전): 320 × 200 비율 · 타입 소재가 칸 안', Math.abs(geo0.ratio - 1.6) < 0.05 && geo0.inside, JSON.stringify(geo0));
+  await words('내 여행 타입 엽서 먼저', ['screen-type'], { partner: false });
+  await measure('내 여행 타입 엽서 먼저');
+  await b.shot(`IF2_타입엽서_먼저_${width}.png`);
+  await tap('type-decorate');
+  check('8', '[엽서 꾸미기] → 짐 싸기: 안내 두 줄 + 첫 문항(라이브러리) · 진행 숫자 0', (await waitVis('type-quiz', 6000)) && (await visText('type-quiz-intro')) === cp('TYPE_CARD.quiz.intro') && (await visText('type-quiz-note')) === cp('TYPE_CARD.quiz.picksNote') && (await visText('type-quiz-question')) === lib.packQuiz[0].q, '');
   await words('짐 싸기', ['screen-type'], { partner: false });
   await measure('짐 싸기');
   await b.shot(`IF2_짐싸기_${width}.png`);
@@ -240,9 +255,7 @@ try {
     await tap(`type-quiz-${i}-${lib.packQuiz[i].options[1].item}`);
     await sleep(250);
   }
-  check('8', '일곱 번째 답 뒤 엽서가 처음 나온다(타입 소재 하나 + 짐 일곱)', (await waitVis('type-postcard', 6000)) && (await vis('type-postcard-type')) && (await visIds(/^type-postcard-item-/)).length === 7, (await visIds(/^type-postcard-item-/)).length + '개');
-  const typeName = await visText('type-name');
-  const typeLib = lib.travelTypes.find((t) => t.name === typeName);
+  check('8', '일곱 번째 답 뒤 엽서에 짐 그림이 더해짐(타입 소재 하나 + 짐 일곱) · 타입은 그대로', (await waitVis('type-postcard', 6000)) && (await vis('type-postcard-type')) && (await visIds(/^type-postcard-item-/)).length === 7 && (await visText('type-name')) === typeName, (await visIds(/^type-postcard-item-/)).length + '개');
   check('8', '엽서 앞: 타입 이름 · 앞면 한 줄 = 라이브러리', !!typeLib && (await visText('type-line')) === typeLib?.line, typeName);
   const geo = await b.evaluate(`(() => {
     const card = ${visQ('type-postcard')}.getBoundingClientRect();

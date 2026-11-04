@@ -47,6 +47,7 @@ const tap = async (id) => {
   await b.click('[data-d46-target="1"]');
 };
 // 넘침: 공통 __metrics 에서, 화면 안에 있는 잘림 틀(overflow hidden — 그림 칸) 안의 요소는 뺀다(카메라 1.1 배로 커진 그림은 그림 칸이 자른다 · 페이지 가로 스크롤 0)
+//  가로 스크롤 영역(overflow-x auto · scroll — 첫마디 칩 줄 ScrollView horizontal)도 같다: 영역 자체가 화면 안이면 안쪽 칩이 밖으로 길어도 넘침이 아니다. 페이지 스크롤폭(scrollW <= innerW)은 아래에서 그대로 본다
 async function measure(label) {
   const m = await b.evaluate(`(() => {
     const base = window.__metrics();
@@ -54,7 +55,7 @@ async function measure(label) {
     const clipped = (el) => {
       for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
         const s = getComputedStyle(p);
-        if (s.overflowX === 'hidden' || s.overflowX === 'clip') { const r = p.getBoundingClientRect(); if (r.left >= -1 && r.right <= iw + 1) return true; }
+        if (s.overflowX === 'hidden' || s.overflowX === 'clip' || s.overflowX === 'auto' || s.overflowX === 'scroll') { const r = p.getBoundingClientRect(); if (r.left >= -1 && r.right <= iw + 1) return true; }
       }
       return false;
     };
@@ -67,7 +68,7 @@ async function measure(label) {
     }
     return { ...base, over };
   })()`);
-  check('3', `${label}: ${width} 폭 가로 넘침 0 · 글자 13 이상 · 터치 48 이상`, m.scrollW <= m.innerW && m.over.length === 0 && m.minFont >= 13 && m.small.length === 0, `넘침 ${m.over.length}(${m.over.slice(0, 2).join(',')}) · 최소 글자 ${m.minFont} · 작은 터치 ${m.small.join(',') || '없음'}`);
+  check('3', `${label}: ${width} 폭 가로 넘침 0 · 글자 13 이상 · 터치 48 이상`, m.scrollW <= m.innerW && m.over.length === 0 && m.minFont >= 13 && m.small.length === 0, `스크롤폭 ${m.scrollW}/${m.innerW} · 넘침 ${m.over.length}(${m.over.slice(0, 2).join(',')}) · 최소 글자 ${m.minFont} · 작은 터치 ${m.small.join(',') || '없음'}`);
 }
 
 // 02 → 03 → 04 데모 건너뛰기 → 06 → 07 → [이대로 확정] → 08 [확인했어요] → 탑승권 탭(web-w6 와 같은 길)
