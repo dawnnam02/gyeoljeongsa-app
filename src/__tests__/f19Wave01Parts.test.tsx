@@ -28,6 +28,8 @@ const APP_SRC = path.resolve(__dirname, '..');
 // 부품마다 첫 렌더가 react-native 모듈을 처음 불러와서, 다른 시험이 함께 도는 바쁜 기계에서는 30초(package.json 기본)를 넘긴 적이 있다(10-17). 이 파일만 늘린다
 jest.setTimeout(180_000);
 
+const MEET_ON = ['meet_feedback'] as const; // D-238: 만남 피드백 스위치는 데모 처음값 꺼짐 — 이 시험은 켠 장면에서 본다
+
 beforeAll(() => {
   jest.spyOn(console, 'log').mockImplementation(() => undefined); // safeLog 줄(이벤트 이름 · 코드)만 나온다. 시험 출력에서는 숨긴다
 });
@@ -248,7 +250,7 @@ describe('조건 3 · [2] 만남 뒤 피드백 시트: 만났나요 → 좋음/�
 
   test('데모 서버와 끝까지: 카드 → 답 → 답한 줄 · [고치기] 1번 → 다시 열면 [고치기] 없음', async () => {
     let t = T0;
-    const v4 = createDemoV4({ now: () => t });
+    const v4 = createDemoV4({ flagsOn: MEET_ON, now: () => t });
     const user = { id: 'u-parts', email: 'plain@email.co' };
     const client = { rpc: (name: string, args?: Record<string, unknown>) => v4.rpc(user, name, args ?? {}) } as unknown as SupabaseClient;
     const api = createMeetFeedbackApi(client);

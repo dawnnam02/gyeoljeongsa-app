@@ -108,22 +108,22 @@ describe('응답 읽기: 아는 키만', () => {
 });
 
 describe('조건 1: 16 상점 서버 상태 (get_shop_state)', () => {
-  test('상품 36개(D-62: N07 · D-85: G9 · N14 · D-122: X12 · X13 · X15 · X16 · X17 · X18 · N15 뺌): 서버 순서 1~45 중 9칸 빈 채 · 살 수 있는 4 + 보류 1 · 위험 C 20개 = 카피 빨간 라벨 이유 중 남은 19줄 + N16', async () => {
+  test('상품 35개(D-62: N07 · D-85: G9 · N14 · D-122: X12 · X13 · X15 · X16 · X17 · X18 · N15 뺌 · D-238: G7 서류 인증은 스위치 doc_verify 꺼짐이라 뺌): 서버 순서 1~45 중 10칸 빈 채 · 살 수 있는 4 + 보류 1 · 위험 C 20개 = 카피 빨간 라벨 이유 중 남은 19줄 + N16', async () => {
     const r = rig();
     await login(r, 'plain@email.co');
     const shop = must(await r.shop.loadShop());
     expect(shop.paymentMode).toBe('demo');
     expect(shop.stage).toBe(1);
-    expect(shop.products).toHaveLength(36);
-    expect(shop.products.map((p) => p.sort)).toEqual(Array.from({ length: 45 }, (_, i) => i + 1).filter((n) => ![12, 27, 28, 30, 31, 32, 33, 42, 43].includes(n)));
-    expect(shop.products.some((p) => ['N04', 'N07', 'G9', 'N14', 'X12', 'X13', 'X15', 'X16', 'X17', 'X18', 'N15'].includes(p.catalogId))).toBe(false);
+    expect(shop.products).toHaveLength(35);
+    expect(shop.products.map((p) => p.sort)).toEqual(Array.from({ length: 45 }, (_, i) => i + 1).filter((n) => ![10, 12, 27, 28, 30, 31, 32, 33, 42, 43].includes(n)));
+    expect(shop.products.some((p) => ['N04', 'N07', 'G7', 'G9', 'N14', 'X12', 'X13', 'X15', 'X16', 'X17', 'X18', 'N15'].includes(p.catalogId))).toBe(false);
     expect(shop.products.filter((p) => p.state === 'available').map((p) => p.catalogId)).toEqual(['N01', 'N02', 'G1', 'G2']);
     expect(shop.products.filter((p) => p.state === 'held').map((p) => p.catalogId)).toEqual(['N03']);
     const risky = shop.products.filter((p) => p.riskLabel).map((p) => p.catalogId).sort();
     expect(risky).toEqual([...Object.keys(RISK_REASONS).filter((id) => !SHOP_DROPPED.includes(id)), 'N16'].sort()); // N16 이유 줄은 카피 16-C 가 생긴 뒤 RISK_REASONS 에 더한다
     expect(risky).toHaveLength(20);
     // 카피 상품 표 45개에서 상점에서 뺀 9개(SHOP_DROPPED)를 뺀 것과 카탈로그 ID 가 1:1
-    expect(shop.products.map((p) => p.catalogId).sort()).toEqual(PRODUCT_COPY.map((p) => p.id).filter((id) => !SHOP_DROPPED.includes(id)).sort());
+    expect(shop.products.map((p) => p.catalogId).sort()).toEqual(PRODUCT_COPY.map((p) => p.id).filter((id) => !SHOP_DROPPED.includes(id) && id !== 'G7').sort()); // G7 은 스위치 doc_verify(D-238)
     expect(shop.subscription).toBeNull();
     expect(shop.matchOnce).toEqual({ availableToday: 3, usesToday: 0, dailyMax: 2, slotsLeft: 0 });
   });
@@ -170,7 +170,7 @@ describe('조건 1: 16 상점 서버 상태 (get_shop_state)', () => {
     expect(await r.shop.loadShop()).toEqual({ ok: false, reason: 'server' });
     await login(r, 'shopflaky1@email.co');
     expect(await r.shop.loadShop()).toEqual({ ok: false, reason: 'network' });
-    expect(must(await r.shop.loadShop()).products).toHaveLength(36);
+    expect(must(await r.shop.loadShop()).products).toHaveLength(35);
     await login(r, 'shopzero1@email.co');
     expect(must(await r.shop.loadShop()).products).toHaveLength(0);
   });

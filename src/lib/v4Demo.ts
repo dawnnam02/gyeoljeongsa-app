@@ -64,6 +64,7 @@ export function createDemoV4(
     matches?: (user: DemoV4User) => DemoV4Match[] | null; // 2단계: 11 연결 목록(lib/likesDemo.ts)을 넘긴다. 없으면 이 파일의 두 쌍
     people?: (id: string) => Person | null;
     reasonsFor?: (user: DemoV4User, candidateId: string) => string[] | null; // 2단계: 10 상세의 맞는 점(lib/demoRecs.ts candidate) — 강조 카드 칩 5개
+    flagsOn?: readonly string[]; // 시험: D-238 로 데모 처음값이 꺼진 키(meet_feedback 등)를 켠 장면 — 스위치만 켜면 돌아오는지 본다. fboff 같은 장면 꺼짐이 우선
   } = {},
 ) {
   const now = options.now ?? Date.now;
@@ -99,7 +100,8 @@ export function createDemoV4(
     if (key === 'featured_pick' && l.startsWith('featoff')) return false;
     if (key === 'meet_feedback' && l.startsWith('fboff')) return false;
     if (key === 'safe_share' && l.startsWith('shareoff')) return false;
-    return demoSceneDefault(key, user.email); // V5: 숨긴 v4 화면은 v4on 장면에서만 켜짐
+    if (options.flagsOn?.includes(key)) return true;
+    return demoSceneDefault(key, user.email); // V5: 숨긴 v4 화면은 v4on 장면에서만 켜짐 · D-238: 만남 피드백 등은 처음값 꺼짐
   };
 
   const matchesOf = (user: DemoV4User): DemoV4Match[] => {

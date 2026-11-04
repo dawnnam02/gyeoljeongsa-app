@@ -1,5 +1,5 @@
 // 사전 오픈 화면 글(F22). 원본: 마케팅/카피.md 11장 '사전 오픈 · 출연자 신청서'(C① · D-123, NP-xx · NFK20-01~10) — 그 장의 '→ 개선안' 글 그대로.
-//  · 11장에 아직 없는 줄(미룸 공지 · 먼저 시작 · 11 · 16 · 01 줄 · link.errors.already 의 S18 뜻)은 app/F22_변경기록.md 3장에 카피 키 제안으로 적었다(C① 이 합치면 그 글로 바꾼다)
+//  · 11장에 아직 없는 줄(미룸 공지 · 11 · 16 · 01 줄 · link.errors.already 의 S18 뜻)은 app/F22_변경기록.md 3장에 카피 키 제안으로 적었다(C① 이 합치면 그 글로 바꾼다)
 //  · V5(W6 · D-152): 하루 세 분 추천 → 주 1회 1:1 매칭. 출시 = 2026-12-23(수) 18:00 첫 매칭(T-24). '첫 추천' 글을 '첫 매칭' · 탑승권 흐름으로 바꿨다(카피 키 제안 — app/W6_변경기록.md)
 //  · 사용자 글은 해요체 · 느낌표 0 · 남은 날 수 · 시간 · 초 · 순서 번호 0(K20 2-6 · P-11)
 //  · 쓰지 않는 말(K20 2-1): 방송 · 촬영(고지 한 줄 밖) · 제작진 · 시즌 · 회차 · 기수 · 합격 · 불합격 · 탈락 · 선발 · 최종 · 마감 임박 · 한정 · 남은 자리 · 경쟁률
@@ -13,7 +13,7 @@ export const PRELAUNCH = {
   applicantNo: (no: string) => `신청 번호 ${no}`, // NP-02
   applicantNoNote: '순서를 뜻하는 번호는 아니에요.', // NP-02
   stepsTitle: '확정까지', // P-D2 단계표 제목
-  steps: { identity: '본인 확인 · 나이', photos: '사진 · 셀피', survey: '결혼관 설문', docs: '서류(선택)', confirm: '확정' } satisfies Record<StepKey, string>, // NP-03
+  steps: { identity: '본인 확인 · 나이', photos: '사진', survey: '결혼관 설문', docs: '서류(선택)', confirm: '확정' } satisfies Record<StepKey, string>, // NP-03
   states: { todo: '아직', checking: '확인 중', done: '확인됨', fix: '보완 필요', na: '준비 중' } satisfies Record<StepState, string>, // NP-03
   todo: {
     surveyTodo: '설문을 이어서 해 주세요.',
@@ -60,14 +60,6 @@ export const PRELAUNCH = {
     countNoName: '내 지역은 함께 시작할 분들을 모으고 있어요. 시작하면 이 화면에 탑승권이 열려요.',
     ratio: '같은 지역 분들이 고르게 모이면 첫 매칭을 시작해요.', // NP-17(성비)
     title: '내 지역 첫 매칭',
-    early: '지역 넓혀 먼저 시작하기', // NP-18 버튼
-    earlyTitle: '지역을 넓혀 먼저 시작할까요?',
-    earlyBody: '다른 지역 분과 매칭될 수 있어요.', // NP-18 확인 한 줄
-    earlyConfirm: '먼저 시작하기',
-    earlyCancel: '취소',
-    earlyJoined: (day: string) => `${day}부터 다른 지역 분과도 매칭될 수 있어요.`,
-    earlyJoinedNoDay: '다음 주부터 다른 지역 분과도 매칭될 수 있어요.',
-    earlyLocked: '지역 조건을 양보할 수 없게 두셨어요. 지역 조건을 바꾸면 먼저 시작할 수 있어요.', // K20 3-4 ② — 서버가 대신 풀지 않음
   },
   defer: {
     title: '첫 매칭 날짜가 바뀌었어요', // NP-19 제목(새 글)

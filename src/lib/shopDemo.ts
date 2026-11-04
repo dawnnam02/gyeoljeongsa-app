@@ -19,6 +19,7 @@
 //   gradenew 첫 계산 전 · gradeband 나이대 합침 · gradefail 내 등급 읽기 실패 · gradeempty 변화 기록 없음 (구독 중 장면과 함께 쓰려고 앞부분이 아니라 이름에 들어 있으면 된다. 예: shopsub-gradenew)
 //   moslot 1회 매칭 명분 3 · mopart 오늘 2명만 · monone 오늘 0명
 // 구독 중 장면(shop*)에서 만든 계정은 09 에서 구독자 순서 · 상대 등급 배지를 받는다. 같은 계정에서 구매하면 그 자리에서 구독자가 된다.
+import { demoDefault } from '@/config/featureKeys';
 import { PRODUCT_COPY, SHOP_DROPPED } from '@/content/productCopy';
 
 import type { DemoRecs } from './demoRecs';
@@ -96,7 +97,8 @@ const CREDIT_OF: Record<string, { kind: string; qty: number }> = {
 };
 const CREDIT_KINDS = ['match_slot', 'past_card', 'letter', 'report', 'one_more', 'reasons', 'traits', 'intro'];
 // 서버 store_products.live_on: 꺼진 상품(D-85 · D-122)은 목록 · 구매에서 빠진다
-const liveOn = (seed: Seed): boolean => !SHOP_DROPPED.includes(seed[1]);
+// D-238: G7 '서류 인증'은 스위치 doc_verify 가 꺼져 있는 동안 목록 · 구매에서 빠진다(켜면 coming 으로 돌아온다)
+const liveOn = (seed: Seed): boolean => !SHOP_DROPPED.includes(seed[1]) && (seed[1] !== 'G7' || demoDefault('doc_verify'));
 
 type Sub = { status: string; productKey: string; periodEnd: number; autoRenew: boolean; priceIncrease: boolean };
 type Purchase = { txId: string; productKey: string; catalogId: string; priceKrw: number; quantity: number; status: 'done' | 'refunded' | 'pending' | 'rejected'; at: number; refundedAt: number | null; periodEnd: number | null };
@@ -370,7 +372,7 @@ export function createDemoShop(now: () => number, hooks: DemoShopHooks) {
     return ok({
       locked: false,
       items: [
-        { at: new Date(t - 2 * DAY_MS).toISOString(), from_no: at(5), to_no: at(4), reason: 'verification' },
+        { at: new Date(t - 2 * DAY_MS).toISOString(), from_no: at(5), to_no: at(4), reason: 'activity' },
         { at: new Date(t - 40 * DAY_MS).toISOString(), from_no: at(6), to_no: at(5), reason: 'answer_edit' },
         { at: new Date(t - 60 * DAY_MS).toISOString(), from_no: at(5), to_no: at(6), reason: 'manner' },
         { at: new Date(t - 90 * DAY_MS).toISOString(), from_no: null, to_no: at(6), reason: 'first' },

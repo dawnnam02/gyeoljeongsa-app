@@ -1347,3 +1347,107 @@
 - 점수 · 퍼센트 · 판정 · 순위 · 배지 · 깜빡임 · 푸시 · 재촉 0: 글을 새로 쓰지 않음.
 - 네 질문: ① 줄을 흐리지 않나 — 예 ② 필수 일치를 깨지 않나 — 예 ③ 진지한 사람에게 도움 — 함께 보기를 켠 사람이 처음 읽는 줄이 함께 보기 사실이 되고, 위기 번호 줄이 더 잘 읽힘 ④ 차분 · 기다림 — 예.
 - 벗어난 것: 없음.
+
+# FA-QF1 (D-238 · 11-04) — 셀피 · 서류 · 만남 피드백 · 지인 확인 끄기 / [지역 넓혀 먼저 시작하기] 없애기
+
+근거 `팀장/세부청사진/FA-QF1_본인결정4건.md`(QF1-A) · `마케팅/FA-QF1_글표.md` · `법무/FA-QF1_법무글표.md` · 백엔드 0053 · 시작 6374c12(jest 128묶음 2,264건). 새 카피 키 0 · 새 토큰 0 · 서버 · 백엔드 수정 0.
+
+## FA-QF1 한 일
+
+뜻: **불활성화** = 코드 · 서버 · 표는 남기고, 스위치 13개를 데모에서도 꺼서(`demo: false`) 입구와 "나중에 된다"는 약속이 안 보이게 한다(스위치를 켜면 돌아온다). **없앰** = 코드 · 글 · 데모 · 시험까지 지운다.
+
+| 번호 | 건 | 처리 | 파일 |
+|---|---|---|---|
+| ① | 스위치 13개(`doc_verify` `selfie_verify` `selfie_required` `verify_steps` `doc_marital` `job_mail_verify` `doc_license` `doc_income` `doc_parent` `verify_detail` `meet_feedback` `meet_feedback_plus` `vouch`) | `demo: false` 더함(live 는 원래 꺼짐) | `config/featureKeys.json` |
+| ① | 사전 오픈 단계표 · 보완 글 | **스위치로 가림**: 서버가 5칸을 줘도 서류 칸은 `doc_verify` 켜짐일 때만 그림(4칸) · `doc_*` 보완 이유 글 · 할 일 `docsFix` 도 같음. 글 '사진 · 셀피' → '사진'(고침) | `PrelaunchScreen.tsx` · `prelaunchCopy.ts` · `StepTable.tsx`(주석) |
+| ① | 기다리는 동안 할 일 '서류 인증' · '지인 확인' · `prelaunch-vouched` 줄 | **스위치로 가림**: 할 일은 `launchLogic` 이 이미 스위치를 따라 데모 처음값만으로 사라짐 · `vouched_by` 줄은 이번에 `vouch` 켜짐 조건 더함. '아는 분 미리 피하기'(`avoid_org`) 줄은 그대로 | `PrelaunchScreen.tsx` |
+| ① | 설정 '인증 서류 제출(준비 중)' 줄 · 내비 표 | **스위치로 가림**: `SettingsDeps.flagOn`(앱 스위치 저장소) 으로 `doc_verify` 꺼지면 줄 0. 내비 표 글에 조건 표시 | `SettingsScreen.tsx` · `navigation/flow.ts` |
+| ① | 동의 관리 CK12 · CK14 | **스위치로 가림**: `selfie_verify` · `doc_verify` 꺼지면 줄과 '보기 ›' 시트 길이 모두 없음(켜면 6줄로 돌아옴). 동의문 · 판은 그대로 | `ConsentManagePage.tsx` |
+| ① | 등급 화면 '서류 인증' 카드 · 올리는 방법 '서류 인증하기' · 아이콘이 바뀔 수 있는 일의 서류 줄 · `verifySoon` | **스위치로 가림**: `ShopDeps.docVerify`(라우트 `app/grade.tsx` 가 `doc_verify` 를 읽어 넣음). 꺼지면 올리는 방법 2줄 · 바뀔 수 있는 일 2줄 | `GradePages.tsx` · `gradeLogic.ts` · `MyGradeScreen.tsx` · `shopTypes.ts` · `app/grade.tsx` |
+| ① | 상점 데모 G7 '서류 인증' | **스위치로 가림**: 데모 목록 · 구매에서 `doc_verify` 꺼지면 빠짐(35개). `productCopy` 글은 그대로 | `lib/shopDemo.ts` |
+| ① | 데모 변화 기록의 '서류 인증' 이유 | 데모 시드 이유 `verification` → `activity`('활동') — 쓰는 사람 눈에 서류 인증 기록 0. 이유 이름 글(`GRADE16.reasons`)은 그대로 | `lib/shopDemo.ts` |
+| ① | 설문 증빙 줄(올리기 단추 · 증빙 상태) | **스위치로 가림**: `proofUpload` 가 `doc_verify` 를 읽을 때마다 보는 함수(데모만, 실서버는 원래 길 없음). 꺼지면 줄 자체 0(상태 글 '증빙 없음' 포함) | `surveyV2/api.ts` · `deps.ts` · `surveyChat/deps.ts` · `stages.tsx` |
+| ① | 설문 약속 글 12곳 | **글 고침**(글표 24 ~ 36 · 55): 시작 안내 5째 줄 **지움**(4줄) · 세부사항 머리 · C02 · T04 ~ T08 도움말 · `CHAT.B02.ack.t2` · `CHAT.C08.ack.any` · `CHAT.C02.2` · 01 소개 1장 부제. 되돌릴 때 쓸 옛 글은 `카피.md` 에 있음 | `surveyV2/copy.ts` · `questionCopy.ts` · `content/surveyChatCopy.ts` · `content/copy.ts` |
+| ① | 등급 안내 글 | **글 고침**(글표 48 · 49): `GI.flockNote` · `GI.historySchedule` | `grade/iconCopy.ts` |
+| ② | 만남 피드백 | 스위치 둘 `demo: false` 만. 부품 · API · 서버 그대로. 약속 글 grep 0(마케팅 글표 3장과 같음). 데모 서버 `flagsOn` 시험 장치만 더함 | `featureKeys.json` · `lib/v4Demo.ts`(시험 옵션) |
+| ③ | 지인 확인 | `vouch` `demo: false` + 위 `prelaunch-vouched` 줄 가림 | 위와 같음 |
+| ④ | [지역 넓혀 먼저 시작하기] | **지움**: 버튼 · 확인창 · 시작한 날 줄 · 양보 불가 안내 · 지역 조건 단추 · `launchApi.earlyJoin` · `EARLY_JOIN_RPC` · `Region.canEarlyJoin` · `earlyJoinOn` · 데모 `early_join` · 장면 `regionLocked` · `region.early*` 글 8키. 서버 응답 새 모양 `region = null \| { name, state, reason }`(옛 키가 와도 읽지 않음). "함께 시작할 분들을 모으고 있어요" 카드는 남김 | `PrelaunchScreen.tsx` · `launchApi.ts` · `prelaunchServices.ts` · `prelaunchCopy.ts` · `demo/prelaunchDemo.ts` · `prelaunchDemoBar.tsx` · `PrelaunchGate.tsx`(주석) |
+| ④ 확인만 | `RECS.widenButton` · `widenNote` · `widenOwnNote` · `recs-widen` · 스위치 `region_widen` · `SETTINGS.verificationSoon` · `verificationToast` | **건드리지 않음**(옛 v4 추천 화면 · 12-5 아는 분 피하기 줄이 같이 씀). 사전 오픈의 `prelaunch-early-widen` 단추만 지움 | — |
+| ③ | 글 옮기기(법무) | `npm run gen:legal` → `gen:legal -- --fingerprints`: CK3 판 `consent-2026.10.27-v2` → **`consent-2026.11.04-v1`**(지문 `a278bc7d65e2` → `a17fa2c9594d`) · 약관 `e501b52fea59` → `0176b423f7a3` · 처리방침 `27ffcaf27b7f` → `09fd050ad908`. `GRADE16.howUses`(서류 인증 말 뺌) · `howReview`(서류 말 뺌) 직접 고침 | `config/consent.ts` · `content/consentContent.ts` · `legalTerms.ts` · `legalPrivacy.ts` · `shopCopy.ts` |
+| ④ | 결제 시트 '데모 결제예요. 실제 돈은 나가지 않아요.' | 서버 `payment_mode`(live \| demo \| closed)를 읽어 `demo` 일 때만 그림 | `boardingApi.ts`(`paymentMode`) · `BoardingScreen.tsx` |
+
+## FA-QF1 글표 닫기(인증 막대 · 항목 이름)
+
+| 글표 번호 | 확인 | 결과 |
+|---|---|---|
+| 40 `GRADE16.bars[1]` '인증' 막대 | 화면 코드 grep · 웹 점검 | W9 가 점수 막대를 화면에서 뺐다. `areaBars` · `AREA_NAMES` 는 함수만 있고 화면이 부르는 곳 0 → 0점일 때 보일 막대 자체가 없음. 닫음 |
+| 53 `GRADE16.items.v_sch · v_job · v_ast` | 화면 코드 grep | 화면이 쓰는 곳 0(서버 항목 이름 표만 남음). 닫음 |
+| 74 `SHOP16.gradeCard.benefits[2]` '인증으로 올리기' | 쓰임 확인 | 옛 v4 상점(`v4_shop`, 데모 · live 모두 꺼짐)에서만. 그대로(상점을 다시 켤 때 마케팅이 정리) |
+
+## FA-QF1 시험
+
+| 시험 | 내용 |
+|---|---|
+| `f22Prelaunch.test.tsx` | 먼저 시작 시험 → '버튼 없음'(서버가 옛 키를 보내도 0) · 단계표 4칸 · 스위치 켜면 5칸 · 서류 인증 · 지인 확인 켜면 돌아옴(+3건) · 아는 분 미리 피하기 줄은 늘 그대로 · 사실 고지 문구 그대로 · 데모 스위치 13개 꺼짐 |
+| `l17aLaterConsents.test.tsx` | CK12 · CK14 줄 · 보기 › 가림 / 하나씩 켜면 그 줄만 돌아옴(+1건) |
+| `settingsScreen.test.tsx` | 인증 서류 제출 줄: 꺼짐 0 / 켜면 돌아옴 · '준비 중' 글 0 |
+| `gradeScreen.test.tsx` | 서류 인증 꺼짐: 올리는 방법 2줄 · 서류 카드 · 학교 · 직업 · 자산 인증 글 0 / 켜면 3줄(+1건) · 바뀔 수 있는 일 2줄 · 데모 기록 이유 '활동' |
+| `surveyV2Screen.test.tsx` · `surveyV2Demo.test.ts` | 증빙 줄: 꺼짐 0 / 켜면 돌아옴(+2건) |
+| `w6Boarding.test.tsx` | 결제 시트 한 줄: demo 에서만(+1건) |
+| `shopApi` · `s8dConnect` · `f16Shop` · `shopScreen` | 상품 36 → 35 · 그 밖 33 → 32(G7 빠짐) |
+| `r1Common` · `f19Wave01Api` · `f19Wave01Parts` · `onboardingScreen` | 데모 스위치 13개 꺼짐 기대값 · 만남 피드백 시험은 `flagsOn` 으로 켠 장면에서 · 01 부제 새 글 |
+| 웹 점검 `web-f22` | 5칸 → 4칸 · 먼저 시작 줄 → '버튼 0' · 11 호감 · 16 상점 출시 전 기대값을 v5 글(카피 14-1)로 고침(앞서 실패하던 2건) · `web-f7`(줄 19 → 18 · CK12 · CK14 0) · `web-f13`(서류 입구 0 · 상품 줄 33 → 32 · 데모 기록 '활동') · `web-f20`(증빙 줄 0) · `web-f1` · `web-d42i`(01 부제) |
+
+## FA-QF1 인증 6점 확인(서버 읽기만 — 서버는 고치지 않음)
+
+`backend/migrations/0023_kin_school_appeal.sql`(`private.grade_calc`, 등급 설정 2판 가중치 조건 90 · 인증 6 · 성실 4) 기준, 0024 이후 `grade_calc` 를 다시 정의한 이관 없음.
+
+- `grade_config.verify_on` 은 처음값 `false`(0012:362) 이고 2판도 1판 값을 그대로 옮긴다. 이 값을 `true` 로 바꾸는 이관 · 시드는 없다(시험 `run_s8.mjs` 가 복제 DB 에서만 켠다).
+- `verify_on = false` 면 `v_sch` · `v_job` · `v_ast` 3항목은 **0점이 아니라 항목 자체가 계산에서 빠진다**(`r[8..10]` 이 null → 분자 · 분모 모두에 안 들어감). 그래서 원점수 = 100 × 얻은 점수 / 94(전원 같은 분모) — 6점을 받을 길도 잃을 길도 없다.
+- 등급 순서: 빠지는 방식이 회원마다 다르지 않고(설정 한 값) 전원 같은 분모라 순서는 그대로. 다만 `buffer_pts`(완충 2점) 같은 점수 단위 값은 100/94 배 확대된 점수에 걸려 아주 조금(6%) 상대적으로 작아진다.
+- `get_my_grade.areas.verify` 는 항상 0(없는 항목 합 0). 앱은 이 값을 화면에 그리지 않는다.
+- **어긋남 하나(글과 서버)**: 서류(증빙)를 받지 않으면 어필 점수(`apl` 4.5점, 조건 90 안)도 영향을 받는다 — `appeal_rules`의 `unverified_total_cap` 4(만점 10)이라 증빙 승인이 없는 사람은 어필 합이 4점에서 잘린다(어필 비율 최대 0.4). 모두 같은 규칙이라 순서는 크게 바뀌지 않지만 어필을 많이 쓴 사람끼리 동점이 많아진다. 새 글 `GRADE16.howUses`('조건 · 성실') 는 어필(`apl`) · 부모 학교(`psch`) 를 따로 말하지 않아 사실과 어긋나지는 않는다. 팀장 판단 거리.
+
+## FA-QF1 바닥선
+
+
+| 항목 | 결과 | 앞 수치(IF5-QF3)와 차이 |
+|---|---|---|
+| tsc | 0 | 같음 |
+| lint | `src/` 0 · 내가 고친 파일 0(`eslint .`은 dist 폴더를 읽어 잡음이 많아 `src/` · 고친 스크립트만 봄. `expo lint` 는 부하로 280초 안에 못 끝나 `EXPO_NO_DOTENV=1 eslint .` 로 대신 돌림) | 같음 |
+| jest | 128묶음 **2,270/2,272** 통과. 실패 2건 = `aitSync` · `if5Module` 의 "원본과 같음" 동기 검사(아래) | 시험 +8건(2,264 → 2,272). 실패 2건은 내 변경이 아님 |
+| check:copy | 통과 110 · 실패 0 | 같음(옮김 전 G · W · X 에서 실패하던 글 6줄이 옮긴 뒤 통과) |
+| check:tokens | 5 / 0 | 같음 |
+| sync-ait · sync-if5 `--check` | **어긋남**: 원본 `ai/AIT/ts/*.ts`(12개) · `src/saju5` 원본(7개)을 AI 직원이 오늘 14:02 ~ 14:14 사이 고치는 중(실호출 평가). 내 변경은 `src/server/ait` · `src/saju5` 0건(`git status` 확인). 시작할 때는 같음(`a15bed2ffac9` · `af0dcb58192f`/`6a0c125c0de2`) | 원본이 바뀐 탓 — 다시 맞추기(sync)는 AI 직원 몫이라 하지 않음 |
+| 웹 web-f22 | 360 · 390 · 430 각 37/0 | 앞서 3폭 실패(11 호감 · 16 상점 출시 전 기대값이 v5 글보다 오래됨)를 고쳐 통과 |
+| 웹 web-f7 (설정) | 360 · 390 · 430 각 64/0 | 줄 19 → 18. 360 · 390 은 처음에 `traits-confirm` 기다림(25초) 시간 초과로 한 번씩 떨어져 40초로 늘림(web-f22 와 같음) |
+| 웹 web-f13 (등급) | 360 · 390 · 430 각 53/0 | 상품 줄 33 → 32 한 곳만 고침 |
+| 보안 check_sec2(`SEC_SKIP_AUDIT=1`) | 183건 = 통과 169 · 실패 0 · 정보 14 | 같음 |
+| prepush_scan | 아래 커밋 전 실행값 | — |
+| 의존성 변경 | 0 | — |
+
+웹 번들은 다른 직원이 쓰는 `app/dist-demo` 를 건드리지 않고 스크래치 폴더에 따로 만들었다(`expo export --output-dir <스크래치>/dist-qf1`). `dist-demo` 는 11-01 빌드 그대로.
+
+## FA-QF1 못 한 것 · 확인 못 한 것
+
+- 결제 시트(④): 서버 `payment_mode = closed` 일 때 [결제하기]를 누르면 `payment_closed` 가 '이번 회차 판매가 끝났어요. 결제되지 않았어요.'(`buyErrors.closed`)로 읽힌다 — 판매는 끝나지 않았고 결제 창이 아직 안 열린 것이라 사실과 조금 다르다. 새 카피 0 규칙이라 고치지 않음. 팀장 · 마케팅 판단(새 글 또는 closed 일 때 결제 단추를 가림).
+- 실서버(`payment_mode`)에서 `closed` 로 실제로 오는 화면은 보지 못함(실서버 0). 데모(demo)와 jest(live · closed · 모름)만 확인.
+- `web-f20`(증빙 줄 0) · `web-f1` · `web-d42i`(01 부제) 는 글자만 고치고 이번에 돌리지 않음.
+- `기획/K20_사전오픈.md` · `마케팅/카피.md` NP-18 줄 표시는 앱 몫이 아님(마케팅 · 기획).
+- F22_변경기록 · F24_변경기록 · W6_변경기록의 `early_join` 흔적은 옛 결과 문서라 그대로.
+- 변호사 · 실서버 · 유료 호출 0. 푸시 0.
+
+## FA-QF1 넘김 (팀장 경유)
+
+- 팀장: ① 인증 6점은 위 절 — 순서에는 영향이 없고, 어필(`apl`) 상한 건은 판단 거리 ② 결제 `closed` 글 ③ 서류 인증 약속을 뺀 글 12곳은 서류 인증이 돌아올 때 마케팅이 되돌림(앞으로_할일 3-1) ④ sync 어긋남은 AI 직원이 원본을 정리한 뒤 한 번 맞춰야 함.
+- 법무: 시험 고지 · CK3 새 판은 앱이 따르는 상태(consent-2026.11.04-v1).
+- 검수: 11-04 이후 빌드는 이 커밋부터(서류 · 셀피 · 지인 확인 · 지역 넓혀 먼저 시작 화면이 없어진 판).
+
+## FA-QF1 척추 대조
+
+- 줄 · 짝 · 순서 · 노출 · 등급 · 탑승권에 0: 서류 · 셀피 입구를 가리는 것과 지역 넓혀 먼저 시작 길을 지우는 것뿐. 등급 계산 · 추천 · 짝짓기 코드 변경 0(앱은 서버 값을 그리기만 함).
+- 마디 2(지역 필수 일치): [지역 넓혀 먼저 시작하기] 길이 앱에서도 없어져 "다른 지역 분과 매칭될 수 있어요" 약속이 앱 어디에도 없다(서버 0053 과 일치).
+- 마디 3(정확한 줄): "서류로 확인되지 않았어요" 사실 고지는 그대로(`CANDIDATE.disclaimer` · `PROFILE.badgeVerifyPendingNote` · `GRADE16.limits`) — 시험으로 고정.
+- 점수 · 퍼센트 · 판정 · 순위 · 배지 · 깜빡임 · 푸시 · 재촉 0: 새 글 없음(글표의 옛 글을 지우거나 줄인 것뿐).
+- 네 질문: ① 줄을 흐리지 않나 — 예 ② 필수 일치를 깨지 않나 — 예(깨는 길을 지움) ③ 진지한 사람에게 도움 — 지키지 못할 약속을 화면에서 뺌 ④ 차별 0.
+- 벗어난 것: 없음.

@@ -67,6 +67,7 @@ export type SettingsDeps = SupportDeps & {
   mileage?: () => boolean; // IF5-F2: 12-1 '마일리지' 줄(스위치 mileage 가 켜졌을 때만). 없으면 줄 없음
   sajuYard?: () => boolean; // IF5-F1: 12-1 '사주 마당' 줄(스위치 saju_yard 가 켜졌을 때만). 없으면 줄 없음
   skyBook?: () => boolean; // IF3-F: 정보 묶음 '하늘 도감' 줄(스위치 sky_book 이 켜졌을 때만). 없으면 줄 없음
+  flagOn?: (key: string) => boolean; // D-238: 서류 인증 제출 줄(doc_verify) · 동의 관리 CK12(selfie_verify) · CK14(doc_verify) 줄은 스위치가 켜졌을 때만. 없으면 줄 없음(처음값 꺼짐)
   ait?: () => boolean; // AIT-F ⑤: 시험용 AI 코드 줄(데모 판에서만 참 — 실서버 판엔 줄 0). 없으면 줄 없음
   ck17?: () => Ck17Api | null; // IF2-F: 동의 관리 '재미 정보' 줄(기내지 · 궁합 카드 스위치가 켜졌을 때만). 없거나 null 이면 줄 없음
 };
@@ -86,6 +87,7 @@ export function defaultSettingsDeps(): SettingsDeps {
     skyBook: skyBookNow,
     sajuYard: sajuYardNow,
     mileage: mileageNow,
+    flagOn: flagNow,
     ait: aitEnabled,
     copyText: copyToClipboard,
     openMail: async (email) => {
@@ -106,6 +108,15 @@ async function boardedNow(): Promise<boolean> {
   /* eslint-enable @typescript-eslint/no-require-imports */
   const r = await boardingServices().api.load();
   return r.ok && canCancel(r.state);
+}
+
+// D-238: 스위치 한 키의 지금 값(앱 공용 저장소). 처음값 꺼짐 — 셀피 · 서류 입구는 실서버 · 데모 모두 안 보인다
+function flagNow(key: string): boolean {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const { appFlagsStore } = require('@/hooks/useFeatureFlags') as typeof import('@/hooks/useFeatureFlags');
+  const { isOn } = require('@/lib/featureFlagsApi') as typeof import('@/lib/featureFlagsApi');
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  return isOn(appFlagsStore().get(), key);
 }
 
 // IF5-F1: 사주 마당 줄은 스위치 saju_yard 가 켜졌을 때만(처음값 꺼짐 — 실서버엔 줄 0)
@@ -306,7 +317,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
       case 'security':
         return <SecurityPage onBack={toList} />;
       case 'consent-management':
-        return <ConsentManagePage api={deps.api} boarded={deps.boarded} onBack={toList} onToast={showToast} ck17={deps.ck17?.() ?? undefined} />;
+        return <ConsentManagePage api={deps.api} boarded={deps.boarded} onBack={toList} onToast={showToast} ck17={deps.ck17?.() ?? undefined} flagOn={deps.flagOn} />;
       case 'blocked-list':
         return <BlockedListPage api={deps.api} onBack={toList} onToast={showToast} />;
       case 'report-history':
@@ -340,7 +351,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
     }
   })();
 
-  const main = [...SETTINGS_ROWS.filter((r) => r.group === 'main' && (r.key !== 'saju-yard' || deps.sajuYard?.() === true) && (r.key !== 'mileage' || deps.mileage?.() === true)), ...(deps.ait?.() === true ? [AIT_ROW] : [])];
+  const main = [...SETTINGS_ROWS.filter((r) => r.group === 'main' && (r.key !== 'saju-yard' || deps.sajuYard?.() === true) && (r.key !== 'mileage' || deps.mileage?.() === true) && (r.key !== 'verification' || deps.flagOn?.('doc_verify') === true)), ...(deps.ait?.() === true ? [AIT_ROW] : [])];
   const info = SETTINGS_ROWS.filter((r) => r.group === 'info' && (r.key !== 'business-info' || bizRows !== null) && (r.key !== 'sky-book' || deps.skyBook?.() === true));
 
   return (

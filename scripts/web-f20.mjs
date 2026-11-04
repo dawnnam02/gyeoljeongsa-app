@@ -275,9 +275,7 @@ try {
   await type('v2-T04-input', '미국에서 2년 동안 대학원 석사 과정을 마쳤어요. 연락은 010-1234-5678');
   await sleep(900);
   check('3', '연락처 모양은 막지 않고 안내(text_guard 같은 규칙, 나만 칸 글)', await visible('v2-T04-contact'), await text('v2-T04-contact'));
-  await tap('v2-T04-upload');
-  await wait(`window.__q('v2-T04-proof') && window.__q('v2-T04-proof').innerText.includes('확인 중')`, 5000);
-  check('3', '[증빙 올리기] → 확인 중', (await text('v2-T04-proof')) === '확인 중', await text('v2-T04-proof'));
+  check('3', '[증빙 올리기] · 증빙 상태 줄 0(D-238: 서류 인증 스위치 doc_verify 꺼짐 — 데모도) · 도움말에 "증빙으로" 0', !(await visible('v2-T04-upload')) && !(await visible('v2-T04-proof')) && !(await visible('v2-T08-upload')) && !((await b.evaluate('document.body.innerText')).includes('증빙')), '');
   await tap('v2-T08-head');
   await type('v2-T08-input', '온라인 가게를 2년째 운영하고 있어요.');
   await shot('10_세부사항');

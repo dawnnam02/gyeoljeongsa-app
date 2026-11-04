@@ -48,8 +48,10 @@ const VIEW_ITEMS: readonly ConsentSheetContent[] = [...REQUIRED_ITEMS, ...CONSEN
 
 // IF2-F(D-223 · 동의문구 5-6 끝 ② · 4-17): ck17 = '재미 정보(별자리 · 사주)' 줄 안 두 칸(① 재미 계산 CK17A · ② 짝에게 보이기 CK17B).
 //  켜기 = 재미 정보 동의 시트(고지 전부) · 끄기 = 토글 한 번(거두면 일어나는 일을 칸 아래 글로 먼저 보임) · A 를 거두면 B 도(서버 0043 revoke_consent)
-export function ConsentManagePage({ api, boarded, onBack, onToast, ck17 }: { api: Pick<SettingsApi, 'loadConsents' | 'setOptional'>; boarded?: () => Promise<boolean>; onBack: () => void; onToast: (text: string) => void; ck17?: Ck17Api }) {
+export function ConsentManagePage({ api, boarded, onBack, onToast, ck17, flagOn }: { api: Pick<SettingsApi, 'loadConsents' | 'setOptional'>; boarded?: () => Promise<boolean>; onBack: () => void; onToast: (text: string) => void; ck17?: Ck17Api; flagOn?: (key: string) => boolean }) {
   const read = useCallback(() => api.loadConsents(), [api]);
+  // D-238: 셀피(CK12) · 서류(CK14)가 꺼져 있으면 두 줄과 '보기 ›' 시트 길을 모두 가린다(스위치를 켜면 돌아온다)
+  const hidden = (code: string): boolean => (code === 'CK12' && flagOn?.('selfie_verify') !== true) || (code === 'CK14' && flagOn?.('doc_verify') !== true);
   const { phase, data, setData, reload, alive } = useLoad<OptionalConsents>(read);
   const [onBoard, setOnBoard] = useState(false); // 판매 마감 전 · 이번 회차 탑승권이 있다(못 읽으면 없음 — 줄째 숨김)
   const checkBoarded = useCallback(() => {
@@ -138,6 +140,9 @@ export function ConsentManagePage({ api, boarded, onBack, onToast, ck17 }: { api
     void apply(code, next);
   };
 
+  const LATER_SHOWN = LATER.filter((x) => !hidden(x.code));
+  const VIEW_SHOWN = VIEW_ITEMS.filter((x) => !hidden(x.code));
+
   return (
     <SubPage title={CONSENT_MANAGE.headerTitle} onBack={onBack} testID="settings-consents">
       {phase !== 'ready' || !data ? (
@@ -151,10 +156,10 @@ export function ConsentManagePage({ api, boarded, onBack, onToast, ck17 }: { api
               const note = code === 'CK4' && data[code] ? CONSENT_MANAGE.ck4OnNote : (item.note ?? undefined); // M9: 켜짐이면 덧붙이는 안내 대신 끄면 일어나는 일
               return <SwitchRow key={code} label={item.label} note={note} on={data[code]} disabled={busy} last={false} onPress={() => onSwitch(code)} testID={`settings-consent-${code}`} />;
             })}
-            {LATER.map(({ code, label }, i) => {
+            {LATER_SHOWN.map(({ code, label }, i) => {
               const locked = !data[code] && !ON_HERE.has(code);
               const note = locked ? CONSENT_MANAGE.askLater : code === 'CK15' && data[code] ? CONSENT_MANAGE.ck15OffBody : undefined; // 17-3: CK15 켜짐 아래 = 거두면 일어나는 일
-              return <SwitchRow key={code} label={label} note={note} on={data[code]} disabled={busy || locked} last={i === LATER.length - 1 && !(ck17 && fun)} onPress={() => onSwitch(code)} testID={`settings-consent-${code}`} />;
+              return <SwitchRow key={code} label={label} note={note} on={data[code]} disabled={busy || locked} last={i === LATER_SHOWN.length - 1 && !(ck17 && fun)} onPress={() => onSwitch(code)} testID={`settings-consent-${code}`} />;
             })}
             {ck17 && fun ? (
               <View testID="settings-consent-CK17">
@@ -178,14 +183,14 @@ export function ConsentManagePage({ api, boarded, onBack, onToast, ck17 }: { api
             </AppText>
           </View>
           <RowGroup testID="settings-consents-required">
-            {VIEW_ITEMS.map((item, i) => (
+            {VIEW_SHOWN.map((item, i) => (
               <Pressable
                 key={item.code}
                 accessibilityLabel={`${item.label}, ${CONSENT_MANAGE.view}`}
                 onPress={() => setReading(item)}
                 effect="none"
                 testID={`settings-consent-view-${item.code}`}
-                style={({ pressed }) => [styles.row, i < VIEW_ITEMS.length - 1 && styles.divider, pressed && styles.pressed]}>
+                style={({ pressed }) => [styles.row, i < VIEW_SHOWN.length - 1 && styles.divider, pressed && styles.pressed]}>
                 <AppText variant="body" style={styles.flex}>
                   {item.label}
                 </AppText>

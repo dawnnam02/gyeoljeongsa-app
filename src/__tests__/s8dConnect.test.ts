@@ -120,12 +120,12 @@ describe('S8d demo_restore_purchases', () => {
 });
 
 describe('S8d get_shop_state.products', () => {
-  test('36개 · N07(D-62) · G9 · N14(D-85) · X12 · X13 · X15 · X16 · X17 · X18 · N15(D-122) 없음 · 모든 이름이 카피 16-B 이름', async () => {
+  test('35개 · N07(D-62) · G9 · N14(D-85) · X12 · X13 · X15 · X16 · X17 · X18 · N15(D-122) · G7(D-238, 서류 인증 스위치 꺼짐) 없음 · 모든 이름이 카피 16-B 이름', async () => {
     const r = rig();
     await login(r, 'plain-prod@email.co');
     const shop = must(await r.shop.loadShop());
-    expect(shop.products).toHaveLength(36);
-    expect(shop.products.some((p) => ['N07', 'G9', 'N14', 'X12', 'X13', 'X15', 'X16', 'X17', 'X18', 'N15'].includes(p.catalogId))).toBe(false);
+    expect(shop.products).toHaveLength(35);
+    expect(shop.products.some((p) => ['N07', 'G7', 'G9', 'N14', 'X12', 'X13', 'X15', 'X16', 'X17', 'X18', 'N15'].includes(p.catalogId))).toBe(false);
     for (const p of shop.products) expect(p.name).toBe(PRODUCT_COPY.find((c) => c.id === p.catalogId)?.name);
   });
 });

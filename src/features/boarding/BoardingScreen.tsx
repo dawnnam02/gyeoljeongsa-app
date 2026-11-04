@@ -282,9 +282,11 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
             </AppText>
             {canUseCredit(state) ? <Button label={BOARDING.sheet.payCredit} onPress={() => void buy(true)} loading={busy} testID="boarding-pay-credit" /> : null}
             <Button label={BOARDING.sheet.pay} variant={canUseCredit(state) ? 'secondary' : 'primary'} onPress={() => void buy(false)} loading={busy} testID="boarding-pay" />
-            <AppText variant="caption" testID="boarding-sheet-demo">
-              {BOARDING.sheet.demo}
-            </AppText>
+            {state.paymentMode === 'demo' ? (
+              <AppText variant="caption" testID="boarding-sheet-demo">
+                {BOARDING.sheet.demo}
+              </AppText>
+            ) : null}
           </View>
         ) : null}
       </BottomSheet>

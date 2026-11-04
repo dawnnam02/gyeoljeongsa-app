@@ -119,11 +119,12 @@ describe('조건 1 · 목록 (구독 전)', () => {
     expect(has(tree, 'shop-match-take')).toBe(false); // 명분이 없으면 [지금 받기]가 없다
   });
 
-  test('그 밖 상품 33줄: 서버 순서 그대로 · 이름은 카피 글(서버의 옛 이름이 아님) · 살 수 있는 것 외에는 준비 중 · 구독에 포함 · 무료', async () => {
+  test('그 밖 상품 32줄(D-238: G7 서류 인증은 스위치 doc_verify 꺼짐이라 뺌): 서버 순서 그대로 · 이름은 카피 글(서버의 옛 이름이 아님) · 살 수 있는 것 외에는 준비 중 · 구독에 포함 · 무료', async () => {
     const { tree } = await setup();
     const rows = tree.root.findAll((n) => typeof n.props.testID === 'string' && /^shop-row-[A-Z]\d+$/.test(n.props.testID));
     const ids = [...new Set(rows.map((n) => (n.props.testID as string).replace('shop-row-', '')))];
-    expect(ids).toHaveLength(33); // S19(D-122): 40 → 33
+    expect(ids).toHaveLength(32); // S19(D-122): 40 → 33 · D-238: G7 서류 인증 뺌 → 32
+    expect(ids).not.toContain('G7');
     expect(ids.slice(0, 3)).toEqual(['G1', 'G2', 'G3']); // 서버 순서
     expect(ids).not.toContain('N01');
     expect(ids).not.toContain('N02');
@@ -134,7 +135,7 @@ describe('조건 1 · 목록 (구독 전)', () => {
     expect(ids).not.toContain('N14'); // D-85: 뺀 상품
     for (const id of ['X12', 'X13', 'X15', 'X16', 'X17', 'X18', 'N15']) expect(ids).not.toContain(id); // D-122: 내린 카드 7개
     // 이름 · 한 줄 · 가격 표기가 카피 16-B 와 같다(서버 이름 '등급 분포 속 내 위치(상위 %)' 가 아니라 카피 이름)
-    for (const copy of PRODUCT_COPY.filter((p) => !['N01', 'N02', 'N03', ...SHOP_DROPPED].includes(p.id))) {
+    for (const copy of PRODUCT_COPY.filter((p) => !['N01', 'N02', 'N03', 'G7', ...SHOP_DROPPED].includes(p.id))) {
       expect(textOf(tree, `shop-row-name-${copy.id}`)).toBe(copy.name);
       expect(textOf(tree, `shop-row-line-${copy.id}`)).toBe(copy.line);
       expect(textOf(tree, `shop-row-price-${copy.id}`)).toBe(copy.price);

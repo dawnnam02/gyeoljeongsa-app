@@ -32,6 +32,8 @@ function demoClient(v4: ReturnType<typeof createDemoV4>, user: DemoV4User) {
 }
 const userOf = (scene: string, n = 1): DemoV4User => ({ id: `u-${scene}-${n}`, email: `${scene}${n}@email.co` });
 
+const MEET_ON = ['meet_feedback'] as const; // D-238: 만남 피드백 스위치는 데모 처음값 꺼짐 — 이 시험은 켠 장면에서 본다
+
 beforeAll(() => {
   jest.spyOn(console, 'log').mockImplementation(() => undefined); // safeLog 줄(이벤트 이름 · 코드)만 나온다. 시험 출력에서는 숨긴다
 });
@@ -220,14 +222,20 @@ describe('조건 2 · 데모 백엔드: 스위치 · 강조 1명 · 피드백 �
     const live = FEATURE_KEYS.filter((k) => !isPendingKey(k));
     expect(live).toHaveLength(FEATURE_KEYS.length - FEATURE_KEYS.filter(isPendingKey).length); // F22: 키 목록(K19 2-5) — 팀장 판단 전 키만 응답에 없음(D-122 뒤 0개)
     expect(live.every((k) => plain.on[k] === demoDefault(k) && plain.mode[k] === 'demo')).toBe(true); // F22: 데모 처음값(review_required · prelaunch 만 꺼짐)
-    expect(FEATURE_KEYS.filter((k) => !plain.on[k])).toEqual(['review_required', 'prelaunch', 'v4_daily_recs', 'v4_likes', 'v4_shop', 'chat_push', 'type_card_share', 'pair_card_ai']); // IF2-F: 바깥 공유 · AI판은 데모도 꺼짐(PF-91) // V5(W10): 숨긴 v4 화면은 데모에서도 꺼짐(v4on 장면만 켜짐) · R-A: chat_push 는 데모도 꺼짐(토큰 등록 0)
+    expect(FEATURE_KEYS.filter((k) => !plain.on[k])).toEqual(['meet_feedback', 'doc_verify', 'selfie_verify', 'meet_feedback_plus', 'selfie_required', 'review_required', 'verify_steps', 'doc_marital', 'job_mail_verify', 'doc_license', 'doc_income', 'doc_parent', 'verify_detail', 'prelaunch', 'vouch', 'v4_daily_recs', 'v4_likes', 'v4_shop', 'chat_push', 'type_card_share', 'pair_card_ai']); // IF2-F: 바깥 공유 · AI판은 데모도 꺼짐(PF-91) // V5(W10): 숨긴 v4 화면은 데모에서도 꺼짐(v4on 장면만 켜짐) · R-A: chat_push 는 데모도 꺼짐(토큰 등록 0)
     const off = await load(userOf('v4off'));
     expect(FEATURE_KEYS.filter((k) => off.on[k])).toEqual(FEATURE_KEYS.filter(liveDefault)); // 구현된 기능(E)만
     expect(off.on.featured_pick || off.on.meet_feedback || off.on.safe_share).toBe(false);
-    for (const [scene, key] of [['featoff', 'featured_pick'], ['fboff', 'meet_feedback'], ['shareoff', 'safe_share']] as const) {
+    for (const [scene, key] of [['featoff', 'featured_pick'], ['shareoff', 'safe_share']] as const) {
       const flags = await load(userOf(scene));
       expect(live.filter((k) => flags.on[k] !== demoDefault(k))).toEqual([key]);
     }
+    // D-238: meet_feedback 은 데모 처음값이 꺼짐 — 켠 장면(flagsOn)에서 fboff 만 다시 꺼진다
+    const withFb = createDemoV4({ now: () => T0, flagsOn: MEET_ON });
+    const fbOn = await createFeatureFlagsApi(demoClient(withFb, userOf('plain'))).load();
+    expect(fbOn.on.meet_feedback).toBe(true);
+    const fbOff = await createFeatureFlagsApi(demoClient(withFb, userOf('fboff'))).load();
+    expect(fbOff.on.meet_feedback).toBe(false);
   });
 
   describe('강조(데모 09 응답에 입힘)', () => {
@@ -237,7 +245,7 @@ describe('조건 2 · 데모 백엔드: 스위치 · 강조 1명 · 피드백 �
     const fullReasons = (u: DemoV4User, id: string) => (recs.candidate(u.id, u.email, id).data as { reasons?: string[] } | null)?.reasons ?? null;
 
     test('기본 장면: 첫 무료 카드 한 명만 featured: true(불리언) · 맨 앞 · 맞는 점 5개 · 숫자 키 없음 · 나머지 순서 그대로', () => {
-      const v4 = createDemoV4({ now: () => T0, reasonsFor: fullReasons });
+      const v4 = createDemoV4({ flagsOn: MEET_ON, now: () => T0, reasonsFor: fullReasons });
       const u = userOf('plain');
       const before = listFor(u).data as { items: { candidate_id: string }[] };
       const out = v4.decorateToday(u, listFor(u)).data as { items: Record<string, unknown>[] };
@@ -253,7 +261,7 @@ describe('조건 2 · 데모 백엔드: 스위치 · 강조 1명 · 피드백 �
     });
 
     test('그날 고정: 호감을 보내도 같은 카드 · 같은 자리(앱이 모양만 벗김). 상대가 공개 범위를 줄이면 모양만 빠지고 다른 카드로 옮기지 않음', () => {
-      const v4 = createDemoV4({ now: () => T0, reasonsFor: fullReasons });
+      const v4 = createDemoV4({ flagsOn: MEET_ON, now: () => T0, reasonsFor: fullReasons });
       const u = userOf('plain', 2);
       v4.decorateToday(u, listFor(u));
       recs.sendLike(u.id, u.email, 'demo-cand-1');
@@ -267,7 +275,7 @@ describe('조건 2 · 데모 백엔드: 스위치 · 강조 1명 · 피드백 �
     });
 
     test('강조 카드를 차단하면 강조가 사라지고 다른 카드로 옮겨 가지 않는다', () => {
-      const v4 = createDemoV4({ now: () => T0, reasonsFor: fullReasons });
+      const v4 = createDemoV4({ flagsOn: MEET_ON, now: () => T0, reasonsFor: fullReasons });
       const u = userOf('plain', 3);
       v4.decorateToday(u, listFor(u));
       recs.block(u.id, u.email, 'demo-cand-1');
@@ -277,13 +285,13 @@ describe('조건 2 · 데모 백엔드: 스위치 · 강조 1명 · 피드백 �
     });
 
     test('강조 없는 장면: featnone · v4off · featoff · 카드 1장(recone) · 맞는 점 3개 미만 → 받은 응답 그대로', () => {
-      const v4 = createDemoV4({ now: () => T0, reasonsFor: fullReasons });
+      const v4 = createDemoV4({ flagsOn: MEET_ON, now: () => T0, reasonsFor: fullReasons });
       for (const scene of ['featnone', 'v4off', 'featoff', 'recone']) {
         const u = userOf(scene);
         const raw = listFor(u);
         expect(v4.decorateToday(u, raw)).toBe(raw);
       }
-      const thin = createDemoV4({ now: () => T0, reasonsFor: () => ['F06', 'E02'] });
+      const thin = createDemoV4({ flagsOn: MEET_ON, now: () => T0, reasonsFor: () => ['F06', 'E02'] });
       const u = userOf('plain', 4);
       const raw = listFor(u);
       expect(thin.decorateToday(u, raw)).toBe(raw);
@@ -292,7 +300,7 @@ describe('조건 2 · 데모 백엔드: 스위치 · 강조 1명 · 피드백 �
     });
 
     test('API 층으로 읽으면: 기본 = 강조 1명, featnone = 없음', async () => {
-      const v4 = createDemoV4({ now: () => T0, reasonsFor: fullReasons });
+      const v4 = createDemoV4({ flagsOn: MEET_ON, now: () => T0, reasonsFor: fullReasons });
       const viaApi = async (u: DemoV4User) => {
         const client = { rpc: async () => v4.decorateToday(u, listFor(u)) } as unknown as SupabaseClient;
         const r = await createFeaturedApi(client, () => T0).loadToday();
@@ -311,7 +319,7 @@ describe('조건 2 · 데모 백엔드: 스위치 · 강조 1명 · 피드백 �
     });
 
     test('기본: 가장 오래된 쌍(9일) 카드 → 만났어요 · 기대와 달랐어요 저장 → 48시간 동안 "답한" 줄 · 1번 고치기 · 두 번째는 잠김', async () => {
-      const v4 = createDemoV4({ now: clock });
+      const v4 = createDemoV4({ flagsOn: MEET_ON, now: clock });
       const u = userOf('plain', 10);
       const api = createMeetFeedbackApi(demoClient(v4, u));
       const first = await api.prompt();
@@ -330,7 +338,7 @@ describe('조건 2 · 데모 백엔드: 스위치 · 강조 1명 · 피드백 �
     });
 
     test('48:01 에 처음 고치기도 잠김 · 닫은(묻지 않기) 쌍은 다시 묻지 않고 다음 쌍은 다음 날부터 · 닫은 쌍에 답하면 not_available', async () => {
-      const v4 = createDemoV4({ now: clock });
+      const v4 = createDemoV4({ flagsOn: MEET_ON, now: clock });
       const u = userOf('plain', 11);
       const api = createMeetFeedbackApi(demoClient(v4, u));
       await api.prompt();
@@ -350,7 +358,7 @@ describe('조건 2 · 데모 백엔드: 스위치 · 강조 1명 · 피드백 �
     });
 
     test('장면: fbsoon(6일) 카드 없음 · fbnone 없음 · fbanswered 답한 줄 · fbedited 고치기 없음 · fbfail 못 불러옴 → 카드 없음 · v4off · fboff → off', async () => {
-      const v4 = createDemoV4({ now: clock });
+      const v4 = createDemoV4({ flagsOn: MEET_ON, now: clock });
       const prompt = (scene: string) => createMeetFeedbackApi(demoClient(v4, userOf(scene))).prompt();
       expect(await prompt('fbsoon')).toEqual({ kind: 'none' });
       expect(await prompt('fbnone')).toEqual({ kind: 'none' });
@@ -370,7 +378,7 @@ describe('조건 2 · 데모 백엔드: 스위치 · 강조 1명 · 피드백 �
     });
 
     test('데모 서버 값 검사(앱을 거치지 않은 요청도 0016 과 같은 invalid_value) · 차단하면 카드와 답이 사라진다 · 응답에 숫자 점수 키 0', async () => {
-      const v4 = createDemoV4({ now: clock });
+      const v4 = createDemoV4({ flagsOn: MEET_ON, now: clock });
       const u = userOf('plain', 13);
       const bad = [
         { p_match: 'demo-fbmatch-1', p_met: 'maybe' },
@@ -395,7 +403,7 @@ describe('조건 2 · 데모 백엔드: 스위치 · 강조 1명 · 피드백 �
     });
 
     test('2단계 연결 대비: matches · people 를 넘기면 그 연결 목록을 쓴다', async () => {
-      const v4 = createDemoV4({ now: clock, matches: () => [{ id: 'mx', other: 'px', createdAt: T0 - 10 * DAY }], people: (id) => (id === 'px' ? { name: '문OO', age: 32, region: { sido: '서울', sigungu: '마포구' } } : null) });
+      const v4 = createDemoV4({ flagsOn: MEET_ON, now: clock, matches: () => [{ id: 'mx', other: 'px', createdAt: T0 - 10 * DAY }], people: (id) => (id === 'px' ? { name: '문OO', age: 32, region: { sido: '서울', sigungu: '마포구' } } : null) });
       expect(await createMeetFeedbackApi(demoClient(v4, userOf('plain', 14))).prompt()).toEqual({ kind: 'ask', matchId: 'mx', head: '문OO · 32 · 서울 마포구' });
     });
   });

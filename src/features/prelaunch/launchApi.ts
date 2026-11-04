@@ -3,12 +3,11 @@
 //                              launch_weekday: '금요일', open_time: 'HH:MM', launch_text: '12월 25일 금요일 오전 9시', deferred_count: 0|1|2,
 //                              applicant_no: 'MMDD-NNNN'|null, application_linked: boolean,
 //                              review: { status, steps: [{step, state}] (늘 5개), decline_reason, fix_reason, vouched_by } | null,
-//                              region: null | { name: '수도권' 등 6, state: 'open'|'wait', reason: 'count'|'ratio'|'cell'|null, can_early_join } }
+//                              region: null | { name: '수도권' 등 6 | null, state: 'open'|'wait', reason: 'count'|'ratio'|'cell'|null } }  — D-238: can_early_join · early_join_on 은 서버에서 지워짐(0053)
 //                      · 추천 탭이 그릴 화면은 screen 하나로 고른다(phase · review.status · region 조합과 같은 답, S18 4-1). screen 이 없으면(옛 서버) phase · region 으로
 //                      · 로그인 없음 42501 · 정지 · 탈퇴 = null 응답 → 둘 다 09 가 원래 하던 대로(session)
 //  link-application    Edge(로그인) body { applicant_no, link_code } → 200 { ok: true, applicant_no } · 400 invalid_code · 409 already_linked(이미 이은 계정)
 //                      · 429 rate_limited(하루 5번 틀림) · 그 밖(invalid_request · unauthorized · forbidden · method_not_allowed · server_error) = 서버 · 로그인 글
-//  early_join()        RPC → { ok: true, starts_on } · 오류 region_locked(지역 양보 불가) · not_waiting · forbidden — S18 4-4(D-132)와 같음. region.early_join_on · can_early_join 도 S18 4-1 그대로
 //  get_launch_public() RPC(로그인 없이) → { phase, launch_day, launch_weekday, open_time, launch_text } — 01 온보딩 마지막 장 출시일 줄. S18 4-5(D-132)와 같음
 //  · 아는 키만 읽는다. 다른 회원 수 · 인원 · 순번 · 진행 % 같은 키는 와도 버린다(K20 2-2 · P-10). 모르는 phase 는 prelaunch(닫힌 쪽)로 읽는다
 //  · 로그에는 이벤트 이름과 코드만(번호 · 코드 원문 0)
@@ -22,7 +21,7 @@ export type StepKey = 'identity' | 'photos' | 'survey' | 'docs' | 'confirm';
 export type StepState = 'todo' | 'checking' | 'done' | 'fix' | 'na';
 export type ReviewStatus = 'received' | 'in_review' | 'needs_more' | 'confirmed' | 'declined';
 export type DeclineReason = 'under_24' | 'married' | 'fake' | 'forged';
-export type Region = { name: string | null; state: 'open' | 'wait'; reason: 'count' | 'ratio' | 'cell' | null; canEarlyJoin: boolean; earlyJoinOn: string | null };
+export type Region = { name: string | null; state: 'open' | 'wait'; reason: 'count' | 'ratio' | 'cell' | null };
 export type FixReason = 'identity_age' | 'photo_face' | 'photo_full' | 'photo_free' | 'doc_school' | 'doc_job' | 'doc_asset';
 export type Review = { status: ReviewStatus; steps: { step: StepKey; state: StepState }[]; declineReason: DeclineReason | null; fixReason: FixReason | null; vouchedBy: string | null };
 export type Screen = 'wait' | 'review' | 'region_wait' | 'recommend';
@@ -42,12 +41,10 @@ export type LaunchFailure = 'network' | 'server' | 'missing' | 'session';
 export type LaunchLoad = { ok: true; state: LaunchState } | { ok: false; reason: LaunchFailure };
 export type LinkFailure = 'invalid' | 'already' | 'limit' | 'session' | 'network' | 'server';
 export type LinkResult = { ok: true; applicantNo: string } | { ok: false; reason: LinkFailure };
-export type EarlyJoinResult = { ok: true; startsOn: string | null } | { ok: false; reason: 'locked' | 'not_waiting' | 'missing' | 'network' | 'server' };
 export type LaunchPublic = { phase: Phase; launchDay: string | null; launchText: string | null };
 
 export const LAUNCH_RPC = 'get_launch_state';
 export const LINK_FUNCTION = 'link-application';
-export const EARLY_JOIN_RPC = 'early_join'; // S18 4-4
 export const LAUNCH_PUBLIC_RPC = 'get_launch_public'; // S18 4-5
 
 const STEPS: readonly StepKey[] = ['identity', 'photos', 'survey', 'docs', 'confirm'];
@@ -96,8 +93,6 @@ function readRegion(raw: unknown): Region | null {
     name: str(raw.name) ?? str(raw.region), // S18 최신: name(그 전 판: region)
     state,
     reason: pick(raw.reason, ['count', 'ratio', 'cell'] as const),
-    canEarlyJoin: raw.can_early_join === true,
-    earlyJoinOn: day(raw.early_join_on),
   };
 }
 
@@ -181,24 +176,6 @@ export function createLaunchApi(client: SupabaseClient) {
         return { ok: true, applicantNo: no };
       } catch {
         safeLog({ event: 'launch.link.fail', code: 'client' });
-        return { ok: false, reason: 'network' };
-      }
-    },
-
-    // [지역 넓혀 먼저 시작하기](K20 3-4 ② · NP-18) — 본인이 확인 한 줄 뒤에 누를 때만. 서버가 양보 불가를 대신 풀지 않는다
-    async earlyJoin(): Promise<EarlyJoinResult> {
-      try {
-        const { data, error } = await client.rpc(EARLY_JOIN_RPC);
-        if (error) {
-          const f = readDbFailure(error);
-          const msg = String(error.message ?? '');
-          const reason = isMissing(f.code, msg) ? 'missing' : f.network ? 'network' : /region_locked/.test(msg) ? 'locked' : /not_waiting/.test(msg) ? 'not_waiting' : 'server';
-          safeLog({ event: 'launch.early.fail', code: f.code ?? reason });
-          return { ok: false, reason };
-        }
-        if (!isRecord(data) || data.ok !== true) return { ok: false, reason: 'server' };
-        return { ok: true, startsOn: day(data.starts_on) };
-      } catch {
         return { ok: false, reason: 'network' };
       }
     },

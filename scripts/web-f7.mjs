@@ -1,7 +1,7 @@
 // F7 화면 점검(12 설정 · 하위 화면 9개 · 약관 시트 · 탈퇴 2단계 · 로그아웃 · 10 신고 → 12 신고 내역 · 차단 목록). 무료 · 네트워크 없음(로컬 서버 + 로컬 브라우저, 데모 모드 모의 서버).
 //  먼저 `npm run check:web:demo`(= 데모 모드 웹 번들 dist-demo/)를 만든 뒤 쓴다.
 //  헤드리스 Edge 로 폭 360 에서 사람이 하는 순서대로 누르며 잰다. 세션이 메모리뿐이라 흐름마다 02 → 03 → 04 데모 건너뛰기 → 06 → 07 → 08 → 09 → 탭 '설정' 으로 처음부터 간다.
-//   A. 12 목록(줄 13 · 정보 묶음 · 로그아웃 · 탈퇴하기) · 인증 서류 "준비 중이에요"   B. 알림(스위치 저장 → 서버 열)   C. 보안(처음 꺼짐 → 켬)
+//   A. 12 목록(줄 13 · 정보 묶음 · 로그아웃 · 탈퇴하기) · (D-238: 인증 서류 제출 줄은 스위치 doc_verify 가 꺼져 없음)   B. 알림(스위치 저장 → 서버 열)   C. 보안(처음 꺼짐 → 켬)
 //   D. 동의 관리(CK9 켜기 · CK4 켜기 → 끄기 확인창 → 철회)   E. 차단 목록(장면 settings: 2명 → 해제)   F. 신고 내역(상태 3 · 날짜)   G. 고객센터 · 안전 안내 · 라이선스 · 이미지 고지 · 약관 시트
 //   I. 10 에서 신고 → 12 신고 내역 · 차단 목록에 오른다   W. 탈퇴(확인창 → 인증번호 틀림 → 맞음 → 01, 서버 탈퇴) · 발송 실패 → 취소 → 로그아웃 → 01
 //   H. 어느 화면이든: 가로 넘침 0 · 글자 12 이상 · 터치 44 이상 · 콘솔 오류 0 · 바깥 요청 0 · 브라우저 저장소 비어 있음
@@ -82,7 +82,7 @@ async function toRecs(email) {
   await b.click(sel('consent-submit'));
   await b.waitFor(`location.pathname === '/survey/01'`);
   await b.clickText('설문 완료 · 정상 응답');
-  await b.waitFor(`location.pathname === '/traits' && !!window.__q('traits-confirm')`, 25000);
+  await b.waitFor(`location.pathname === '/traits' && !!window.__q('traits-confirm')`, 40000);
   await b.click(sel('traits-confirm'));
   await b.traitsNext(); // 3부-자: type_card 켜짐이면 [다음] 한 번 더
   await b.waitFor(`location.pathname === '/profile' && !!window.__q('profile-first-confirm')`, 10000);
@@ -107,8 +107,9 @@ try {
   // AIT-F ⑤: 데모 판에는 기본 묶음 맨 끝(안전 안내 다음)에 '시험용 AI 코드' 줄이 더해진다(실서버 판 줄 0) → 17줄
   // IF5-F1(12-1): 스위치 saju_yard 가 켜진 데모에는 정보 묶음 바로 위(안전 안내 다음)에 '사주 마당' 줄이 더해진다(실서버 처음값 꺼짐 — 줄 0) → 18줄
   // IF5-F2(12-1): 스위치 mileage 가 켜진 데모에는 '크레딧 · 구매 내역' 바로 아래에 '마일리지' 줄이 더해진다(실서버 처음값 꺼짐 — 줄 0) → 19줄
-  check('A', '줄 19개(v5 + 마일리지 + 사주 마당 + 시험용 AI 코드 + 하늘 도감): 알림 · 공개 · 내 등급 · 아는 분 피하기 · 인증(오른쪽 "준비 중") · 크레딧 · 구매 내역 · 마일리지 · 차단 · 신고 · 보안 · 고객센터 · 동의 · 이용약관 · 안전 안내 · 사주 마당(데모, 스위치 saju_yard) · 시험용 AI 코드(데모 판) · 정보 › 오픈소스 라이선스 · 이미지 출처 고지 · 하늘 도감(데모, 스위치 sky_book), 임시 설문 동안 희망 조건 수정 숨김 D-48 · 사업자 정보(값 비어) 숨김',
-    rowsShown.length === 19 && rowsShown[0].startsWith(S.SETTINGS.rows.notifications) && rowsShown[2].startsWith(S.SETTINGS.rows.grade) && rowsShown[3].startsWith(S.SETTINGS.rows.avoid) && rowsShown[4].includes(S.SETTINGS.verificationSoon) && rowsShown[5].startsWith(S.SETTINGS.rows.credits) && rowsShown[6].startsWith('마일리지') && rowsShown[13].startsWith(S.SETTINGS.rows.safety) && rowsShown[14].startsWith('사주 마당') && rowsShown[15].startsWith('시험용 AI 코드') && rowsShown[17].startsWith(S.SETTINGS.rows.imageCredit) && rowsShown[18].startsWith('하늘 도감') && !rowsShown.some((r) => r.startsWith(S.SETTINGS.rows.preferences)), rowsShown.map((r) => r.split(' ')[0]).join(' / '));
+  // D-238(QF1-A): '인증 서류 제출(준비 중)' 줄은 스위치 doc_verify 가 꺼져 있으면 없다(데모도 꺼짐) → 18줄
+  check('A', '줄 18개(v5 + 마일리지 + 사주 마당 + 시험용 AI 코드 + 하늘 도감 — 인증 서류 제출 줄 없음): 알림 · 공개 · 내 등급 · 아는 분 피하기 · 크레딧 · 구매 내역 · 마일리지 · 차단 · 신고 · 보안 · 고객센터 · 동의 · 이용약관 · 안전 안내 · 사주 마당(데모, 스위치 saju_yard) · 시험용 AI 코드(데모 판) · 정보 › 오픈소스 라이선스 · 이미지 출처 고지 · 하늘 도감(데모, 스위치 sky_book), 임시 설문 동안 희망 조건 수정 숨김 D-48 · 사업자 정보(값 비어) 숨김',
+    rowsShown.length === 18 && rowsShown[0].startsWith(S.SETTINGS.rows.notifications) && rowsShown[2].startsWith(S.SETTINGS.rows.grade) && rowsShown[3].startsWith(S.SETTINGS.rows.avoid) && rowsShown[4].startsWith(S.SETTINGS.rows.credits) && rowsShown[5].startsWith('마일리지') && rowsShown[12].startsWith(S.SETTINGS.rows.safety) && rowsShown[13].startsWith('사주 마당') && rowsShown[14].startsWith('시험용 AI 코드') && rowsShown[16].startsWith(S.SETTINGS.rows.imageCredit) && rowsShown[17].startsWith('하늘 도감') && !rowsShown.some((r) => r.startsWith(S.SETTINGS.rows.preferences)) && !rowsShown.some((r) => r.startsWith(S.SETTINGS.rows.verification)) && !(await q('settings-row-verification')), rowsShown.map((r) => r.split(' ')[0]).join(' / '));
   check('A', '"정보" 묶음 글 · [로그아웃] · [탈퇴하기]가 있고 "모든 데이터 삭제"라는 말은 없다', (await inner('settings-info-label')) === S.SETTINGS.rows.infoGroup && (await q('settings-logout')) && (await q('settings-withdraw')) && !(await has('모든 데이터 삭제')), '');
   check('A', '12 에 등급 숫자 · 점수 · 순위 · 높음/낮음 말이 없다(v5 6-2: 등급 말은 아이콘 설명으로 남음)', await noScore(), '');
   await measure('12 목록 위');
@@ -116,8 +117,6 @@ try {
   await b.evaluate(`(() => { const el = window.__q('settings-list'); if (el) el.scrollTop = 99999; })()`);
   await measure('12 목록 아래');
   await note('F7_12b_목록아래_360x740.png');
-  await b.click(sel('settings-row-verification'));
-  check('A', '인증 서류 제출 → 이동 없이 토스트 "준비 중이에요"', (await b.waitFor(`document.body.innerText.includes(${JSON.stringify(S.SETTINGS.verificationToast)})`)) && (await path0()) === '/settings', '');
 
   // ═══ B. 알림 ═══
   // R-A(D-199 · 12-Q · 화면_요구사항 12-2): 서비스 알림 2줄 — '이번 주 만날 분이 정해졌을 때'(notify_match, 서버 P8 · P8b) · '대화방에 새 글이 왔을 때'(notify_chat, 0036). 호감 · 연결 줄 없음
@@ -171,8 +170,9 @@ try {
   await b.click('[aria-label="닫기"]');
   await b.waitFor(`!window.__q('consent-summary-CK1')`);
   // L17A: 03 밖 선택 동의 CK11 ~ CK16 줄 · CK16 켜기 → 끄기(확인창 → 철회) · CK15 보기 › 요약
-  const laterCodes = ['CK11', 'CK12', 'CK13', 'CK14', 'CK15', 'CK16'];
-  check('D', 'L17A: 선택 동의 CK11 ~ CK16 6줄 · 보기 › 6줄 · 꺼진 CK11 ~ CK15 잠김', (await b.evaluate(`${JSON.stringify(laterCodes)}.every((c) => !!window.__q('settings-consent-' + c) && !!window.__q('settings-consent-view-' + c))`)) && (await b.evaluate(`['CK11','CK12','CK13','CK14','CK15'].every((c) => window.__q('settings-consent-' + c).getAttribute('aria-disabled') === 'true')`)), '');
+  // D-238: CK12(셀피) · CK14(서류)는 스위치 selfie_verify · doc_verify 가 꺼져 있으면 줄과 보기 › 길이 모두 없다 → 4줄
+  const laterCodes = ['CK11', 'CK13', 'CK15', 'CK16'];
+  check('D', 'L17A(D-238): 선택 동의 CK11 · CK13 · CK15 · CK16 4줄 · 보기 › 4줄 · CK12 · CK14 줄 · 보기 › 0 · 꺼진 CK11 · CK13 · CK15 잠김', (await b.evaluate(`${JSON.stringify(laterCodes)}.every((c) => !!window.__q('settings-consent-' + c) && !!window.__q('settings-consent-view-' + c))`)) && (await b.evaluate(`['CK12','CK14'].every((c) => !window.__q('settings-consent-' + c) && !window.__q('settings-consent-view-' + c))`)) && (await b.evaluate(`['CK11','CK13','CK15'].every((c) => window.__q('settings-consent-' + c).getAttribute('aria-disabled') === 'true')`)), '');
   await b.click(sel('settings-consent-CK16'));
   await b.waitFor(`window.__q('settings-consent-CK16').getAttribute('aria-checked') === 'true'`);
   const c3 = await peekConsents(EMAIL);

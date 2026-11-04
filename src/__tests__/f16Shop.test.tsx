@@ -170,7 +170,7 @@ describe('조건 4 · 모의 서버(shopDemo)가 서버와 같은 키를 낸다'
     expect(state).toMatchObject({ paymentMode: 'demo', shopStatus: 'open', subGate: 'open' });
     const sub = state.products.find((p) => p.key === 'grade_sub_1m');
     expect(sub).toMatchObject({ state: 'available', notReadyReason: null });
-    expect(state.products).toHaveLength(36); // S17(D-85): G9 · N14 뺌 · S19(D-122): 카드 7개 뺌
+    expect(state.products).toHaveLength(35); // S17(D-85): G9 · N14 뺌 · S19(D-122): 카드 7개 뺌 · D-238: G7 서류 인증 뺌(스위치 doc_verify 꺼짐)
     const raw = (await client.rpc('get_shop_state')).data as Record<string, unknown>;
     expect(raw).toMatchObject({ payment_mode: 'demo', shop_status: 'open', sub_gate: 'open' });
     expect(JSON.stringify(raw.products)).not.toContain('not_ready_reason'); // 이유가 없으면 키 자체가 없다
@@ -199,7 +199,7 @@ describe('조건 4 · 모의 서버(shopDemo)가 서버와 같은 키를 낸다'
     const live = await login('shoplive');
     const state = must_(await live.shop.loadShop());
     expect(state).toMatchObject({ paymentMode: 'live', shopStatus: 'open' });
-    expect(state.products).toHaveLength(36); // S17(D-85): G9 · N14 뺌 · S19(D-122): 카드 7개 뺌
+    expect(state.products).toHaveLength(35); // S17(D-85): G9 · N14 뺌 · S19(D-122): 카드 7개 뺌 · D-238: G7 서류 인증 뺌(스위치 doc_verify 꺼짐)
     expect(must_(await live.shop.canPurchase('grade_sub_1m'))).toEqual({ ok: false, reason: 'demo_not_allowed' });
     expect(await live.shop.demoPurchase('grade_sub_1m', newRequestId())).toEqual({ ok: false, reason: 'demo_not_allowed' });
   });

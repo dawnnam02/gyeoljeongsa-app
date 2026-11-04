@@ -20,7 +20,7 @@ export const ONBOARDING = {
   slides: [
     {
       title: '결혼을 정말 하고 싶은 사람들',
-      body: '설문 · 사진 · 인증으로 결혼 조건을 꼼꼼히 살펴요.',
+      body: '설문과 사진으로 결혼 조건을 꼼꼼히 살펴요.',
     },
     {
       title: '일주일에 한 번, 한 분',

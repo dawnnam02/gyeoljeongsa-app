@@ -1,6 +1,6 @@
 // 설문 v2 선택 단계 둘 · 검토(설문_v2 0장 '결혼 이야기 화면' · '세부사항 화면' · 2-1 검토 · D35 A5).
 //  StoryStage  : 질문 카드 8장(접힘 → 누르면 펼쳐 10~100자 + 미리보기 '상대에게 이렇게 보여요'), 3개를 채우면 나머지는 흐려짐. 연락처 모양은 안내만(공개 칸)
-//  AppealStage : 어필 카드 6장(이름 + 한 줄 예시 → 펼치면 도움말 · 10~200자 · [증빙 올리기] · 증빙 상태). B04 가 '없어요'가 아니면 T04 를 펼친 채 시작
+//  AppealStage : 어필 카드 6장(이름 + 한 줄 예시 → 펼치면 도움말 · 10~200자 · [증빙 올리기] · 증빙 상태 — D-238: 증빙 줄은 proofUpload(서류 인증 스위치 doc_verify 켜짐 + 증빙 길이 있는 판)일 때만). B04 가 '없어요'가 아니면 T04 를 펼친 채 시작
 //  ReviewStage : 주제별 답 · [고치기] · 확인 문구 W1~W5(막지 않음) · 건너뛴 단계 안내
 // 등급 · 점수 숫자는 어디에도 없다. 글은 copy.ts · questionCopy.ts 만 쓴다.
 import { StyleSheet, View } from 'react-native';
@@ -148,14 +148,16 @@ export function AppealStage({ drafts, open, proofs, proofUpload, uploading, erro
                       {errors[q.id]}
                     </AppText>
                   ) : null}
-                  <View style={styles.proofRow}>
-                    <AppText variant="captionMedium" tone={proof === 'retry' ? 'accent' : proof === 'none' ? 'sub' : 'text'} style={styles.grow} testID={`v2-${q.id}-proof`}>
-                      {SV2.appeal.proof[proof]}
-                    </AppText>
-                    {proofUpload && proof !== 'pending' && proof !== 'ok' ? (
-                      <TextButton label={SV2.appeal.upload} variant="captionMedium" disabled={uploading !== null} onPress={() => onUpload(q.id)} testID={`v2-${q.id}-upload`} />
-                    ) : null}
-                  </View>
+                  {proofUpload ? (
+                    <View style={styles.proofRow}>
+                      <AppText variant="captionMedium" tone={proof === 'retry' ? 'accent' : proof === 'none' ? 'sub' : 'text'} style={styles.grow} testID={`v2-${q.id}-proof`}>
+                        {SV2.appeal.proof[proof]}
+                      </AppText>
+                      {proof !== 'pending' && proof !== 'ok' ? (
+                        <TextButton label={SV2.appeal.upload} variant="captionMedium" disabled={uploading !== null} onPress={() => onUpload(q.id)} testID={`v2-${q.id}-upload`} />
+                      ) : null}
+                    </View>
+                  ) : null}
                 </View>
               ) : null}
             </View>

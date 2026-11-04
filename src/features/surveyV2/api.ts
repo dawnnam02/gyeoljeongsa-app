@@ -66,7 +66,7 @@ export type ProofOutcome = { ok: true; state: ProofState } | { ok: false; reason
 
 export type SurveyV2Api = {
   readonly demo: boolean;
-  readonly proofUpload: boolean;
+  readonly proofUpload: boolean; // 증빙 올리기 길이 있고 서류 인증 스위치(doc_verify)가 켜졌나 — 읽을 때마다 스위치를 본다(D-238)
   load(): Promise<LoadOutcome>;
   save(batch: SaveBatch): Promise<SaveOutcome>;
   searchSchools(query: string, options: { courses?: readonly SchoolCourse[]; limit?: number }): Promise<SearchOutcome>;
@@ -134,12 +134,13 @@ export function readSchoolRows(data: unknown): SchoolResult[] | null {
   return out;
 }
 
-export type V2ApiOptions = { demo: boolean; proofUpload: boolean; schoolSearch: 'local' | 'server' };
+export type V2ApiOptions = { demo: boolean; proofUpload: boolean | (() => boolean); schoolSearch: 'local' | 'server' };
 
 export function createSurveyV2Api(client: SupabaseClient, options: V2ApiOptions = { demo: false, proofUpload: false, schoolSearch: 'local' }): SurveyV2Api {
   // 질문 소개 칸: 결혼 이야기 코드 → 칸 번호(바꾸기 · 지우기), 다른 질문 소개가 쓰는 칸
   let slotOf: Record<string, number> = {};
   let otherSlots: number[] = [];
+  const proofOn = (): boolean => (typeof options.proofUpload === 'function' ? options.proofUpload() : options.proofUpload);
 
   async function readPrompts(): Promise<{ stories: Record<string, string>; free: number }> {
     const { data, error } = await client.rpc(V2_SERVER.getPrompts);
@@ -161,7 +162,9 @@ export function createSurveyV2Api(client: SupabaseClient, options: V2ApiOptions 
 
   return {
     demo: options.demo,
-    proofUpload: options.proofUpload,
+    get proofUpload() {
+      return proofOn();
+    },
 
     async load() {
       const session = await client.auth.getSession();
@@ -186,7 +189,7 @@ export function createSurveyV2Api(client: SupabaseClient, options: V2ApiOptions 
       if (!vis.error && isRecord(vis.data)) for (const id of PUBLIC_TOGGLE_IDS) if (vis.data[toggleColumn(id)] === true) publicOn[id] = true;
       const progress = await loadProgressStage(client);
       const proofs: Record<string, ProofState> = {};
-      if (options.proofUpload) {
+      if (proofOn()) {
         const st = await client.functions.invoke(V2_SERVER.proof, { body: { action: 'status' } });
         if (!st.error && isRecord(st.data) && isRecord(st.data.proofs)) {
           for (const [card, s] of Object.entries(st.data.proofs)) if (PROOF_STATES.includes(s as ProofState)) proofs[card] = s as ProofState;
@@ -265,7 +268,7 @@ export function createSurveyV2Api(client: SupabaseClient, options: V2ApiOptions 
     },
 
     async uploadProof(card) {
-      if (!options.proofUpload) return { ok: false, reason: 'server' };
+      if (!proofOn()) return { ok: false, reason: 'server' };
       const { data, error } = await client.functions.invoke(V2_SERVER.proof, { body: { action: 'upload', card } });
       if (error) return { ok: false, reason: 'network' };
       return isRecord(data) && data.ok === true && PROOF_STATES.includes(data.state as ProofState) ? { ok: true, state: data.state as ProofState } : { ok: false, reason: 'server' };

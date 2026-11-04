@@ -80,7 +80,7 @@ try {
   check('A', '01 온보딩이 열리고 "시작하기"가 보인다', ready01);
   const first = await b.evaluate(`({ lang: document.documentElement.lang, title: document.title, text: window.__text(), storage: localStorage.length + sessionStorage.length })`);
   check('A', '상단 바 글자 "결정사" · 제목 "결혼을 정말 하고 싶은 사람들" · 부제 · 두 버튼이 카피 그대로 보인다',
-    first.text.includes('결정사') && first.text.includes('결혼을 정말 하고 싶은 사람들') && first.text.includes('설문 · 사진 · 인증으로 결혼 조건을 꼼꼼히 살펴요.') &&
+    first.text.includes('결정사') && first.text.includes('결혼을 정말 하고 싶은 사람들') && first.text.includes('설문과 사진으로 결혼 조건을 꼼꼼히 살펴요.') &&
       first.text.includes('시작하기') && first.text.includes('이미 계정이 있어요'),
     first.text.slice(0, 80));
   check('A', '시안용 글자 "온보딩"은 화면에 없다(K2 4장 01)', !/\b온보딩\b/.test(first.text), '');

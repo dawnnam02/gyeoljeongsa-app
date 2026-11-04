@@ -5,12 +5,12 @@ export const GI = {
   partnerA11y: '이분의 등급 아이콘', // GI2 09 칩(상대 아이콘은 V5 에서 숨김 — 남아 있는 동안만)
   flockLabel: '내 무리', // GI3 시안 p8(디자인 V5 시안 글, 마케팅 확정 전)
   flockLine: '같은 무리의 분과 이어져요.', // GI4 시안 p8
-  flockNote: '무리 무늬는 나에게만 보여요. 상대의 무늬는 보이지 않아요. 결제나 크레딧으로는 바뀌지 않고, 인증을 더하면 더 정확해져요.', // GI16 시안 p8
+  flockNote: '무리 무늬는 나에게만 보여요. 상대의 무늬는 보이지 않아요. 결제나 크레딧으로는 바뀌지 않아요.', // GI16 시안 p8
   flockA11y: (name: string) => `내 무리 아이콘, ${name}`, // GI17 스크린리더(풍경 이름만)
   // GI5 잠금 안내(locked)는 v5에 없다(카피.md 14-1 — 구독 잠금 없음, QP-A)
   tasksTitle: '아이콘이 바뀔 수 있는 일', // GI6 NV75 '올리는 방법' 대신
   verifyTitle: '서류 인증', // GI7 NV78 '인증으로 올리기' 대신
-  historySchedule: '답을 고치거나 인증하면 다음 날 새벽에 반영돼요. 어떤 변화는 7일 동안 같은 결과가 이어질 때만 반영돼요.', // GI8 NV51 대신
+  historySchedule: '답을 고치면 다음 날 새벽에 반영돼요. 어떤 변화는 7일 동안 같은 결과가 이어질 때만 반영돼요.', // GI8 NV51 대신
   historyLine: (date: string, reason: string) => (reason ? `${date} 아이콘이 바뀌었어요 · ${reason}` : `${date} 아이콘이 바뀌었어요`), // GI9 G2 한 줄(전 · 새 아이콘은 그림으로 옆에)
   historyFirst: (date: string) => `${date} 첫 아이콘을 받았어요`, // GI10 첫 계산 줄
   goalHead: '이런 일을 하면 아이콘이 바뀔 수 있어요.', // GI11 G3 머리 줄 — 카피 20장(3부-아 · QP-37): '도움이 되는'(올리기 흔적) 뺌

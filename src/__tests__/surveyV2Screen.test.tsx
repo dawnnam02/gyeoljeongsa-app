@@ -346,6 +346,22 @@ describe('선택 단계 · 검토 · 제출', () => {
     expect(has(tree, 'v2-review')).toBe(true);
   });
 
+  test('증빙 줄(올리기 단추 · 증빙 상태)은 서류 인증 스위치(doc_verify)가 꺼져 있으면 없고(D-238), 켜면 돌아온다 · 도움말에 "증빙으로" 0', async () => {
+    let docVerify = false;
+    const { deps, api } = await full();
+    await api.save({ answers: { B04: 'degree' } });
+    docVerify = false;
+    const off = await show({ ...deps, api: new Proxy(deps.api, { get: (t, k) => (k === 'proofUpload' ? docVerify : Reflect.get(t, k)) }) as typeof deps.api });
+    await tap(off, 'v2-review-appeal-edit');
+    expect(has(off, 'v2-T04-input')).toBe(true);
+    expect([has(off, 'v2-T04-proof'), has(off, 'v2-T04-upload')]).toEqual([false, false]);
+    expect(allTexts(off).join(' ')).not.toMatch(/증빙/);
+    docVerify = true;
+    const on = await show({ ...deps, api: new Proxy(deps.api, { get: (t, k) => (k === 'proofUpload' ? docVerify : Reflect.get(t, k)) }) as typeof deps.api });
+    await tap(on, 'v2-review-appeal-edit');
+    expect([has(on, 'v2-T04-proof'), has(on, 'v2-T04-upload')]).toEqual([true, true]);
+  });
+
   test('화면 글에 점수 · 등급 숫자가 없다(검토 · 문항 모두)', async () => {
     const { deps } = await full();
     const tree = await show(deps);

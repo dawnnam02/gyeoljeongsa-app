@@ -117,7 +117,7 @@ try {
   await sleep(300);
   await shot('16_상점_목록_무료구역_링크');
   // S17(D-85: G9 · N14 뺌, N16 C) · S19(D-122: 카드 7개 뺌) 뒤 숫자: 상품 줄 42 → 40 → 33 · 빨간 라벨 26 → 27 → 20
-  check('B', '상품 줄 33 + 3개월권 카드 · 위험 C 20개에 빨간 라벨(NV57)', (await b.evaluate(`[...document.querySelectorAll('[data-testid^="shop-row-"]')].filter((el) => /^shop-row-[A-Z]\\d+$/.test(el.dataset.testid)).length`)) === 33 && (await b.evaluate(`document.body.innerText.split('위험 — 본인 판단').length - 1`)) === 20, '');
+  check('B', '상품 줄 32(D-238: G7 서류 인증은 스위치 doc_verify 꺼짐이라 뺌) + 3개월권 카드 · 위험 C 20개에 빨간 라벨(NV57)', (await b.evaluate(`[...document.querySelectorAll('[data-testid^="shop-row-"]')].filter((el) => /^shop-row-[A-Z]\\d+$/.test(el.dataset.testid)).length`)) === 32 && (await b.evaluate(`document.body.innerText.split('위험 — 본인 판단').length - 1`)) === 20, '');
 
   // 무료 열람 요청 시트(비구독자도) — G5
   await scrollTo('shop-free-access', 'center');
@@ -174,6 +174,7 @@ try {
   check('G1', '내 등급(W9 · D-154): 내 무리(풍경 아이콘 + 이름 + 나만 보여요) · 단계 숫자 · 점수 막대 · 방향 문구 0', (await wait(`!!window.__q('grade-flock')`)) && (await vis('grade-flock-icon-bridge')) && (await inner('grade-flock-name')) === '다리' && !(await q('grade-bars')) && !/\d\s*등급|숫자가 작을수록|위 등급|\+\d+점/.test(await b.evaluate('document.body.innerText')), await inner('grade-flock-name'));
   // 3부-카(FB-019): 올리는 방법 줄은 서버가 올릴 여지를 준 항목만(최대 3줄) 나온다 — 데모 계정은 0줄일 수 있어 줄 수는 보지 않고, 나온 줄은 NV77 세 글 가운데 하나여야 한다
   check('G1', '바뀔 수 있는 일(있는 만큼만) · 한계 문구(점수 글 없음)', (await q('grade-limits')) && !(await has('최대 +')), `서류 ${await has('서류 인증하기')} · 선택 ${await has('프로필 선택 항목 채우기')} · 접속 ${await has('앱에 접속하기')} · 한계 ${await q('grade-limits')}`);
+  check('G1', '서류 인증 입구 0(D-238): "서류 인증하기" 줄 · "서류 인증" 카드 · 학교 · 직업 · 자산 인증 글 · "준비 중" 약속 · 인증 막대 · 인증 점수 0', !(await has('서류 인증')) && !(await q('grade-verify')) && !(await has('학교 인증')) && !(await has('직업 인증')) && !(await has('자산 인증')) && !(await has('시작되면 여기에서')) && !(await q('grade-bars')), '');
   await shot('16-G1_내등급_위');
   await measure('16-G1(위)');
   await scrollTo('grade-up');
@@ -184,7 +185,7 @@ try {
   await shot('16-G1_내등급_링크_한계문구');
   await measure('16-G1(아래)');
   await tap('grade-link-history');
-  check('G2', '등급 변화 기록(W9): 줄 "10월 … 아이콘이 바뀌었어요 · 서류 인증" + 전/새 아이콘 그림 · 숫자 등급 0', (await wait(`!!window.__q('history-item-0')`)) && (await inner('history-item-0')).endsWith('아이콘이 바뀌었어요 · 서류 인증') && (await vis('history-to-0')) && !/\d\s*등급|숫자가 작을수록|위 등급|\+\d+점/.test(await b.evaluate('document.body.innerText')), await inner('history-item-0'));
+  check('G2', '등급 변화 기록(W9): 줄 "10월 … 아이콘이 바뀌었어요 · 활동"(D-238: 이유에 서류 인증 0) + 전/새 아이콘 그림 · 숫자 등급 0', (await wait(`!!window.__q('history-item-0')`)) && (await inner('history-item-0')).endsWith('아이콘이 바뀌었어요 · 활동') && !(await has('서류 인증')) && (await vis('history-to-0')) && !/\d\s*등급|숫자가 작을수록|위 등급|\+\d+점/.test(await b.evaluate('document.body.innerText')), await inner('history-item-0'));
   await shot('16-G2_변화기록');
   await tap('shop-sub-header-back');
   await scrollTo('grade-link-goal', 'center');

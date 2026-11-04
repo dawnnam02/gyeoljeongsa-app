@@ -58,7 +58,7 @@ describe('소개 3장', () => {
     const tree = await mount(<OnboardingScreen />);
     expect(hasText(tree, ONBOARDING.logo)).toBe(true); // 상단 바 글자(목업의 '온보딩' 자리)
     expect(textOf(tree, 'intro-title')).toBe('결혼을 정말 하고 싶은 사람들');
-    expect(textOf(tree, 'intro-body')).toBe('설문 · 사진 · 인증으로 결혼 조건을 꼼꼼히 살펴요.');
+    expect(textOf(tree, 'intro-body')).toBe('설문과 사진으로 결혼 조건을 꼼꼼히 살펴요.');
     expect([1, 2, 3].map((n) => dotSelected(tree, n))).toEqual([true, false, false]);
     expect(allTexts(tree)).not.toContain('온보딩'); // 시안용 화면 이름은 쓰지 않는다
   });

@@ -1,7 +1,7 @@
 // 내 등급 쪽 넷(수익/상점_화면.md 7-3 ~ 7-6, 카피 16-E ~ 16-H, Figma 313:97 ~ 314:308). 16 상점 안의 쪽이라 탭바 · 원형 사진이 없다.
 // W9(청사진_v5 6-1 · 6-2, 결정 #15): 단계 숫자 · 점수 막대 · '+n점' · 방향 문구(숫자가 작을수록) · 위/아래 말 · 9칸 격자 · 목표 단계 고르기를 지웠다
 //  → 아이콘 하나 + 짧은 설명. 새 글은 GI(iconCopy.ts, 카피 키 제안). 아이콘은 임시 그림(GradeIcon)
-//  16-G1 내 등급: 구독자 = 내 무리(MyFlock, 시안 p8) + 참고 문구 + 바뀔 수 있는 일 + 서류 인증 + 링크 4 + 한계 문구
+//  16-G1 내 등급: 구독자 = 내 무리(MyFlock, 시안 p8) + 참고 문구 + 바뀔 수 있는 일 + (서류 인증 칸: doc_verify 켜짐일 때만, D-238) + 링크 4 + 한계 문구
 //                 비구독자 = 잠금 안내(GI5) + [내 등급 알려 주세요] + [구독 알아보기] + 링크(잠김 그림은 여기만)
 //                 첫 계산 전(NV46) · 나이대 합침(NV48) · 계산 멈춤(reason 'stopped') · 불러오기 실패(R8)
 //  16-G2 변화 기록(날짜 · 이유 + 전/새 아이콘 그림) · 16-G3 도움이 되는 일 · 16-G4 등급은 어떻게 정해지나요(모든 회원 무료)
@@ -36,7 +36,7 @@ import { iconOf } from './iconBridge';
 import { goalTasks, reasonText, upTasks } from './gradeLogic';
 import { GI } from './iconCopy';
 
-type Deps = Pick<ShopDeps, 'grade' | 'now'>;
+type Deps = Pick<ShopDeps, 'grade' | 'now' | 'docVerify'>; // docVerify = 스위치 doc_verify 가 켜졌나(D-238). 없으면 꺼짐
 
 // ── 16-G1 ───────────────────────────────────────────────────────────
 // shop: 상점 안에서 열면 상점 상태(구독 끝남 안내), 12 '내 등급' 줄(MyGradeScreen, D-200 ②)로 열면 null
@@ -44,6 +44,7 @@ export function GradeBody({ shop, deps, nav, onAccess }: { shop: ShopState | nul
   const router = useRouter();
   const read = useCallback(() => deps.grade.loadMine(), [deps]);
   const { phase, data, reload } = useLoad<MyGrade>(read);
+  const docsOn = deps.docVerify === true; // D-238: 서류 인증이 꺼지면 '서류 인증' 칸 · 올리는 방법의 서류 줄이 보이지 않는다
 
   if (phase !== 'ready' || !data) {
     return <LoadState state={phase === 'ready' ? 'loading' : phase} onRetry={reload} testID="grade" />;
@@ -107,7 +108,7 @@ export function GradeBody({ shop, deps, nav, onAccess }: { shop: ShopState | nul
     );
   }
 
-  const tasks = upTasks(data.actionable ?? []);
+  const tasks = upTasks(data.actionable ?? [], docsOn);
   const go = (key: 'verify' | 'ans' | 'act') => {
     if (key === 'verify') router.navigate('/settings'); // 12 인증 서류 제출(준비 중 줄)
     else if (key === 'ans') router.push('/profile'); // 08 프로필 선택 항목
@@ -153,21 +154,23 @@ export function GradeBody({ shop, deps, nav, onAccess }: { shop: ShopState | nul
         </Card>
       ) : null}
 
-      <Card style={styles.card} testID="grade-verify">
-        <AppText variant="bodyBold">{GI.verifyTitle}</AppText>
-        {GRADE16.verifyRows.map((name) => (
-          <AppText key={name} variant="body" tone="text">
-            {name}
-          </AppText>
-        ))}
-        {data.verifyOn ? (
-          <Button label={GRADE16.verifyGo} variant="secondary" onPress={() => go('verify')} testID="grade-verify-go" />
-        ) : (
-          <AppText variant="caption" testID="grade-verify-soon">
-            {GRADE16.verifySoon}
-          </AppText>
-        )}
-      </Card>
+      {docsOn ? (
+        <Card style={styles.card} testID="grade-verify">
+          <AppText variant="bodyBold">{GI.verifyTitle}</AppText>
+          {GRADE16.verifyRows.map((name) => (
+            <AppText key={name} variant="body" tone="text">
+              {name}
+            </AppText>
+          ))}
+          {data.verifyOn ? (
+            <Button label={GRADE16.verifyGo} variant="secondary" onPress={() => go('verify')} testID="grade-verify-go" />
+          ) : (
+            <AppText variant="caption" testID="grade-verify-soon">
+              {GRADE16.verifySoon}
+            </AppText>
+          )}
+        </Card>
+      ) : null}
 
       <Card style={styles.linksCard} testID="grade-links">
         <LinkRow label={GRADE16.lockedAccess} onPress={onAccess} testID="grade-link-access" />
@@ -229,6 +232,7 @@ export function HistoryBody({ deps }: { deps: Deps }) {
 export function GoalBody({ deps }: { deps: Deps }) {
   const read = useCallback(() => deps.grade.loadMine(), [deps]);
   const { phase, data, reload } = useLoad<MyGrade>(read);
+  const docsOn = deps.docVerify === true; // D-238
   if (phase !== 'ready' || !data) return <LoadState state={phase === 'ready' ? 'loading' : phase} onRetry={reload} testID="goal" />;
   if (data.kind !== 'ready') {
     return (
@@ -241,7 +245,7 @@ export function GoalBody({ deps }: { deps: Deps }) {
   }
   // v5 서버(0039)는 올릴 여지(actionable)를 보내지 않는다 — 그때는 할 일 줄만 보이고 '완료' 표시를 만들지 않는다(사실이 아닌 완료 0)
   const known = data.actionable !== null;
-  const tasks = goalTasks(data.actionable ?? []);
+  const tasks = goalTasks(data.actionable ?? [], docsOn);
   return (
     <View style={styles.page} testID="goal-body">
       <AppText variant="bodyBold" testID="goal-pick">

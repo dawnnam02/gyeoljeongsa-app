@@ -174,6 +174,25 @@ describe('화면', () => {
     act(() => tree.unmount());
   });
 
+  test('결제 시트 "데모 결제예요. 실제 돈은 나가지 않아요." 한 줄은 서버 payment_mode 가 demo 일 때만 — live · closed · 모름이면 없다(D-238 QF1-A)', async () => {
+    const client = await demoClient('w6mode@email.com');
+    const base = createBoardingApi(client);
+    const withMode = (mode: 'demo' | 'live' | 'closed' | null) => ({ ...base, load: async () => { const r = await base.load(); return r.ok ? { ok: true as const, state: { ...r.state, paymentMode: mode } } : r; } });
+    const sheetNote = async (mode: 'demo' | 'live' | 'closed' | null) => {
+      const tree = await mount(<BoardingScreen deps={{ api: withMode(mode), newId: () => 'req-m', toastMs: 10 }} />);
+      await act(async () => undefined);
+      await press(tree, 'boarding-buy');
+      const shown = has(tree, 'boarding-sheet-demo');
+      const text = shown ? textOf(tree, 'boarding-sheet-demo') : '';
+      act(() => tree.unmount());
+      return [shown, text] as const;
+    };
+    expect(await sheetNote('demo')).toEqual([true, '데모 결제예요. 실제 돈은 나가지 않아요.']);
+    expect(await sheetNote('live')).toEqual([false, '']);
+    expect(await sheetNote('closed')).toEqual([false, '']);
+    expect(await sheetNote(null)).toEqual([false, '']);
+  });
+
   test('T1 크레딧 장면: 크레딧 줄 · [크레딧으로 타기] → 시트 [크레딧 1장으로 타기] → 탑승(크레딧으로 탑승)', async () => {
     const client = await demoClient('boardcredit@email.com');
     const tree = await mount(<BoardingScreen deps={{ api: createBoardingApi(client), newId: () => 'req-c', toastMs: 10 }} />);

@@ -1,5 +1,5 @@
 // F22 사전 오픈(K20 · 팀장/세부청사진/F22.md · D-123 후속): 규칙 함수 · 서버 응답 읽기(S18 4장 + 가정 이름) · 상태 저장소 · 데모 모의 서버 · 09 · 11 · 16 자리 분기 ·
-//  대기 화면 · 미룸 공지 · 먼저 시작 · 신청 잇기 시트 · 01 출시일 줄 · 글 규칙.
+//  대기 화면 · 미룸 공지 · (D-238 QF1-A) 지역 넓혀 먼저 시작 없앰 · 셀피 · 서류 · 지인 확인 스위치 끄면 입구 0 / 켜면 돌아옴 · 신청 잇기 시트 · 01 출시일 줄 · 글 규칙.
 //  기준: 기획/K20_사전오픈.md 2장(2-1 쓰지 않는 말 · 2-2 단계표 · 2-3 결과 · 2-4 대기 화면 · 2-5 신청 번호 · 2-6 출시일 · 2-7 잇기) · 3-4 ② · 4-1 · 4-5 · 4-6 · 4-8(TP-07 · 08 · 11 · 12 · 14)
 //  · backend/S18_변경기록.md 4장(get_launch_state · link-application 모양)
 import { execFileSync } from 'node:child_process';
@@ -11,9 +11,9 @@ import { FunctionsFetchError, FunctionsHttpError, type SupabaseClient } from '@s
 import { Text } from 'react-native';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 
-import { COMMON, TABS } from '@/content/copy';
+import { CANDIDATE, COMMON, PROFILE, TABS } from '@/content/copy';
 import { createPrelaunchDemo, DEMO_DEFERRED_DAY, DEMO_LAUNCH_DAY, DEMO_LINK, DEMO_LINK_TAKEN, sceneOfEmail, withPrelaunchDemo } from '@/demo/prelaunchDemo';
-import { createLaunchApi, parseLaunchState, type EarlyJoinResult, type LaunchLoad, type LaunchPublic, type LaunchState, type LinkResult } from '@/features/prelaunch/launchApi';
+import { createLaunchApi, parseLaunchState, type LaunchLoad, type LaunchPublic, type LaunchState, type LinkResult } from '@/features/prelaunch/launchApi';
 import { dayText, decideGate, decideTabGate, deferNoticeDue, firstRecWhen, monthDayText, normalizeApplicantNo, normalizeLinkCode, STEP_ORDER, timeText, todoOf, waitTasks } from '@/features/prelaunch/launchLogic';
 import { createLaunchStore } from '@/features/prelaunch/launchStore';
 import { OnboardingLaunchLine, onboardingLineText } from '@/features/prelaunch/OnboardingLaunchLine';
@@ -174,13 +174,13 @@ const httpError = (status: number, code: string) => new FunctionsHttpError(new R
 describe('서버 응답 읽기(launchApi — S18 4장 + 가정 이름)', () => {
   test('S18 키를 읽는다: launch_text · deferred_count · region.region · reason cell. 순번 · 인원 · 진행 % 키는 버리고, 단계는 늘 5칸 · 이 순서, 모르는 단계는 prelaunch(닫힌 쪽)', () => {
     const s = parseLaunchState({
-      ...raw({ phase: 'soon', position: 12, queue_ahead: 40, percent: 70, waiting_count: 900, deferred_count: 2, region: { name: '동남권', state: 'wait', reason: 'cell', can_early_join: false, members: 480 } }),
+      ...raw({ phase: 'soon', position: 12, queue_ahead: 40, percent: 70, waiting_count: 900, deferred_count: 2, region: { name: '동남권', state: 'wait', reason: 'cell', can_early_join: true, early_join_on: '2026-12-26', members: 480 } }),
       review: { status: 'in_review', steps: [{ step: 'photos', state: 'done' }, { step: 'rank', state: 'done' }] },
     });
     expect(s?.phase).toBe('prelaunch');
     expect(s?.launchText).toBe(WHEN);
     expect(s?.deferredCount).toBe(2);
-    expect(s?.region).toEqual({ name: '동남권', state: 'wait', reason: 'cell', canEarlyJoin: false, earlyJoinOn: null });
+    expect(s?.region).toEqual({ name: '동남권', state: 'wait', reason: 'cell' }); // D-238: can_early_join · early_join_on 은 와도 읽지 않는다(서버에서도 지워짐 0053)
     expect(s?.review?.steps.map((x) => x.step)).toEqual(['identity', 'photos', 'survey', 'docs', 'confirm']);
     expect(s?.review?.steps.map((x) => x.state)).toEqual(['todo', 'done', 'todo', 'todo', 'todo']);
     expect(JSON.stringify(s)).not.toMatch(/position|queue|percent|waiting|rank|members/);
@@ -236,12 +236,9 @@ describe('서버 응답 읽기(launchApi — S18 4장 + 가정 이름)', () => {
     expect((await link(() => ({ data: { ok: true }, error: null }))).r).toEqual({ ok: false, reason: 'server' }); // 번호 없는 성공은 믿지 않는다
   });
 
-  test('먼저 시작(early_join · 가정) · 로그인 없는 출시일(get_launch_public · 가정)', async () => {
+  test('지역 넓혀 먼저 시작은 없다(D-238): 연결에 early_join 호출 0 · 로그인 없는 출시일(get_launch_public · 가정)', async () => {
     const api = (rpc: Rpc) => createLaunchApi(fakeClient(rpc).client);
-    expect(await api(() => ({ data: { ok: true, starts_on: '2026-12-26' }, error: null })).earlyJoin()).toEqual({ ok: true, startsOn: '2026-12-26' });
-    expect(await api(() => ({ data: null, error: { code: 'P0001', message: 'region_locked' } })).earlyJoin()).toEqual({ ok: false, reason: 'locked' });
-    expect(await api(() => ({ data: null, error: { code: 'P0001', message: 'not_waiting' } })).earlyJoin()).toEqual({ ok: false, reason: 'not_waiting' });
-    expect(await api(() => ({ data: null, error: { code: 'PGRST202', message: 'x' } })).earlyJoin()).toEqual({ ok: false, reason: 'missing' });
+    expect(Object.keys(api(() => ({ data: null, error: null }))).sort()).toEqual(['link', 'load', 'loadPublic']);
     expect(await api(() => ({ data: { phase: 'prelaunch', launch_day: '2026-12-25', launch_text: WHEN }, error: null })).loadPublic()).toEqual({ phase: 'prelaunch', launchDay: '2026-12-25', launchText: WHEN });
     expect(await api(() => ({ data: null, error: { code: 'PGRST202', message: 'x' } })).loadPublic()).toBeNull();
   });
@@ -290,13 +287,16 @@ describe('데모 모의 서버(demo/prelaunchDemo — S18 모양)', () => {
     expect(demo.rpc(null, 'get_launch_state').error?.code).toBe('42501');
   });
 
-  test('스위치(데모): 데모 처음값 + prelaunch 는 단계가 open 이 아닐 때만 켜짐 · avoid_org · vouch · doc_verify 켜짐', () => {
+  test('스위치(데모): 데모 처음값 + prelaunch 는 단계가 open 이 아닐 때만 켜짐 · avoid_org 켜짐 · 셀피 · 서류 · 만남 피드백 · 지인 확인 13개는 꺼짐(D-238)', () => {
     const demo = createPrelaunchDemo({ now: () => T0 });
     const flagsOf = (email: string) => parseFlags(demo.rpc(user(email), 'get_feature_flags').data);
     expect(flagsOf('plain@email.com').on.prelaunch).toBe(false);
     const pre = flagsOf('prelaunch@email.com');
     expect(pre.on.prelaunch).toBe(true);
-    expect(pre.on.avoid_org && pre.on.vouch && pre.on.doc_verify).toBe(true);
+    expect(pre.on.avoid_org).toBe(true);
+    const OFF13 = ['doc_verify', 'selfie_verify', 'selfie_required', 'verify_steps', 'doc_marital', 'job_mail_verify', 'doc_license', 'doc_income', 'doc_parent', 'verify_detail', 'meet_feedback', 'meet_feedback_plus', 'vouch'];
+    expect(OFF13.map((k) => pre.on[k])).toEqual(OFF13.map(() => false));
+    expect(OFF13.map((k) => demoDefault(k))).toEqual(OFF13.map(() => false));
     expect(pre.mode.prelaunch).toBe('demo');
   });
 
@@ -318,7 +318,9 @@ describe('데모 모의 서버(demo/prelaunchDemo — S18 모양)', () => {
     demo.setScene('deferred');
     expect(read()).toMatchObject({ phase: 'prelaunch', launchDay: DEMO_DEFERRED_DAY, launchText: '1월 1일 금요일 오후 6시', deferredCount: 1 });
     demo.setScene('regionWait');
-    expect(read()).toMatchObject({ phase: 'open', region: { name: '동남권', state: 'wait', reason: 'count', canEarlyJoin: true } });
+    expect(read()).toMatchObject({ phase: 'open', region: { name: '동남권', state: 'wait', reason: 'count' } });
+    expect(read().region).toEqual({ name: '동남권', state: 'wait', reason: 'count' }); // 먼저 시작 키 0(D-238)
+    expect(sceneOfEmail('prelaunchlocked@a.b')).toBe('checking'); // 양보 불가 장면(regionLocked)은 없다
     demo.setScene('open');
     expect(decideGate({ ok: true, state: read() }, false)).toBe('open');
     demo.setScene('prelaunch');
@@ -345,16 +347,13 @@ describe('데모 모의 서버(demo/prelaunchDemo — S18 모양)', () => {
     expect((demo.peek() as { wrong_today: number }).wrong_today).toBe(0);
   });
 
-  test('먼저 시작: 기다리는 권역에서만 · 다음 날부터 · 양보 불가면 region_locked · 로그인 없는 출시일은 마지막 계정의 단계', () => {
+  test('로그인 없는 출시일은 마지막 계정의 단계 · 권역 기다림 응답에 먼저 시작 키 0(D-238)', () => {
     const demo = createPrelaunchDemo({ now: () => T0 });
     expect(demo.rpc(null, 'get_launch_public').data).toMatchObject({ phase: 'open' }); // 데모 처음값
     const u = user('prelaunchwait@email.com');
-    expect(demo.rpc(u, 'early_join').data).toEqual({ ok: true, starts_on: '2026-10-19' });
-    const after = parseLaunchState(demo.rpc(u, 'get_launch_state').data) as LaunchState;
-    expect(after.region).toMatchObject({ canEarlyJoin: false, earlyJoinOn: '2026-10-19' });
-    expect(demo.rpc(u, 'early_join').error?.message).toBe('not_waiting');
-    demo.setScene('regionLocked');
-    expect(demo.rpc(u, 'early_join').error?.message).toBe('region_locked');
+    const region = (demo.rpc(u, 'get_launch_state').data as { region: Record<string, unknown> }).region;
+    expect(region).toEqual({ name: '동남권', state: 'wait', reason: 'count' });
+    expect(JSON.stringify(demo.peek())).not.toMatch(/early/);
     demo.setScene('prelaunch');
     expect(demo.rpc(null, 'get_launch_public').data).toMatchObject({ phase: 'prelaunch', launch_day: DEMO_LAUNCH_DAY, launch_text: '12월 23일 수요일 오후 6시' });
   });
@@ -408,16 +407,17 @@ describe('데모 모의 서버(demo/prelaunchDemo — S18 모양)', () => {
 });
 
 // ── 화면 ────────────────────────────────────────────────────
-type FakeApi = PrelaunchServices['api'] & { load: jest.Mock; link: jest.Mock; earlyJoin: jest.Mock; loadPublic: jest.Mock };
-const flagsOn = (on: Record<string, boolean> = { avoid_org: true, doc_verify: true, vouch: true }) => createFlagsStore(async () => parseFlags({ flags: on, modes: {} }));
+type FakeApi = PrelaunchServices['api'] & { load: jest.Mock; link: jest.Mock; loadPublic: jest.Mock };
+// 기본 = 실서버 처음값에 가까운 쪽: 아는 분 미리 피하기만 켜짐(셀피 · 서류 · 지인 확인은 꺼짐, D-238). 켠 장면은 FLAGS_ALL
+const FLAGS_ALL = { avoid_org: true, doc_verify: true, vouch: true };
+const flagsOn = (on: Record<string, boolean> = { avoid_org: true }) => createFlagsStore(async () => parseFlags({ flags: on, modes: {} }));
 const depsWith = (
   load: () => LaunchLoad,
-  opts: { link?: (no: string, code: string) => LinkResult; early?: () => EarlyJoinResult; flags?: ReturnType<typeof createFlagsStore>; deferSeen?: number } = {},
+  opts: { link?: (no: string, code: string) => LinkResult; flags?: ReturnType<typeof createFlagsStore>; deferSeen?: number } = {},
 ): PrelaunchServices & { api: FakeApi } => {
   const api = {
     load: jest.fn(async () => load()),
     link: jest.fn(async (no: string, code: string) => (opts.link ?? (() => ({ ok: true, applicantNo: '1018-4721' })))(no, code)),
-    earlyJoin: jest.fn(async () => (opts.early ?? (() => ({ ok: true, startsOn: '2026-12-26' })))()),
     loadPublic: jest.fn(async (): Promise<LaunchPublic | null> => null),
   } as FakeApi;
   return { api, store: createLaunchStore(api, { read: async () => opts.deferSeen ?? 0, write: async () => undefined }), flags: opts.flags ?? flagsOn(), demo: null };
@@ -469,17 +469,20 @@ describe('09 자리 분기(PrelaunchGate) · 대기 화면', () => {
     expect(has(missing, 'recs')).toBe(true);
   });
 
-  test('사전 오픈이면 대기 화면: 머리 · 신청 번호 + 순서 뜻 0 · 단계표 5칸 · 첫 추천 날짜 · 요일 · 시각 · 할 일 · 고지(TP-14)', async () => {
+  test('사전 오픈이면 대기 화면: 머리 · 신청 번호 + 순서 뜻 0 · 단계표 4칸(서류 칸 없음, D-238) · 첫 추천 날짜 · 요일 · 시각 · 할 일 · 고지(TP-14)', async () => {
     const tree = await render(depsWith(okLoad()));
     expect(has(tree, 'recs')).toBe(false);
     expect(textOf(tree, 'prelaunch-no')).toBe('신청 번호 1018-4721');
     expect(textOf(tree, 'prelaunch-no-note')).toBe('순서를 뜻하는 번호는 아니에요.');
-    expect(STEP_ORDER.map((s) => textOf(tree, `prelaunch-steps-${s}-state`))).toEqual(['확인됨', '확인 중', '확인됨', '아직', '아직']);
+    expect(STEP_ORDER.filter((s) => s !== 'docs').map((s) => textOf(tree, `prelaunch-steps-${s}-state`))).toEqual(['확인됨', '확인 중', '확인됨', '아직']);
+    expect(has(tree, 'prelaunch-steps-docs')).toBe(false);
+    expect(allTexts(tree)).toContain('사진');
+    expect(screenTexts(tree)).not.toMatch(/셀피|서류/);
     expect(textOf(tree, 'prelaunch-first-rec-when')).toBe(WHEN);
     expect(textOf(tree, 'prelaunch-notice')).toBe(PRELAUNCH.notice);
     expect(has(tree, 'prelaunch-todo')).toBe(true);
     expect(screenTexts(tree)).toContain(PRELAUNCH.todo.checking);
-    expect(['avoid', 'docs', 'vouch', 'link'].map((t) => has(tree, `prelaunch-task-${t}`))).toEqual([true, true, false, true]); // 보증은 확정 뒤
+    expect(['avoid', 'docs', 'vouch', 'link'].map((t) => has(tree, `prelaunch-task-${t}`))).toEqual([true, false, false, true]); // 서류 인증 · 지인 확인은 스위치가 꺼져 입구 0, 아는 분 미리 피하기는 그대로
     expect(has(tree, 'prelaunch-stamp')).toBe(false);
     expect(has(tree, 'prelaunch-defer')).toBe(false);
     expect(screenTexts(tree)).not.toMatch(BANNED);
@@ -492,8 +495,8 @@ describe('09 자리 분기(PrelaunchGate) · 대기 화면', () => {
     expect(textOf(tree, 'prelaunch-first-rec-when')).toBe(PRELAUNCH.firstRecUnknown);
   });
 
-  test('확정: 확정 카드(날짜 · 요일 · 시각 · 하루 세 분 추천) + 고지는 카드 안 한 번 · 로고 타일 찍힘 · 보증 할 일이 열린다', async () => {
-    const tree = await render(depsWith(okLoad({ review: confirmedReview })));
+  test('확정: 확정 카드(날짜 · 요일 · 시각 · 하루 세 분 추천) + 고지는 카드 안 한 번 · 로고 타일 찍힘 · 지인 확인 할 일은 스위치를 켠 때만(D-238)', async () => {
+    const tree = await render(depsWith(okLoad({ review: confirmedReview }), { flags: flagsOn(FLAGS_ALL) }));
     expect(textOf(tree, 'prelaunch-confirmed-body')).toBe(`확정됐어요. 첫 매칭은 ${WHEN}에 열려요. 탑승권을 사면 그날 나와 수준이 가장 잘 맞는 한 분과 이어져요.`);
     expect(textOf(tree, 'prelaunch-confirmed-notice')).toBe(PRELAUNCH.notice);
     expect(has(tree, 'prelaunch-notice')).toBe(false);
@@ -552,39 +555,57 @@ describe('09 자리 분기(PrelaunchGate) · 대기 화면', () => {
   });
 
   test('출시 뒤 권역 기다림: 내 지역 안내(이름) · 칸 · 판정 전도 인원 글 · 성비는 이유 한 줄 · 인원 · 게이지 · 예상 날짜 0', async () => {
-    const wait = (reason: string | null, extra: Record<string, unknown> = {}) => okLoad({ phase: 'open', review: confirmedReview, region: { name: '동남권', state: 'wait', reason, can_early_join: false, ...extra } });
+    const wait = (reason: string | null, extra: Record<string, unknown> = {}) => okLoad({ phase: 'open', review: confirmedReview, region: { name: '동남권', state: 'wait', reason, ...extra } });
     const count = await render(depsWith(wait('count')));
     expect(textOf(count, 'prelaunch-region-text')).toBe('동남권은 함께 시작할 분들을 모으고 있어요. 시작하면 이 화면에 탑승권이 열려요.');
     expect(has(count, 'prelaunch-first-rec')).toBe(false);
-    expect(has(count, 'prelaunch-early')).toBe(false); // 서버가 can_early_join 이 아니면 버튼 0
+    expect(has(count, 'prelaunch-early')).toBe(false); // D-238: 먼저 시작 버튼은 없다
     const cell = await render(depsWith(wait('cell')));
     expect(textOf(cell, 'prelaunch-region-text')).toBe(PRELAUNCH.region.count('동남권'));
     const ratio = await render(depsWith(wait('ratio')));
     expect(textOf(ratio, 'prelaunch-region-text')).toBe(PRELAUNCH.region.ratio);
     expect(screenTexts(ratio)).not.toMatch(/\d+명|%|예상/);
-    const joined = await render(depsWith(wait('count', { early_join_on: '2026-12-26' })));
-    expect(textOf(joined, 'prelaunch-early-joined')).toBe('12월 26일 토요일부터 다른 지역 분과도 매칭될 수 있어요.');
   });
 
-  test('[지역 넓혀 먼저 시작하기]: 확인 한 줄("다른 지역 분과 매칭될 수 있어요.") 뒤 본인이 누를 때만 early_join · 양보 불가면 안내만(서버가 풀지 않음)', async () => {
-    const waitEarly = okLoad({ phase: 'open', review: confirmedReview, region: { name: '동남권', state: 'wait', reason: 'count', can_early_join: true } });
-    const deps = depsWith(waitEarly);
-    const tree = await render(deps);
-    await press(tree, 'prelaunch-early');
-    expect(isOpen(tree, 'prelaunch-early-confirm')).toBe(true);
-    expect(screenTexts(tree)).toContain('다른 지역 분과 매칭될 수 있어요.');
-    expect(deps.api.earlyJoin).not.toHaveBeenCalled(); // 확인 전에는 부르지 않는다
-    const before = deps.api.load.mock.calls.length;
-    await press(tree, 'prelaunch-early-confirm-confirm');
-    await act(async () => undefined);
-    expect(deps.api.earlyJoin).toHaveBeenCalledTimes(1);
-    expect(deps.api.load.mock.calls.length).toBeGreaterThan(before); // 다시 읽는다
-    const locked = depsWith(waitEarly, { early: () => ({ ok: false, reason: 'locked' }) });
-    const t2 = await render(locked);
-    await press(t2, 'prelaunch-early');
-    await press(t2, 'prelaunch-early-confirm-confirm');
-    await act(async () => undefined);
-    expect(textOf(t2, 'prelaunch-early-locked')).toBe(PRELAUNCH.region.earlyLocked);
+  test('지역 넓혀 먼저 시작은 없다(D-238): 서버가 옛 키(can_early_join · early_join_on)를 보내도 버튼 · 확인창 · 시작한 날 줄 · 양보 불가 안내 · 지역 조건 단추 0 · "함께 시작할 분들을 모으고 있어요" 카드는 남는다', async () => {
+    const old = okLoad({ phase: 'open', review: confirmedReview, region: { name: '동남권', state: 'wait', reason: 'count', can_early_join: true, early_join_on: '2026-12-26' } });
+    const tree = await render(depsWith(old));
+    expect(textOf(tree, 'prelaunch-region-text')).toBe('동남권은 함께 시작할 분들을 모으고 있어요. 시작하면 이 화면에 탑승권이 열려요.');
+    for (const id of ['prelaunch-early', 'prelaunch-early-confirm', 'prelaunch-early-joined', 'prelaunch-early-locked', 'prelaunch-early-widen']) expect(has(tree, id)).toBe(false);
+    expect(screenTexts(tree)).not.toMatch(/먼저 시작|다른 지역|지역 넓|지역 조건/);
+  });
+
+  test('서류 인증 스위치(doc_verify) 끄면 서류 칸 · 서류 할 일 · 서류 보완 글이 없고, 켜면 5칸 · 서류 인증 줄 · 서류 보완 글이 돌아온다 / 아는 분 미리 피하기는 늘 그대로(D-238)', async () => {
+    const fixDoc = okLoad({ review: { status: 'needs_more', steps: steps5({ docs: 'fix', confirm: 'todo' }), fix_reason: 'doc_job' } });
+    const off = await render(depsWith(fixDoc));
+    expect(has(off, 'prelaunch-steps-docs')).toBe(false);
+    expect(has(off, 'prelaunch-task-docs')).toBe(false);
+    expect(has(off, 'prelaunch-task-avoid')).toBe(true);
+    expect(screenTexts(off)).not.toContain(PRELAUNCH.fixReason.doc_job);
+    expect(screenTexts(off)).not.toContain(PRELAUNCH.todo.docsFix);
+    const on = await render(depsWith(fixDoc, { flags: flagsOn({ avoid_org: true, doc_verify: true }) }));
+    expect(STEP_ORDER.map((s) => has(on, `prelaunch-steps-${s}`))).toEqual([true, true, true, true, true]);
+    expect(textOf(on, 'prelaunch-steps-docs-state')).toBe('보완 필요');
+    expect(has(on, 'prelaunch-task-docs')).toBe(true);
+    expect(has(on, 'prelaunch-task-avoid')).toBe(true);
+    expect(screenTexts(on)).toContain(PRELAUNCH.fixReason.doc_job);
+  });
+
+  test('지인 확인 스위치(vouch) 끄면 "…님이 아는 사이라고 확인해 주셨어요" 줄 · 지인 확인 할 일이 없고, 켜면 돌아온다 / 아는 분 미리 피하기 줄은 그대로(D-238)', async () => {
+    const vouched = okLoad({ review: { ...confirmedReview, vouched_by: '김OO' } });
+    const off = await render(depsWith(vouched));
+    expect(has(off, 'prelaunch-vouched')).toBe(false);
+    expect(has(off, 'prelaunch-task-vouch')).toBe(false);
+    expect(has(off, 'prelaunch-task-avoid')).toBe(true);
+    const on = await render(depsWith(vouched, { flags: flagsOn({ avoid_org: true, vouch: true }) }));
+    expect(textOf(on, 'prelaunch-vouched')).toBe(PRELAUNCH.vouchedBy('김OO'));
+    expect(has(on, 'prelaunch-task-vouch')).toBe(true);
+    expect(has(on, 'prelaunch-task-avoid')).toBe(true);
+  });
+
+  test('사실 고지는 그대로 남는다: "서류로 확인되지 않았어요"(D-238 — 서류를 안 받는 동안 오히려 필요)', () => {
+    expect(CANDIDATE.disclaimer).toBe('이 프로필은 회원이 직접 입력한 내용이에요. 서류로 확인되지 않았어요.');
+    expect(PROFILE.badgeVerifyPendingNote).toBe('직접 입력한 정보예요. 서류로 확인된 것은 아니에요.');
   });
 
   test('못 읽으면 틀만(날짜 숨김) + [다시 시도] → 다시 불러 대기 화면', async () => {
@@ -747,7 +768,7 @@ describe('데모 모의 서버의 기능 스위치(D-134): get_feature_flags 가
     expect(flags.loaded).toBe(true);
     expect(FEATURE_KEYS.length).toBeGreaterThanOrEqual(87); // V5(A W10)가 숨김 키를 더함
     expect(FEATURE_KEYS.filter((k) => !isPendingKey(k)).every((k) => flags.on[k] === demoDefault(k) && flags.mode[k] === 'demo')).toBe(true);
-    expect(FEATURE_KEYS.filter((k) => !flags.on[k] && !k.startsWith('v4_'))).toEqual(['review_required', 'prelaunch', 'chat_push', 'type_card_share', 'pair_card_ai']); // IF2-F: 바깥 공유 · AI판은 데모도 꺼짐(PF-91) // R-A: chat_push 데모도 꺼짐(토큰 등록 0) // V5 숨김 키(v4_*)는 A 몫 — 데모에서도 꺼짐
+    expect(FEATURE_KEYS.filter((k) => !flags.on[k] && !k.startsWith('v4_'))).toEqual(['meet_feedback', 'doc_verify', 'selfie_verify', 'meet_feedback_plus', 'selfie_required', 'review_required', 'verify_steps', 'doc_marital', 'job_mail_verify', 'doc_license', 'doc_income', 'doc_parent', 'verify_detail', 'prelaunch', 'vouch', 'chat_push', 'type_card_share', 'pair_card_ai']); // D-238: 셀피 · 서류 · 만남 피드백 · 지인 확인 13개 데모도 꺼짐(키 목록 차례) // IF2-F: 바깥 공유 · AI판은 데모도 꺼짐(PF-91) // R-A: chat_push 데모도 꺼짐(토큰 등록 0) // V5 숨김 키(v4_*)는 A 몫 — 데모에서도 꺼짐
     expect(flags.on.survey_v2).toBe(true);
   });
 

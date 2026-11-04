@@ -1,6 +1,6 @@
 // 사전 오픈 화면의 서버 연결(F22). 처음 쓸 때 만든다 — 시험이 서버 설정 없이 화면 파일을 읽을 수 있게(hooks/useFeatureFlags 의 appFlagsStore 와 같은 방식).
 //  · 실제: lib/supabase 의 클라이언트 · 스위치는 앱 공용 저장소(appFlagsStore)
-//  · 데모 모드: 데모 클라이언트 위에 사전 오픈 모의 호출(demo/prelaunchDemo)을 얹는다. 스위치도 그 위에서 읽어 데모 처음값(avoid_org · vouch · doc_verify 켜짐)이 보인다
+//  · 데모 모드: 데모 클라이언트 위에 사전 오픈 모의 호출(demo/prelaunchDemo)을 얹는다. 스위치도 그 위에서 읽어 데모 처음값(avoid_org 켜짐 · vouch · doc_verify 꺼짐, D-238)이 보인다
 //  · 데모 모드에는 09 위 끼리끼리 데모 줄(demo/kinDemo — '나'의 등급 바꾸기)도 함께 만든다(F24)
 //  · 사전 오픈 상태 저장소(launchStore) 하나를 09 · 11 · 16 이 나눠 쓴다. 미룸 공지 본 횟수는 네이티브만 기기에 남긴다(웹은 메모리)
 import type { FlagsStore } from '@/hooks/useFeatureFlags';
@@ -11,7 +11,7 @@ import { createLaunchApi, type LaunchApi } from './launchApi';
 import { createLaunchStore, memoryOnly, type DeferMemory, type LaunchStore } from './launchStore';
 
 export type PrelaunchServices = {
-  api: Pick<LaunchApi, 'load' | 'link' | 'earlyJoin' | 'loadPublic'>;
+  api: Pick<LaunchApi, 'load' | 'link' | 'loadPublic'>;
   store: LaunchStore;
   flags: FlagsStore;
   demo: PrelaunchDemo | null;

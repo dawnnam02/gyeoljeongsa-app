@@ -1,13 +1,13 @@
 // 사전 오픈 대기 화면(09 자리, K20 2-4 · 4-5 · P-D1 · F22 2). 추천 탭에 오늘의 추천 대신 그린다(features/prelaunch/PrelaunchGate 가 고른다).
 //  위에서 아래: 머리(출연 준비 + 프로필 원) → (미룸 공지, 한 번) → 로고 타일 · 신청 번호 + '순서를 뜻하는 번호는 아니에요.' → 상태 카드(확정 · 함께하기 어려워요 · 할 일 한 줄)
-//   → 단계표 5칸 → 첫 추천 날짜 · 요일 · 시각(또는 내 지역 첫 추천 안내 + [지역 넓혀 먼저 시작하기]) → 기다리는 동안 할 일 ①~④ → '방송 아님' 고지 → (데모 모드) 장면 줄
+//   → 단계표 4칸(서류 칸은 doc_verify 켜짐일 때만 5칸) → 첫 추천 날짜 · 요일 · 시각(또는 내 지역 첫 매칭 안내) → 기다리는 동안 할 일 ①~④ → '방송 아님' 고지 → (데모 모드) 장면 줄
 //  · 날짜 · 요일 · 시각 글만. 남은 날 수 · 카운트다운 · 움직이는 숫자 · 깜빡임 0(K20 2-6 · P-11). 순번 · 앞사람 수 · 진행 % · 대기 인원 0(P-10)
 //  · 매일 바뀌는 내용(오늘의 팁 · 출석) 0 — 매일 들어올 이유를 만들지 않는다. 알림 권한 묻기(NP-10)는 넣지 않는다(푸시 0, F22 · D-123)
 //  · 상태를 못 읽으면 틀만 보이고 날짜는 숨긴다 + [다시 시도](K20 4-1)
 //  · 확정이면 로고 타일이 한 번 찍힌다(D-76 성공 순간 · 동작 줄이기는 투명도만 — motion/StampTile)
 //  · '방송 아님' 고지: 확정이면 확정 카드 안에, 아니면 화면 아래에 한 줄(같은 화면에 두 번 보이지 않게). 신청 잇기 시트에도 한 줄(K20 2-1 고지 3곳)
 //  · 미룸 공지(K20 2-6 · P-21 · NP-19): 서버 미룸 횟수가 이 기기에서 본 것보다 늘었을 때 맨 위 카드 한 번 → [확인했어요]. 날짜 줄은 서버 새 날짜 그대로. 푸시 0
-//  · 먼저 시작(K20 3-4 ② · NP-18): 서버가 can_early_join 일 때만 버튼. 확인 한 줄 뒤 본인이 누를 때만 early_join. 양보 불가면 서버가 풀지 않고 안내만
+//  · D-238: [지역 넓혀 먼저 시작하기](NP-18)는 없앴다(코드 · 서버 모두). 셀피 · 서류 인증 · 지인 확인은 스위치(selfie_verify · doc_verify · vouch)가 꺼지면 입구 · 약속이 보이지 않는다
 import { useRouter } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -15,21 +15,18 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Screen } from '@/components/Screen';
 import { TabHeader } from '@/components/TabHeader';
 import { TextButton } from '@/components/TextButton';
 import { Toast } from '@/components/Toast';
-import { PREFERENCES_EDIT_ENABLED } from '@/config/flags';
-import { COMMON, RECS } from '@/content/copy';
+import { COMMON } from '@/content/copy';
 import { useFeatureFlags, type FlagsStore } from '@/hooks/useFeatureFlags';
 import { logoTile, StampTile, TOAST_MS } from '@/motion';
 import { openSettingsPage } from '@/features/settings/settingsIntent';
-import { resolveDest } from '@/navigation/resolve';
 import { colors, radius, size, space } from '@/theme/tokens';
 
 import type { LaunchApi, LaunchState, Region } from './launchApi';
-import { dayText, firstRecWhen, showsLaunchDay, todoOf, waitTasks, type WaitTask } from './launchLogic';
+import { firstRecWhen, showsLaunchDay, todoOf, waitTasks, type WaitTask } from './launchLogic';
 import { LinkSheet } from './LinkSheet';
 import { LINK_SHEET, PRELAUNCH } from './prelaunchCopy';
 import { StepTable } from './StepTable';
@@ -38,8 +35,8 @@ type Props = {
   state: LaunchState | null; // null = 못 읽음(틀만)
   failure: 'network' | 'server' | null;
   onRetry: () => void;
-  onChanged: () => void; // 잇기 · 먼저 시작 뒤 다시 읽기
-  api: Pick<LaunchApi, 'link' | 'earlyJoin'>;
+  onChanged: () => void; // 잇기 뒤 다시 읽기
+  api: Pick<LaunchApi, 'link'>;
   flags: FlagsStore;
   deferDue?: boolean; // 미룸 공지를 보일 때
   onDeferSeen?: () => void;
@@ -66,10 +63,13 @@ export function PrelaunchScreen({ state, failure, onRetry, onChanged, api, flags
   const confirmed = status === 'confirmed';
   const declined = status === 'declined';
   const when = state && showsLaunchDay(state) ? firstRecWhen(state) : null; // 공개 뒤(review · region_wait)에는 지난 날짜라 쓰지 않는다
-  const fixLine = review?.fixReason ? PRELAUNCH.fixReason[review.fixReason] : null; // S18 review.fix_reason — 보완 이유 한 줄
+  const docsOn = isOn('doc_verify'); // D-238: 서류 인증이 꺼지면 서류 칸 · 서류 보완 글이 보이지 않는다(서버 응답은 5칸 그대로)
+  const steps = review ? review.steps.filter((s) => s.step !== 'docs' || docsOn) : [];
+  const fixKey = review?.fixReason && (docsOn || !review.fixReason.startsWith('doc_')) ? review.fixReason : null;
+  const fixLine = fixKey ? PRELAUNCH.fixReason[fixKey] : null; // S18 review.fix_reason — 보완 이유 한 줄
   const regionWait = state?.region?.state === 'wait' ? state.region : null;
   const tasks = state && !declined ? waitTasks({ ...state, linked: state.linked || linkedHere }, isOn) : [];
-  const todo = review && !confirmed && !declined ? todoOf(review.steps) : null;
+  const todo = review && !confirmed && !declined ? todoOf(steps) : null;
   // 할 일 한 줄: 서버가 보완 이유를 주면 그 줄(본인 확인 칸 보완도), 아니면 칸으로 고른 글
   const todoText = review && !confirmed && !declined && fixLine ? fixLine : todo ? PRELAUNCH.todo[todo] : null;
   const todoIsFix = Boolean((fixLine && !confirmed && !declined) || todo?.endsWith('Fix'));
@@ -151,17 +151,17 @@ export function PrelaunchScreen({ state, failure, onRetry, onChanged, api, flags
           </View>
         ) : null}
 
-        {review?.vouchedBy && !declined ? (
+        {isOn('vouch') && review?.vouchedBy && !declined ? (
           <AppText variant="small" testID="prelaunch-vouched">
             {PRELAUNCH.vouchedBy(review.vouchedBy)}
           </AppText>
         ) : null}
 
-        {review && !declined ? <StepTable steps={review.steps} /> : null}
+        {review && !declined ? <StepTable steps={steps} /> : null}
 
         {state && !declined ? (
           regionWait ? (
-            <RegionCard region={regionWait} api={api} onChanged={onChanged} />
+            <RegionCard region={regionWait} />
           ) : !showsLaunchDay(state) ? null : (
             <View style={styles.first} testID="prelaunch-first-rec">
               <AppText variant="smallMedium" tone="sub">
@@ -198,38 +198,9 @@ export function PrelaunchScreen({ state, failure, onRetry, onChanged, api, flags
 }
 
 // 출시 뒤 권역 기다림(K20 3-4 ②): 이유 한 줄(인원 · 칸 · 판정 전은 인원 글, 성비는 성비 글) · 인원 · 게이지 · 예상 날짜 0.
-// 서버가 can_early_join 이면 [지역 넓혀 먼저 시작하기] → 확인 한 줄 → early_join. 이미 골랐으면 시작하는 날 한 줄
-function RegionCard({ region, api, onChanged }: { region: Region; api: Pick<LaunchApi, 'earlyJoin'>; onChanged: () => void }) {
-  const router = useRouter();
-  const [ask, setAsk] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [locked, setLocked] = useState(false);
+// D-238: 지역을 넓혀 먼저 시작하는 길은 없다 — 같은 권역 분들이 모이면 시작한다는 사실만 보인다
+function RegionCard({ region }: { region: Region }) {
   const text = region.reason === 'ratio' ? PRELAUNCH.region.ratio : region.name ? PRELAUNCH.region.count(region.name) : PRELAUNCH.region.countNoName;
-  const joinedDay = dayText(region.earlyJoinOn);
-
-  const join = async () => {
-    setBusy(true);
-    setError(null);
-    const r = await api.earlyJoin();
-    setBusy(false);
-    if (r.ok) {
-      setAsk(false);
-      onChanged();
-      return;
-    }
-    if (r.reason === 'locked') {
-      setAsk(false);
-      setLocked(true);
-      return;
-    }
-    setError(r.reason === 'network' ? COMMON.offline : COMMON.server);
-  };
-  const goWiden = () => {
-    const next = resolveDest('04:25', { origin: '09' }); // 09 의 지역 안내와 같은 길(12 희망 조건 수정 · 지역). 서버 값은 본인이 그 화면에서 바꿀 때만
-    if (next.kind === 'href') router.push(next.href);
-  };
-
   return (
     <Card style={styles.gap8} testID="prelaunch-region">
       <AppText variant="smallMedium" tone="sub">
@@ -238,37 +209,6 @@ function RegionCard({ region, api, onChanged }: { region: Region; api: Pick<Laun
       <AppText variant="body" testID="prelaunch-region-text">
         {text}
       </AppText>
-      {region.earlyJoinOn !== null ? (
-        <AppText variant="bodyMedium" testID="prelaunch-early-joined">
-          {joinedDay ? PRELAUNCH.region.earlyJoined(joinedDay) : PRELAUNCH.region.earlyJoinedNoDay}
-        </AppText>
-      ) : region.canEarlyJoin ? (
-        <Button label={PRELAUNCH.region.early} variant="secondary" onPress={() => setAsk(true)} testID="prelaunch-early" />
-      ) : null}
-      {locked ? (
-        <>
-          <AppText variant="caption" tone="text" accessibilityLiveRegion="polite" testID="prelaunch-early-locked">
-            {PRELAUNCH.region.earlyLocked}
-          </AppText>
-          {PREFERENCES_EDIT_ENABLED ? <Button label={RECS.widenButton} variant="secondary" onPress={goWiden} testID="prelaunch-early-widen" /> : null}
-        </>
-      ) : null}
-      <ConfirmDialog
-        visible={ask}
-        title={PRELAUNCH.region.earlyTitle}
-        body={PRELAUNCH.region.earlyBody}
-        confirmLabel={PRELAUNCH.region.earlyConfirm}
-        cancelLabel={PRELAUNCH.region.earlyCancel}
-        busy={busy}
-        error={error}
-        onConfirm={() => void join()}
-        onCancel={() => {
-          if (busy) return;
-          setAsk(false);
-          setError(null);
-        }}
-        testID="prelaunch-early-confirm"
-      />
     </Card>
   );
 }

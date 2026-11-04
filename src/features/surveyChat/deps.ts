@@ -9,7 +9,7 @@ import { createSurveyV2Api } from '@/features/surveyV2/api';
 import { createLocalDraftStore } from '@/features/surveyV2/localDraft';
 import { createPoliticsApi } from '@/features/surveyV2/politics';
 import { createReligionApi } from '@/features/surveyV2/religion';
-import type { SurveyV2Deps } from '@/features/surveyV2/deps';
+import { docVerifyNow, type SurveyV2Deps } from '@/features/surveyV2/deps';
 import { appStateStorage } from '@/lib/secureStorage';
 import { supabase } from '@/lib/services';
 
@@ -33,7 +33,7 @@ export function surveyChatDeps(): SurveyChatDeps {
   if (!instance) {
     const client = env.demoMode ? createSurveyChatDemoClient(supabase, { latencyMs: 120 }) : supabase;
     const api = env.demoMode
-      ? createSurveyV2Api(client, { demo: true, proofUpload: true, schoolSearch: 'server' })
+      ? createSurveyV2Api(client, { demo: true, proofUpload: docVerifyNow, schoolSearch: 'server' })
       : createSurveyV2Api(client, { demo: false, proofUpload: false, schoolSearch: 'local' });
     const guest = env.demoMode ? { guestUserId: DEMO_V2_GUEST } : {};
     instance = {

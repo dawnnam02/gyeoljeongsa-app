@@ -151,21 +151,25 @@ describe('12 하위 화면 이름 = flow.ts 의 sub:* (F-1)', () => {
 });
 
 describe('12 목록 화면', () => {
-  test('상단 "설정" · 줄 13개(사업자 정보 · 하늘 도감 · 사주 마당은 스위치 · 값이 없어 숨김) · 정보 묶음 · 로그아웃 · 탈퇴하기 · 인증 서류 "준비 중"', async () => {
+  test('상단 "설정" · 줄 12개(사업자 정보 · 하늘 도감 · 사주 마당 · 인증 서류 제출은 스위치 · 값이 없어 숨김) · 정보 묶음 · 로그아웃 · 탈퇴하기 · "준비 중" 글 0(D-238)', async () => {
     const { deps } = setup();
     const tree = await show(deps);
     expect(hasText(tree, SETTINGS.headerTitle)).toBe(true);
-    for (const row of SETTINGS_ROWS) expect(has(tree, `settings-row-${row.key}`)).toBe(row.key !== 'business-info' && row.key !== 'sky-book' && row.key !== 'saju-yard' && row.key !== 'mileage');
+    for (const row of SETTINGS_ROWS) expect(has(tree, `settings-row-${row.key}`)).toBe(row.key !== 'business-info' && row.key !== 'sky-book' && row.key !== 'saju-yard' && row.key !== 'mileage' && row.key !== 'verification');
     expect(textIn(tree, 'settings-info-label')).toBe('정보');
-    expect(hasText(tree, '준비 중')).toBe(true);
+    expect(hasText(tree, '준비 중')).toBe(false);
+    expect(hasText(tree, SETTINGS.rows.verification)).toBe(false);
     expect(hasText(tree, '로그아웃')).toBe(true);
     expect(propOf(tree, 'settings-withdraw', 'accessibilityLabel')).toBe('탈퇴하기');
     expect(allTexts(tree).some((t) => t.includes('모든 데이터 삭제'))).toBe(false); // 동의문구 5-6
   });
 
-  test('인증 서류 제출: 이동 없음 + 토스트 "준비 중이에요"(N19)', async () => {
+  test('인증 서류 제출 줄: 스위치 doc_verify 꺼짐이면 없고(D-238), 켜면 돌아온다 — 이동 없음 + 토스트 "준비 중이에요"(N19)', async () => {
+    const off = await show(setup().deps);
+    expect(has(off, 'settings-row-verification')).toBe(false);
     const { deps } = setup();
-    const tree = await show(deps);
+    const tree = await show({ ...deps, flagOn: (key) => key === 'doc_verify' });
+    expect(has(tree, 'settings-row-verification')).toBe(true);
     await press(tree, 'settings-row-verification');
     expect(has(tree, 'settings-toast')).toBe(true);
     expect(hasText(tree, SETTINGS.verificationToast)).toBe(true);

@@ -4,6 +4,8 @@
 import { env } from '@/config/env';
 import { createSurveyV2DemoClient, DEMO_V2_GUEST } from '@/demo/surveyV2Backend';
 import { appStateStorage } from '@/lib/secureStorage';
+import { appFlagsStore } from '@/hooks/useFeatureFlags';
+import { isOn } from '@/lib/featureFlagsApi';
 import { supabase } from '@/lib/services';
 
 import { createSurveyV2Api, type SurveyV2Api } from './api';
@@ -15,13 +17,16 @@ import { createReligionApi, type ReligionApi } from './religion';
 // religion(3부-사): 있으면 A06 앞에 종교 동의 카드(유효한 CK4 가 없을 때만). 없으면 카드 없이 A06(옛 시험 그대로)
 export type SurveyV2Deps = { api: SurveyV2Api; local: LocalDraftStore; now: () => number; politics?: PoliticsApi; religion?: ReligionApi };
 
+// D-238: 증빙 올리기(서류 인증)는 스위치 doc_verify 가 켜졌을 때만(데모 처음값 꺼짐). 읽을 때마다 스위치를 본다
+export const docVerifyNow = (): boolean => isOn(appFlagsStore().get(), 'doc_verify');
+
 let instance: SurveyV2Deps | null = null;
 
 export function surveyV2Deps(): SurveyV2Deps {
   if (!instance) {
     const client = env.demoMode ? createSurveyV2DemoClient(supabase, { latencyMs: 120 }) : supabase;
     const api = env.demoMode
-      ? createSurveyV2Api(client, { demo: true, proofUpload: true, schoolSearch: 'server' })
+      ? createSurveyV2Api(client, { demo: true, proofUpload: docVerifyNow, schoolSearch: 'server' })
       : createSurveyV2Api(client, { demo: false, proofUpload: false, schoolSearch: 'local' });
     const guest = env.demoMode ? { guestUserId: DEMO_V2_GUEST } : {};
     instance = { api, local: createLocalDraftStore(appStateStorage), now: Date.now, politics: createPoliticsApi(client, 'app', guest), religion: createReligionApi(client, 'app', guest) };

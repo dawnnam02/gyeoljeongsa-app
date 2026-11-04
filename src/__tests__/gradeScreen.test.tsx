@@ -130,8 +130,9 @@ describe('조건 2 · 16-G1 내 등급 (0039 v5 — 모든 회원)', () => {
     expect(allTexts(tree).join(' ')).not.toMatch(/총점|원점수|\d+점|퍼센트|%/);
   });
 
-  test('옛 서버가 올릴 여지(actionable)를 주면: 바뀔 수 있는 일 3줄 + [하러 가기] + NV42 — 점수 없음', async () => {
+  test('옛 서버가 올릴 여지(actionable)를 주면: 바뀔 수 있는 일 3줄(서류 인증 스위치 doc_verify 켠 때) + [하러 가기] + NV42 — 점수 없음', async () => {
     const { tree } = await open('shopsub', 'grade', (deps) => ({
+      docVerify: true,
       grade: { ...deps.grade, loadMine: async () => ({ ok: true as const, data: { kind: 'ready' as const, icon: 'sea' as const, band: '28-32', bandMerged: false, shownAt: null, nextAt: null, areas: null, top: [], mannerOk: true, actionable: [{ item: 'v_sch' as const, pts: 2 }, { item: 'ans' as const, pts: 2 }, { item: 'act' as const, pts: 1 }], verifyOn: false } }) },
     }));
     expect(hasText(tree, GI.tasksTitle)).toBe(true);
@@ -148,8 +149,29 @@ describe('조건 2 · 16-G1 내 등급 (0039 v5 — 모든 회원)', () => {
     expect(allTexts(tree).filter((t) => /학력|연봉|고용|직업군/.test(t) && /하기|하면|채우기/.test(t))).toEqual([]);
   });
 
-  test('서류 인증(GI7): 학교 · 직업 · 자산 인증 + 1차에는 NV43 · 링크 4 · 한계 문구(NV44) 맨 아래', async () => {
-    const { tree } = await open('shopsub');
+  test('서류 인증 스위치(doc_verify) 꺼짐(D-238): 올리는 방법은 2줄(서류 인증하기 없음) · 서류 인증 칸 · 학교 · 직업 · 자산 인증 글 · "준비 중" 약속 0 — 켜면 3줄로 돌아온다', async () => {
+    const act = [{ item: 'v_sch' as const, pts: 2 }, { item: 'ans' as const, pts: 2 }, { item: 'act' as const, pts: 1 }];
+    const ready = (deps: ShopDeps, docVerify: boolean) => ({
+      docVerify,
+      grade: { ...deps.grade, loadMine: async () => ({ ok: true as const, data: { kind: 'ready' as const, icon: 'sea' as const, band: '28-32', bandMerged: false, shownAt: null, nextAt: null, areas: null, top: [], mannerOk: true, actionable: act, verifyOn: false } }) },
+    });
+    const off = await open('shopsub', 'grade', (deps) => ready(deps, false));
+    expect(hasText(off.tree, '서류 인증하기')).toBe(false);
+    expect(['grade-up-ans', 'grade-up-act'].map((id) => has(off.tree, id))).toEqual([true, true]);
+    expect(has(off.tree, 'grade-up-verify')).toBe(false);
+    expect(has(off.tree, 'grade-verify')).toBe(false);
+    for (const text of [GI.verifyTitle, '학교 인증', '직업 인증', '자산 인증', '서류 인증은 준비 중이에요']) expect(hasText(off.tree, text)).toBe(false);
+    expect(allTexts(off.tree).join(' ')).not.toMatch(/서류 인증|준비 중/);
+    expect(textOf(off.tree, 'grade-limits')).toBe(GRADE16.limits); // 사실 고지("서류로 확인되지 않은 정보가 들어 있을 수 있어요")는 그대로
+    expect(GRADE16.limits).toContain('서류로 확인되지 않은 정보가 들어 있을 수 있어요.');
+    const on = await open('shopsub', 'grade', (deps) => ready(deps, true));
+    expect(hasText(on.tree, '서류 인증하기')).toBe(true);
+    expect(has(on.tree, 'grade-up-verify')).toBe(true);
+    expect(has(on.tree, 'grade-verify')).toBe(true);
+  });
+
+  test('서류 인증 칸(GI7, 스위치 doc_verify 켠 때): 학교 · 직업 · 자산 인증 + 1차에는 NV43 · 링크 4 · 한계 문구(NV44) 맨 아래', async () => {
+    const { tree } = await open('shopsub', 'grade', () => ({ docVerify: true }));
     expect(hasText(tree, '인증으로 올리기')).toBe(false);
     for (const text of [GI.verifyTitle, '학교 인증', '직업 인증', '자산 인증']) expect(hasText(tree, text)).toBe(true);
     expect(textOf(tree, 'grade-verify-soon')).toBe('서류 인증은 준비 중이에요. 시작되면 여기에서 할 수 있어요.');
@@ -282,7 +304,7 @@ describe('조건 2 · 16-G2 변화 기록 · 16-G3 목표 · 16-G4 해설 (W9 �
   test('G2: 날짜 · 이유 줄 + 전/새 아이콘 그림(숫자 없음) · 첫 계산 줄 + 반영 일정(GI8)', async () => {
     const { tree } = await open('shopsub', 'grade-history');
     expect(textOf(tree, 'history-schedule')).toBe(GI.historySchedule);
-    expect(textOf(tree, 'history-item-0')).toBe('10월 14일 아이콘이 바뀌었어요 · 서류 인증');
+    expect(textOf(tree, 'history-item-0')).toBe('10월 14일 아이콘이 바뀌었어요 · 활동'); // D-238: 데모 기록에 서류 인증 이유 0
     expect(textOf(tree, 'history-item-1')).toBe('9월 6일 아이콘이 바뀌었어요 · 답 수정');
     expect(textOf(tree, 'history-item-2')).toBe('8월 17일 아이콘이 바뀌었어요 · 매너 반영');
     expect(textOf(tree, 'history-item-3')).toBe('7월 18일 첫 아이콘을 받았어요');
@@ -303,7 +325,10 @@ describe('조건 2 · 16-G2 변화 기록 · 16-G3 목표 · 16-G4 해설 (W9 �
     expect(has(tree, 'goal-optional')).toBe(false);
     expect([1, 2, 3, 4].some((n) => has(tree, `goal-choice-${n}`))).toBe(false);
     expect(has(tree, 'goal-tasks')).toBe(true);
-    expect(hasText(tree, '서류 인증하기')).toBe(true);
+    expect(hasText(tree, '서류 인증하기')).toBe(false); // D-238: 서류 인증 스위치 꺼짐 — 입력 완료 · 최근 접속 2줄
+    expect([has(tree, 'goal-task-ans'), has(tree, 'goal-task-act'), has(tree, 'goal-task-verify')]).toEqual([true, true, false]);
+    const withDocs = await open('shopsub', 'grade-goal', () => ({ docVerify: true }));
+    expect(hasText(withDocs.tree, '서류 인증하기')).toBe(true);
     expect(textOf(tree, 'goal-pick')).toBe('이런 일을 하면 아이콘이 바뀔 수 있어요.');
     expect(textOf(tree, 'goal-promise')).toBe('다 해도 아이콘이 꼭 바뀌는 건 아니에요. 같은 나이대 회원들과 함께 정해져요.');
     expect(allTexts(tree).join(' ')).not.toMatch(/\d\s*등급|목표|도움이 되는/);

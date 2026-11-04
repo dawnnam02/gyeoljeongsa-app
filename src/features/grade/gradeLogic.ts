@@ -30,11 +30,12 @@ export type UpTask = { key: 'verify' | 'ans' | 'act'; text: string; upTo: number
 const TASK_OF: Partial<Record<GradeItemKey, UpTask['key']>> = { v_sch: 'verify', v_job: 'verify', v_ast: 'verify', ans: 'ans', act: 'act' };
 const TASK_TEXT: Readonly<Record<UpTask['key'], string>> = { verify: GRADE16.upTasks[0], ans: GRADE16.upTasks[1], act: GRADE16.upTasks[2] };
 
-export function upTasks(actionable: readonly GradePoint[]): UpTask[] {
+// verifyOn = 서류 인증 스위치(doc_verify). 꺼져 있으면 '서류 인증하기'는 줄에서 빠져 올리는 방법이 2줄이 된다(D-238)
+export function upTasks(actionable: readonly GradePoint[], verifyOn = true): UpTask[] {
   const out: UpTask[] = [];
   for (const p of actionable) {
     const key = TASK_OF[p.item];
-    if (!key) continue;
+    if (!key || (key === 'verify' && !verifyOn)) continue;
     const found = out.find((t) => t.key === key);
     if (found) found.upTo += p.pts;
     else out.push({ key, text: TASK_TEXT[key], upTo: p.pts });
@@ -44,9 +45,9 @@ export function upTasks(actionable: readonly GradePoint[]): UpTask[] {
 
 // 16-G3 체크 상태: 올릴 여지가 아직 있으면(actionable 에 있으면) 아직, 없으면 끝(서버 값으로 자동)
 export type GoalTask = { key: UpTask['key']; text: string; done: boolean; doneText: string };
-export function goalTasks(actionable: readonly GradePoint[]): GoalTask[] {
-  const open = new Set(upTasks(actionable).map((t) => t.key));
-  const keys: UpTask['key'][] = ['verify', 'ans', 'act'];
+export function goalTasks(actionable: readonly GradePoint[], verifyOn = true): GoalTask[] {
+  const open = new Set(upTasks(actionable, verifyOn).map((t) => t.key));
+  const keys: UpTask['key'][] = verifyOn ? ['verify', 'ans', 'act'] : ['ans', 'act'];
   return keys.map((key, i) => ({ key, text: TASK_TEXT[key], done: !open.has(key), doneText: GRADE16.goalStates[i] }));
 }
 

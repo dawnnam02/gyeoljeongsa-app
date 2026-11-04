@@ -21,7 +21,7 @@ type GradePageName = 'grade' | 'grade-history' | 'grade-goal' | 'grade-how';
 const TITLES: Record<GradePageName, string> = { grade: GRADE16.title, 'grade-history': GRADE16.historyTitle, 'grade-goal': GRADE16.goalTitle, 'grade-how': GRADE16.howTitle };
 const isGradePage = (p: ShopPage): p is { name: GradePageName } => p.name === 'grade' || p.name === 'grade-history' || p.name === 'grade-goal' || p.name === 'grade-how';
 
-export type MyGradeDeps = Pick<ShopDeps, 'grade' | 'now'>;
+export type MyGradeDeps = Pick<ShopDeps, 'grade' | 'now' | 'docVerify'>;
 
 export function MyGradeScreen({ deps }: { deps: MyGradeDeps }) {
   const router = useRouter();

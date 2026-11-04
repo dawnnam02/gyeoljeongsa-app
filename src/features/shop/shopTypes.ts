@@ -21,6 +21,7 @@ export type ShopDeps = {
   grade: Pick<GradeApi, 'loadMine' | 'loadHistory' | 'requestAccess'>;
   ai?: Pick<AiApi, 'loadLatest'>; // 16-1 내 성향 리포트가 확정한 성향을 읽는다
   now: () => number;
+  docVerify?: boolean; // 스위치 doc_verify 가 켜졌나(D-238). 내 등급의 '서류 인증' 칸 · 올리는 방법의 서류 줄. 없으면 꺼짐
   newId: () => string; // 요청 ID(같은 버튼의 재시도는 같은 ID)
   toastMs: number;
   slowMs: number; // 결제 확인이 이만큼 걸리면 '확인이 늦어지고 있어요'(NV17)

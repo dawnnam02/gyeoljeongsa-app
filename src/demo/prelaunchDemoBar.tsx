@@ -23,7 +23,6 @@ export const PRELAUNCH_DEMO = {
     ['reviewOpen', '출시 뒤 확정 전'],
     ['regionWait', '지역 기다림(인원)'],
     ['regionRatio', '지역 기다림(성비)'],
-    ['regionLocked', '지역 기다림(양보 불가)'],
   ] as readonly (readonly [PrelaunchScene, string])[],
   open: '사전 오픈 끄기(출시 장면)',
   reopen: '데모 · 사전 오픈 다시 켜기',

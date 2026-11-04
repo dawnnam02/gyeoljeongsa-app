@@ -1,10 +1,10 @@
 // F22 웹 점검(사전 오픈 화면 · 신청 잇기 · 장면). 무료 · 네트워크 없음(로컬 서버 + 로컬 브라우저, 데모 모드 모의 서버).
 //  먼저 데모 모드 웹 번들을 만든 뒤 쓴다(npm run check:web:demo → dist-demo/, 또는 같은 설정으로 다른 폴더). 헤드리스 Edge 로 사람이 하는 순서대로 누른다.
-//  1 대기 화면(prelaunch… 계정 · 확인 중): 09 자리에 대기 화면 · 신청 번호 + 순서 뜻 0 · 단계표 5칸 · 첫 추천 '12월 23일 수요일 오후 6시' · 할 일 · 고지 · 카드 0
+//  1 대기 화면(prelaunch… 계정 · 확인 중): 09 자리에 대기 화면 · 신청 번호 + 순서 뜻 0 · 단계표 4칸(서류 칸 없음, D-238) · 첫 추천 '12월 23일 수요일 오후 6시' · 할 일(아는 분 미리 피하기 · 신청 잇기 — 서류 인증 · 지인 확인 입구 0) · 고지 · 카드 0
 //  2 카운트다운 0: 3초 사이 화면 글이 바뀌지 않는다 · 남은 날 · 시간 · 초 · 진행 % · 인원 글 0 · 느낌표 0 · '소개' 0
 //  3 신청 잇기 시트: 틀림 · 남이 이은 번호(틀림 글) → 맞는 번호 · 코드 → 시트 닫힘 · 토스트 · 번호가 신청 번호로 · 잇기 줄 사라짐 · 시트 안 고지
-//  4 장면(데모 줄): 확정(카드 · 로고 타일 · 고지 카드 안) · 보완 필요(서버 보완 이유) · 출시 뒤 확정 전(screen review) · 함께하기 어려워요 · 미룸 공지(한 번) · 지역 기다림(인원 · 성비) · 먼저 시작(확인 한 줄 → 시작하는 날) ·
-//    양보 불가(안내만) · 끄기 → 09 카드 · 다시 켜기 → 대기 화면
+//  4 장면(데모 줄): 확정(카드 · 로고 타일 · 고지 카드 안) · 보완 필요(서버 보완 이유) · 출시 뒤 확정 전(screen review) · 함께하기 어려워요 · 미룸 공지(한 번) · 지역 기다림(인원 · 성비 — 먼저 시작 버튼 0, D-238) ·
+//    끄기 → 09 카드 · 다시 켜기 → 대기 화면
 //  6 11 호감 · 16 상점 탭(출시 전 빈 상태 한 줄 · 상점 날짜 · 등급 첫 계산) → 끈 뒤에는 원래 화면
 //  5 폭(SHOT_WIDTH, 기본 390) 가로 넘침 0 · 글자 13 이상 · 터치 48 이상 · 콘솔 오류 0 · 바깥 요청 0
 //  V5(W6): 출시 = 12-23(수) 18:00 첫 매칭 · '첫 추천' 글 → '첫 매칭'. 09 · 11 · 16 은 스위치로 숨겨져서 계정 이메일에 v4on 을 넣어 예전 자리(09 대기 화면)를 본다 — 탑승권 탭 쪽은 web-w6
@@ -119,10 +119,10 @@ try {
   const no = await visText('prelaunch-no');
   check('1', `머리 '출연 준비' · 신청 번호(접수 날짜 + 4자리) + '순서를 뜻하는 번호는 아니에요.'`, (await visText('prelaunch-header')).startsWith('출연 준비') && /^신청 번호 \d{4}-\d{4}$/.test(no) && (await visText('prelaunch-no-note')) === '순서를 뜻하는 번호는 아니에요.', no);
   const steps = [];
-  for (const s of ['identity', 'photos', 'survey', 'docs', 'confirm']) steps.push(await visText(`prelaunch-steps-${s}`));
-  check('1', '단계표 5칸: 본인 확인 · 나이 확인됨 → 사진 · 셀피 확인 중 → 결혼관 설문 확인됨 → 서류(선택) 아직 → 확정 아직', steps.join(' / ') === '본인 확인 · 나이 확인됨 / 사진 · 셀피 확인 중 / 결혼관 설문 확인됨 / 서류(선택) 아직 / 확정 아직', steps.join(' / '));
+  for (const s of ['identity', 'photos', 'survey', 'confirm']) steps.push(await visText(`prelaunch-steps-${s}`));
+  check('1', '단계표 4칸(D-238): 본인 확인 · 나이 확인됨 → 사진 확인 중 → 결혼관 설문 확인됨 → 확정 아직 · 서류 칸 · 셀피 글 0', steps.join(' / ') === '본인 확인 · 나이 확인됨 / 사진 확인 중 / 결혼관 설문 확인됨 / 확정 아직' && !(await vis('prelaunch-steps-docs')) && !/셀피|서류/.test(await screenText()), steps.join(' / '));
   check('1', "첫 추천: '12월 23일 수요일 오후 6시'(날짜 · 요일 · 시각만)", (await visText('prelaunch-first-rec-when')) === '12월 23일 수요일 오후 6시', await visText('prelaunch-first-rec-when'));
-  check('1', '기다리는 동안 할 일: 아는 분 미리 피하기 · 서류 인증 · 신청 잇기(보증은 확정 뒤)', (await vis('prelaunch-task-avoid')) && (await vis('prelaunch-task-docs')) && !(await vis('prelaunch-task-vouch')) && (await vis('prelaunch-task-link')), '');
+  check('1', '기다리는 동안 할 일: 아는 분 미리 피하기 · 신청 잇기만(서류 인증 · 지인 확인 입구 0, D-238)', (await vis('prelaunch-task-avoid')) && !(await vis('prelaunch-task-docs')) && !(await vis('prelaunch-task-vouch')) && (await vis('prelaunch-task-link')), '');
   check('1', "'방송 아님' 고지 한 줄", (await visText('prelaunch-notice')) === "'출연'은 결정사에서 쓰는 말이에요. 방송이나 촬영은 없어요.", await visText('prelaunch-notice'));
   check('1', '탭바는 그대로(추천 탭 켜짐)', await b.evaluate(`[...document.querySelectorAll('[role=tab]')].some((t) => t.getAttribute('aria-selected') === 'true' && t.innerText.includes('추천'))`), '');
   await shot('1_대기_확인중');
@@ -137,12 +137,13 @@ try {
 
   // ═══ 6. 11 호감 · 16 상점 탭(출시 전) ═══
   await goTab('호감', '/likes');
-  check('6', "11 호감(출시 전): '호감은 첫 매칭이 시작되는 날부터 주고받을 수 있어요.' 한 줄 · 머리 '호감'", (await wait(`location.pathname === '/likes' && [...document.querySelectorAll('[data-testid="prelaunch-tab-likes-line-0"]')].some((e) => window.__visible(e))`)) && (await visText('prelaunch-tab-likes-line-0')) === '호감은 첫 매칭이 시작되는 날부터 주고받을 수 있어요.', await path0());
+  // v5(QP-A, 카피 14-1): 호감 탭 출시 전 줄 없음 · 머리 '호감'만(옛 '호감은 첫 매칭이 시작되는 날부터…' 줄은 없어짐) — 앱 시험 f22Prelaunch 와 같은 기대값
+  check('6', "11 호감(출시 전): 머리 '호감' · 안내 줄 없음(v5 카피 14-1)", (await wait(`location.pathname === '/likes' && [...document.querySelectorAll('[data-testid="prelaunch-tab-likes-header"]')].some((e) => window.__visible(e))`)) && (await visText('prelaunch-tab-likes-header')).startsWith('호감') && !(await vis('prelaunch-tab-likes-line-0')), await path0());
   await sleep(400);
   await shot('6_호감_출시전');
   await measure('11 호감(출시 전)');
   await goTab('상점', '/shop');
-  check('6', "16 상점(출시 전): '상점은 12월 23일에 열려요.' + '등급은 출시일 새벽에 처음 계산해요.' · 상품 목록 0", (await wait(`location.pathname === '/shop' && [...document.querySelectorAll('[data-testid="prelaunch-tab-shop-line-0"]')].some((e) => window.__visible(e))`)) && (await visText('prelaunch-tab-shop-line-0')) === '상점은 12월 23일에 열려요.' && (await visText('prelaunch-tab-shop-line-1')) === '등급은 출시일 새벽에 처음 계산해요.' && !(await vis('shop-page-product')), await path0());
+  check('6', "16 상점(출시 전): '등급은 출시일 새벽에 처음 계산해요.' 한 줄만('상점은 … 열려요' 없음, v5 카피 14-1) · 상품 목록 0", (await wait(`location.pathname === '/shop' && [...document.querySelectorAll('[data-testid="prelaunch-tab-shop-line-0"]')].some((e) => window.__visible(e))`)) && (await visText('prelaunch-tab-shop-line-0')) === '등급은 출시일 새벽에 처음 계산해요.' && !(await vis('prelaunch-tab-shop-line-1')) && !(await vis('shop-page-product')), await path0());
   await sleep(400);
   await shot('6_상점_출시전');
   await measure('16 상점(출시 전)');
@@ -179,7 +180,7 @@ try {
 
   // ═══ 4. 장면 ═══
   await scene('confirmed');
-  check('4', '확정: 확정 카드(첫 추천 12월 23일 수요일 오후 6시 · 하루 세 분 추천) · 로고 타일 찍힘 · 고지는 카드 안 한 번 · 보증 할 일', (await visText('prelaunch-confirmed-body')) === '확정됐어요. 첫 매칭은 12월 23일 수요일 오후 6시에 열려요. 탑승권을 사면 그날 나와 수준이 가장 잘 맞는 한 분과 이어져요.' && (await vis('prelaunch-stamp')) && (await vis('prelaunch-confirmed-notice')) && !(await vis('prelaunch-notice')) && (await vis('prelaunch-task-vouch')), await visText('prelaunch-confirmed-body'));
+  check('4', '확정: 확정 카드(첫 추천 12월 23일 수요일 오후 6시 · 하루 세 분 추천) · 로고 타일 찍힘 · 고지는 카드 안 한 번 · 지인 확인 할 일 0(D-238)', (await visText('prelaunch-confirmed-body')) === '확정됐어요. 첫 매칭은 12월 23일 수요일 오후 6시에 열려요. 탑승권을 사면 그날 나와 수준이 가장 잘 맞는 한 분과 이어져요.' && (await vis('prelaunch-stamp')) && (await vis('prelaunch-confirmed-notice')) && !(await vis('prelaunch-notice')) && !(await vis('prelaunch-task-vouch')) && (await vis('prelaunch-task-avoid')), await visText('prelaunch-confirmed-body'));
   await sleep(800);
   await shot('4_확정');
   await measure('확정');
@@ -202,21 +203,7 @@ try {
   await scene('regionWait');
   check('4', '출시 뒤 지역 기다림(인원): "동남권은 함께 시작할 분들을 모으고 있어요. …" · 날짜 줄 대신 · 인원 · 게이지 0', (await visText('prelaunch-region-text')).startsWith('동남권은 함께 시작할 분들을 모으고 있어요.') && !(await vis('prelaunch-first-rec')) && !BANNED.test(await screenText()), await visText('prelaunch-region-text'));
   await shot('4_지역기다림_인원');
-  await b.evaluate(`(() => { const el = [...document.querySelectorAll('[data-testid="prelaunch-early"]')].find((e) => window.__visible(e)); if (el) el.scrollIntoView({ block: 'center' }); })()`);
-  await tap('prelaunch-early');
-  check('4', '[지역 넓혀 먼저 시작하기] → 확인 한 줄 "다른 지역 분과 매칭될 수 있어요."(누르기 전에는 시작 0)', (await wait(`[...document.querySelectorAll('[data-testid="prelaunch-early-confirm-body"]')].some((e) => window.__visible(e))`, 5000)) && (await visText('prelaunch-early-confirm-body')) === '다른 지역 분과 매칭될 수 있어요.' && !(await vis('prelaunch-early-joined')), '');
-  await sleep(300);
-  await shot('4_먼저시작_확인');
-  await tap('prelaunch-early-confirm-confirm');
-  check('4', '[먼저 시작하기] → 시작하는 날 한 줄(다음 날 오전 9시부터) · 버튼 사라짐', (await wait(`[...document.querySelectorAll('[data-testid="prelaunch-early-joined"]')].some((e) => window.__visible(e))`, 6000)) && (await visText('prelaunch-early-joined')).endsWith('부터 다른 지역 분과도 매칭될 수 있어요.') && !(await vis('prelaunch-early')), await visText('prelaunch-early-joined'));
-  await shot('4_먼저시작_됨');
-  await scene('regionLocked');
-  await b.evaluate(`(() => { const el = [...document.querySelectorAll('[data-testid="prelaunch-early"]')].find((e) => window.__visible(e)); if (el) el.scrollIntoView({ block: 'center' }); })()`);
-  await tap('prelaunch-early');
-  await wait(`[...document.querySelectorAll('[data-testid="prelaunch-early-confirm-confirm"]')].some((e) => window.__visible(e))`, 5000);
-  await tap('prelaunch-early-confirm-confirm');
-  check('4', '지역 양보 불가 → 서버가 대신 풀지 않고 안내 한 줄만', (await wait(`[...document.querySelectorAll('[data-testid="prelaunch-early-locked"]')].some((e) => window.__visible(e))`, 6000)) && (await visText('prelaunch-early-locked')).startsWith('지역 조건을 양보할 수 없게 두셨어요.'), await visText('prelaunch-early-locked'));
-  await shot('4_양보불가');
+  check('4', '지역 넓혀 먼저 시작 없음(D-238): 버튼 · 확인창 · 시작한 날 줄 · 양보 불가 안내 · 지역 조건 단추 0 / "함께 시작할 분들을 모으고 있어요" 카드는 그대로', !(await vis('prelaunch-early')) && !(await vis('prelaunch-early-confirm')) && !(await vis('prelaunch-early-joined')) && !(await vis('prelaunch-early-locked')) && !(await vis('prelaunch-early-widen')) && !/먼저 시작|다른 지역|지역 넓|지역 조건/.test(await screenText()) && (await vis('prelaunch-region')), '');
   await scene('regionRatio');
   check('4', '출시 뒤 지역 기다림(성비): 이유 한 줄', (await visText('prelaunch-region-text')) === '같은 지역 분들이 고르게 모이면 첫 매칭을 시작해요.', await visText('prelaunch-region-text'));
   await shot('4_지역기다림_성비');

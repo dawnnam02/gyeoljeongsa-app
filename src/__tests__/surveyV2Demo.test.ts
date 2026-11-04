@@ -131,6 +131,15 @@ describe('학교 검색 · 증빙', () => {
     expect(await api.uploadProof('T04')).toEqual({ ok: false, reason: 'server' }); // 실서버는 증빙 흐름이 없어 버튼을 숨긴다
   });
 
+  test('증빙 길은 서류 인증 스위치(doc_verify) 함수를 읽을 때마다 본다 — 꺼짐이면 길도 닫힘(D-238), 켜면 돌아온다', async () => {
+    let on = false;
+    const api = createSurveyV2Api({} as SupabaseClient, { demo: true, proofUpload: () => on, schoolSearch: 'local' });
+    expect(api.proofUpload).toBe(false);
+    expect(await api.uploadProof('T04')).toEqual({ ok: false, reason: 'server' });
+    on = true;
+    expect(api.proofUpload).toBe(true);
+  });
+
   test('증빙 올리기 → 확인 중, 장면 v2prooffail 은 첫 번째만 실패(다시 올려 주세요)', async () => {
     const { api } = setup();
     expect(await api.uploadProof('T05')).toEqual({ ok: true, state: 'pending' });

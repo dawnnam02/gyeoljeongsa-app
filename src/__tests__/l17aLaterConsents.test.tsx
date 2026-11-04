@@ -79,10 +79,12 @@ describe('12 동의 관리 — CK11 ~ CK16 줄', () => {
     };
     return a as unknown as jest.Mocked<Pick<SettingsApi, 'loadConsents' | 'setOptional'>>;
   }
-  const show = (a: Pick<SettingsApi, 'loadConsents' | 'setOptional'>) => mount(<ConsentManagePage api={a} onBack={() => undefined} onToast={() => undefined} />);
+  // D-238: 기본은 셀피(selfie_verify) · 서류(doc_verify) 스위치 꺼짐 → CK12 · CK14 줄이 없다. 켠 장면은 FLAGS_ON
+  const FLAGS_ON = (key: string) => key === 'selfie_verify' || key === 'doc_verify';
+  const show = (a: Pick<SettingsApi, 'loadConsents' | 'setOptional'>, flagOn?: (key: string) => boolean) => mount(<ConsentManagePage api={a} onBack={() => undefined} onToast={() => undefined} flagOn={flagOn} />);
 
-  test('여섯 줄이 1-1 이름으로 보이고(CK16 은 글 쓰는 속도 분석), 꺼진 CK11 ~ CK15 는 잠김 + "처음 쓸 때 따로 물어요."', async () => {
-    const tree = await show(api({}));
+  test('여섯 줄이 1-1 이름으로 보이고(CK16 은 글 쓰는 속도 분석), 꺼진 CK11 ~ CK15 는 잠김 + "처음 쓸 때 따로 물어요." — 셀피 · 서류 스위치를 켠 장면', async () => {
+    const tree = await show(api({}), FLAGS_ON);
     for (const { code, name } of CONSENT_LATER_NAMES) {
       const label = propOf(tree, `settings-consent-${code}`, 'accessibilityLabel');
       expect(label).toBe(code === 'CK16' ? '[선택] 글 쓰는 속도 분석' : `[선택] ${name}`);
@@ -117,8 +119,20 @@ describe('12 동의 관리 — CK11 ~ CK16 줄', () => {
     expect(propOf(tree, 'settings-consent-CK15', 'accessibilityState').checked).toBe(false);
   });
 
-  test('보기 › 줄: 필수 7 + CK11 ~ CK16 6 — CK15 는 4-15 요약 시트(전문 보기)', async () => {
-    const tree = await show(api({}));
+  test('D-238: 셀피(selfie_verify) · 서류(doc_verify) 스위치가 꺼져 있으면 CK12 · CK14 줄과 보기 › 길이 없고 나머지 4줄은 그대로 — 스위치 하나씩 켜면 그 줄만 돌아온다', async () => {
+    const off = await show(api({}));
+    for (const code of ['CK12', 'CK14']) expect([has(off, `settings-consent-${code}`), has(off, `settings-consent-view-${code}`)]).toEqual([false, false]);
+    for (const code of ['CK11', 'CK13', 'CK15', 'CK16']) expect([has(off, `settings-consent-${code}`), has(off, `settings-consent-view-${code}`)]).toEqual([true, true]);
+    expect(hasText(off, '얼굴 비교')).toBe(false);
+    expect(hasText(off, '인증 서류 제출')).toBe(false);
+    const selfieOnly = await show(api({}), (k) => k === 'selfie_verify');
+    expect([has(selfieOnly, 'settings-consent-CK12'), has(selfieOnly, 'settings-consent-CK14')]).toEqual([true, false]);
+    const docOnly = await show(api({}), (k) => k === 'doc_verify');
+    expect([has(docOnly, 'settings-consent-CK12'), has(docOnly, 'settings-consent-CK14')]).toEqual([false, true]);
+  });
+
+  test('보기 › 줄: 필수 7 + CK11 ~ CK16 6 — CK15 는 4-15 요약 시트(전문 보기) — 셀피 · 서류 스위치를 켠 장면', async () => {
+    const tree = await show(api({}), FLAGS_ON);
     for (const code of LATER_CONSENT_CODES) expect(has(tree, `settings-consent-view-${code}`)).toBe(true);
     await press(tree, 'settings-consent-view-CK15');
     expect(has(tree, 'consent-summary-CK15')).toBe(true);

@@ -21,6 +21,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { safeLog } from '@/lib/log';
 import { readDbFailure } from '@/lib/serverError';
 
+export type PaymentMode = 'live' | 'demo' | 'closed';
 export type BoardingPhase = 'before_sale' | 'on_sale' | 'closed' | 'revealed';
 export type Ineligible = 'not_confirmed' | 'politics_missing' | 'paused' | 'religion_missing' | 'profile_missing' | 'grade_pending';
 // T5 내역 글 키(카피 14-5-2 · 14-7 CREDITS.reasons). 서버 장부 사유 → 이 키는 아래 LOT_REASON
@@ -35,6 +36,7 @@ export type PastMatch = { roundNo: number; partnerName: string; chatId: string |
 export type BoardingState = {
   now: number;
   offset: number; // 서버 시각 − 기기 시각(서버 0030 은 시각을 보내지 않아 0 — 데모만 장면 시각)
+  paymentMode?: PaymentMode | null; // 서버 shop_config.payment_mode(live | demo | closed). 결제 시트의 '데모 결제예요' 한 줄은 demo 일 때만(D-238 QF1-A)
   round: Round | null;
   phase: BoardingPhase;
   regionName: string | null;
@@ -152,6 +154,7 @@ export function parseTicketState(raw: unknown, deviceNow: number): BoardingState
   return {
     now,
     offset: now - deviceNow,
+    paymentMode: pick(raw.payment_mode, ['live', 'demo', 'closed'] as const),
     round,
     phase: fromMap(PHASE, isRecord(raw.round) ? raw.round.sale_state : null) ?? 'closed',
     regionName: str(raw.region),

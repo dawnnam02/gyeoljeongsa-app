@@ -1,10 +1,9 @@
 // 데모 모드 모의 서버의 사전 오픈 부분(F22 · K20 4-5 '데모'). 메모리에만 있고 서버에 요청하지 않으며 기기에 아무것도 저장하지 않는다.
 //  응답 모양은 backend/S18_변경기록.md 4장 최신 판(10:21 — 0024 · 0025 · Edge link-application)과 같다. S18 이 만드는 중인 것은 같은 이름(app/F22_변경기록.md 4장):
-//   rpc get_launch_state()                → S18 4-1 키(screen · application_linked · region.name · review.fix_reason 포함) + (가정) region.early_join_on
+//   rpc get_launch_state()                → S18 4-1 키(screen · application_linked · region.name · review.fix_reason 포함). region = null | { name, state, reason } (D-238: can_early_join · early_join_on 없음, 0053)
 //   rpc get_feature_flags()               → 데모 처음값(featureKeys demoDefault) — 단 prelaunch 는 지금 장면의 단계가 open 이 아니면 켜짐
 //   functions.invoke('link-application')  → body { applicant_no, link_code } · 200 { ok, applicant_no } · 400 invalid_code(모양이 아닌 입력은 세지 않음 · 남이 이은 번호는 셈)
 //                                            · 409 already_linked(이미 이은 계정) · 429 rate_limited(오늘 5번 틀림) · 401
-//   rpc early_join()(S18 만드는 중)       → { ok, starts_on } · 오류 region_locked(지역 양보 불가) · not_waiting
 //   rpc get_launch_public()(S18 만드는 중 · 로그인 없이) → { phase, launch_day, launch_text } — 마지막으로 본 계정의 단계(없으면 데모 처음값)
 //  잇지 않은 다른 호출은 원래 데모 클라이언트(lib/demoClient · demoBackend)로 그대로 넘긴다(demoBackend.ts 는 고치지 않았다).
 //  장면은 이메일 앞부분으로 고르고, 대기 화면의 데모 줄(demo/prelaunchDemoBar)로 바꾼다:
@@ -18,7 +17,7 @@
 import { FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js';
 
 import { demoDefault, demoSceneDefault, FEATURE_KEY_LIST } from '@/config/featureKeys';
-import { EARLY_JOIN_RPC, LAUNCH_PUBLIC_RPC, LAUNCH_RPC, LINK_FUNCTION, type DeclineReason, type Phase, type Region, type ReviewStatus, type Screen, type StepKey, type StepState } from '@/features/prelaunch/launchApi';
+import { LAUNCH_PUBLIC_RPC, LAUNCH_RPC, LINK_FUNCTION, type DeclineReason, type Phase, type Region, type ReviewStatus, type Screen, type StepKey, type StepState } from '@/features/prelaunch/launchApi';
 import { dayText, normalizeApplicantNo, normalizeLinkCode, timeText } from '@/features/prelaunch/launchLogic';
 import { kstToday } from '@/lib/birthDate';
 
@@ -29,7 +28,7 @@ export const DEMO_LINK = { no: '1018-4721', code: '246810' } as const;
 export const DEMO_LINK_TAKEN = { no: '1017-3388', code: '135790' } as const;
 export const LINK_DAILY_WRONG = 5; // K20 P-13
 
-export type PrelaunchScene = 'checking' | 'fix' | 'confirmed' | 'declined' | 'regionWait' | 'regionRatio' | 'regionLocked' | 'deferred' | 'reviewOpen' | 'open' | 'prelaunch';
+export type PrelaunchScene = 'checking' | 'fix' | 'confirmed' | 'declined' | 'regionWait' | 'regionRatio' | 'deferred' | 'reviewOpen' | 'open' | 'prelaunch';
 export type DemoPrelaunchUser = { id: string; email: string };
 type Steps = Record<StepKey, StepState>;
 type UserState = {
@@ -39,7 +38,6 @@ type UserState = {
   steps: Steps;
   declineReason: DeclineReason | null;
   region: Region | null;
-  regionLocked: boolean; // 지역 양보 불가(early_join → region_locked)
   launchDay: string;
   deferred: number;
   applicantNo: string;
@@ -68,7 +66,6 @@ export const sceneOfEmail = (email: string): PrelaunchScene | null => {
 const STEPS_CHECKING: Steps = { identity: 'done', photos: 'checking', survey: 'done', docs: 'todo', confirm: 'todo' };
 const STEPS_FIX: Steps = { ...STEPS_CHECKING, photos: 'fix' };
 const STEPS_DONE: Steps = { identity: 'done', photos: 'done', survey: 'done', docs: 'todo', confirm: 'done' };
-const DAY_MS = 24 * 3_600_000;
 
 const httpFailure = (status: number, code: string): FnResult => ({
   data: null,
@@ -93,7 +90,7 @@ export function createPrelaunchDemo(options: { now?: () => number } = {}) {
   const takenBy = new Map<string, string>([[DEMO_LINK_TAKEN.no, 'demo-someone-else']]);
   let last: DemoPrelaunchUser | null = null;
 
-  const waitRegion = (reason: 'count' | 'ratio'): Region => ({ name: '동남권', state: 'wait', reason, canEarlyJoin: true, earlyJoinOn: null });
+  const waitRegion = (reason: 'count' | 'ratio'): Region => ({ name: '동남권', state: 'wait', reason });
   const apply = (s: UserState, scene: PrelaunchScene) => {
     if (scene === 'prelaunch') {
       s.phase = 'prelaunch';
@@ -102,7 +99,7 @@ export function createPrelaunchDemo(options: { now?: () => number } = {}) {
     }
     if (scene === 'open') {
       s.phase = 'open';
-      s.region = { name: '수도권', state: 'open', reason: null, canEarlyJoin: false, earlyJoinOn: null };
+      s.region = { name: '수도권', state: 'open', reason: null };
       return;
     }
     if (scene === 'deferred') {
@@ -112,13 +109,12 @@ export function createPrelaunchDemo(options: { now?: () => number } = {}) {
       s.deferred = 1;
       return;
     }
-    const regional = scene === 'regionWait' || scene === 'regionRatio' || scene === 'regionLocked';
+    const regional = scene === 'regionWait' || scene === 'regionRatio';
     s.phase = regional || scene === 'reviewOpen' ? 'open' : 'prelaunch';
     s.status = scene === 'checking' || scene === 'reviewOpen' ? 'in_review' : scene === 'fix' ? 'needs_more' : scene === 'declined' ? 'declined' : 'confirmed';
     s.steps = scene === 'checking' || scene === 'reviewOpen' ? { ...STEPS_CHECKING } : scene === 'fix' ? { ...STEPS_FIX } : scene === 'declined' ? { ...STEPS_CHECKING, photos: 'done', confirm: 'todo' } : { ...STEPS_DONE };
     s.declineReason = scene === 'declined' ? 'married' : null;
     s.region = regional ? waitRegion(scene === 'regionRatio' ? 'ratio' : 'count') : null;
-    s.regionLocked = scene === 'regionLocked';
   };
 
   const stateOf = (user: DemoPrelaunchUser): UserState => {
@@ -132,7 +128,6 @@ export function createPrelaunchDemo(options: { now?: () => number } = {}) {
         steps: { ...STEPS_DONE },
         declineReason: null,
         region: null,
-        regionLocked: false,
         launchDay: DEMO_LAUNCH_DAY,
         deferred: 0,
         applicantNo: appNumber(user.id, kstToday(now())),
@@ -159,7 +154,7 @@ export function createPrelaunchDemo(options: { now?: () => number } = {}) {
     applicant_no: s.applicantNo,
     application_linked: s.linked,
     review: { status: s.status, steps: (Object.keys(s.steps) as StepKey[]).map((step) => ({ step, state: s.steps[step] })), decline_reason: s.declineReason, fix_reason: fixOf(s), vouched_by: null },
-    region: s.region ? { name: s.region.name, state: s.region.state, reason: s.region.reason, can_early_join: s.region.canEarlyJoin, early_join_on: s.region.earlyJoinOn } : null,
+    region: s.region ? { name: s.region.name, state: s.region.state, reason: s.region.reason } : null,
   });
 
   const notify = () => listeners.forEach((l) => l());
@@ -176,14 +171,6 @@ export function createPrelaunchDemo(options: { now?: () => number } = {}) {
       last = user;
       const s = stateOf(user);
       if (name === LAUNCH_RPC) return { data: launchState(s), error: null };
-      if (name === EARLY_JOIN_RPC) {
-        if (!s.region || s.region.state !== 'wait' || !s.region.canEarlyJoin) return { data: null, error: { code: 'P0001', message: 'not_waiting' } };
-        if (s.regionLocked) return { data: null, error: { code: 'P0001', message: 'region_locked' } };
-        const startsOn = kstToday(now() + DAY_MS); // 다음 날 09:00 부터(K20 3-4 ②)
-        s.region = { ...s.region, canEarlyJoin: false, earlyJoinOn: startsOn };
-        notify();
-        return { data: { ok: true, starts_on: startsOn }, error: null };
-      }
       // get_feature_flags: 데모 처음값 + prelaunch 는 지금 단계(open 이 아니면 켜짐)
       const keys = FEATURE_KEY_LIST.filter((k) => !k.pending).map((k) => k.key);
       return {
@@ -246,7 +233,7 @@ export function createPrelaunchDemo(options: { now?: () => number } = {}) {
 
 export type PrelaunchDemo = ReturnType<typeof createPrelaunchDemo>;
 
-const HANDLED_RPC = [LAUNCH_RPC, 'get_feature_flags', EARLY_JOIN_RPC, LAUNCH_PUBLIC_RPC];
+const HANDLED_RPC = [LAUNCH_RPC, 'get_feature_flags', LAUNCH_PUBLIC_RPC];
 
 // 원래 데모 클라이언트에 사전 오픈 호출만 얹는다(나머지는 그대로 넘김)
 export function withPrelaunchDemo(client: SupabaseClient, demo: PrelaunchDemo): SupabaseClient {
