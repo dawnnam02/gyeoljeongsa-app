@@ -33,7 +33,7 @@
 //        사본 밖 글 0 · 느낌표 · 숫자 · PF-18 금지 낱말 · 상대 화면 별자리 이름 · 일간 0 · 재미 정보 동의 시트 = 동의문구 4-17 · 생성 파일(라이브러리 · 그림 · 안전 낱말 · 아이콘) = 원본.
 //        21-18(BOARDING.matched.body · SETTINGS.rows.imageCredit · IMAGE_CREDIT.headerTitle)은 X · O 가 14-5-1 · 12 옛 줄 대신 읽는다(SEC2118)
 //  IF5. 사주 마당 · 마일리지 글(IF5-F1 · D-237, content/if5Copy.ts — gen-if5-copy)이 카피.md 24장 표 336키(318 + F1b 24-15-1 새 키 12 + M-F2 24-16-1 새 키 2 + F1c 새 키 2 + M-QF 새 키 2)와 한 글자씩 같은가 · 느낌표 · 법무 금지 낱말 0 · 앱 키가 모두 24장에 있는가 · F1 화면은 F2 몫 글(마일리지 · 쉬어 가요 · 사주 이야기 · AI 맞춤)을 안 부르는가
-//  QF2. QF2-B2 새 글(content/qf2Copy.ts · chatCopy · boardingCopy · prelaunchCopy)이 카피.md 14-9 표 37줄과 한 글자씩 같은가 · 새 글 파일 글이 모두 14-9 에 있는가 · 점수 · 서열 · 재촉 · 마음 표현 · 방송 낱말 · 숫자 · 느낌표 0
+//  QF2. QF2-B2 새 글(content/qf2Copy.ts · chatCopy · boardingCopy · prelaunchCopy)이 카피.md 14-9 표 38줄과 한 글자씩 같은가 · 새 글 파일 글이 모두 14-9 에 있는가 · 점수 · 서열 · 재촉 · 마음 표현 · 방송 낱말 · 숫자 · 느낌표 0
 //  J. 06 AI 정리 중 · 07 내 성향의 글이 카피.md 06 · 07 · 화면_요구사항(N13 · N14)에 그대로 있는가 · 근거 문항 이름 · 직접 입력 태그 후보(F3)
 // 사용: node scripts/check-copy.mjs   (npm run check:copy)
 // 종료 코드: 0 통과 · 1 실패
@@ -974,7 +974,7 @@ try {
     for (const [key] of leavesQ) if (!wantQ.has(key)) diffsQ.push(`${key}: 카피 14-9 에 없는 글`);
     const BAN_Q = /점수|등급|순위|퍼센트|판정|서둘|빨리|지금 바로|좋아요|설레|마음에 들|먼저 말|놓치|\d|[!！]|출연|방송|촬영/;
     for (const [key, t] of leavesQ) if (BAN_Q.test(t.replace(/§/g, ''))) diffsQ.push(`${key}: 쓰지 않을 낱말 "${t}"`);
-    check('QF2', `QF2-B2 새 글 ${wantQ.size}줄(카피 14-9)이 qf2Copy.ts · chatCopy.ts · boardingCopy.ts · prelaunchCopy.ts 와 한 글자씩 같고 · 새 글 파일 글 ${leavesQ.length}개가 모두 14-9 에 있고 · 점수 · 서열 · 재촉 · 마음 표현 · 방송 낱말 · 숫자 · 느낌표 0`, wantQ.size === 37 && diffsQ.length === 0, diffsQ.join('\n') || `표 ${wantQ.size}줄`);
+    check('QF2', `QF2-B2 새 글 ${wantQ.size}줄(카피 14-9)이 qf2Copy.ts · chatCopy.ts · boardingCopy.ts · prelaunchCopy.ts 와 한 글자씩 같고 · 새 글 파일 글 ${leavesQ.length}개가 모두 14-9 에 있고 · 점수 · 서열 · 재촉 · 마음 표현 · 방송 낱말 · 숫자 · 느낌표 0`, wantQ.size === 38 && diffsQ.length === 0, diffsQ.join('\n') || `표 ${wantQ.size}줄`);
   }
 
   // ── LG. 탑승객 라운지(LG-F · 카피.md 19장 — 19-12 '앱 반영' 뒤 대조) ──

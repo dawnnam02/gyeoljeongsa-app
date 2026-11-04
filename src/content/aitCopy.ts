@@ -25,7 +25,7 @@ export const AIT_TEXT = {
   'AIT.code.too_long': '글이 너무 길어요. 조금 줄여서 다시 보내 주세요.',
   'AIT.code.bad_request': '요청을 읽지 못했어요. 화면을 새로 열어 다시 시도해 주세요.',
   'AIT.code.upstream': 'AI가 바빠요. 잠시 뒤에 다시 시도해 주세요.',
-  'AIT.code.timeout': '답이 늦어지고 있어요. 이번 시도는 횟수에 넣지 않으니 다시 보내 주세요.',
+  'AIT.code.timeout': '답이 늦어지고 있어요. 이번 시도는 따로 세지 않으니 다시 보내 주세요.',
   'AIT.code.blocked_output': '이번 답은 안전 문제로 보여 드리지 않아요. 횟수는 줄지 않으니 같은 글을 다시 보내 주세요.',
   'AIT.code.fallback': '그동안은 미리 쓴 글로 보여 드려요.',
   'CONCERN.name': '연애 고민 정리',

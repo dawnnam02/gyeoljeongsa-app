@@ -483,7 +483,7 @@ describe('IF5-F1 ③ 사주 마당 한 화면 — 상태 5종(빈 · 불러오�
     expect(has(tree, 'saju-trait-basis')).toBe(false);
     await press(tree, 'saju-traits-toggle');
     expect(textOf(tree, 'saju-trait-basis')).toBe(IF5_TEXT['SAJU.trait.basis']);
-    expect(IF5_TEXT['SAJU.trait.basis']).toBe('신살 풀이는 전통 해석이 갈리는 부분이 있어, 여러 설 중 한 가지로 봐요.');
+    expect(IF5_TEXT['SAJU.trait.basis']).toBe('별난 점 풀이는 전통 해석이 갈려서, 여러 설 중 한 가지 기준으로 봐요.');
     expect(/점수|순위|판정|%/.test(IF5_TEXT['SAJU.trait.basis'])).toBe(false);
   });
   test('입력 시트: 시각 모름이 처음값(미리 체크 0) · 태어난 곳 칸 0(D-247) · 성별은 읽기 안내만 · 저장 칸 하나 미리 체크 0 · 비워도 저장', async () => {

@@ -377,7 +377,8 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
             <RowGroup testID="settings-rows">
               {main.map((row) => {
                 // QF2 Q2-10e: 크레딧(탑승권)과 마일리지(사주 마당) 줄이 이웃해 헷갈리지 않게 줄 위에 그룹 제목을 둔다. 마일리지 줄이 빠지면(스위치 꺼짐) 그 제목도 없다. 줄 차례는 Figma 12 그대로
-                const groupText = row.key === 'credits' ? QF2_SETTINGS.group.boarding : row.key === 'mileage' ? QF2_SETTINGS.group.saju : null;
+                const hasMileage = main.some((r) => r.key === 'mileage');
+                const groupText = row.key === 'credits' ? QF2_SETTINGS.group.boarding : row.key === 'mileage' ? QF2_SETTINGS.group.saju : row.key === 'saju-yard' && !hasMileage ? QF2_SETTINGS.group.sajuOnly : null; // 마일리지 줄이 없으면 '마일리지'를 말하지 않는 제목(26-1 F-2)
                 return (
                   <View key={row.key}>
                     {groupText ? (
