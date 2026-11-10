@@ -16,6 +16,7 @@ const KNOWN = [
   'features/ai/TraitBar.tsx',
   'features/inflight/MagazineScreen.tsx',
   'features/recs/CandidateScreen.tsx',
+  'features/saju/SajuMadangScreen.tsx', // TAB-1(11-10 확인): 구역 닻 View 는 key 로 새로 붙고 처음부터 onLayout 이 함수 — 폭이 아니라 세로 자리(y)만 잰다
   'features/splash/AppSplash.tsx',
   'features/surveyV2/PoliticsSlider.tsx',
   'hooks/useScrollCue.ts',
