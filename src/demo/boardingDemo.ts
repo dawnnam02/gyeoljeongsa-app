@@ -165,6 +165,7 @@ export function createDemoBoarding(options: DemoBoardingOptions = {}) {
     return ok({
       now: iso(now), // 데모만(장면 시각)
       price_krw: 26900,
+      bundle_amount: 8700, // 0058 포함분(연애 풀이 3편값) — 서버가 get_ticket_state 로 알려 줄 때의 모양(가정: 지금 서버 이관 0058 에는 이 키를 주는 함수가 없다). 실서버에 이 키가 없으면 구매 시트에 줄이 없다. 마일리지 데모 장부의 탑승 때 무료분(demo/mileageDemo BOARDING_REWARD 200, 옛 시작값)과 숫자가 다르다 — 시험 숫자 여러 곳이 걸려 그대로 둠
       payment_mode: 'demo',
       round: {
         round_no: r.no,
@@ -195,7 +196,11 @@ export function createDemoBoarding(options: DemoBoardingOptions = {}) {
     const head = { round_no: r.no, match_at: iso(r.match) };
     if (nowOf(s) < r.match || seat.state === 'boarded') return ok({ state: 'waiting', ...head });
     const p = seat.state === 'matched' ? partnerOf(u) : null;
-    if (p) return ok({ state: 'matched', ...head, partner_id: `demo-cand-${p.n}`, room_id: `demo-chat-${r.no}-${p.n}`, partner: { A12: p.name, A01: p.age, A03: p.region } });
+    if (p) {
+      // 서버 pair_reasons(0057): 필수 일치(F06 F07)·돈·집안(F05 F14 F15 F16)을 걷고 최대 5 · 0개면 키 없음(스위치 match_reasons 꺼짐이어도 앱이 그리지 않는다)
+      const why = [...p.reasons, ...p.moreReasons].filter((id) => !['F05', 'F06', 'F07', 'F14', 'F15', 'F16'].includes(id)).slice(0, 5);
+      return ok({ state: 'matched', ...head, partner_id: `demo-cand-${p.n}`, room_id: `demo-chat-${r.no}-${p.n}`, partner: { A12: p.name, A01: p.age, A03: p.region }, ...(why.length > 0 ? { reasons: why } : {}) });
+    }
     return ok({ state: 'not_found', ...head, credited: true });
   }
 

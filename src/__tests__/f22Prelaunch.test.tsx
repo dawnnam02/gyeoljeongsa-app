@@ -543,6 +543,26 @@ describe('09 자리 분기(PrelaunchGate) · 대기 화면', () => {
     }
   });
 
+  test('QF2-B6 Q2-36: married 정정 안내는 고객센터로 알리는 글 하나 — 증명서 · 주민등록번호 · 서류를 보내라는 말이 어느 사유 화면에도 없다(법무 9-3)', async () => {
+    expect(PRELAUNCH.declinedNext.married).toBe('잘못 확인됐다고 생각되면 고객센터로 알려 주세요.');
+    expect(PRELAUNCH.declinedNext.married).toBe(PRELAUNCH.declinedNext.fake); // fake · forged 와 같은 글
+    expect(PRELAUNCH.declinedNext.married).toBe(PRELAUNCH.declinedNext.forged);
+    for (const reason of ['under_24', 'married', 'fake'] as const) {
+      const tree = await render(depsWith(okLoad({ review: { status: 'declined', steps: [], decline_reason: reason } })));
+      expect(screenTexts(tree)).not.toMatch(/증명서|주민|등본|초본|서류를 (보내|내|올려)|보내 주세요|다시 확인할게요/);
+    }
+    const married = await render(depsWith(okLoad({ review: { status: 'declined', steps: [], decline_reason: 'married' } })));
+    expect(textOf(married, 'prelaunch-declined-next')).toBe(PRELAUNCH.declinedNext.married);
+    // 사전 오픈 글 전체에도 증명서 · 주민 낱말 0
+    const leaves: string[] = [];
+    const walk = (o: unknown) => {
+      if (typeof o === 'string') leaves.push(o);
+      else if (o && typeof o === 'object') Object.values(o).forEach(walk);
+    };
+    walk(PRELAUNCH);
+    expect(leaves.filter((t) => /증명서|주민/.test(t))).toEqual([]);
+  });
+
   test('QF2-B5 P05: 서류 인증이 꺼진 동안 받은 forged 사유는 서류 말 없이 일반 글(declinedUnknown)로 · 켜지면 원래 글', async () => {
     const forged = okLoad({ review: { status: 'declined', steps: [], decline_reason: 'forged' } });
     const off = await render(depsWith(forged));

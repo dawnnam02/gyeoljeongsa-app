@@ -10,6 +10,7 @@ import { recsApi } from '@/lib/services';
 export default function RevealRoute() {
   const [deps] = useState(() => ({ api: boardingServices().api, opened: boardingServices().opened, photoUrl: (id: string) => recsApi.photoUrl(id) }));
   const { isOn } = useFeatureFlags();
+  const whyOn = isOn('match_reasons'); // QF2 Q2-01: 왜 이 분인지 카드(꺼짐이면 카드 0)
   const opener = useMemo(() => ({ api: inflightChatApi(), isOn }), [isOn]); // QF2 Q2-02: 첫마디 길 입구(스위치 opener_chips 꺼짐이면 입구 0)
-  return <RevealScreen deps={deps} opener={opener} />;
+  return <RevealScreen deps={deps} opener={opener} whyOn={whyOn} />;
 }

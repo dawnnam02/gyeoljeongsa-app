@@ -218,13 +218,14 @@ describe('12 목록 화면', () => {
 });
 
 describe('12 하위 화면', () => {
-  test('알림(v5, 12-Q · 화면_요구사항 12-2): 서비스 2줄 "이번 주 만날 분이 정해졌을 때"(notify_match — 서버 P8 이 읽는 열) · "대화방에 새 글이 왔을 때"(notify_chat) + 작은 글 + 마케팅 · 호감 · 연결 줄 없음', async () => {
+  test('알림(v5, 12-Q · 화면_요구사항 12-2): 서비스 2줄 "이번 주 만날 분이 정해졌을 때"(notify_match — 서버 P8 이 읽는 열) · "대화방 알림"(notify_chat — 새 글 알림과 마지막 날 알림을 함께 끔, QF2 Q2-03-07) + 작은 글 + 마케팅 · 호감 · 연결 줄 없음', async () => {
     const { deps, api } = setup();
     const tree = await show(deps);
     await press(tree, 'settings-row-notifications');
     expect(hasText(tree, NOTIFY.headerTitle)).toBe(true);
     expect(NOTIFY.recommendation).toBe('이번 주 만날 분이 정해졌을 때');
-    expect(NOTIFY.chat).toBe('대화방에 새 글이 왔을 때');
+    expect(NOTIFY.chat).toBe('대화방 알림');
+    expect(NOTIFY.chatNote).toBe('새 글이 왔을 때와 대화방이 닫히는 날 아침에 알려 드려요. 글 내용은 알림에 보이지 않아요.'); // 이 줄을 끄면 두 알림이 모두 멈추므로 두 알림을 말한다(서버 chat_last_day_enqueue 는 notify_chat 끈 사람 제외)
     for (const label of [NOTIFY.recommendation, NOTIFY.chat, NOTIFY.chatNote, NOTIFY.marketing]) expect(hasText(tree, label)).toBe(true);
     for (const label of [NOTIFY.like, NOTIFY.match]) expect(hasText(tree, label)).toBe(false);
     expect(has(tree, 'settings-notify-like') || has(tree, 'settings-notify-recommendation')).toBe(false);

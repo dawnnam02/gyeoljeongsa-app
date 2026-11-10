@@ -32,7 +32,7 @@ function rig(email: string, over: Record<string, boolean> = {}, birth: string | 
   const user = { id: `u-${email.split('@')[0]}`, email };
   const flags = async () => flagsAll(over);
   const boarding = createDemoBoarding();
-  const demo = createDemoInflight({ boarding, flags, account: () => ({ birthDate: birth, consentOn: (c) => consent && (c === 'CK17A' || c === 'CK17B'), sameHobby: true, previewAnswers: {} }) });
+  const demo = createDemoInflight({ boarding, flags, account: () => ({ birthDate: birth, consentOn: (c) => consent && (c === 'CK17A' || c === 'CK17B'), previewAnswers: {} }) });
   demoShared.setFlags(flags);
   const client = { rpc: async (n: string, a?: Record<string, unknown>) => (demo.handles(n) ? demo.rpc(user, n, a) : boarding.rpc(user, n, a)) } as unknown as SupabaseClient;
   return { api: createInflightApi(rpcOf(client)), demo, user };

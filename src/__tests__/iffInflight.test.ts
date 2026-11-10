@@ -39,17 +39,16 @@ const keysDeep = (v: unknown): string[] => (Array.isArray(v) ? v.flatMap(keysDee
 
 // 운세 정리(D-245): 끈 7개는 데모 처음값이 꺼짐 — 이 파일은 켰을 때 모의 서버가 그대로 도는 것을 본다(꺼진 처음값은 qf2aFortune.test.tsx)
 const allOn = async () => Object.fromEntries(FEATURE_KEYS.map((k) => [k, demoDefault(k) || LV2_OFF_KEYS.includes(k)])) as Record<string, boolean>;
-function rig(email: string, opts: { consents?: string[]; sameHobby?: boolean; birth?: string } = {}) {
+function rig(email: string, opts: { consents?: string[]; birth?: string } = {}) {
   const user = { id: `u-${email.split('@')[0]}`, email };
   const consents = new Set(opts.consents ?? ['CK17A', 'CK17B']);
   const boarding = createDemoBoarding();
   const demo = createDemoInflight({
     boarding,
     flags: allOn,
-    account: () => ({ birthDate: opts.birth ?? '1997-03-12', consentOn: (c) => consents.has(c), sameHobby: opts.sameHobby ?? true, previewAnswers: { A12: '이OO', A01: 29, A03: { sido: '서울', sigungu: '마포구' }, A06: '무교' } }),
+    account: () => ({ birthDate: opts.birth ?? '1997-03-12', consentOn: (c) => consents.has(c), previewAnswers: { A12: '이OO', A01: 29, A03: { sido: '서울', sigungu: '마포구' }, A06: '무교' } }),
   });
   demoShared.setFlags(allOn);
-  demoShared.setSameHobby(() => opts.sameHobby ?? true);
   const calls: string[] = [];
   const client = {
     rpc: async (name: string, args?: Record<string, unknown>) => {
@@ -420,10 +419,8 @@ describe('IFF-16 같은 취미(D-224 · 정책 PF-48 · PF-49)', () => {
     expect(sameLines([])).toEqual([]);
     for (const f of INFLIGHT_FILES) expect(`${f}: ${/hobby_k|hobbyGroupOf|n_code|n_grp/.test(strip(read(f)))}`).toBe(`${f}: false`);
   });
-  test('데모: 내가 같은 취미를 끄면 궁합 카드 ① · 첫마디 실마리 두 곳에서 바로 빠짐(같은 목록)', async () => {
-    let on = true;
+  test('데모: 같은 취미는 켜고 끄는 항목이 없다(서버 0059) — 스위치 same_points 가 켜져 있으면 궁합 카드 ① · 첫마디 실마리 두 곳에 같은 목록, 꺼지면 두 곳에서 같이 빠짐', async () => {
     const r = rig('hobby@email.com');
-    demoShared.setSameHobby(() => on);
     await r.scene('matched');
     const h = await r.api.home();
     const room = h.ok ? String(h.data.pair?.roomId) : '';
@@ -433,7 +430,7 @@ describe('IFF-16 같은 취미(D-224 · 정책 PF-48 · PF-49)', () => {
     const a = createInflightApi(chat.if2Rpc);
     const chips1 = await a.openerChips(room);
     expect(chips1.ok && chips1.data.chips.some((c) => c.hobby !== null)).toBe(true);
-    on = false;
+    demoShared.setFlags(async () => ({ ...(await allOn()), same_points: false }));
     const card2 = await r.api.pairCard(room);
     expect(card2.ok && card2.data.same).toEqual([]);
     const chips2 = await a.openerChips(room);
@@ -550,7 +547,7 @@ describe('데모 모의 서버 = 0043 응답 모양(같은 파서로 읽힘)', (
   test('스위치가 꺼지면 feature_off → 앱 off(그 칸 0)', async () => {
     const boarding = createDemoBoarding();
     const user = { id: 'u-off', email: 'off@email.com' };
-    const demo = createDemoInflight({ boarding, flags: async () => ({}), account: () => ({ birthDate: null, consentOn: () => false, sameHobby: true, previewAnswers: {} }) });
+    const demo = createDemoInflight({ boarding, flags: async () => ({}), account: () => ({ birthDate: null, consentOn: () => false, previewAnswers: {} }) });
     const api = createInflightApi(async (n, a) => demo.rpc(user, n, a));
     for (const r of [await api.home(), await api.magazine(), await api.weekCard(), await api.preQuestions(), await api.preview(), await api.pairCard('x')]) expect(!r.ok && r.code).toBe('off');
   });

@@ -7,7 +7,6 @@ export const DEMO_FUN_KEY = 'test-key-not-secret';
 
 type RoomMark = 'open' | 'gone';
 const rooms = new Map<string, RoomMark>(); // `${회원}|${방}` → 데모 채팅에서 나감 · 차단이면 gone
-let sameHobbyOf: (userId: string) => boolean = () => true;
 let flagsOf: (userId: string) => Promise<Readonly<Record<string, boolean>>> = async () => ({});
 let interviewDoneOf: (userId: string) => boolean = () => false; // 3부-자: 대화형 설문 정리가 끝났나(데모 대화형 모의 서버가 등록 — 모의 confirm_profile(null)이 본다, 서버 0044 와 같은 조건)
 
@@ -19,10 +18,6 @@ export const demoShared = {
   resetRooms(userId: string) {
     for (const k of [...rooms.keys()]) if (k.startsWith(`${userId}|`)) rooms.delete(k);
   },
-  setSameHobby(fn: (userId: string) => boolean) {
-    sameHobbyOf = fn;
-  },
-  sameHobby: (userId: string): boolean => sameHobbyOf(userId),
   setFlags(fn: (userId: string) => Promise<Readonly<Record<string, boolean>>>) {
     flagsOf = fn;
   },
@@ -34,11 +29,11 @@ export const demoShared = {
 };
 
 // 데모 짝의 같은 취미(0043 same_points 결과 꼴): 내 E11 [독서 · 여행 · 산책] ∩ 짝 [독서 · 여행 · 요리] — 독서는 그 권역에 흔해 코드 그대로,
-//  여행은 k(20)명 미만이라 위 갈래 '밖에서 즐기는 일'로 묶인 장면. 두 분 모두 '같은 취미'를 켜고 스위치 same_points 가 켜졌을 때만
+//  여행은 k(20)명 미만이라 위 갈래 '밖에서 즐기는 일'로 묶인 장면. 스위치 same_points 가 켜졌을 때만(서버 0059: '같은 취미' 켜고 끄기는 없어졌고, 예전에 끈 사람의 값도 따르지 않는다)
 export const DEMO_PAIR_HOBBIES: readonly DemoHobbyItem[] = [{ code: 'reading' }, { group: 'out' }];
 export async function demoPairHobbies(userId: string): Promise<DemoHobbyItem[]> {
   const flags = await flagsOf(userId);
-  return flags.same_points === true && sameHobbyOf(userId) ? [...DEMO_PAIR_HOBBIES] : [];
+  return flags.same_points === true ? [...DEMO_PAIR_HOBBIES] : [];
 }
 
 // 첫마디 실마리 칩(0043 opener_chips · pair_card_topics 와 같은 계산)

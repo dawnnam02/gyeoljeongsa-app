@@ -36,7 +36,7 @@ export type DemoInflightOptions = {
   boarding: DemoBoarding;
   flags: (u: DemoInflightUser) => Promise<Readonly<Record<string, boolean>>>;
   // 데모 계정: 생년월일(가입 때 받은 양력) · 유효 동의 · 공개 범위 · 프로필 미리보기 값
-  account: (u: DemoInflightUser) => { birthDate: string | null; consentOn: (code: string) => boolean; sameHobby: boolean; previewAnswers: Row };
+  account: (u: DemoInflightUser) => { birthDate: string | null; consentOn: (code: string) => boolean; previewAnswers: Row };
 };
 
 const ROUND = { no: 1, issue: '2026-12-17' }; // 탑승권 데모 1회차(판매 시작 12-17 목 = 발행 목요일)
@@ -112,7 +112,6 @@ export function createDemoInflight(o: DemoInflightOptions) {
     const on = (k: string) => flags[k] === true;
     const s = sceneOf(u);
     const { stage, room } = stageOf(u);
-    const acct = o.account(u);
     const meC = [on('type_card') ? 'type' : null, on('profile_preview') ? 'preview' : null].filter(Boolean);
     const blocks = ['B1'];
     const out: Row = { stage };

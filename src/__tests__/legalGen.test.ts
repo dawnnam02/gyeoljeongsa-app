@@ -49,14 +49,18 @@ describeOutside(LEGAL_DOCS)('법무 게시본 생성 규칙 (F10)', () => {
     articles.forEach((title, i) => expect(title.startsWith(`제${i + 1}조 `)).toBe(true));
   });
 
-  test('3. 처리방침 장 15 · 소절 45 · 1장 표 R행(R01 부터 빈 번호 없이 30개 이상)', () => {
+  test('3. 처리방침 장 15 · 소절 45 · 1장 표 R행(R01 부터 이어지고 30개 이상 — 지운 R21 한 칸만 비어 있다)', () => {
     const h = (level: number) => LEGAL_PRIVACY.filter((b) => b.type === 'h' && b.level === level);
     expect(h(2).filter((b) => /^\d+\. /.test((b as { text: string }).text))).toHaveLength(15);
     expect(h(3)).toHaveLength(45); // 법무 L10: 6-3 · 7-3 · 9-4 신설 · L17: 5-7 · 8-5 · 9-5 신설 · IF5-L2(10-31): 3-6 · 8-6 · 8-7 신설
     const rRows = LEGAL_PRIVACY.flatMap((b) => (b.type === 'table' ? b.rows : [])).filter((r) => /^R\d+$/.test(r[0]));
-    // R행 수는 법무가 늘릴 수 있다: R01 부터 빈 번호 없이 이어지고 30개 이상이면 된다(R13 을 빼지 않고 전부 싣는다)
+    // R행 수는 법무가 늘릴 수 있다: R01 부터 이어지고 30개 이상이면 된다(R13 을 빼지 않고 전부 싣는다).
+    //  예외 하나: R21(반응 점수)은 11-05 외모 점수 배치를 끄면서 행을 지웠다 — 번호는 다른 문서가 가리켜서 비워 둔다(법무 FA1_QF2_글확인 8-1). 다른 빈 번호는 없다
     expect(rRows.length).toBeGreaterThanOrEqual(30);
-    expect(rRows.map((r) => r[0])).toEqual(rRows.map((_, i) => `R${String(i + 1).padStart(2, '0')}`));
+    const nums = rRows.map((r) => Number(r[0].slice(1)));
+    const expected = Array.from({ length: rRows.length + 1 }, (_, i) => i + 1).filter((n) => n !== 21);
+    expect(nums).toEqual(expected);
+    expect(rRows.map((r) => r[0])).not.toContain('R21');
   });
 
   test('4. 동의 9칸은 표식을 모두 뺀 원문에서 뽑은 것과 같다', () => {

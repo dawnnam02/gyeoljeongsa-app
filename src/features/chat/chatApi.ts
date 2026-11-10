@@ -11,10 +11,10 @@
 //   오류: forbidden · feature_off(42501) / not_available · room_closed · rate_limited · invalid_text · invalid_reason · invalid_description · description_required · already_reported(P0001)
 //   Edge chat-media: upload-url {room_id, kind, format} → {ok, attachment_id, signed_url, token, max_bytes, content_type} → signed_url 에 PUT
 //                    → finalize {attachment_id, duration_ms?} → {ok, message} / url {attachment_id} → {ok, url, expires_in:300}
-//   방 = room_id · state(open|closed) · opened_at · closes_at · close_reason(null|expired|partner_left) · extend{me, partner} · extend_count · partner{user_id, name(김OO)} · last_message{kind, mine, preview, created_at} · unread
+//   방 = room_id · state(open|closed) · opened_at · closes_at · close_reason(null|expired|partner_left) · extend{me}(0057 Q2-13 뒤 partner 키 없음 — 옛 응답에 있어도 읽지 않는다) · extend_count · partner{user_id, name(김OO)} · last_message{kind, mine, preview, created_at} · unread
 //   글 = id(숫자) · mine · kind(text|photo|voice|system) · body · attachment_id · duration_ms · caution(링크 — 받는 쪽 주의 표시) · created_at
 //   실시간: postgres_changes INSERT public.chat_messages filter room_id=eq.{방} — 새 글 · 시스템 글(연장 · 닫힘 · 나감)이 모두 이 한 줄로 온다
-//  · 앱은 아는 키만 읽는다. extend.partner(상대가 연장을 원하는지)는 읽지 않는다(판단 — W5_변경기록 6장)
+//  · 앱은 아는 키만 읽는다. extend.partner(상대가 연장을 원하는지)는 읽지 않는다(판단 — W5_변경기록 6장). 서버는 0057 부터 그 키와 상대의 extend_requested 시스템 글을 아예 보내지 않는다 — 앱은 값이 없어도 · 옛 값이 와도 같게 동작한다(QF2-B6 시험 qf2B6Chat)
 //  · 로그에는 이벤트 이름과 코드만(글 · 이름 · 경로 · URL 금지)
 import type { SupabaseClient } from '@supabase/supabase-js';
 

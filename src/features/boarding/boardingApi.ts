@@ -18,6 +18,7 @@
 //  · 로그에는 이벤트 이름과 코드만
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { readReasonIds } from '@/features/recs/recsLogic';
 import { safeLog } from '@/lib/log';
 import { readDbFailure } from '@/lib/serverError';
 
@@ -30,7 +31,7 @@ export type Round = { no: number; matchAt: number; saleOpenAt: number | null; sa
 export type Ticket = { roundNo: number; boughtAt: number; paidWith: 'store' | 'credit' };
 export type Partner = { name: string; age: number | null; region: { sido?: string; sigungu?: string } | null; facePhotoId: string | null };
 export type RoundResult =
-  | { roundNo: number; kind: 'matched'; partnerId: string; chatId: string | null; partner: Partner }
+  | { roundNo: number; kind: 'matched'; partnerId: string; chatId: string | null; partner: Partner; reasons: string[] } // reasons = 왜 이 분인지 맞는 점 ID(서버 pair_reasons, 스위치 match_reasons 꺼짐 · 0개면 키 없음 → [])
   | { roundNo: number; kind: 'no_match'; reason: Exclude<CreditReason, 'used'> | null };
 export type PastMatch = { roundNo: number; partnerName: string; chatId: string | null; open: boolean };
 export type BoardingState = {
@@ -46,6 +47,7 @@ export type BoardingState = {
   ineligible: Ineligible | null;
   result: RoundResult | null;
   past: PastMatch[];
+  bundleAmount?: number | null; // 결제로 탑승권 한 장을 사면 함께 들어오는 포함분 마일리지(서버 값, get_ticket_state.bundle_amount). 없으면 구매 시트에 포함분 줄을 그리지 않는다
 };
 export type BoardingFailure = 'network' | 'server' | 'missing' | 'session';
 export type BoardingLoad = { ok: true; state: BoardingState } | { ok: false; reason: BoardingFailure };
@@ -128,6 +130,10 @@ const time = (v: unknown): number | null => {
   return Number.isNaN(t) ? null : t;
 };
 const int = (v: unknown): number | null => (typeof v === 'number' && Number.isInteger(v) ? v : null);
+const positive = (v: unknown): number | null => {
+  const n = int(v);
+  return n !== null && n > 0 ? n : null;
+};
 const rows = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.filter(isRecord) : []);
 
 // 회차: 공개 시각 = match_day + match_time(한국 시각). 판매 시작 · 마감은 시각 값 그대로
@@ -164,10 +170,12 @@ export function parseTicketState(raw: unknown, deviceNow: number): BoardingState
     ineligible: ineligibleOf(reason, raw.reason_detail),
     result: null,
     past: [],
+    bundleAmount: positive(raw.bundle_amount),
   };
 }
 
-// get_weekly_match → 공개 결과. 공개 전(waiting) · 탄 회차 없음(none) · 스위치 꺼짐(off)은 null. 이유 코드는 서버도 보내지 않는다(명세 7장 결정 5)
+// get_weekly_match → 공개 결과. 공개 전(waiting) · 탄 회차 없음(none) · 스위치 꺼짐(off)은 null.
+//  이유 코드(reasons): 0057 뒤 스위치 match_reasons 가 켜지고 공개된 짝에게 맞는 점이 1개 이상일 때만 서버가 준다(최대 5, 필수 일치 · 돈 · 집안 · 점수 키 0). 키가 없으면 [] — 앱은 점수를 받지도 않는다
 export function parseWeeklyMatch(raw: unknown): RoundResult | null {
   if (!isRecord(raw) || raw.off === true) return null;
   const roundNo = int(raw.round_no);
@@ -181,7 +189,7 @@ export function parseWeeklyMatch(raw: unknown): RoundResult | null {
   const sido = isRecord(a.A03) ? str(a.A03.sido) : str(a.A03);
   const sigungu = isRecord(a.A03) ? str(a.A03.sigungu) : null;
   const region = sido ? { sido, ...(sigungu ? { sigungu } : {}) } : null;
-  return { roundNo, kind: 'matched', partnerId, chatId: str(raw.room_id), partner: { name, age: int(a.A01), region, facePhotoId: null } };
+  return { roundNo, kind: 'matched', partnerId, chatId: str(raw.room_id), partner: { name, age: int(a.A01), region, facePhotoId: null }, reasons: readReasonIds(raw.reasons) };
 }
 
 // list_ticket_history → T5 내역(+1 = 받은 장 · −1 = 그 장을 씀 · 스토어 환불로 회수). 새것부터

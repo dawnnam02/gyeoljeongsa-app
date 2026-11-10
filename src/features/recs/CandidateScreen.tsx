@@ -48,13 +48,14 @@ import { PhotoBox } from './PhotoBox';
 import { MarriageViews } from './MarriageViews';
 import { PromptCards, type PromptCard } from './PromptCards';
 import { handOff } from '@/features/chat/openerPath';
-import { PROMPT_START } from '@/content/qf2Copy';
+import { PROMPT_START, WHY_MAX_PROFILE } from '@/content/qf2Copy';
+import { WhyCard } from './WhyCard';
 import { detailInfoLine, galleryPhotos, headLineDetail, heightText, openItems, plain, REASON_NAMES, regionText, tableRows, whySentence } from './recsLogic';
 import { usePhotoUrls } from './usePhotoUrls';
 
 // chat: v5 대화방에서 연 10(from=reveal&chat=방)의 신고 · 차단은 0031 report_chat_partner · block_chat_partner(방 id)로 — v4 report_user · block_user 는 추천 · 호감 관계만 받아 대화 짝에게 실패한다(R-A)
 // roomState(QF2 Q2-08): 대화방이 열려 있고 내 첫 글 전인가 — 질문 카드 [이 이야기로 시작하기] 단추를 그릴지 정한다(못 읽으면 false = 단추 0)
-export type CandidateDeps = { api: Pick<RecsApi, 'loadCandidate' | 'pairState' | 'photoUrl' | 'pass' | 'sendLike' | 'report' | 'block'>; likes?: Pick<LikesApi, 'accept' | 'decline'>; grade?: Pick<GradeApi, 'partnerGrade'>; chat?: () => SafetyApi; roomState?: (chatId: string) => Promise<boolean>; startOn?: () => boolean; toastMs: number };
+export type CandidateDeps = { api: Pick<RecsApi, 'loadCandidate' | 'pairState' | 'photoUrl' | 'pass' | 'sendLike' | 'report' | 'block'>; likes?: Pick<LikesApi, 'accept' | 'decline'>; grade?: Pick<GradeApi, 'partnerGrade'>; chat?: () => SafetyApi; roomState?: (chatId: string) => Promise<boolean>; startOn?: () => boolean; whyOn?: () => boolean; toastMs: number };
 const defaultDeps: CandidateDeps = { api: recsApi, likes: likesApi, grade: gradeApi, toastMs: TOAST_MS };
 
 // 대화방 신고 · 차단(chatService 는 처음 쓸 때 만든다 — 시험이 서버 설정 없이 이 파일을 읽을 수 있게)
@@ -80,6 +81,19 @@ const startOnNow = (): boolean => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { isOn } = require('@/lib/featureFlagsApi') as typeof import('@/lib/featureFlagsApi');
     return isOn(appFlagsStore().get(), 'profile_prompts');
+  } catch {
+    return false;
+  }
+};
+
+// 스위치 match_reasons 의 지금 값(읽지 못하면 꺼짐) — 왜 이 분인지 카드(QF2 Q2-01). startOnNow 와 같은 읽기
+const whyOnNow = (): boolean => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { appFlagsStore } = require('@/hooks/useFeatureFlags') as typeof import('@/hooks/useFeatureFlags');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { isOn } = require('@/lib/featureFlagsApi') as typeof import('@/lib/featureFlagsApi');
+    return isOn(appFlagsStore().get(), 'match_reasons');
   } catch {
     return false;
   }
@@ -455,6 +469,7 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
           </Card>
         ) : null}
 
+        {v5 ? <WhyCard ids={data.reasonIds} max={WHY_MAX_PROFILE} on={(deps.whyOn ?? whyOnNow)()} testID="candidate-whycard" /> : null}
         {data.reasons.length > 0 && !v5 ? (
           <Card style={styles.why} testID="candidate-why" accessible accessibilityLabel={`${CANDIDATE.whyTitle}. ${why} ${CANDIDATE.whyNote}`}>
             <AppText variant="bodyBold">{CANDIDATE.whyTitle}</AppText>

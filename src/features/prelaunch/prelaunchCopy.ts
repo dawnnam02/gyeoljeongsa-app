@@ -49,7 +49,7 @@ export const PRELAUNCH = {
   } satisfies Record<DeclineReason, string>, // NP-07(11장 · K20 2-3)
   declinedNext: {
     under_24: '만 24세 생일이 지나면 다시 가입할 수 있어요.',
-    married: '잘못 확인됐다면 혼인관계증명서를 보내 주세요. 다시 확인할게요.',
+    married: '잘못 확인됐다고 생각되면 고객센터로 알려 주세요.', // QF2-B6 Q2-36(법무 9-3): 서류 · 증명서를 보내라는 말 0 — 서류를 받는 길이 처리방침에 없다. fake · forged 와 같은 글
     fake: '잘못 확인됐다고 생각되면 고객센터로 알려 주세요.',
     forged: '잘못 확인됐다고 생각되면 고객센터로 알려 주세요.',
   } satisfies Record<DeclineReason, string>, // NFK20-05(11장)

@@ -22,7 +22,7 @@ type Data = { prefs: NotifyPrefs; marketing: boolean };
 type Api = Pick<SettingsApi, 'loadNotify' | 'saveNotify' | 'loadConsents' | 'setOptional'>;
 
 // v5(카피.md 12-Q · 화면_요구사항 12-2): 서비스 알림 2줄 — '이번 주 만날 분이 정해졌을 때'(서버 P8 · P8b 가 읽는 notify_match 열, 0036) ·
-//  '대화방에 새 글이 왔을 때'(notify_chat, D-199, 처음 켜짐 + 아래 작은 글). 옛 v4 줄(호감 · 연결)은 그리지 않는다
+//  '대화방 알림'(notify_chat, D-199, 처음 켜짐 + 아래 작은 글 — 새 글 알림과 마지막 날 알림(QF2 Q2-03)을 함께 끈다). 옛 v4 줄(호감 · 연결)은 그리지 않는다
 const SERVICE: readonly { key: NotifyKey; label: string; note?: string }[] = [
   { key: 'match', label: NOTIFY.recommendation },
   { key: 'chat', label: NOTIFY.chat, note: NOTIFY.chatNote },

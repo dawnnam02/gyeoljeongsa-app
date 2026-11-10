@@ -48,7 +48,6 @@ const flagsAll = async () => Object.fromEntries(FEATURE_KEYS.map((k) => [k, demo
 const isOnAll = (k: string) => demoDefault(k as never) === true;
 beforeEach(() => {
   demoShared.setFlags(flagsAll);
-  demoShared.setSameHobby(() => true);
 });
 afterEach(async () => {
   await act(async () => mounted.splice(0).forEach((t) => t.unmount()));

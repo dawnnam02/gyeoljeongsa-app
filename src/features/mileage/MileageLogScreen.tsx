@@ -11,12 +11,12 @@ import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextButton } from '@/components/TextButton';
-import { IF5_TEXT } from '@/content/if5Copy';
+import { IF5_TEXT, t5 } from '@/content/if5Copy';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { colors, radius, space } from '@/theme/tokens';
 
 import type { HistoryItem } from './mileageApi';
-import { bucketOf, fmt, KIND_KEY, logDate, signed, splitLine, usedKey } from './mileageLogic';
+import { bucketOf, bundleKeys, fmt, hasBundle, KIND_KEY, logDate, signed, splitLine, usedKey } from './mileageLogic';
 import { mileageServices, type MileageDeps } from './mileageService';
 import { MILEAGE_HREF } from './MileageScreen';
 import { useMileageHistory, useMileageState } from './useMileage';
@@ -32,7 +32,9 @@ function LogWithDefaults() {
   return <Log deps={deps} />;
 }
 
-export function rowLabel(it: HistoryItem): { kind: string; sub: string | null } {
+export function rowLabel(it: HistoryItem): { kind: string; sub: string | null; note?: string } {
+  const b = bundleKeys(it);
+  if (b) return { kind: IF5_TEXT[b.name], sub: null, note: IF5_TEXT[b.sub] }; // 포함분 줄: 사유 이름만(옛 '탑승 적립' 이름은 같이 쓰지 않는다) + 작은 글
   const kind = IF5_TEXT[KIND_KEY[it.kind]];
   const uk = it.kind === 'use' ? usedKey(it.feature) : null;
   return { kind, sub: uk ? IF5_TEXT[uk] : null };
@@ -61,6 +63,11 @@ function Log({ deps }: { deps: MileageDeps }) {
         <AppText variant="caption" testID="mileage-log-order">
           {IF5_TEXT['MILEAGE.log.order']}
         </AppText>
+        {slot.kind === 'ready' && hasBundle(slot.items) ? (
+          <AppText variant="caption" testID="mileage-log-bundle-note">
+            {IF5_TEXT['MILEAGE.log.bundleNote']}
+          </AppText>
+        ) : null}
         {slot.kind === 'loading' ? (
           <View style={styles.card} accessible accessibilityLabel={IF5_TEXT['SAJU.status.loadLab']} testID="mileage-log-loading">
             <View style={[styles.skel, styles.skelWide]} />
@@ -87,7 +94,7 @@ function Log({ deps }: { deps: MileageDeps }) {
               const l = rowLabel(it);
               const tag = bucketOf(it.kind);
               return (
-                <View key={it.id} style={styles.item} accessible accessibilityLabel={`${logDate(it.at)}, ${l.kind}${l.sub ? ` ${l.sub}` : ''}, ${signed(it.amount)}`} testID={`mileage-log-item-${it.id}`}>
+                <View key={it.id} style={styles.item} accessible accessibilityLabel={l.note ? t5('MILEAGE.log.reason.a11y', { 사유: l.kind, N: fmt(Math.abs(it.amount)), 날짜: logDate(it.at) }) : `${logDate(it.at)}, ${l.kind}${l.sub ? ` ${l.sub}` : ''}, ${signed(it.amount)}`} testID={`mileage-log-item-${it.id}`}>
                   <View style={styles.flex}>
                     <AppText variant="bodyMedium" testID={`mileage-log-kind-${it.id}`}>
                       {l.sub ? `${l.kind} · ${l.sub}` : l.kind}
@@ -96,6 +103,11 @@ function Log({ deps }: { deps: MileageDeps }) {
                       {logDate(it.at)}
                       {tag ? ` · ${tag === 'free' ? IF5_TEXT['MILEAGE.log.tagFree'] : IF5_TEXT['MILEAGE.log.tagPaid']}` : ''}
                     </AppText>
+                    {l.note ? (
+                      <AppText variant="caption" testID={`mileage-log-note-${it.id}`}>
+                        {l.note}
+                      </AppText>
+                    ) : null}
                   </View>
                   <AppText variant="bodyBold" testID={`mileage-log-amount-${it.id}`}>
                     {signed(it.amount)}

@@ -47,7 +47,8 @@ describe('서버 응답 읽기(0030 get_ticket_state · 0032 get_weekly_match ·
 
   test('공개 결과: 만난 분(공개 범위 답 A12 · A01 · A03 만, 방 id) · 찾지 못함(이유 없음) · 공개 전 · 스위치 꺼짐은 없음', () => {
     const m = parseWeeklyMatch({ state: 'matched', round_no: 1, match_at: '2026-12-23T09:00:00Z', partner_id: 'u2', room_id: 'c1', partner: { A12: '문OO', A01: 32, A03: { sido: '서울', sigungu: '마포구' }, C05: '5천만 원대', score: 9 } });
-    expect(m).toEqual({ roundNo: 1, kind: 'matched', partnerId: 'u2', chatId: 'c1', partner: { name: '문OO', age: 32, region: { sido: '서울', sigungu: '마포구' }, facePhotoId: null } });
+    expect(m).toEqual({ roundNo: 1, kind: 'matched', partnerId: 'u2', chatId: 'c1', partner: { name: '문OO', age: 32, region: { sido: '서울', sigungu: '마포구' }, facePhotoId: null }, reasons: [] }); // 이유 키가 없으면 [] (0057: 스위치 match_reasons 꺼짐 · 0개면 서버가 키를 안 준다)
+    expect(parseWeeklyMatch({ state: 'matched', round_no: 1, partner_id: 'u2', room_id: 'c1', partner: { A12: '문OO' }, reasons: ['F01', 'E02'] })).toMatchObject({ kind: 'matched', reasons: ['F01', 'E02'] }); // 이유 ID 만 · 점수 키는 읽지 않는다(qf2B6Why)
     expect(parseWeeklyMatch({ state: 'not_found', round_no: 1, credited: true })).toEqual({ roundNo: 1, kind: 'no_match', reason: null });
     expect(parseWeeklyMatch({ state: 'waiting', round_no: 1 })).toBeNull();
     expect(parseWeeklyMatch({ off: true })).toBeNull();

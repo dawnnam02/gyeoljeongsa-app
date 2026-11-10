@@ -8,7 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { readPrompts, type PromptCard } from '@/features/recs/PromptCards';
-import { cardInfoLine, headLine, reasonNames, CARD_REASON_MAX, DETAIL_REASON_MAX, type PhotoSlot, type PhotoSlotState } from '@/features/recs/recsLogic';
+import { cardInfoLine, headLine, readReasonIds, reasonNames, CARD_REASON_MAX, DETAIL_REASON_MAX, type PhotoSlot, type PhotoSlotState } from '@/features/recs/recsLogic';
 
 import { asGradeNo } from './gradeApi';
 import { safeLog } from './log';
@@ -44,6 +44,7 @@ export type CandidateData = {
   answers: Readonly<Record<string, unknown>>;
   photos: PhotoSlot[];
   reasons: string[]; // 맞는 점 이름 최대 5
+  reasonIds: string[]; // 맞는 점 ID(서버가 준 순서) — 왜 이 분인지 카드(QF2 Q2-01)
   gradeNo: number | null; // F13: 구독자 + 상대 CK10 동의일 때만(없으면 null)
   prompts?: PromptCard[]; // F24 · D-144: 질문 카드(서버 prompts[{code, question, answer}], S14 0018). 없으면 빈 목록 = 칸 없음
 };
@@ -98,6 +99,7 @@ export function parseCandidate(raw: unknown): CandidateData | null {
     answers: isRecord(raw.answers) ? raw.answers : {},
     photos: readPhotos(raw.photos),
     reasons: reasonNames(Array.isArray(raw.reasons) ? raw.reasons : [], DETAIL_REASON_MAX),
+    reasonIds: readReasonIds(raw.reasons), // Q2-01: 왜 이 분인지 카드가 줄을 고른다(v5 공개 뒤 길)
     gradeNo: asGradeNo(raw.grade_no),
     prompts: readPrompts(raw.prompts),
   };

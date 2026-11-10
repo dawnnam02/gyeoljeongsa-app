@@ -105,8 +105,8 @@ function seedRoom(p: DemoPerson, email: string, scene: DemoChatScene): RoomState
   const closedAt = scene === 'partnerLeft' ? t('2026-12-26T11:00:00+09:00') : closesAt;
   if (scene === 'closed') messages.push(sys('closed_expired', false, closesAt));
   if (scene === 'partnerLeft') messages.push(sys('partner_left', false, closedAt));
-  // 상대가 연장을 원한 시스템 글(extend_requested, mine=false)은 서버가 보내지만 화면은 그리지 않는다(판단 — 변경기록 6장)
-  if (scene === 'extendWait') messages.push(sys('extend_requested', false, t('2026-12-29T20:00:00+09:00')));
+  // 상대가 연장을 원한 사실은 어디에도 실리지 않는다(서버 0057 Q2-13: 방 JSON extend.partner 키 없음 · 상대의 extend_requested 시스템 글은 목록 · 마지막 글 · 직접 읽기에서 안 보임).
+  //  extendWait 장면의 '상대가 이미 원함'은 이 모의 서버 안 상태(theirExtend)로만 있고, 내가 원하면 둘 다 원한 것이 되어 7일 더 열린다(setExtend)
   const room: Room = {
     id: `demo-chat-1-${p.n}`,
     partner: { id: `demo-cand-${p.n}`, name: p.name, age: p.age, region: `${p.region.sido} ${p.region.sigungu}`, facePhotoId: `demo-ph-${p.n}-face` },

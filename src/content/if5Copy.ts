@@ -1,4 +1,4 @@
-// 사주 마당 · 마일리지(IF5 · 카피 24장) 글의 앱 사본 — scripts/gen-if5-copy.mjs 가 마케팅/카피.md 24장에서 만든다(손으로 고치지 않는다). 354키.
+// 사주 마당 · 마일리지(IF5 · 카피 24장) 글의 앱 사본 — scripts/gen-if5-copy.mjs 가 마케팅/카피.md 24장에서 만든다(손으로 고치지 않는다). 362키.
 //  · 무료 층(F1)은 MILEAGE.* · SAJU.talk.* · REST_HINT.* · SAJU.card.aiButton 계열을 부르지 않는다 — 그 글은 마일리지 · AI 맞춤(F2)이 부른다. 아직 어느 화면도 안 부르는 키는 '앱 반영 전'(F1b 몫 포함).
 //  · 글이 {…} 하나뿐인 키(값 틀)는 AI 라이브러리 · 서버 값이 들어오는 자리다. 화면은 이 틀 대신 값을 쓴다.
 //  · check:copy IF5 그룹이 24장 표와 한 글자씩 대조한다. 이 파일은 check:copy 가 Node 로 바로 읽으므로 경로 별칭 없이 홀로 선다
@@ -365,6 +365,14 @@ export const IF5_TEXT = {
   'MILEAGE.table.pick': '날짜 설명',
   'MILEAGE.table.concern': '연애 고민 정리 · 한 번 말할 때',
   'MILEAGE.table.polish': '문장 다듬기',
+  'MILEAGE.log.reason.bundle': '탑승권 포함분',
+  'MILEAGE.log.reason.bundle.sub': '탑승권을 사면 한 장마다 한 번 함께 드려요.',
+  'MILEAGE.log.reason.bundleCancel': '탑승 취소 · 안 쓴 분 회수',
+  'MILEAGE.log.reason.bundleCancel.sub': '탑승이 취소되어 포함분 가운데 쓰지 않은 마일리지를 거뒀어요. 이미 쓴 마일리지는 그대로예요.',
+  'MILEAGE.log.reason.bundleRefund': '스토어 환불 · 안 쓴 분 회수',
+  'MILEAGE.log.reason.bundleRefund.sub': '탑승권이 스토어에서 환불되어 포함분 가운데 쓰지 않은 마일리지를 거뒀어요. 이미 쓴 마일리지는 그대로예요.',
+  'MILEAGE.log.bundleNote': '탑승권에 포함된 마일리지는 취소나 환불이 되면 쓰지 않은 분만 거둬요.',
+  'MILEAGE.log.reason.a11y': '{사유}, {N} 마일리지, {날짜}',
   'MILEAGE.table.value': '{N} 마일리지',
   'MILEAGE.table.valueFrom': '{N} 마일리지부터',
   'MILEAGE.table.failed': '가격을 불러오지 못했어요. 다시 시도해 주세요.',

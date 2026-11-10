@@ -1,5 +1,5 @@
 // 기내 서비스 · 연애 기능 1.0 이 서버와 주고받는 일(IF2-F · D-223). 서버 = backend/migrations/0043_inflight.sql(앱 함수 · 응답 모양 = backend/R_변경기록.md 11-4) — 이름 · 인자 · 키를 그대로 맞췄다.
-//   get_home_state()                       → {stage, blocks, hobby_notice?, pocket?{cells}, status?{head, cells, writable}, pair?{room_id, cells}, me?{cells}, reflect_ok?}
+//   get_home_state()                       → {stage, blocks, pocket?{cells}, status?{head, cells, writable}, pair?{room_id, cells}, me?{cells}, reflect_ok?}
 //   get_magazine()                         → {state none | not_yet | issued, issue_date, trip_no, week_element, column, ck17a, sky{signs[달력 순 한두 개], zodiacs[같은 차례 주간 글 id]} | null, grain{stem, saju, relation} | null}
 //        0046(3부-차): 경계 날(시작일 −1 · 0 · +1, 해마다 36일)은 순서 없는 한 쌍을 달력 순으로 — 대표 · 이웃 구분 키 sign · cusp · zodiac 은 응답에 없다
 //   get_my_ways()                          → {ok, state ready, venus, mercury}(한국 정오 별자리 코드 한 개씩 · 경계 표시 0) | {ok, state none} | {ok:false, code consent_required | not_ready} — 3부-카(G-04 · 0046) · 본인만 · 인자 0 · 저장 0

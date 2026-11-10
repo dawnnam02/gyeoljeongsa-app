@@ -106,6 +106,8 @@ export const BOARDING = {
     ],
     pay: '결제하기',
     payCredit: '크레딧 1장으로 타기',
+    // QF2-B6(법무 FA1_QF2_글확인 9-5 통과, 약관 제14조의3 ⑥): 결제로 타는 시트의 사기 전 고지. {N}은 서버 값(get_ticket_state.bundle_amount) — 값이 없으면 줄째 그리지 않는다(값 없는 글 bundleNoValue 는 쓰지 않는다). 크레딧 탑승 · 결제 닫힘 때는 줄 없음. 혜택 강조 0
+    bundle: (n: string) => `탑승권을 사서 좌석이 확정되면 ${n} 마일리지가 함께 들어와요. 취소나 환불이 되면 그중 쓰지 않은 마일리지만 거둬요.`,
     payClosed: '탑승권 결제는 아직 열리지 않았어요.', // [초안 Q2-21] payment_mode closed 일 때 [결제하기] 자리에 사실 한 줄(마케팅 확인 전)
     close: '닫기',
     demo: '데모 결제예요. 실제 돈은 나가지 않아요.',

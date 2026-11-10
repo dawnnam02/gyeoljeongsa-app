@@ -8,6 +8,8 @@
 //  6 동작 줄이기: 공개 순간에 이동(transform) 0
 //  7 사전 오픈 → 탑승권: 확정 전에는 탑승권 탭에 대기 화면(첫 매칭 '12월 23일 수요일 오후 6시') → 확정 장면이면 탑승권(판매 전)
 //  (IF2-F 10-28) 1 ~ 6 가입 이메일 w6plainif2off = 기내 서비스 스위치(그룹 IF2)를 끈 데모 장면 — 지금 T1 · T2(새 홈 전, live 처음값과 같은 모습)를 본다. 새 홈은 web-if2
+//  (QF2-B6 11-10) 3 시트 포함분 한 줄(Q2-D244-09: 서버 값이 있을 때만 · 규칙 줄 아래) · 3b 탑승 뒤 마일리지 내역 '탑승권 포함분' 줄 + 안내 한 줄(Q2-17) ·
+//     4 공개 순간 T3와 10 상대 프로필의 '이 분과 맞는 점' 카드(Q2-01: 최대 3 · 5줄, 지역 · 종교 · 돈 · 집안 줄 0, 스위치 match_reasons 데모 켜짐)
 //  8 폭(SHOT_WIDTH, 기본 390) 가로 넘침 0 · 글자 13 이상 · 터치 48 이상 · 콘솔 오류 0 · 바깥 요청 0
 //  캡처: 확인/스크린샷/[SHOT_SUBDIR 기본 W6_<폭>]/W6_*.png
 // 사용: node scripts/web-w6.mjs [번들 폴더]   SHOT_WIDTH=360 node scripts/web-w6.mjs [번들 폴더]
@@ -60,6 +62,10 @@ const tap = async (id) => {
   await sleep(400);
 };
 const screenText = (id) => visText(id);
+const rectOf = (id) => b.evaluate(`(() => { const el = document.querySelector('[data-testid="${id}"]'); if (!el) return null; const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom }; })()`);
+const countVis = (prefix) => b.evaluate(`[...document.querySelectorAll('[data-testid^="${prefix}"]')].filter((e) => window.__visible(e)).length`);
+const BUNDLE_LINE = '탑승권을 사서 좌석이 확정되면 8,700 마일리지가 함께 들어와요. 취소나 환불이 되면 그중 쓰지 않은 마일리지만 거둬요.'; // QF2-B6 Q2-D244-09(데모 서버 값 8,700)
+const WHY_ROW_BAN = /연봉|부모님|자산|지역[을이가]|종교|점수|등급|순위|퍼센트|%|[!！]/;
 async function measure(label) {
   const m = await b.evaluate('window.__metrics()');
   check('8', `${label}: ${width} 폭 가로 넘침 0 · 글자 13 이상 · 터치 48 이상`, m.scrollW <= m.innerW && m.over.length === 0 && m.minFont >= 13 && m.small.length === 0, `넘침 ${m.over.length}(${m.over.slice(0, 2).join(',')}) · 최소 글자 ${m.minFont} · 작은 터치 ${m.small.join(',') || '없음'}`);
@@ -120,6 +126,11 @@ try {
   await waitVis('boarding-sheet-summary');
   await sleep(500);
   check('3', `시트: '1회차 · 12월 23일 수요일 오후 6시 매칭' · 26,900원 · 데모 결제 안내`, (await visText('boarding-sheet-summary')) === '1회차 · 12월 23일 수요일 오후 6시 매칭' && (await visText('boarding-sheet-price')) === '26,900원' && (await vis('boarding-sheet-demo')), await visText('boarding-sheet-summary'));
+  const bundleText = await visText('boarding-sheet-bundle');
+  const bSum = await rectOf('boarding-sheet-summary');
+  const bBun = await rectOf('boarding-sheet-bundle');
+  const bCon = await rectOf('boarding-contract-summary');
+  check('3', `시트 포함분 한 줄(QF2-B6 Q2-D244-09): 글표 그대로 · 천 단위 쉼표 · 혜택 강조 0 · 규칙 줄 아래 · 계약 요약 블록 위 · 한 줄만`, bundleText === BUNDLE_LINE && !/드려요|선물|무료|[!！]/.test(bundleText) && (await countVis('boarding-sheet-bundle')) === 1 && !!bSum && !!bBun && !!bCon && bBun.top > bSum.bottom && bBun.bottom <= bCon.top, bundleText);
   await shot('T1_사기_시트');
   await measure('사기 시트');
   await tap('boarding-pay');
@@ -128,6 +139,18 @@ try {
   await sleep(1200);
   await shot('T2_기다림');
   await measure('T2 기다림');
+
+  // ═══ 3b. 마일리지 내역(QF2-B6 Q2-17): 탑승권을 샀으니 '탑승권 포함분' 줄 + 안내 한 줄. 옛 '탑승 적립'과 한 줄에 같이 나오지 않는다 ═══
+  await b.evaluate(`(() => { history.pushState(null, '', '/mileage-log'); dispatchEvent(new PopStateEvent('popstate', { state: null })); return true; })()`);
+  await waitVis('mileage-log-list', 8000);
+  await sleep(500);
+  const logText = await visText('mileage-log-list');
+  const noteText = await visText('mileage-log-bundle-note');
+  check('3', `내역: '탑승권 포함분' 줄 + 작은 글 · 안내 한 줄 '탑승권에 포함된 마일리지는 취소나 환불이 되면 쓰지 않은 분만 거둬요.' · 옛 '탑승 적립' 0 · 연속 · 순위 · 느낌표 0`, logText.includes('탑승권 포함분') && logText.includes('탑승권을 사면 한 장마다 한 번 함께 드려요.') && noteText === '탑승권에 포함된 마일리지는 취소나 환불이 되면 쓰지 않은 분만 거둬요.' && !logText.includes('탑승 적립') && !/연속|순위|[!！]/.test(logText), logText.slice(0, 90));
+  await shot('내역_포함분');
+  await measure('마일리지 내역');
+  await b.evaluate('history.back()');
+  await wait(`location.pathname === '/boarding' && !!${visQ('boarding-status-boarded')}`, 8000);
 
   // ═══ 4. 공개 ═══
   await scene('matched');
@@ -139,6 +162,13 @@ try {
   const photoOk = await wait(`(() => { const el = ${visQ('reveal-photo')}; const img = el && el.querySelector('img'); return !!img && img.complete && img.naturalWidth > 0 && (img.getAttribute('src') || '').includes('p18_face'); })()`, 8000);
   check('4', '만난 분 사진(데모 인물 사진 · 기본 그림 아님)', photoOk && !(await vis('reveal-photo-default')), '');
   check('4', '[대화 시작하기] · [프로필 자세히 보기] · 점수 · 등급 · % 0', (await vis('reveal-chat')) && (await vis('reveal-profile')) && !/점수|등급|%|\d+점/.test(await screenText('screen-reveal')), '');
+  const revWhyTitle = await visText('reveal-why-title');
+  const revWhyN = await countVis('reveal-why-line-');
+  const revWhy = await visText('reveal-why');
+  const rName = await rectOf('reveal-card');
+  const rWhy = await rectOf('reveal-why');
+  const rChat = await rectOf('reveal-chat');
+  check('4', `T3 '이 분과 맞는 점' 카드(QF2-B6 Q2-01): 제목 + 맞는 점 1 ~ 3줄 · 이름 카드 아래 · [대화 시작하기] 위 · 지역 · 종교 · 돈 · 집안 · 점수 · 등급 줄 0`, revWhyTitle === '이 분과 맞는 점' && revWhyN >= 1 && revWhyN <= 3 && !WHY_ROW_BAN.test(revWhy.replace('이 분과 맞는 점', '')) && !!rName && !!rWhy && !!rChat && rWhy.top >= rName.bottom - 1 && rWhy.bottom <= rChat.top, revWhy);
   await shot('T3_공개순간');
   await measure('T3 공개 순간');
   await tap('reveal-profile');
@@ -148,6 +178,10 @@ try {
   check('4', 'QP-01: 10 상대 상세(공개 뒤)에 [넘기기] · [호감 보내기] · 수락/거절 · 왜 추천 · 등급 · 수락 뒤 연락 줄 0, 아래 버튼은 [대화 시작하기] 하나',
     !(await vis('candidate-pass')) && !(await vis('candidate-like')) && !(await vis('candidate-accept')) && !(await vis('candidate-decline')) && !(await vis('candidate-why')) && !(await vis('candidate-grade')) && !/추천|호감|수락한 뒤|등급/.test(tenText) && (await visText('candidate-chat')) === '대화 시작하기',
     tenText.slice(0, 80));
+  const candWhyTitle = await visText('candidate-whycard-title');
+  const candWhyN = await countVis('candidate-whycard-line-');
+  const candWhy = await visText('candidate-whycard');
+  check('4', `10 상대 상세(공개 뒤)에도 '이 분과 맞는 점' 카드(QF2-B6 Q2-01): 제목 + 1 ~ 5줄 · 옛 '왜 추천했나요' 박스와 고지 문장 0 · 지역 · 종교 · 돈 · 집안 · 점수 · 등급 줄 0`, candWhyTitle === '이 분과 맞는 점' && candWhyN >= 1 && candWhyN <= 5 && !WHY_ROW_BAN.test(candWhy.replace('이 분과 맞는 점', '')) && !tenText.includes('왜 추천했나요') && !tenText.includes('추천 점수는 보여주지 않아요'), candWhy);
   await b.evaluate(`(() => { const el = ${visQ('screen-10')}; if (el) el.scrollTop = 99999; })()`);
   await shot('T3_10_상대상세_아래');
   await measure('10 상대 상세(공개 뒤)');

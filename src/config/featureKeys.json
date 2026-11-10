@@ -155,6 +155,8 @@
     { "key": "saju_talk", "group": "IF5", "id": "F5-17", "live": false },
     { "key": "saju_lunar", "group": "QF2", "id": "F5-10L", "live": false },
     { "key": "saju_morning", "group": "QF2", "id": "F5-08M", "live": false },
+    { "key": "match_reasons", "group": "QF2", "id": "Q2-01", "live": false },
+    { "key": "chat_last_day", "group": "QF2", "id": "Q2-03", "live": false },
     { "key": "mileage", "group": "IF5", "id": "ML-01", "live": false },
     { "key": "mileage_spend", "group": "IF5", "id": "ML-02", "live": false },
     { "key": "mileage_charge", "group": "IF5", "id": "ML-03", "live": false },

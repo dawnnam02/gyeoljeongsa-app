@@ -41,6 +41,7 @@ import { afterCancel, arriveWhen, boardingView, canCancel, canUseCredit, contrac
 import { TicketCard } from './TicketCard';
 import { ArriveView } from './ArriveView';
 import { defaultOpenedRounds, useOpenedRounds, type OpenedRounds } from './openedRounds';
+import { fmt } from '@/features/mileage/mileageLogic';
 import { InflightHome, useInflightHome, type InflightHomeDeps } from '@/features/inflight/InflightHome';
 
 // IF2-F(D-223): inflight = 홈 새 구성(스위치 inflight_home · 정책 PF-81 ~ PF-89). 없거나 꺼져 있으면 지금 T1 · T2 그대로
@@ -270,6 +271,12 @@ export function BoardingScreen({ deps }: { deps: BoardingDeps }) {
                   {r}
                 </AppText>
               ))}
+              {/* 포함분 사기 전 고지(약관 제14조의3 ⑥ · 법무 9-5): 서버 값이 있고 결제 단추가 있을 때만. 크레딧 탑승 · 결제 닫힘이면 줄 없음 */}
+              {state.bundleAmount && state.paymentMode !== 'closed' ? (
+                <AppText variant="caption" testID="boarding-sheet-bundle">
+                  {BOARDING.sheet.bundle(fmt(state.bundleAmount))}
+                </AppText>
+              ) : null}
               {/* 결혼중개 계약 설명 요약 블록(D-199 · 카피 14-6 · 동의문구 5-8). 값이 빈 자리 글({신고번호})이 든 줄은 숨김 */}
               <Card style={styles.gapTiny} testID="boarding-contract-summary">
                 <AppText variant="bodyBold" accessibilityRole="header">

@@ -156,7 +156,7 @@ export function createDemoMileage(o: DemoMileageOptions) {
     for (const e of l.entries) {
       if (e.kind === 'grant') {
         const lot = l.lots.find((x) => x.id === e.lot);
-        if (lot) items.push({ id: e.id, at: iso(e.at), kind: kindOf(lot), amount: e.amount });
+        if (lot) items.push({ id: e.id, at: iso(e.at), kind: kindOf(lot), amount: e.amount, ...(lot.source === 'boarding' ? { reason: 'bundle' } : {}) }); // 0058: 탑승 때 들어오는 무료분은 '탑승권 포함분'(reason bundle)
       }
     }
     for (const h of l.holds) {

@@ -68,9 +68,8 @@ function rig(email: string, over: Record<string, boolean> = {}, birth = '1997-03
   const consents = new Set(['CK17A', 'CK17B']);
   const flags = async () => flagsAll(over);
   const boarding = createDemoBoarding();
-  const demo = createDemoInflight({ boarding, flags, account: () => ({ birthDate: birth, consentOn: (c) => consents.has(c), sameHobby: true, previewAnswers: { A12: '이OO', A01: 29, A03: { sido: '서울', sigungu: '마포구' }, A06: '무교' } }) });
+  const demo = createDemoInflight({ boarding, flags, account: () => ({ birthDate: birth, consentOn: (c) => consents.has(c), previewAnswers: { A12: '이OO', A01: 29, A03: { sido: '서울', sigungu: '마포구' }, A06: '무교' } }) });
   demoShared.setFlags(flags);
-  demoShared.setSameHobby(() => true);
   const calls: string[] = [];
   const client = { rpc: async (n: string, a?: Record<string, unknown>) => (calls.push(n), demo.handles(n) ? demo.rpc(user, n, a) : boarding.rpc(user, n, a)) } as unknown as SupabaseClient;
   const api = createInflightApi(rpcOf(client));

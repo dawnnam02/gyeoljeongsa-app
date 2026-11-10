@@ -23,13 +23,19 @@ export type MileageFail = { ok: false; code: MileageFailCode };
 export type MileageResult<T> = { ok: true; data: T } | MileageFail;
 
 export type MileageProduct = { sku: string; price: number; mileage: number };
+/** 서버 차감표(get_mileage.costs)가 알려 온 기능 키: 0048 열 개 + 0058(D-244) 새 키 셋 — love_reading(연애 풀이) · compat_glance(궁합 한눈에) · zodiac(별자리).
+ *  새 키 셋은 받아서 읽을 수만 있게 둔다: 연애 풀이 화면은 아직 없고(본인 결정 대기), 가격표 줄 · 내역 '쓴 곳' 이름도 새 글이 정해질 때까지 만들지 않는다.
+ *  서버가 새 줄만 더해(코드 0) 모르는 키를 줄 수도 있으므로 응답 읽기는 키를 막지 않는다(feature: string) — 앞 목록은 아는 키를 알아보는 데에만 쓴다 */
+export const MILEAGE_FEATURES = ['saju_reading', 'daewoon', 'sinyeon', 'compat', 'saju_full', 'saju_chat_turn', 'counsel_turn', 'taekil_explain', 'polish_short', 'polish_long', 'love_reading', 'compat_glance', 'zodiac'] as const;
+export type MileageFeature = (typeof MILEAGE_FEATURES)[number];
+export const isMileageFeature = (v: string): v is MileageFeature => (MILEAGE_FEATURES as readonly string[]).includes(v);
 export type MileageCostRow = { feature: string; label: string; cost: number };
 export type MileageRules = { confirmFrom: number; freeChars: number; stepChars: number; stepCost: number };
 export type MileageState = { paid: number; free: number; total: number; held: number; chargeLocked: boolean; products: MileageProduct[]; costs: MileageCostRow[]; rules: MileageRules };
 
 export const HISTORY_KINDS = ['charge', 'gift', 'boarding', 'ops', 'demo', 'use', 'recovered', 'restored'] as const;
 export type HistoryKind = (typeof HISTORY_KINDS)[number];
-export type HistoryItem = { id: number; at: string; kind: HistoryKind; amount: number; feature: string | null; state: string | null };
+export type HistoryItem = { id: number; at: string; kind: HistoryKind; amount: number; feature: string | null; state: string | null; reason?: string | null }; // reason: 0058 — 탑승권 포함분 줄의 사유(bundle · bundle_cancel · bundle_refund)
 export type MileageHistory = { items: HistoryItem[]; next: number | null };
 export type CostInfo = { feature: string; cost: number; base: number; extra: number; confirm: boolean };
 
@@ -71,7 +77,7 @@ export function parseHistory(raw: unknown): MileageHistory | null {
     const at = str(x.at);
     const amount = int(x.amount);
     const kind = (HISTORY_KINDS as readonly string[]).includes(String(x.kind)) ? (x.kind as HistoryKind) : null;
-    return id !== null && at && amount !== null && kind ? [{ id, at, kind, amount, feature: str(x.feature), state: str(x.state) }] : [];
+    return id !== null && at && amount !== null && kind ? [{ id, at, kind, amount, feature: str(x.feature), state: str(x.state), reason: str(x.reason) }] : [];
   });
   return { items, next: int(raw.next) };
 }

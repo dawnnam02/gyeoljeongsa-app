@@ -2,6 +2,7 @@
 //  · 앱은 정렬하지 않는다: 서버가 준 순서 그대로(R5). 가리는 계산도 하지 않는다 — 서버가 거른 것만 그린다
 //  · 점수 · 등급 · 순위는 받지도 보이지도 않는다(lib/recsApi.ts 가 아는 키만 읽는다)
 import { CANDIDATE, RECS } from '@/content/copy';
+import { WHY } from '@/content/qf2Copy';
 
 // 정책 2-4 표: 이유 ID → 칩에 쓰는 이름. 이 19개 밖의 ID 는 칩에 쓰지 않는다(서버도 같은 목록으로 거른다)
 export const REASON_NAMES: Readonly<Record<string, string>> = {
@@ -38,6 +39,29 @@ export function reasonNames(ids: readonly unknown[], max: number): string[] {
     if (out.length >= max) break;
   }
   return out;
+}
+
+// 왜 이 분인지(Q2-01): 서버가 준 맞는 점 ID 목록에서 줄이 있는 것만(중복 뺌), 서버 순서 그대로 최대 max줄. 모르는 ID · 점수 같은 키는 줄이 없어 저절로 빠진다
+//  · 돈 · 집안(F05 F14 F15 F16)과 필수 일치(F06 지역 · F07 종교 — 정치는 이유 ID 에 아예 없다)는 서버(pair_reasons)가 걷어 보내지만, 앱도 한 번 더 막는다(이중 장치).
+//    WHY.line 에 줄을 잘못 더해도 이 ID 는 그려지지 않는다(법무 FA1_QF2_글확인 L1 · 필수 일치는 모든 짝이 같아 이 분만의 까닭이 못 됨)
+export const WHY_NEVER: readonly string[] = ['F05', 'F06', 'F07', 'F14', 'F15', 'F16'];
+export function whyLines(ids: readonly unknown[], max: number): string[] {
+  const lines = WHY.line as Readonly<Record<string, string>>;
+  const out: string[] = [];
+  for (const id of ids) {
+    if (typeof id !== 'string' || WHY_NEVER.includes(id) || !Object.prototype.hasOwnProperty.call(lines, id)) continue;
+    const line = lines[id];
+    if (!out.includes(line)) out.push(line);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+/** 서버 응답의 맞는 점 ID 목록 읽기(문자열만, 중복 뺌, 12개까지 — 줄을 고르고 자르는 일은 whyLines) */
+export function readReasonIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const id of value) if (typeof id === 'string' && !out.includes(id)) out.push(id);
+  return out.slice(0, 12);
 }
 
 // 받침 있으면 "이", 없으면 "가"

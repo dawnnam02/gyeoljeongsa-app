@@ -33,6 +33,15 @@ export function bucketOf(kind: HistoryKind): 'free' | 'paid' | null {
   if (kind === 'charge' || kind === 'demo') return 'paid';
   return null;
 }
+/** 탑승권 포함분 줄(0058, 법무 9-2): 서버 reason → 이름 · 작은 글 카피 키. 이 줄은 옛 '탑승 적립' 종류 이름을 쓰지 않고 사유 이름만 쓴다(한 줄에 둘이 같이 나오지 않게) */
+export function bundleKeys(it: Pick<HistoryItem, 'kind' | 'reason'>): { name: If5Key; sub: If5Key } | null {
+  if (it.reason === 'bundle' && it.kind === 'boarding') return { name: 'MILEAGE.log.reason.bundle', sub: 'MILEAGE.log.reason.bundle.sub' };
+  if (it.reason === 'bundle_cancel' && it.kind === 'recovered') return { name: 'MILEAGE.log.reason.bundleCancel', sub: 'MILEAGE.log.reason.bundleCancel.sub' };
+  if (it.reason === 'bundle_refund' && it.kind === 'recovered') return { name: 'MILEAGE.log.reason.bundleRefund', sub: 'MILEAGE.log.reason.bundleRefund.sub' };
+  return null;
+}
+/** 내역에 포함분 줄이 하나라도 있나 — 있을 때만 '취소나 환불이 되면 쓰지 않은 분만 거둬요' 한 줄 */
+export const hasBundle = (items: readonly Pick<HistoryItem, 'kind' | 'reason'>[]): boolean => items.some((x) => bundleKeys(x) !== null);
 /** 사용 줄의 기능 이름 → '쓴 곳' 카피 키 */
 export function usedKey(feature: string | null): If5Key | null {
   switch (feature) {

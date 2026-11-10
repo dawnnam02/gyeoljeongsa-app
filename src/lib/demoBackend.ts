@@ -217,7 +217,7 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
         ...pick('A08', 'a08_children'),
         ...pick('C05', 'c05_income'),
       };
-      return { birthDate: a?.birthDate ?? null, consentOn: (code: string) => consentOn(a, code), sameHobby: vis.same_hobby !== false, previewAnswers };
+      return { birthDate: a?.birthDate ?? null, consentOn: (code: string) => consentOn(a, code), previewAnswers };
     },
   });
   // IF5-F1 사주 마당(get_my_saju · get_my_luck · get_my_day · get_taekil) — 계산은 기기 안(saju5), 서버 요청 0
@@ -242,7 +242,6 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
     const a = accountOf(userId);
     return a ? flagsOf({ id: a.id, email: a.email }) : Promise.resolve({});
   });
-  demoShared.setSameHobby((userId) => accountOf(userId)?.visibility.same_hobby !== false);
   const accounts = new Map<string, DemoAccount>();
   const gates = new Map<string, Gate>();
   const rejects = new Map<string, Reject>();
@@ -674,7 +673,7 @@ export function createDemoBackend(options: { now?: () => number; aiDelayMs?: Par
       if (account && this.table === 'visibility_settings') {
         if (account.email.startsWith('savefail')) return { data: null, error: { code: '', message: 'Failed to fetch' } }; // 인터넷 문제 장면
         const keys = Object.keys(values);
-        if (keys.length === 0 || keys.some((k) => (!(k in DEMO_VISIBILITY_DEFAULTS) && k !== 'same_hobby') || typeof values[k] !== 'boolean')) return { data: null, error: { code: '42501', message: 'permission denied for column' } };
+        if (keys.length === 0 || keys.some((k) => !(k in DEMO_VISIBILITY_DEFAULTS) || typeof values[k] !== 'boolean')) return { data: null, error: { code: '42501', message: 'permission denied for column' } };
         for (const k of keys) account.visibility[k] = values[k] as boolean;
         return { data: null, error: null };
       }

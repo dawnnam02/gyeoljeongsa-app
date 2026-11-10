@@ -120,13 +120,13 @@ try {
   await note('F7_12b_목록아래_360x740.png');
 
   // ═══ B. 알림 ═══
-  // R-A(D-199 · 12-Q · 화면_요구사항 12-2): 서비스 알림 2줄 — '이번 주 만날 분이 정해졌을 때'(notify_match, 서버 P8 · P8b) · '대화방에 새 글이 왔을 때'(notify_chat, 0036). 호감 · 연결 줄 없음
+  // R-A(D-199 · 12-Q · 화면_요구사항 12-2): 서비스 알림 2줄 — '이번 주 만날 분이 정해졌을 때'(notify_match, 서버 P8 · P8b) · '대화방 알림'(notify_chat, 0036 — 새 글 알림 + 마지막 날 알림). 호감 · 연결 줄 없음
   check('B', '알림 → 서비스 스위치 2개(만날 분 · 대화방 새 글 + 아래 글) + 마케팅 알림 + 아래 글 3줄 · 호감 · 옛 추천 줄 없음', (await openRow('notifications', `!!window.__q('settings-notify-match')`)) && (await has(S.NOTIFY.recommendation)) && (await has(S.NOTIFY.chat)) && (await has(S.NOTIFY.chatNote)) && (await has(S.NOTIFY.marketing)) && (await has(S.NOTIFY.marketingNotes[2])) && !(await q('settings-notify-like')) && !(await q('settings-notify-recommendation')), '');
   check('B', '서비스 알림 2줄 처음값 켜짐 · 마케팅 꺼짐(03 에서 선택 동의 안 함)', (await checked('settings-notify-match')) && (await checked('settings-notify-chat')) && !(await checked('settings-notify-marketing')), '');
   await b.click(sel('settings-notify-chat'));
   await b.waitFor(`window.__q('settings-notify-chat').getAttribute('aria-checked') === 'false'`);
   const notify = (await peekSettings(EMAIL)).notify;
-  check('B', '"대화방에 새 글이 왔을 때"를 끄면 서버(모의) profiles.notify_chat 만 false', notify && notify.notify_chat === false && notify.notify_match === true && notify.notify_like === true && notify.notify_recommendation === true, JSON.stringify(notify));
+  check('B', '"대화방 알림"을 끄면 서버(모의) profiles.notify_chat 만 false', notify && notify.notify_chat === false && notify.notify_match === true && notify.notify_like === true && notify.notify_recommendation === true, JSON.stringify(notify));
   await measure('12 알림');
   await note('F7_12h_알림_360x740.png');
   await back('notifications');

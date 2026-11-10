@@ -4,6 +4,7 @@
 //  [대화 시작하기] · [프로필 자세히 보기] 투명도(680 · 700 뒤). 합계 약 1초 · 줄 가림 2곳(제목 · 이름) · 카운트다운 · 폭죽 · 반짝임 0 · 점수 · 등급 숫자 0.
 //  동작 줄이기면 표지 없이 모두 투명도 150(motion/CoverTurn · MaskLine · Wipe)
 //  · 못 찾은 회차는 같은 자리에 "이번 주에는 맞는 분을 찾지 못했어요" + 크레딧 안내 + [크레딧 보기] — 위에 장면 그림 '못 찾음'(D42-I 4안 · 돌아온 탑승권 한 장)
+//  · 왜 이 분인지 카드(QF2-B6 Q2-01): 이름 카드 바로 아래 맞는 점 최대 3줄 — 스위치 match_reasons 가 켜져 있고(whyOn) 서버가 준 이유가 1개 이상일 때만. 0개 · 꺼짐이면 자리째 없다
 //  · 대화방 주소는 채팅(앱 D)의 /chat/[id] 를 가정 — 채팅 라우트가 생기면 그대로 이어진다
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -16,7 +17,9 @@ import { Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { handOff } from '@/features/chat/openerPath';
 import { PhotoBox } from '@/features/recs/PhotoBox';
-import { regionText } from '@/features/recs/recsLogic';
+import { WhyCard } from '@/features/recs/WhyCard';
+import { WHY_MAX_REVEAL } from '@/content/qf2Copy';
+import { regionText, whyLines } from '@/features/recs/recsLogic';
 import { CoverTurn, Fade, MaskLine, scene2, Wipe } from '@/motion';
 import { radius, size, space } from '@/theme/tokens';
 
@@ -35,7 +38,7 @@ const PHOTO = 240;
 const R = scene2.reveal;
 
 //  opener(QF2 Q2-02): 첫마디 길 입구([대화 시작하기] 위 글자 단추 → 이야깃거리 시트). 없으면(시험 · 스위치 꺼짐) 입구 0
-export function RevealScreen({ deps, opener }: { deps: RevealDeps; opener?: OpenerEntryDeps }) {
+export function RevealScreen({ deps, opener, whyOn = false }: { deps: RevealDeps; opener?: OpenerEntryDeps; whyOn?: boolean }) {
   const router = useRouter();
   const [load, setLoad] = useState<BoardingLoad | null>(null);
   const [uri, setUri] = useState<string | null>(null);
@@ -108,6 +111,13 @@ export function RevealScreen({ deps, opener }: { deps: RevealDeps; opener?: Open
               duration={R.name}
               testID="reveal-name">{[result.partner.name, result.partner.age !== null ? String(result.partner.age) : null, regionText(result.partner.region)].filter(Boolean).join(' · ')}</MaskLine>
           </CoverTurn>
+          {whyOn && whyLines(result.reasons, WHY_MAX_REVEAL).length > 0 ? ( // 그릴 줄이 하나도 없으면(지역 · 종교 · 돈 · 집안 · 모르는 ID 뿐) 자리째 없다
+            <Fade visible delay={play ? R.infoDelay : 0} duration={play ? R.info : 0} name="edOut">
+              <View style={styles.stretch}>
+                <WhyCard ids={result.reasons} max={WHY_MAX_REVEAL} testID="reveal-why" />
+              </View>
+            </Fade>
+          ) : null}
           <Wipe play={play} delay={R.infoDelay} duration={R.info}>
             <AppText variant="body" tone="sub" style={styles.textCenter} testID="reveal-body">
               {REVEAL.body}

@@ -428,6 +428,7 @@ const detail = (over: Partial<CandidateData> = {}): CandidateData => ({
   answers: { A12: '김OO', A01: 32, A03: { sido: '서울', sigungu: '강남구' }, C01: '대기업', B01: '석사', A06: '기독교', A07: '초혼', A09: '비흡연', A05: 178, C05: '7천만~1억 원', D03: '대졸 (구간)' },
   photos: [face('approved', 'p1'), { slot: 'full', state: 'approved', photoId: 'p2' }, { slot: 'free', state: 'pending', photoId: null }],
   reasons: ['지역', '종교', '자녀 계획'],
+  reasonIds: ['F06', 'F07', 'E02'],
   gradeNo: null,
   ...over,
 });

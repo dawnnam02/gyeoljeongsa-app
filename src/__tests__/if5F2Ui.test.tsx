@@ -145,7 +145,7 @@ describe('IF5-F2 ⑨ 내역 (IF-MILE-LOG)', () => {
     expect(textOf(tree, 'mileage-log-order')).toBe(IF5_TEXT['MILEAGE.log.order']);
     expect(textOf(tree, 'mileage-log-total')).toBe('6,500');
     const kinds = [...new Map(tree.root.findAll((n) => typeof n.props.testID === 'string' && /^mileage-log-kind-/.test(n.props.testID)).map((n) => [n.props.testID as string, String(n.props.children)])).values()];
-    expect(kinds).toEqual(['사용 · 사주 이야기', '충전', '탑승 적립', '가입 선물']);
+    expect(kinds).toEqual(['사용 · 사주 이야기', '충전', '탑승권 포함분', '가입 선물']);
     expect(allTexts(tree).join(' ')).toMatch(/−200/);
     expect(allTexts(tree).join(' ')).toMatch(/\+5,500/);
     expect(allTexts(tree).join(' ')).toContain(IF5_TEXT['MILEAGE.log.tagFree']);
