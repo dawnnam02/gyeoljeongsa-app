@@ -44,7 +44,7 @@ export function mockOutput5(feature: Feature5, facts: Rec): Rec {
     case 'daewoon': {
       const items = (facts.items as Rec[]).slice(0, 3);
       return {
-        overview: '대운은 십 년 단위로 바뀌는 큰 흐름이에요. 지금 시기를 알면 힘을 어디에 쓸지 가늠하기 쉬워요.',
+        overview: '대운은 열 해마다 바뀌는 큰 흐름이에요. 지금 시기를 알면 힘을 어디에 쓸지 가늠하기 쉬워요.',
         periods: items.map((it, i) => ({
           ganji: it.ganji, ages: `만 ${it.start_age_years}세부터`, theme: ['준비하는 시기', '자리 잡는 시기', '넓혀 가는 시기'][i],
           body: `${it.stem_sipsung}의 기운이 들어오는 시기예요. ${it.stem_element}의 결이 힘을 받아요.`,

@@ -68,7 +68,7 @@ function textOf(content: unknown[]): string {
   return content.filter((b): b is { type: string; text: string } => isRec(b) && b.type === 'text' && typeof b.text === 'string').map((b) => b.text).join('');
 }
 
-interface Ctx { reasons: Set<string>; strings: string[] }
+interface Ctx { reasons: Set<string>; strings: string[]; paths: string[] }
 
 function walk(spec: FieldSpec, v: unknown, path: string, ctx: Ctx): unknown {
   const bad = (why: string): undefined => { ctx.reasons.add(`${why}@${path}`); return undefined; };
@@ -79,7 +79,7 @@ function walk(spec: FieldSpec, v: unknown, path: string, ctx: Ctx): unknown {
       const n = charLen(s);
       if (n < spec.min || n > spec.max) bad('label_len');
       if (/[.?!\n]$/.test(s) || s.includes('\n')) bad('label_punct');
-      ctx.strings.push(s);
+      ctx.strings.push(s); ctx.paths.push(path);
       return s;
     }
     case 'text': {
@@ -92,7 +92,7 @@ function walk(spec: FieldSpec, v: unknown, path: string, ctx: Ctx): unknown {
       if (sents.length < spec.minS || sents.length > spec.maxS) bad('sentences');
       for (const x of sents) if (!endsWithHaeyo(x)) { bad('ending'); break; }
       if (spec.question && !/\?\s*$/.test(s)) bad('not_question');
-      ctx.strings.push(s);
+      ctx.strings.push(s); ctx.paths.push(path);
       return s;
     }
     case 'enums': {
@@ -116,11 +116,54 @@ function walk(spec: FieldSpec, v: unknown, path: string, ctx: Ctx): unknown {
 }
 
 // ---------------------------------------------------------------- 결과
+/** 대운 설명 첫 문장(서버 글 — 규칙 · 숫자 검사를 적용하지 않고 숫자가 없다). 모델은 쓰지 않는다 */
+export const DAEWOON_LEAD = '대운은 열 해마다 바뀌는 큰 흐름이에요.';
+
+// ---------------------------------------------------------------- 대운의 나이 · 때: 모델이 숫자를 쓰지 않는다 — 서버가 사실에서 직접 쓴다 (AI-FIX10 ①. 연애 풀이의 큰 흐름 첫 문장 longLead 와 같은 방식)
+const intOf = (v: unknown): number | null => (typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : null);
+/** 대운 한 칸의 나이 이름표(예: 만 29세 무렵부터). 시작 나이는 사실의 start_age_years 그대로 */
+export const ageLabel5 = (years: number): string => `만 ${years}세 무렵부터`;
+function daewoonItemOf(facts: unknown, ganji: unknown): Record<string, unknown> | null {
+  if (!isRec(facts) || typeof ganji !== 'string') return null;
+  const pool = [...(Array.isArray(facts.items) ? facts.items : []), ...(isRec(facts.current) ? [facts.current] : [])];
+  return (pool.find((x) => isRec(x) && x.ganji === ganji) as Record<string, unknown> | undefined) ?? null;
+}
+/** 모델이 낸 periods[].ages 를 사실의 나이 이름표로 바꾼다 — 그 칸의 간지가 사실의 대운 목록에 있을 때만(없으면 모델 글 그대로 두고 아래 검사가 본다). 원본은 건드리지 않는다 */
+export function fillDaewoonAges(parsed: unknown, facts: unknown): unknown {
+  if (!isRec(parsed) || !Array.isArray(parsed.periods)) return parsed;
+  return {
+    ...parsed,
+    periods: parsed.periods.map((p) => {
+      const it = isRec(p) ? daewoonItemOf(facts, p.ganji) : null;
+      const y = it ? intOf(it.start_age_years) : null;
+      return isRec(p) && y !== null ? { ...p, ages: ageLabel5(y) } : p;
+    }),
+  };
+}
+/** 첫 대운이 언제 시작하는지 서버가 쓰는 문장. 태어난 시각을 몰라 어림잡은 사실(approx)이면 달라질 수 있다는 말도 서버가 붙인다. 사실이 없으면 '' */
+export function daewoonStartLine(facts: unknown): string {
+  const sa = isRec(facts) && isRec(facts.start_age) ? facts.start_age : null;
+  const y = sa ? intOf(sa.years) : null;
+  if (y === null) return '';
+  const m = intOf(sa?.months) ?? 0;
+  const when = m > 0 ? `만 ${y}세 ${m}개월` : `만 ${y}세`;
+  return `첫 대운은 ${when} 무렵에 시작해요.${isRec(facts) && facts.approx === true ? ' 태어난 시각을 몰라 시작 시기가 몇 달쯤 달라질 수 있어요.' : ''}`;
+}
+/** 지금 대운이 무엇이고 언제까지인지 서버가 쓰는 문장. 지금 대운 사실이 없으면 '' */
+export function daewoonNowLine(facts: unknown): string {
+  const cur = isRec(facts) && isRec(facts.current) ? facts.current : null;
+  const y = cur ? intOf(cur.start_age_years) : null;
+  if (!cur || y === null || typeof cur.ganji !== 'string') return '';
+  return `지금은 ${cur.ganji} 대운이고, 만 ${y}세 무렵부터 만 ${y + 10}세 무렵까지 이어져요.`;
+}
+const CELL_WHYS = new Set(['label_len', 'label_punct', 'sentences', 'ending', 'text_len', 'empty', 'not_question']);
+/** 고칠 수 있는 칸 하나: 경로(예: sections[1].body)와 이유(sentences · ending · text_len · empty · label_len · label_punct · not_question · rule:<id> · new_digit · fact:ganji · fact:sipsung) */
+export interface Cell5 { path: string; why: string }
 export type Done5 =
-  | { kind: 'ok'; code: 'ok'; display: Record<string, unknown>; notes: readonly string[] }
+  | { kind: 'ok'; code: 'ok'; display: Record<string, unknown>; notes: readonly string[]; /** 서버가 덧붙인 글(대운 첫 문장 · 나이 · 때)을 뺀 모델 글 — 칸 고쳐 쓰기가 현재 글로 넘길 때 쓴다. 덧붙인 것이 없으면 없다 */ model?: Record<string, unknown> }
   | { kind: 'card'; code: 'crisis' | 'refused_intent'; card: FixedCard; endSession?: boolean }
   | { kind: 'redirect'; code: 'ok'; line: string; flag: keyof typeof REDIRECT_LINES }
-  | { kind: 'blocked'; code: 'blocked_output'; reasons: string[] };
+  | { kind: 'blocked'; code: 'blocked_output'; reasons: string[]; /** 칸 하나씩 고칠 수 있는 탈락이면 그 칸 목록과 지금 글(칸 고쳐 쓰기용). 모양 자체가 틀렸거나 끊긴 글은 없다 */ cells?: Cell5[]; parsed?: Record<string, unknown> };
 
 export interface FinishOpts {
   /** 이번에 모델이 본 사실(JSON 문자열로 바꿔 대조) */
@@ -136,10 +179,19 @@ export function finish5(feature: Feature5, resp: ApiResultLike, opts: FinishOpts
   if (resp.stop_reason !== 'end_turn') return { kind: 'blocked', code: 'blocked_output', reasons: ['stop:' + String(resp.stop_reason)] };
   let parsed: unknown;
   try { parsed = JSON.parse(textOf(resp.content)); } catch { return { kind: 'blocked', code: 'blocked_output', reasons: ['json'] }; }
+  if (feature === 'daewoon') parsed = fillDaewoonAges(parsed, opts.facts);       // AI-FIX10 ①: 나이 이름표는 서버가 사실에서 쓴다(모델 숫자 0)
 
-  const ctx: Ctx = { reasons: new Set(), strings: [] };
+  const ctx: Ctx = { reasons: new Set(), strings: [], paths: [] };
   const display = walk(SPEC5[feature], parsed, '', ctx) as Record<string, unknown> | undefined;
-  if (ctx.reasons.size || !display) return { kind: 'blocked', code: 'blocked_output', reasons: [...ctx.reasons] };
+  if (!display || (feature === 'chat' && ctx.reasons.size)) return { kind: 'blocked', code: 'blocked_output', reasons: [...ctx.reasons] };
+  // AI-FIX10: 칸 하나씩 고칠 수 있는 탈락(문장 수 · 끝맺음 · 길이 · 규칙 · 숫자 · 사실 대조)이면 어느 칸인지 남긴다 — 모양이 틀린 것(type · keys · list_len · enums)은 고칠 수 없다
+  const structCells: Cell5[] = [];
+  let notRepairable = false;
+  for (const r of ctx.reasons) {
+    const m = /^([a-z_]+)@(.*)$/.exec(r);
+    if (m && CELL_WHYS.has(m[1])) structCells.push({ path: m[2], why: m[1] }); else notRepairable = true;
+  }
+  if (notRepairable) return { kind: 'blocked', code: 'blocked_output', reasons: [...ctx.reasons] };
 
   // 채팅: 서버가 아는 위기 · 미성년 · 의료 · 법 · 투자 신호는 풀이 글보다 먼저 고정 안내로
   if (feature === 'chat') {
@@ -156,14 +208,17 @@ export function finish5(feature: Feature5, resp: ApiResultLike, opts: FinishOpts
   const digitSource = factsStr + (opts.userText ?? '');
   const dateLabels = new Set<string>();
   if (feature === 'taekil') for (const p of (display.picks as Array<{ date: string }>)) { if (/^\d{4}-\d{2}-\d{2}$/.test(p.date)) dateLabels.add(p.date); else reasons.add('taekil:date_format'); }
-  for (const s of ctx.strings) {
-    if (dateLabels.has(s)) continue;                 // 날짜 이름표는 형식과 사실 대조(아래)로만 본다
-    for (const h of checkText(s, rules)) reasons.add('rule:' + h.id);
-    const c = contactHit(s); if (c) reasons.add('contact');
-    if (newDigitRuns(s, digitSource).length) reasons.add('new_digit');
-    for (const g of ganjiIn(s)) if (!factsStr.includes(g)) reasons.add('fact:ganji');
-    for (const n of SIPSUNG) if (SIPSUNG_RE[n].test(s) && !factsStr.includes(n)) reasons.add('fact:sipsung');
-  }
+  const ruleCells: Cell5[] = [];
+  ctx.strings.forEach((s, i) => {
+    if (dateLabels.has(s)) return;                   // 날짜 이름표는 형식과 사실 대조(아래)로만 본다
+    const here: string[] = [];
+    for (const h of checkText(s, rules)) here.push('rule:' + h.id);
+    const c = contactHit(s); if (c) here.push('contact');
+    if (newDigitRuns(s, digitSource).length) here.push('new_digit');
+    for (const g of ganjiIn(s)) if (!factsStr.includes(g)) here.push('fact:ganji');
+    for (const n of SIPSUNG) if (SIPSUNG_RE[n].test(s) && !factsStr.includes(n)) here.push('fact:sipsung');
+    for (const w of here) { reasons.add(w); ruleCells.push({ path: ctx.paths[i], why: w }); }
+  });
 
   if (feature === 'taekil') {
     const days = (isRec(opts.facts) && Array.isArray(opts.facts.days) ? opts.facts.days : []) as Array<{ date: string; tone: string }>;
@@ -184,7 +239,23 @@ export function finish5(feature: Feature5, resp: ApiResultLike, opts: FinishOpts
     const f = opts.facts as { a?: unknown; b?: unknown };
     if (!isRec(f) || !f.a || !f.b) reasons.add('compat:no_facts');
   }
-  if (reasons.size) return { kind: 'blocked', code: 'blocked_output', reasons: [...reasons] };
+  if (reasons.size || structCells.length) {
+    const all = [...ctx.reasons, ...reasons];
+    // 칸 목록은 글 칸에서 난 이유일 때만(날짜 · 풀이 사실 불일치 같은 갈래 전체 이유가 끼면 없다)
+    const cellOnly = [...reasons].every((r) => r.startsWith('rule:') || r === 'contact' || r === 'new_digit' || r.startsWith('fact:'));
+    return { kind: 'blocked', code: 'blocked_output', reasons: all, ...(cellOnly ? { cells: [...structCells, ...ruleCells], parsed: display } : {}) };
+  }
+  if (feature === 'daewoon') {                       // AI-FIX10 ①: "대운은 열 해마다 바뀌는 큰 흐름" 설명 · 첫 대운 시작 나이 · 지금 대운의 때는 서버가 사실에서 쓴다 — 모델이 "10년마다"를 쓰다가 사실에 없는 숫자로 닫히던 것(실호출 7/7)
+    const ov = String(display.overview ?? '');
+    const now = String(display.now ?? '');
+    if (!ov.startsWith(DAEWOON_LEAD)) {              // 이미 서버 첫 문장으로 시작하면(모의 글) 두 번 붙이지 않는다
+      const model = { ...display };
+      display.overview = [DAEWOON_LEAD, daewoonStartLine(opts.facts), ov].filter(Boolean).join(' ').trim();
+      const nowLine = daewoonNowLine(opts.facts);
+      if (nowLine && !now.startsWith(nowLine)) display.now = `${nowLine} ${now}`.trim();
+      return { kind: 'ok', code: 'ok', display, notes: [], model };
+    }
+  }
 
   // 화면용: 앞뒤 공백 제거본 그대로 + 고정 안내
   // 끝줄(FOOTER5)은 앱이 한 곳에서 보여 준다 → 서버 응답 경로는 AI 글에 덧붙이지 않는다(상수는 앱 · 카피가 쓰도록 남김).

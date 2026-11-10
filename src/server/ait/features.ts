@@ -25,6 +25,8 @@ export const ONE_SHOT: Readonly<Record<'compat' | 'coach' | 'horoscope', OneShot
   horoscope: { feature: 'horoscope', model: FEATURE_MODEL.horoscope, effort: 'low', maxTokens: 1400 },
 };
 export const ONE_SHOT_LIMITS = { coachTextMax: 800, coachTextMin: 6 } as const;
+/** AI-FIX10 ④: 단발 · 대화 기능 → 서버 마일리지 차감표(백엔드 0058)의 기능 키. 값(수)은 코드에 없다 — 앱이 get_mileage.costs 에서 읽는다. 연애 풀이는 love_reading(값은 본인 결정 대기), 코치는 polish_long 으로 따로 센다 */
+export const COST_KEY = { chat: 'counsel_turn', compat: 'compat_glance', horoscope: 'zodiac', love_reading: 'love_reading' } as const;
 
 export type OneShotPrep =
   | { kind: 'reject'; code: ResponseCode; why: string }

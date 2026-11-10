@@ -35,7 +35,7 @@ export const SPEC5: Readonly<Record<Feature5, FieldSpec>> = {
     tips: list(2, 3, text(1, 1, 95)),
   }),
   daewoon: obj({
-    overview: text(2, 3, 210),
+    overview: text(1, 2, 150),          // AI-FIX10 ①: 모델은 1~2문장. 화면에는 서버가 앞에 붙이는 "대운은 열 해마다 바뀌는 큰 흐름이에요."(validate5 DAEWOON_LEAD)와 합쳐 2~3문장
     periods: list(3, 4, obj({ ganji: label(2, 2), ages: label(3, 16), theme: label(2, 16), body: text(2, 3, 190) })),
     now: text(1, 2, 130),
   }),

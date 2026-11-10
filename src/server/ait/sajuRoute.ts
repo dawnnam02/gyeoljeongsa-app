@@ -27,6 +27,9 @@ import { guardCompatFacts, compatMessages } from '../saju5/partner5.ts';
 import { buildRequest5, oneShotMessages } from '../saju5/request5.ts';
 import { finish5, finishSummary } from '../saju5/validate5.ts';
 import { applyJudge5, judgeChunks5, parseJudge5 } from '../saju5/judge5.ts';
+import { applyRepair5, buildRepairRequest5, getAt, parseRepair5, repairableCells } from '../saju5/repair5.ts';
+import type { Cell5 } from '../saju5/validate5.ts';
+import { splitSentences } from './text.ts';
 
 export const S5_FEATURES = ['s5_reading', 's5_daewoon', 's5_sinyeon', 's5_compat', 's5_taekil', 's5_chat'] as const;
 export type S5Feature = (typeof S5_FEATURES)[number];
@@ -178,18 +181,33 @@ async function callLive(deps: HandlerDeps, body: MessagesBody): Promise<{ ok: tr
 
 // ================================================================ AI 심사층 (Q2-30 남은 몫) — 고민 정리(AIT handler.ts)와 같은 틀
 /** 출력 판정: 화면에 나갈 글의 문장을 값싼 모델이 한 번 더 본다. 걸린 문장만 빼고 하한 아래로 내려가는 칸이 있을 때만 닫는다. 묶음마다 실패는 한 번 다시 부르고, 그래도 실패하면 fail(안전한 쪽으로 닫힘 · 차감 0) */
-type OutJudged = { kind: 'ok'; display: Record<string, unknown> } | { kind: 'blocked' } | { kind: 'fail'; code: ReturnType<typeof classifyUpstream> };
+type OutJudged = { kind: 'ok'; display: Record<string, unknown> } | { kind: 'blocked'; failed: Cell5[] } | { kind: 'fail'; code: ReturnType<typeof classifyUpstream> };
 async function judgeOutput5(deps: HandlerDeps, feature: Feature5, display: Record<string, unknown>): Promise<OutJudged> {
-  const flagged = new Set<string>();
+  const flagged = new Map<string, string>();
   for (const ch of judgeChunks5(display)) {
     let j = await judgeCall(deps, ch.body, (r) => parseJudge5(r, ch));
     if (!j.ok && (j.code === 'upstream' || j.code === 'timeout' || j.code === 'rate')) j = await judgeCall(deps, ch.body, (r) => parseJudge5(r, ch));
     if (!j.ok) return { kind: 'fail', code: j.code };
-    for (const f of j.value) flagged.add(f.text);
+    for (const f of j.value) flagged.set(f.text, f.why);
   }
   if (flagged.size === 0) return { kind: 'ok', display };
-  const a = applyJudge5(feature, display, flagged);
-  return a.kind === 'ok' ? { kind: 'ok', display: a.display } : { kind: 'blocked' };
+  const a = applyJudge5(feature, display, new Set(flagged.keys()));
+  if (a.kind === 'ok') return { kind: 'ok', display: a.display };
+  // 한 문장도 안 남아 실패한 칸: 칸 고쳐 쓰기 후보(이유 = 그 칸에서 걸린 갈래 코드)
+  const failed: Cell5[] = a.failed.map((path) => {
+    const sents = splitSentences(String(getAt(display, path) ?? ''));
+    const why = sents.map((x) => flagged.get(x)).find(Boolean) ?? 'scare';
+    return { path, why: `judge:${why}` };
+  });
+  return { kind: 'blocked', failed };
+}
+
+/** 칸 고쳐 쓰기 한 번(AI-FIX10): 검사기나 심사층이 글의 몇 칸만 빼서 닫힐 답에서 그 칸만 다시 쓰게 한다. 호출이 실패하거나 답이 틀에 안 맞으면 null(그 답은 닫는다). 한 갈래당 한 번뿐 */
+async function repairOnce(deps: HandlerDeps, kind: Feature5, messages: ReturnType<typeof oneShotMessages>, current: Record<string, unknown>, cells: Cell5[]): Promise<Record<string, unknown> | null> {
+  const r = await callLive(deps, buildRepairRequest5(kind, messages, current, cells) as unknown as MessagesBody);
+  if (!r.ok) return null;
+  const replies = parseRepair5({ stop_reason: r.res.stop_reason, content: r.res.content });
+  return replies ? applyRepair5(current, replies, cells) : null;
 }
 
 /** 입력 판정: 사전을 지난 글 · 폭력 낱말 글 · 오용 사전 글을 값싼 모델이 한 번 본다(글쓴이가 하는 쪽 harm · 위기 crisis · 그 밖). 실패는 한 번 다시 부르고 그래도 실패하면 null */
@@ -217,8 +235,8 @@ async function handleOneShot(feature: Exclude<S5Feature, 's5_chat'>, body: Recor
     return replyError(c.code, mode, { retryAfterSec: 30 });
   }
   let result: ModelResult;
+  const messages = kind === 'compat' ? compatMessages(facts) : oneShotMessages(facts);
   if (mode === 'live') {
-    const messages = kind === 'compat' ? compatMessages(facts) : oneShotMessages(facts);
     const r = await callLive(deps, buildRequest5(kind, messages) as unknown as MessagesBody);
     if (!r.ok) {
       emit({ code: r.code });
@@ -228,12 +246,31 @@ async function handleOneShot(feature: Exclude<S5Feature, 's5_chat'>, body: Recor
   } else {
     result = asResult(mockOutput5(kind, facts)) as ModelResult;
   }
-  const done = finish5(kind, { stop_reason: result.stop_reason, content: result.content }, { facts });
+  let done = finish5(kind, { stop_reason: result.stop_reason, content: result.content }, { facts });
   const usage = { in: result.usage?.input_tokens, out: result.usage?.output_tokens };
+  let repaired = false;          // 칸 고쳐 쓰기는 갈래당 한 번뿐(첫 시도 1번 + 고쳐 쓰기 1번)
+  if (done.kind === 'blocked' && mode === 'live' && done.parsed) {       // AI-FIX10: 글 몇 칸만 규칙(문장 수 · 숫자 · 사실 대조 …)에 걸린 탈락 → 그 칸만 다시 쓴다. 고친 글도 같은 검사기를 다시 지난다 — 규칙은 느슨해지지 않는다
+    const rc = repairableCells(kind, done.parsed, done.cells);
+    if (rc) {
+      repaired = true;
+      const next = await repairOnce(deps, kind, messages, done.parsed, rc);
+      if (next) done = finish5(kind, asResult(next) as never, { facts });
+    }
+  }
   if (done.kind === 'ok') {
     let shown = done.display;
     if (mode === 'live') {          // AI 출력 판정(Q2-30 남은 몫): 걸린 문장만 빼고, 판정이 실패하면 답을 내보내지 않는다(차감 0 — 마일리지는 앱이 ok 응답에서만 확정)
-      const j = await judgeOutput5(deps, kind, shown);
+      let j = await judgeOutput5(deps, kind, shown);
+      if (j.kind === 'blocked' && !repaired) {        // 칸이 통째로 걸려 목록이 모자라 닫힐 때(올해 12달 중 한 달 …): 그 칸만 다시 쓰고 심사를 다시 지난다
+        const modelPart = done.model ?? shown;        // 서버가 덧붙인 대운 첫 문장 · 나이 · 때는 모델 글이 아니다 — 모델에게는 모델이 쓴 글만 돌려준다
+        const rc = repairableCells(kind, modelPart, j.failed);
+        if (rc) {
+          repaired = true;
+          const next = await repairOnce(deps, kind, messages, modelPart, rc);
+          const again = next ? finish5(kind, asResult(next) as never, { facts }) : null;
+          if (again && again.kind === 'ok') j = await judgeOutput5(deps, kind, again.display);      // 고친 글도 같은 검사기(위 finish5)와 같은 심사층을 다시 지난다
+        }
+      }
       if (j.kind === 'fail') {
         emit({ code: j.code, ...usage });
         return replyError(j.code, mode);

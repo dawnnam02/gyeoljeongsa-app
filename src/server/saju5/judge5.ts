@@ -101,16 +101,18 @@ export function parseJudge5(res: { stop_reason: string | null; content: unknown[
 }
 
 // ---------------------------------------------------------------- 걸린 문장 빼기
-export type Applied5 = { kind: 'ok'; display: Rec; removed: number } | { kind: 'blocked'; reasons: string[] };
+/** blocked 의 failed = 한 문장도 안 남아 실패한 글 칸 경로들(칸 고쳐 쓰기 후보 — 올해 12달 중 한 달이 통째로 걸려 목록이 모자라 닫히던 것을 칸 하나만 다시 쓰게 한다) */
+export type Applied5 = { kind: 'ok'; display: Rec; removed: number } | { kind: 'blocked'; reasons: string[]; failed: string[] };
 
 /** 걸린 문장(flagged)을 화면 글에서 뺀다. 칸에 남는 문장이 하나도 없으면(비어도 되는 칸은 비워 두고) 그 칸이 실패 → 항목(list 의 원소)이면 항목째 빼되 목록이 하한 아래로 내려가면 그 답을 닫는다.
  *  비어도 되는 칸(empty)은 비운다. 소제목(label)이 걸리면 그 항목이 실패. 문장은 splitSentences 로 나눈 그대로 비교한다. */
 export function applyJudge5(feature: Feature5, display: Rec, flagged: ReadonlySet<string>): Applied5 {
   let removed = 0;
   const reasons = new Set<string>();
+  const failedCells = new Set<string>();
   const prune = (spec: FieldSpec, v: unknown, path: string): { ok: true; v: unknown } | { ok: false } => {
     switch (spec.t) {
-      case 'label': return typeof v === 'string' && flagged.has(v.trim()) ? { ok: false } : { ok: true, v };
+      case 'label': if (typeof v === 'string' && flagged.has(v.trim())) { failedCells.add(path); return { ok: false }; } return { ok: true, v };
       case 'text': {
         if (typeof v !== 'string') return { ok: true, v };
         const sents = splitSentences(v.trim());
@@ -119,6 +121,7 @@ export function applyJudge5(feature: Feature5, display: Rec, flagged: ReadonlySe
         removed += sents.length - kept.length;
         if (kept.length >= (spec.empty ? 0 : 1)) return { ok: true, v: kept.join(' ') };      // 하한 = 글이 한 문장은 남는 것(문장 수 하한 minS 는 쓰는 쪽 품질 기준이라 빼고 남은 글에는 적용하지 않는다)
         if (spec.empty) return { ok: true, v: '' };
+        failedCells.add(path);
         return { ok: false };
       }
       case 'list': {
@@ -142,6 +145,6 @@ export function applyJudge5(feature: Feature5, display: Rec, flagged: ReadonlySe
     }
   };
   const r = prune(SPEC5[feature], display, '');
-  if (!r.ok) return { kind: 'blocked', reasons: ['judge_floor', ...reasons] };
+  if (!r.ok) return { kind: 'blocked', reasons: ['judge_floor', ...reasons], failed: [...failedCells] };
   return { kind: 'ok', display: r.v as Rec, removed };
 }

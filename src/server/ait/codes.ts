@@ -32,6 +32,14 @@ export const SUGGESTED_STATUS: Readonly<Record<ResponseCode, number>> = {
   bad_request: 400, upstream: 502, timeout: 504, blocked_output: 200, crisis: 200, refused_intent: 200, ok: 200,
 };
 
+/** 마일리지 차감과 응답 코드(AI-FIX10 ④, 백엔드 0058 · 팀장 규칙 "AI 부르기 전 예치 → 답이 나가면 확정 · 못 받으면 0"):
+ *  'settle' = 답이 나갔다 → 확정 / 'release' = 못 받았다 → 해제(차감 0). 답이 나가는 코드는 ok 하나뿐이다 — 위기 · 거절 카드(crisis · refused_intent), 출력 검사 · 심사 탈락과 판정 실패(blocked_output · upstream · timeout …)는 모두 차감 0.
+ *  차감은 Edge(진짜 서버)와 앱(aitCharge.ts)이 하고, 이 표는 그 둘이 같은 규칙을 쓰는지 시험이 대조하는 기준이다. 값(수)은 여기 없다 — get_mileage.costs 에서 읽는다. */
+export const CHARGE_OF_CODE: Readonly<Record<ResponseCode, 'settle' | 'release'>> = {
+  auth: 'release', rate: 'release', spend_limit: 'release', limit: 'release', unavailable: 'release', too_long: 'release', bad_request: 'release',
+  upstream: 'release', timeout: 'release', blocked_output: 'release', crisis: 'release', refused_intent: 'release', ok: 'settle',
+};
+
 export function isResponseCode(v: unknown): v is ResponseCode {
   return typeof v === 'string' && (RESPONSE_CODES as readonly string[]).includes(v);
 }
