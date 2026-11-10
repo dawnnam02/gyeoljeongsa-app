@@ -3,6 +3,7 @@
 //  · 본문 키는 서버 허용 목록과 같은 것만(feature · 글칸 · 서명 묶음). 모델 · max_tokens · system · 가격 · 횟수는 앱이 정하지 못한다(서버가 정함)
 //  · 서버가 준 오류 문장은 쓰지 않는다 — code 만 읽는다. 닿지 못하면(정적 판 · 끊김 · 시간 초과 · 모양이 다른 답) offline
 //  · 로그 · 저장 0: 이 모듈은 입력 글 · 출력 글 · 코드를 어디에도 남기지 않는다(잡은 오류도 버린다)
+import { postAiRunKeyed, type AiRoute, type AiRunEnv, type KeyKeeper } from './aiCall';
 import { AIT_REQUEST_TIMEOUT_MS } from './aitConfig';
 import { parseReply, type AitFeature, type AitResult } from './aitTypes';
 
@@ -44,4 +45,12 @@ export async function postAit(feature: AitFeature, body: Record<string, unknown>
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** RS2-01: 고른 길(aiCall.ts aiRouteOf)로 보낸다. 'ai-run' = Edge 함수(로그인 토큰 · Idempotency-Key — 본문은 같은 허용 목록) · 'eas' = 위 postAit(예비) · 'mock' = 요청 0 */
+export type AitCallOpts = { route: AiRoute; code: string | null; keys: KeyKeeper; env?: AiRunEnv; fetchImpl?: AitFetch };
+export async function callAit(feature: AitFeature, body: Record<string, unknown>, o: AitCallOpts): Promise<AitResult> {
+  if (o.route === 'ai-run') return postAiRunKeyed(pickBody(feature, body), o.keys, o.env);
+  if (o.route === 'eas' && o.code) return postAit(feature, body, o.code, o.fetchImpl);
+  return { kind: 'offline' };
 }

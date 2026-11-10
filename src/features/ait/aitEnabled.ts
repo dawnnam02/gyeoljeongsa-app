@@ -2,4 +2,6 @@
 //  테스트 웹(lovedecide--demo.expo.app)이 데모 판이다. 새 EXPO_PUBLIC_ 변수는 만들지 않는다(보안 ATF-02) — config/env.ts 가 읽는 기존 데모 표시를 같은 식으로 읽는다.
 //  (config/env.ts 를 가져오지 않는다: 그 파일은 서버 주소가 비면 던져서, 화면 시험 여러 개가 환경 변수 없이 이 길을 지나간다)
 //  Metro 가 process.env.EXPO_PUBLIC_* 를 값으로 바꿔 넣으므로 점 표기로만 읽는다.
-export const aitEnabled = (): boolean => process.env.EXPO_PUBLIC_DEMO_MODE === '1';
+//  RS2-01: AI 호출 길(aiCall.ts aiRouteOf)도 같은 표시를 읽는다 — 데모 판이면 모의 · AI 서버 판, 아니면 실서버(ai-run).
+export const isDemoBuild = (): boolean => process.env.EXPO_PUBLIC_DEMO_MODE === '1';
+export const aitEnabled = (): boolean => isDemoBuild();

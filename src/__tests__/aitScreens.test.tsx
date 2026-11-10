@@ -73,6 +73,14 @@ async function sendFirst(tree: ReactTestRenderer) {
 }
 const everyProp = (tree: ReactTestRenderer) => JSON.stringify(tree.toJSON());
 
+const realDemo = process.env.EXPO_PUBLIC_DEMO_MODE;
+beforeAll(() => {
+  process.env.EXPO_PUBLIC_DEMO_MODE = '1'; // AI 시험판 입구는 데모 판(AI 서버 판)에만 — 코드가 있으면 /api/ai/* 길(RS2-01 aiRouteOf)
+});
+afterAll(() => {
+  if (realDemo === undefined) delete process.env.EXPO_PUBLIC_DEMO_MODE;
+  else process.env.EXPO_PUBLIC_DEMO_MODE = realDemo;
+});
 beforeEach(() => {
   mockMem.clear();
   aitStore.reset();

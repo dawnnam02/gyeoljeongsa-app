@@ -1,15 +1,19 @@
 // 유료 AI 맞춤 한 번 돌리기(IF5-F2 ⑨ ⑩ · 설계안 M-12 · S-10 · 보안 IC5-35 · IFF5-02 ~ 06 · 15).
-//  순서: (대화면) 위기 앞거름 → 마일리지 예치(요청 번호 하나) → 서버 호출 1번(접근 코드가 있으면 실제 · 없으면 데모 글) → 답이 나가면 확정 · 못 받으면 해제(차감 0).
+//  데모 길(모의 · AI 서버 판): (대화면) 위기 앞거름 → 마일리지 예치(요청 번호 하나) → 서버 호출 1번(접근 코드가 있으면 실제 · 없으면 데모 글) → 답이 나가면 확정 · 못 받으면 해제(차감 0).
 //  · 위기 카드는 차감 0 · 잔액이 0이어도 나온다(예치 전에 거른다). 검사 탈락(blocked_output) · 시간 초과 · 끊김 · 오류는 모두 해제 — 마일리지는 쓰이지 않았어요
 //  · 종합 풀이는 풀이 · 대운 · 올해 세 번을 이어 부르고 한 예치로 묶는다(하나라도 못 받으면 전부 해제)
 //  · 앱 자동 재시도 0 — 사용자가 다시 누르면 같은 요청 번호로 다시 예치한다. 결제 호출(consumeAsync …) 0 · 금액 인자 0
+//  실서버 길(RS2-01 · ai-run): 예치 · 확정 · 해제는 서버가 한다 — 이 길에서 앱은 edge(hold · settle · release)를 한 번도 부르지 않는다. 위기 앞거름은 화면 쪽 사전만(서버 요청 0 · 서버가 다시 거른다).
+//  앱은 응답의 code 와 charge.state 만 읽는다(settled 일 때만 잔액을 다시 읽는다). 길은 aiCall.ts aiRouteOf 가 정한다.
+import { aiRouteOf, createKeyKeeper, postAiRunKeyed, type AiRoute, type AiRunEnv, type KeyKeeper } from '@/features/ait/aiCall';
+import { shouldReloadBalance } from '@/features/ait/aitCharge';
 import type { AitCard, AitResult } from '@/features/ait/aitTypes';
 import { localPrecheckCard } from '@/features/ait/localPrecheck';
 import type { LedgerEdge } from '@/features/mileage/ledgerEdge';
 import { mockOutput5 } from '@/saju5/mock5';
 import type { Feature5 } from '@/saju5/spec5';
 
-import { postSaju5, type S5Kind } from './aiClient';
+import { pickS5Body, postSaju5, postSaju5Run, type S5Kind } from './aiClient';
 
 /** 화면에서 고르는 기능 일곱 — 종합(full)은 서버 기능이 아니라 세 번 묶음 */
 export type AiKind = 'reading' | 'daewoon' | 'sinyeon' | 'full' | 'compat' | 'taekil' | 'chat';
@@ -17,18 +21,30 @@ export type AiKind = 'reading' | 'daewoon' | 'sinyeon' | 'full' | 'compat' | 'ta
 export const COST_FEATURE: Readonly<Record<AiKind, string>> = { reading: 'saju_reading', daewoon: 'daewoon', sinyeon: 'sinyeon', full: 'saju_full', compat: 'compat', taekil: 'taekil_explain', chat: 'saju_chat_turn' };
 /** 마일리지 내역 화면 '쓴 곳' 이름에 쓰는 화면 이름(확인 시트 '{기능 이름}')은 카피 키로 — 화면이 고른다 */
 
+/** noCharge — 실서버 길에서만 채운다: 응답 charge.state 가 'none' 이면 true(마일리지는 쓰이지 않았어요라고 말해도 사실), 닿았는지 모르거나(끊김 · 시간 초과) 다른 상태면 false(그 말을 쓰지 않는다). 데모 길은 비움(지금 글 그대로) */
 export type AiOutcome =
   | { kind: 'ok'; display: unknown; mode: 'live' | 'demo'; bundle?: unknown }
   | { kind: 'card'; card: AitCard; bundle?: unknown }
-  | { kind: 'low'; need: number; have: number }
-  | { kind: 'blocked' } // 검사 탈락 — 차감 0
-  | { kind: 'failed'; code: 'rate' | 'auth' | 'limit' | 'unavailable'; retryAfterSec?: number } // 차감 0
-  | { kind: 'maint' }; // 장부 · 스위치 꺼짐 — 차감 0
+  | { kind: 'low'; need: number | null; have: number | null } // 잔액 모자람 — 차감 0 (실서버 길은 need · have 를 서버가 줄 때만 숫자)
+  | { kind: 'blocked'; noCharge?: boolean } // 검사 탈락 — 차감 0
+  | { kind: 'failed'; code: 'rate' | 'auth' | 'limit' | 'unavailable'; retryAfterSec?: number; noCharge?: boolean } // 차감 0
+  | { kind: 'maint' } // 장부 · 스위치 꺼짐 · 서버가 닫음(403) — 차감 0
+  | { kind: 'already' } // RS2-01 already_done(409): 같은 요청은 이미 처리됨 — 다시 차감 0 (앞 답이 있으면 화면이 그대로 둔다)
+  | { kind: 'daily'; noCharge: boolean } // RS2-01 daily_limit(429): 오늘 여기까지
+  | { kind: 'tooLong'; noCharge: boolean }; // RS2-01 too_long(413): 글이 길다 — 처리하지 않음
 
 export type AiDeps = {
   edge: LedgerEdge;
   code: () => string | null; // 접근 코드(있어야 실제 AI) — 값은 어디에도 내보내지 않는다
   post?: (kind: S5Kind, body: Record<string, unknown>, code: string) => Promise<AitResult>;
+  /** RS2-01: 길을 화면이 이미 골랐으면 그 값(없으면 aiRouteOf 가 코드로 고른다) */
+  route?: AiRoute;
+  /** 실서버 길: 한 화면이 들고 있는 Idempotency-Key 통(없으면 이 호출 한 번만 쓰는 새 통) */
+  keys?: KeyKeeper;
+  /** 실서버 길: 연결(시험이 끼운다 — 기본은 로그인 토큰 · 공개 키) */
+  env?: AiRunEnv;
+  /** 실서버 길: 응답 charge.state 가 settled 일 때만 부른다 — 화면이 잔액을 다시 읽는다 */
+  onSettled?: () => void;
 };
 
 export type AiRequest = {
@@ -88,7 +104,91 @@ async function callOne(d: AiDeps, kind: S5Kind, body: Record<string, unknown>, d
   return { kind: 'fail', why: 'unavailable' };
 }
 
+/** 실서버 응답 하나 → 화면 결과. code 와 HTTP 상태, charge.state 만 읽는다(서버 문장 0) */
+export function outcomeOfRun(res: AitResult): AiOutcome {
+  if (res.kind !== 'reply') return { kind: 'failed', code: 'unavailable', noCharge: false }; // 닿았는지 모른다 — 차감 여부도 모른다
+  const r = res.reply;
+  const none = r.charge?.state === 'none';
+  switch (r.code) {
+    case 'ok':
+      return r.ok && r.display ? { kind: 'ok', display: r.display, bundle: r.bundle, mode: r.mode === 'live' ? 'live' : 'demo' } : { kind: 'failed', code: 'unavailable', noCharge: false };
+    case 'crisis':
+    case 'refused_intent':
+      return r.card ? { kind: 'card', card: r.card, bundle: r.bundle } : { kind: 'failed', code: 'unavailable', noCharge: none };
+    case 'blocked_output':
+      return { kind: 'blocked', noCharge: none };
+    case 'low_balance':
+      return { kind: 'low', need: r.charge?.need ?? null, have: r.charge?.have ?? null };
+    case 'already_done':
+      return { kind: 'already' };
+    case 'daily_limit':
+      return { kind: 'daily', noCharge: none };
+    case 'too_long':
+      return { kind: 'tooLong', noCharge: none };
+    case 'unavailable':
+      return res.status === 403 ? { kind: 'maint' } : { kind: 'failed', code: 'unavailable', noCharge: none }; // 403 = 서버가 닫았다(스위치 · 허용 목록 · 계정) · 그 밖 = 일시 오류
+    case 'auth':
+      return { kind: 'failed', code: 'auth', noCharge: none };
+    case 'rate':
+      return { kind: 'failed', code: 'rate', retryAfterSec: r.retryAfterSec ?? undefined, noCharge: none };
+    case 'limit':
+      return { kind: 'failed', code: 'limit', noCharge: none };
+    default:
+      return { kind: 'failed', code: 'unavailable', noCharge: none }; // timeout · upstream · bad_request · spend_limit
+  }
+}
+
+const settledOf = (res: AitResult): boolean => res.kind === 'reply' && shouldReloadBalance(res.reply);
+
+/** 실서버 길 한 번(종합은 세 번). 예치 · 확정 · 해제는 서버가 한다 — edge 호출 0 */
+async function runViaServer(d: AiDeps, req: AiRequest): Promise<AiOutcome> {
+  // 0) 위기 앞거름 — 화면 쪽 사전만(서버 요청 0 · 장부 0). 서버가 같은 일을 다시 하고, 위기 턴은 잔액이 0이어도 막지 않는다
+  if (req.kind === 'chat' && req.text) {
+    const card = localPrecheckCard(req.text);
+    if (card) return { kind: 'card', card };
+  }
+  const keys = d.keys ?? createKeyKeeper();
+
+  if (req.kind !== 'full') {
+    const facts = req.facts ?? {};
+    const body = req.kind === 'chat' ? (req.bundle !== undefined && req.bundle !== null ? { text: req.text, bundle: req.bundle } : { text: req.text, facts }) : { facts };
+    const res = await postAiRunKeyed(pickS5Body(req.kind, body), keys, d.env);
+    if (settledOf(res)) d.onSettled?.();
+    return outcomeOfRun(res);
+  }
+
+  // 종합 풀이 = 서버 기능이 따로 없어 풀이 · 대운 · 올해 세 번을 이어 부른다. 한 누름의 키에서 편마다 이어 붙인 키를 만든다(다시 시도해도 같은 편은 같은 키)
+  const parts: ['reading' | 'daewoon' | 'sinyeon', Record<string, unknown> | null][] = [['reading', req.full?.reading ?? null], ['daewoon', req.full?.daewoon ?? null], ['sinyeon', req.full?.sinyeon ?? null]];
+  const base = keys.begin({ full: req.full ?? null });
+  const display: Record<string, unknown> = {};
+  let mode: 'live' | 'demo' = 'demo';
+  let stop: AiOutcome | null = null;
+  let reached = true;
+  let settled = false;
+  for (const [k, facts] of parts) {
+    if (!facts) continue; // 대운 칸이 없는 분은 그 편만 빠진다
+    const res = await postSaju5Run(k, { facts }, `${base}-${k}`, d.env);
+    if (res.kind !== 'reply') reached = false;
+    if (settledOf(res)) settled = true;
+    const one = outcomeOfRun(res);
+    if (one.kind === 'ok') {
+      display[k] = one.display;
+      mode = one.mode;
+      continue;
+    }
+    if (one.kind === 'already') continue; // 이미 처리된 편 — 서버는 답 본문을 저장하지 않으므로 다시 주지 않는다. 다음 편으로
+    stop = one;
+    break;
+  }
+  keys.done(reached);
+  if (settled) d.onSettled?.();
+  // 일부만 받았어도 받은 편은 보여 준다(그 편은 이미 차감됐다 — '마일리지는 쓰이지 않았어요'라고 거짓으로 말하지 않는다)
+  if (Object.keys(display).length > 0) return { kind: 'ok', display, mode };
+  return stop ?? { kind: 'already' };
+}
+
 export async function runAi(d: AiDeps, req: AiRequest): Promise<AiOutcome> {
+  if ((d.route ?? aiRouteOf({ code: d.code() })) === 'ai-run') return runViaServer(d, req);
   // 0) 위기 앞거름(대화)
   if (req.kind === 'chat' && req.text) {
     const card = await precheck(d, req.text);

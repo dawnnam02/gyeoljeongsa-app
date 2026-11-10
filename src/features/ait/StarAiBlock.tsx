@@ -46,7 +46,7 @@ export function StarAiBlock({ signs, stem, onSettings, testID = 'star-ai' }: { s
       {phase.k === 'nocode' ? <AitDemoNote onSettings={onSettings} testID={`${testID}-demo`} /> : null}
       {phase.k === 'loading' ? <AitLoading testID={`${testID}-loading`} /> : null}
       {phase.k === 'error' || phase.k === 'card' ? (
-        <AitError code={phase.k === 'error' ? phase.code : 'unavailable'} fallback locked={locked} onRetry={start} onSettings={onSettings} testID={`${testID}-error`} />
+        <AitError code={phase.k === 'error' ? phase.code : 'unavailable'} info={phase.k === 'error' ? phase : undefined} fallback locked={locked} onRetry={start} onSettings={onSettings} testID={`${testID}-error`} />
       ) : null}
       {phase.k === 'ok' ? (
         <View style={styles.gap} testID={`${testID}-result`}>

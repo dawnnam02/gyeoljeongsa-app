@@ -5,6 +5,7 @@ import type { MileageApi } from '@/features/mileage/mileageApi';
 
 import type { If5ConsentStore } from '@/features/consent/if5Consent';
 import type { AiResults } from './aiResults';
+import type { AiRoute, AiRunEnv } from '@/features/ait/aiCall';
 import type { AitResult } from '@/features/ait/aitTypes';
 import type { S5Kind } from './aiClient';
 
@@ -16,6 +17,10 @@ export type AiServices = {
   /** 접근 코드(없으면 데모 글). 값은 어디에도 내보내지 않는다 */
   code: () => Promise<string | null>;
   post?: (kind: S5Kind, body: Record<string, unknown>, code: string) => Promise<AitResult>;
+  /** RS2-01: 호출 길을 못 박는다(시험이 쓴다). 없으면 aiRouteOf 가 데모 표시와 접근 코드로 고른다 */
+  route?: AiRoute;
+  /** RS2-01: 실서버 길 연결(시험이 가짜 서버를 끼운다). 없으면 로그인 토큰 · 공개 키 */
+  env?: AiRunEnv;
   now?: () => number;
   newId?: () => string;
 };

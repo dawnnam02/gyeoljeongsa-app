@@ -2,6 +2,7 @@
 //  · 웹은 상대 경로 /api/ai/<기능> 만(새 주소 변수 0). 접근 코드는 머리 x-ait-code 로만(주소 · 본문 · 쿠키 0) · credentials 'omit' · 코드가 없으면 서버 요청 0(데모 글)
 //  · 본문 키는 서버 허용 목록과 같은 것만(feature · facts · text · bundle · precheck). 모델 · max_tokens · system · 가격 · 금액 · 이력 필드는 앱이 정하지 못한다(서버가 정함)
 //  · 서버가 준 오류 문장은 쓰지 않는다 — code 만 읽는다. 닿지 못하면(정적 판 · 끊김 · 시간 초과 · 모양이 다른 답) offline. 자동 재시도 0(IFF5-06) · 로그 · 저장 0
+import { postAiRun, type AiRunEnv } from '@/features/ait/aiCall';
 import { AIT_REQUEST_TIMEOUT_MS } from '@/features/ait/aitConfig';
 import { parseReply, type AitResult } from '@/features/ait/aitTypes';
 
@@ -45,4 +46,9 @@ export async function postSaju5(kind: S5Kind, body: Record<string, unknown>, cod
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** RS2-01: 실서버 길(ai-run) — 키는 부르는 쪽이 정한다(종합 풀이는 한 누름의 키에서 기능별 이어 붙임 키를 만든다). 본문은 같은 허용 목록(pickS5Body) */
+export async function postSaju5Run(kind: S5Kind, body: Record<string, unknown>, key: string, env?: AiRunEnv): Promise<AitResult> {
+  return postAiRun(pickS5Body(kind, body), key, env);
 }

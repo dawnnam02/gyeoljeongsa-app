@@ -1,6 +1,7 @@
 // AI 시험판(AIT-F) 공통 부품 — 시험판 알약 · 안내 · AI 표시 · 입력 안내 · 오류 칸 · 고정 카드 · 시험자 동의 시트.
 //  · 글은 카피 23장 사본(aitText.ait)뿐 — 서버가 준 문장(오류 text · 카드 lines)은 보이지 않는다(보안 ATF-24). 카드는 카드 id 로 카피 23-5 줄을 고른다
 //  · 숫자 · 남은 횟수 · 카운트다운 0 · 재촉 0 · 공유 · 복사 단추 0 · 평문(마크다운 · 링크 해석 0)
+import { router, type Href } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -12,7 +13,11 @@ import { Chip } from '@/components/Chip';
 import { Pressable } from '@/components/Pressable';
 import { TextButton } from '@/components/TextButton';
 import { A11Y } from '@/content/copy';
+import { AI_RUN } from '@/content/aiRunCopy';
+import { IF5_TEXT } from '@/content/if5Copy';
 import { BOARDING } from '@/features/boarding/boardingCopy';
+import { MILEAGE_HREF } from '@/features/mileage/MileageScreen';
+import { LowBalance } from '@/features/mileage/MileageSheets';
 import { alpha, colors, radius, space } from '@/theme/tokens';
 
 import { AIT_KEEP_NOTE_ON } from './aitConfig';
@@ -21,10 +26,13 @@ import type { AitCard, AitCode } from './aitTypes';
 import { cardEndsSession, cardLinesOverride } from './safetyCard';
 
 // ── 응답 코드 → 고정 글 (AIT.code.* · 서버 문장은 쓰지 않는다) ──────────────────────
-export const ERROR_CODES = ['auth', 'rate', 'spend_limit', 'limit', 'unavailable', 'too_long', 'bad_request', 'upstream', 'timeout', 'blocked_output'] as const;
+//  RS2-01: 실서버(ai-run) 새 코드 셋 — low_balance(잔액 모자람 · 마일리지 화면 길) · already_done(이미 처리됨) · daily_limit(오늘 여기까지). 글은 aiRunCopy.ts(초안) 와 기존 MILEAGE.low.* 를 쓴다
+export const ERROR_CODES = ['auth', 'rate', 'spend_limit', 'limit', 'unavailable', 'too_long', 'bad_request', 'upstream', 'timeout', 'blocked_output', 'low_balance', 'already_done', 'daily_limit'] as const;
 export type AitErrorCode = (typeof ERROR_CODES)[number];
 export const isErrorCode = (c: AitCode): c is AitErrorCode => (ERROR_CODES as readonly string[]).includes(c);
-export const codeLine = (c: AitErrorCode): string => ait(`AIT.code.${c}` as AitKey);
+export const codeLine = (c: AitErrorCode): string => (c === 'already_done' ? AI_RUN.alreadyDone : c === 'daily_limit' ? AI_RUN.dailyLimit : c === 'low_balance' ? IF5_TEXT['MILEAGE.low.title'] : ait(`AIT.code.${c}` as AitKey));
+/** 오류 칸에 얹는 서버 응답 정보 — noCharge: 응답 charge.state 가 none 일 때만 true(그때만 '마일리지는 쓰이지 않았어요'를 덧붙인다) · need · have: 잔액 모자람 사실(서버가 줄 때만) */
+export type AitErrorInfo = { noCharge?: boolean; need?: number | null; have?: number | null };
 /** 미리 쓴 글이 있는 기능(궁합 카드 · 별자리 풀이)에서 이 글 아래에 '그동안은 미리 쓴 글로'를 더하는 코드. limit(대화 기록이 너무 큼)은 챗만 받는 코드라 뺐다(카피 23-13-1) */
 export const FALLBACK_CODES: readonly AitErrorCode[] = ['spend_limit', 'unavailable', 'upstream'];
 
@@ -106,13 +114,21 @@ export function AitLoading({ testID = 'ait-loading' }: { testID?: string }) {
  *  · auth → [시험용 AI 코드 넣기]만(다시 시도 0)  · spend_limit → 다시 시도 0(미리 쓴 글이 있는 기능은 아래 줄)  · limit → [새 고민 시작하기](CONCERN.end.again · onRestart)만(대화 기록이 너무 길어짐 — 같은 묶음으로 다시 보내지 않는다)
  *  · rate → [다시 시도]는 잠깐 잠김(남은 시간 글 0)  · 그 밖 → [다시 시도]
  */
-export function AitError({ code, fallback = false, locked = false, onRetry, onRestart, onSettings, testID = 'ait-error' }: { code: AitErrorCode; fallback?: boolean; locked?: boolean; onRetry?: () => void; onRestart?: () => void; onSettings: () => void; testID?: string }) {
-  const noRetry = code === 'auth' || code === 'spend_limit' || code === 'limit';
+export function AitError({ code, fallback = false, locked = false, info, onRetry, onRestart, onSettings, testID = 'ait-error' }: { code: AitErrorCode; fallback?: boolean; locked?: boolean; info?: AitErrorInfo; onRetry?: () => void; onRestart?: () => void; onSettings: () => void; testID?: string }) {
+  // RS2-01: 잔액 모자람은 마일리지 쪽 틀(제목 · 사실 한 줄 · 충전하러 가기)을 그대로 쓴다 — 다시 시도 단추 0
+  if (code === 'low_balance') return <LowBalance need={info?.need ?? null} have={info?.have ?? null} onCharge={() => router.push(MILEAGE_HREF as Href)} testID={testID} />;
+  const noRetry = code === 'auth' || code === 'spend_limit' || code === 'limit' || code === 'already_done' || code === 'daily_limit';
+  const free = info?.noCharge === true && (code === 'too_long' || code === 'daily_limit');
   return (
     <View style={styles.gapSmall} testID={testID}>
       <AppText variant="body" accessibilityRole="alert" testID={`${testID}-text`}>
         {codeLine(code)}
       </AppText>
+      {free ? (
+        <AppText variant="caption" testID={`${testID}-free`}>
+          {AI_RUN.noCharge}
+        </AppText>
+      ) : null}
       {fallback && FALLBACK_CODES.includes(code) ? (
         <AppText variant="caption" testID={`${testID}-fallback`}>
           {ait('AIT.code.fallback')}

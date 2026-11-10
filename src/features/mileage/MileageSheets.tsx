@@ -122,16 +122,18 @@ export function BigChargeSheet(p: Common & { onGo: () => void }) {
   );
 }
 
-/** 잔액 부족 — 사실 한 줄 + [충전하러 가기]. 재촉 · 매진 말 0. chat 이면 쓰던 글이 그대로 있다는 한 줄을 더한다 */
-export function LowBalance({ need, have, chat, onCharge, testID = 'mileage-low' }: { need: number; have: number; chat?: boolean; onCharge: () => void; testID?: string }) {
+/** 잔액 부족 — 사실 한 줄 + [충전하러 가기]. 재촉 · 매진 말 0. chat 이면 쓰던 글이 그대로 있다는 한 줄을 더한다. 서버가 숫자를 안 준 때(need · have 가 null)는 제목과 길만 그린다(RS2-01) */
+export function LowBalance({ need, have, chat, onCharge, testID = 'mileage-low' }: { need: number | null; have: number | null; chat?: boolean; onCharge: () => void; testID?: string }) {
   return (
     <View style={styles.card} testID={testID}>
       <AppText variant="bodyBold" accessibilityRole="alert" testID={`${testID}-title`}>
         {IF5_TEXT['MILEAGE.low.title']}
       </AppText>
-      <AppText variant="body" testID={`${testID}-need`}>
-        {t5('MILEAGE.low.need', { N: fmt(need), 잔액: fmt(have) })}
-      </AppText>
+      {need !== null && have !== null ? (
+        <AppText variant="body" testID={`${testID}-need`}>
+          {t5('MILEAGE.low.need', { N: fmt(need), 잔액: fmt(have) })}
+        </AppText>
+      ) : null}
       {chat ? (
         <AppText variant="caption" testID={`${testID}-chat`}>
           {IF5_TEXT['MILEAGE.low.chat']}

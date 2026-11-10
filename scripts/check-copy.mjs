@@ -1170,7 +1170,7 @@ try {
       for (const w of BAN5) if (t.includes(w)) diffsIF5.push(`${key}: 금지 낱말 '${w}'`);
       if (t.includes('상담') && key !== 'SAJU.card.footer') diffsIF5.push(`${key}: '상담'은 끝줄 부정문 한 곳만`);
     }
-    const ALLOWED5 = ['lib/morningNotice.ts', 'features/settings/NotificationsPage.tsx', 'features/inflight/InflightHome.tsx', 'features/inflight/MeetSky.tsx', 'features/settings/SettingsScreen.tsx', 'features/settings/settingsLogic.ts', 'features/settings/WithdrawFlow.tsx', 'app/(tabs)/_layout.tsx'];
+    const ALLOWED5 = ['lib/morningNotice.ts', 'features/settings/NotificationsPage.tsx', 'features/inflight/InflightHome.tsx', 'features/inflight/MeetSky.tsx', 'features/settings/SettingsScreen.tsx', 'features/settings/settingsLogic.ts', 'features/settings/WithdrawFlow.tsx', 'app/(tabs)/_layout.tsx', 'features/ait/AitParts.tsx'];
     // TAB-1: 하단 탭 '사주 마당'의 이름(SAJU.madang.title)을 탭 레이아웃이 부른다(app/(tabs)/_layout.tsx)
     // IF5-F2: 마일리지 · AI 맞춤 · 동의 화면(아래 폴더 · 파일)은 F2 몫 글을 부른다. 무료 층(F1) 화면 파일만 못 부른다
     const F2_FILES = (rel) => rel.startsWith('features/mileage/') || rel.startsWith('features/saju/ai/') || rel === 'features/saju/SajuTalkScreen.tsx' || rel.startsWith('features/consent/');

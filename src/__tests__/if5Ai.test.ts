@@ -215,7 +215,8 @@ describe('IF5-F2 ⑨ ⑩ 예치 → 확정 · 해제 흐름(runAi)', () => {
         posts.push({ kind, body });
         return { kind: 'reply', reply: { ok: true, code: 'ok', mode: 'mock', display: { reply: '답이에요.', ask: '', flags: [] }, card: null, bundle: { payload: 'p', mac: 'm' }, retryAfterSec: null } } as AitResult;
       });
-    const deps: AiDeps = { edge, code: () => (over.code === undefined ? CODE : over.code), post };
+    const code = over.code === undefined ? CODE : over.code;
+    const deps: AiDeps = { edge, code: () => code, post, route: code ? 'eas' : 'mock' }; // RS2-01: 이 파일은 데모 길(모의 · AI 서버 판)의 시험 — 실서버 길은 rs2AiRun.test.ts
     const total = async () => {
       const s = await api.state();
       return s.ok ? s.data.total : -1;

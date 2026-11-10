@@ -3,6 +3,8 @@
 //  · 잔액이 모자라면 확인 시트를 열지 않고 사실 한 줄(필요 · 지금 가진 수) + [충전하러 가기](IF5-QF F-04)
 //  · 동의 → 마일리지 → 사용 순서: 동의하기 전에는 마일리지가 쓰이지 않고 서버도 부르지 않는다. 같은 결과를 다시 열면 저장본 재열람 무료('다시 열어도 마일리지는 들지 않아요') · '다시 뽑기' 0
 //  · 검사 탈락 · 끊김은 차감 0('이번엔 글을 만들지 못했어요. 마일리지는 쓰이지 않았어요.') + [다시 시도](같은 요청 번호). 잔액 부족은 사실 한 줄 + [충전하러 가기]. 점검(장부 꺼짐)은 한 줄 · 차감 0
+//  · RS2-01 실서버 길(ai-run): 예치 · 확정 · 해제는 서버가 한다(여기서 edge 호출 0). 응답 charge.state 가 settled 일 때만 잔액을 다시 읽는다. 새 코드: 이미 처리됨(409 — 앞 답이 있으면 그대로 두고 조용히) ·
+//    오늘 한도(429) · 글이 길다(413) · 서버가 닫음(403 → 점검 한 줄). '마일리지는 쓰이지 않았어요'는 응답이 차감 없음(none)이라고 알릴 때만 쓴다(닿았는지 모르면 쓰지 않는다)
 //  · 평문만(마크다운 · 링크 해석 0) · 공유 · 복사 단추 0 · 점수 · 퍼센트 · 숫자 막대 0. 끝줄은 앱 한 곳(SAJU.card.footer)에서만 — 여기서는 붙이지 않는다
 import { useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -10,7 +12,10 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
+import { AI_RUN } from '@/content/aiRunCopy';
 import { IF5_TEXT } from '@/content/if5Copy';
+import { aiRouteOf, createKeyKeeper, type KeyKeeper } from '@/features/ait/aiCall';
+import { ait } from '@/features/ait/aitText';
 import { Ck17dSheet } from '@/features/consent/If5ConsentSheets';
 import { fmt, costOf } from '@/features/mileage/mileageLogic';
 import { MILEAGE_HREF } from '@/features/mileage/MileageScreen';
@@ -30,9 +35,12 @@ type Phase =
   | { k: 'confirm'; cost: CostInfo; balance: number }
   | { k: 'running' }
   | { k: 'done'; display: unknown; stored: boolean }
-  | { k: 'low'; need: number; have: number }
-  | { k: 'blocked' }
-  | { k: 'failed' }
+  | { k: 'low'; need: number | null; have: number | null }
+  | { k: 'blocked'; noCharge?: boolean }
+  | { k: 'failed'; noCharge?: boolean }
+  | { k: 'already' }
+  | { k: 'daily'; noCharge: boolean }
+  | { k: 'tooLong'; noCharge: boolean }
   | { k: 'balanceFailed' }
   | { k: 'maint' };
 
@@ -61,6 +69,7 @@ export function AiBlock(p: Props) {
   const { slot, reload } = useMileageState(p.svc.mileage);
   const [phase, setPhase] = useState<Phase>({ k: 'idle' });
   const reqId = useRef<string | null>(null);
+  const keys = useRef<KeyKeeper | null>(null); // 실서버 길의 Idempotency-Key 통(메모리에만) — 한 누름 = 키 하나
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -94,7 +103,9 @@ export function AiBlock(p: Props) {
 
   const run = async (): Promise<void> => {
     const code = await p.svc.code();
+    const route = p.svc.route ?? aiRouteOf({ code });
     const id = (reqId.current ??= (p.svc.newId ?? newRequestId)());
+    keys.current ??= createKeyKeeper();
     const full = p.kind === 'full' ? p.fullFacts?.() : null;
     const facts = p.kind === 'full' ? full?.reading ?? null : p.facts();
     if (!facts) {
@@ -102,8 +113,12 @@ export function AiBlock(p: Props) {
       return;
     }
     set({ k: 'running' });
+    const afterSpent = (): void => {
+      void reload(); // 쓴 뒤 잔액은 서버에서 다시 읽는다(낙관적 차감 0)
+      p.onSpent?.();
+    };
     const out = await runAi(
-      { edge: p.svc.edge, code: () => code, post: p.svc.post },
+      { edge: p.svc.edge, code: () => code, post: p.svc.post, route, keys: keys.current, env: p.svc.env, onSettled: afterSpent },
       { kind: p.kind, requestId: id, chars: p.chars ?? 0, facts, full: full ?? undefined },
     );
     if (out.kind === 'ok') {
@@ -111,17 +126,28 @@ export function AiBlock(p: Props) {
       if (p.store) await p.svc.results.put(p.store.feature, { tag: p.store.tag, display: out.display });
       set({ k: 'done', display: out.display, stored: false });
     } else if (out.kind === 'low') set({ k: 'low', need: out.need, have: out.have });
-    else if (out.kind === 'blocked') set({ k: 'blocked' });
-    else if (out.kind === 'failed') set({ k: 'failed' });
-    else set({ k: 'maint' });
-    void reload(); // 쓴 뒤 잔액은 서버에서 다시 읽는다(낙관적 차감 0)
-    p.onSpent?.();
+    else if (out.kind === 'blocked') set({ k: 'blocked', noCharge: out.noCharge });
+    else if (out.kind === 'failed') set({ k: 'failed', noCharge: out.noCharge });
+    else if (out.kind === 'daily') set({ k: 'daily', noCharge: out.noCharge });
+    else if (out.kind === 'tooLong') set({ k: 'tooLong', noCharge: out.noCharge });
+    else if (out.kind === 'already') {
+      // 같은 요청은 이미 처리됐다(다시 차감 0) — 앞 답이 저장돼 있으면 그대로 보여 주고, 없으면 한 줄만
+      const v = p.store ? ((await p.svc.results.get(p.store.feature))?.display as { tag?: string; display?: unknown } | undefined) : undefined;
+      if (p.store && v && v.tag === p.store.tag && v.display) set({ k: 'done', display: v.display, stored: true });
+      else set({ k: 'already' });
+    } else set({ k: 'maint' });
+    if (route !== 'ai-run') afterSpent(); // 데모 장부는 매번 다시 읽는다(지금 그대로). 실서버 길은 settled 일 때만(onSettled)
   };
 
   const quote = async (): Promise<void> => {
     set({ k: 'quoting' });
     const c = await p.svc.mileage.cost(feature, p.chars ?? 0);
     if (!c.ok) {
+      // 실서버 길: 마일리지 스위치가 꺼져 있으면 서버가 차감 없이 돌린다(본인 계정 시험) — 앱이 먼저 막지 않는다. 서버가 닫으면 403 이 와서 점검 한 줄이 된다
+      if (c.code === 'feature_off' && (p.svc.route ?? aiRouteOf({ code: await p.svc.code() })) === 'ai-run') {
+        await run();
+        return;
+      }
       set({ k: c.code === 'feature_off' || c.code === 'forbidden' ? 'maint' : 'balanceFailed' });
       return;
     }
@@ -198,9 +224,30 @@ export function AiBlock(p: Props) {
       {phase.k === 'blocked' || phase.k === 'failed' ? (
         <View style={styles.gap}>
           <AppText variant="body" accessibilityRole="alert" testID={`${p.id}-ai-blocked`}>
-            {IF5_TEXT['SAJU.status.aiBlocked']}
+            {phase.noCharge === false ? IF5_TEXT['SAJU.status.errTitle'] : IF5_TEXT['SAJU.status.aiBlocked']}
           </AppText>
           <Button label={IF5_TEXT['SAJU.status.retry']} variant="secondary" onPress={() => void run()} testID={`${p.id}-ai-retry`} />
+        </View>
+      ) : null}
+      {phase.k === 'already' ? (
+        <AppText variant="body" testID={`${p.id}-ai-already`}>
+          {AI_RUN.alreadyDone}
+        </AppText>
+      ) : null}
+      {phase.k === 'daily' ? (
+        <View style={styles.gapSmall}>
+          <AppText variant="body" accessibilityRole="alert" testID={`${p.id}-ai-daily`}>
+            {AI_RUN.dailyLimit}
+          </AppText>
+          {phase.noCharge ? <AppText variant="caption" testID={`${p.id}-ai-daily-free`}>{AI_RUN.noCharge}</AppText> : null}
+        </View>
+      ) : null}
+      {phase.k === 'tooLong' ? (
+        <View style={styles.gapSmall}>
+          <AppText variant="body" accessibilityRole="alert" testID={`${p.id}-ai-toolong`}>
+            {ait('AIT.code.too_long')}
+          </AppText>
+          {phase.noCharge ? <AppText variant="caption" testID={`${p.id}-ai-toolong-free`}>{AI_RUN.noCharge}</AppText> : null}
         </View>
       ) : null}
       {phase.k === 'balanceFailed' ? (

@@ -16,9 +16,10 @@ import { TextField } from '@/components/TextField';
 import { A11Y } from '@/content/copy';
 import { colors, radius, space } from '@/theme/tokens';
 
-import { AitAiLabel, AitCardView, AitConsentSheet, AitError, AitHead, AitLoading, AitNoCode, AitPaper, AitPrivacyLines, cardView, isErrorCode, type AitErrorCode, type CardKind } from './AitParts';
+import { AitAiLabel, AitCardView, AitConsentSheet, AitError, AitHead, AitLoading, AitNoCode, AitPaper, AitPrivacyLines, cardView, isErrorCode, type AitErrorCode, type AitErrorInfo, type CardKind } from './AitParts';
 import { AIT_REST_AFTER_ANSWERS } from './aitConfig';
-import { postAit } from './aitClient';
+import { aiRouteOf, createKeyKeeper, type KeyKeeper } from './aiCall';
+import { callAit } from './aitClient';
 import { localPrecheckCard } from './localPrecheck';
 import { aitStore, hasConsent } from './aitStore';
 import { ait, type AitKey } from './aitText';
@@ -102,6 +103,8 @@ function ChatBody({ onClose, onSettings, testID }: { onClose: () => void; onSett
   const [alias, setAlias] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<AitErrorCode | null>(null);
+  const [errorInfo, setErrorInfo] = useState<AitErrorInfo>({}); // RS2-01: 서버가 알린 차감 정보(noCharge · need · have) — 오류와 함께 바뀐다
+  const keys = useRef<KeyKeeper | null>(null); // 실서버 길의 Idempotency-Key 통(메모리에만) — 한 번의 누름 = 키 하나, 같은 글 다시 시도는 같은 키
   const [inputMsg, setInputMsg] = useState<AitKey | null>(null);
   const [noCode, setNoCode] = useState(false);
   const [consent, setConsent] = useState(false);
@@ -120,28 +123,37 @@ function ChatBody({ onClose, onSettings, testID }: { onClose: () => void; onSett
     };
   }, []);
 
+  const showError = useCallback((code: AitErrorCode, info: AitErrorInfo = {}) => {
+    setError(code);
+    setErrorInfo(info);
+  }, []);
+
   const doSend = useCallback(
     async (chip: string | null) => {
       const code = aitStore.get().code;
-      if (!code) return setNoCode(true);
+      const route = aiRouteOf({ code });
+      if (route === 'mock') return setNoCode(true);
       setBusy(true);
       setError(null);
+      setErrorInfo({});
       setInputMsg(null);
       const body: Record<string, unknown> = { asker_text: asker.trim(), partner_text: partner.trim() };
       if (alias.trim()) body.partner_alias = alias.trim();
       if (chip) body.chip = chip;
       if (bundle !== null) body.bundle = bundle;
       if (chip === 'state_4') setItems((xs) => [...xs, { t: 'card', kind: 'soft', options: [] }]); // 마음 힘듦 칩: 위로 한 줄 + 번호 줄을 바로(안전이 먼저)
-      const res = await postAit('chat', body, code);
+      keys.current ??= createKeyKeeper();
+      const res = await callAit('chat', body, { route, code, keys: keys.current });
       if (!alive.current) return;
       setBusy(false);
-      if (res.kind === 'offline') return setError('unavailable');
+      if (res.kind === 'offline') return showError('unavailable', { noCharge: false }); // 닿았는지 모른다 — 차감 여부도 모른다
       const r = res.reply;
+      const noCharge = r.charge?.state === 'none';
       if (r.bundle !== null && r.code !== 'auth') setBundle(r.bundle); // 서버가 서명해 돌려준 묶음 — 열지 않고 그대로 들고 있는다
       const mine: Item[] = [...(asker.trim() ? [{ t: 'me' as const, text: asker.trim() }] : []), ...(partner.trim() ? [{ t: 'partner' as const, text: partner.trim() }] : [])];
       if (r.code === 'ok') {
         const d = parseChatDisplay(r.display);
-        if (!d) return setError('bad_request');
+        if (!d) return showError('bad_request', { noCharge: false });
         setItems((xs) => [...xs, ...mine, { t: 'ai', d }]);
         setChips(d.chips.filter((c) => c in CHIP_KEYS));
         setStage(d.stage);
@@ -155,33 +167,36 @@ function ChatBody({ onClose, onSettings, testID }: { onClose: () => void; onSett
         const view = cardView(r.card);
         setAsker('');
         setPartner(''); // 카드가 나온 턴의 글은 말풍선에도 입력 칸에도 남기지 않는다
-        if (!view) return setError('unavailable');
+        if (!view) return showError('unavailable', { noCharge });
         setItems((xs) => [...xs.filter((x) => !(x.t === 'card' && x.kind === 'soft')), { t: 'card', kind: view.kind, options: r.card?.options ?? [], lines: view.lines, ends: view.ends }]);
         return;
       }
+      if (r.code === 'low_balance') return showError('low_balance', { need: r.charge?.need ?? null, have: r.charge?.have ?? null });
+      if (r.code === 'already_done') return showError('already_done'); // 이 턴의 답은 다시 주지 않는다 — 앞 대화는 그대로 두고 한 줄만
+      if (route === 'ai-run' && r.code === 'auth') return showError('unavailable', { noCharge }); // 실서버 길의 401 = 로그인이 끝남(화면 가드가 로그인으로 보낸다) — 접근 코드 안내가 아니다
       if (isErrorCode(r.code)) {
         if (r.code === 'rate') {
           setLocked(true);
           if (lockTimer.current) clearTimeout(lockTimer.current);
           lockTimer.current = setTimeout(() => alive.current && setLocked(false), Math.min(60_000, Math.max(3_000, (r.retryAfterSec ?? 30) * 1000)));
         }
-        return setError(r.code);
+        return showError(r.code, { noCharge });
       }
-      setError('unavailable');
+      showError('unavailable', { noCharge });
     },
-    [alias, asker, bundle, partner],
+    [alias, asker, bundle, partner, showError],
   );
 
   const send = useCallback(
     async (chip: string | null) => {
       if (busy) return;
       if (!chip && !asker.trim() && !partner.trim()) return setInputMsg('CONCERN.mine.empty');
-      if (len(asker) > ASKER_MAX) return setError('too_long');
+      if (len(asker) > ASKER_MAX) return showError('too_long', { noCharge: true }); // 보내기 전에 거른다 — 요청 0이라 차감도 0
       if (len(partner) > PARTNER_MAX) return setInputMsg('CONCERN.partner.tooLong');
       await aitStore.load();
       // 위기 앞거름이 먼저(IF5-QF F-01 · F-12): 접근 코드가 없거나 동의 전이어도 서버와 한 벌인 낱말 사전으로 본다 — 걸리면 안내 카드 · 요청 0 · 쓴 글은 남기지 않는다.
       //  코드와 동의가 모두 있으면 서버가 같은 일을 세션 상태와 함께 한다(위기 카드 횟수 · 폭력 안전 길)
-      if (!aitStore.get().code || !hasConsent(aitStore.get())) {
+      if (aiRouteOf({ code: aitStore.get().code }) === 'mock' || !hasConsent(aitStore.get())) {
         const early = localPrecheckCard(`${asker}
 ${partner}`);
         const view = early ? cardView(early) : null;
@@ -195,14 +210,14 @@ ${partner}`);
           return;
         }
       }
-      if (!aitStore.get().code) return setNoCode(true); // 코드 없음 → 서버 요청 0
+      if (aiRouteOf({ code: aitStore.get().code }) === 'mock') return setNoCode(true); // 코드 없는 데모 판 → 서버 요청 0
       if (!hasConsent(aitStore.get())) {
         pending.current = { chip };
         return setConsent(true);
       }
       await doSend(chip);
     },
-    [asker, busy, doSend, partner],
+    [asker, busy, doSend, partner, showError],
   );
 
   const confirmConsent = async () => {
@@ -227,6 +242,8 @@ ${partner}`);
     setPartner('');
     setAlias('');
     setError(null);
+    setErrorInfo({});
+    keys.current?.clear();
     setInputMsg(null);
     setAnswers(0);
     setView('chat');
@@ -331,7 +348,7 @@ ${partner}`);
           </AppText>
         ) : null}
         {busy ? <AitLoading testID={`${testID}-loading`} /> : null}
-        {error ? <AitError code={error} locked={locked} onRetry={() => void send(null)} onRestart={restart} onSettings={onSettings} testID={`${testID}-error`} /> : null}
+        {error ? <AitError code={error} info={errorInfo} locked={locked} onRetry={() => void send(null)} onRestart={restart} onSettings={onSettings} testID={`${testID}-error`} /> : null}
         {noCode ? <AitNoCode feature="concern" onSettings={onSettings} testID={`${testID}-nocode`} /> : null}
         {!closedByCard ? (
           <View style={styles.gap} testID={`${testID}-input`}>

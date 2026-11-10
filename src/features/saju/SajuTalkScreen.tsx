@@ -17,8 +17,10 @@ import { Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextButton } from '@/components/TextButton';
 import { TextField } from '@/components/TextField';
+import { AI_RUN } from '@/content/aiRunCopy';
 import { IF5_TEXT, t5 } from '@/content/if5Copy';
 import { AitCardView, cardView } from '@/features/ait/AitParts';
+import { aiRouteOf, createKeyKeeper, type KeyKeeper } from '@/features/ait/aiCall';
 import { ait } from '@/features/ait/aitText';
 import type { AitCard } from '@/features/ait/aitTypes';
 import { localPrecheckCard } from '@/features/ait/localPrecheck';
@@ -97,8 +99,9 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<'none' | 'failed' | 'blocked' | 'maint' | 'declined'>('none');
-  const [low, setLow] = useState<{ need: number; have: number } | null>(null);
+  const [notice, setNotice] = useState<'none' | 'failed' | 'blocked' | 'maint' | 'declined' | 'unsure' | 'already' | 'daily' | 'tooLong'>('none');
+  const [freeLine, setFreeLine] = useState(false); // RS2-01: 응답이 차감 없음(none)이라고 알린 새 안내에만 '마일리지는 쓰이지 않았어요' 한 줄을 덧붙인다
+  const [low, setLow] = useState<{ need: number | null; have: number | null } | null>(null);
   const [sheet, setSheet] = useState<'none' | 'd' | 'c19' | 'start'>('none');
   const [started, setStarted] = useState(false);
   const [answers, setAnswers] = useState(0);
@@ -109,6 +112,7 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
   const [summarized, setSummarized] = useState(false);
   const bundle = useRef<unknown>(null);
   const reqId = useRef<string | null>(null);
+  const keys = useRef<KeyKeeper | null>(null); // 실서버 길의 Idempotency-Key 통(메모리에만) — 한 누름 = 키 하나
   const seq = useRef(1);
   const scroll = useRef<ScrollView>(null);
 
@@ -196,10 +200,13 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
     }
     setBusy(true);
     setNotice('none');
+    setFreeLine(false);
     setLow(null);
     const id = (reqId.current ??= (ai.newId ?? newRequestId)());
     const code = await ai.code();
-    const out = await runAi({ edge: ai.edge, code: () => code, post: ai.post }, { kind: 'chat', requestId: id, chars: Array.from(t).length, text: t, bundle: bundle.current ?? undefined, facts });
+    const route = ai.route ?? aiRouteOf({ code });
+    keys.current ??= createKeyKeeper();
+    const out = await runAi({ edge: ai.edge, code: () => code, post: ai.post, route, keys: keys.current, env: ai.env, onSettled: () => void reloadBal() }, { kind: 'chat', requestId: id, chars: Array.from(t).length, text: t, bundle: bundle.current ?? undefined, facts });
     setBusy(false);
     if (out.kind === 'ok') {
       reqId.current = null;
@@ -220,10 +227,15 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
     } else if (out.kind === 'card') {
       takeCard(out.card, out.bundle);
     } else if (out.kind === 'low') setLow({ need: out.need, have: out.have });
-    else if (out.kind === 'blocked') setNotice('blocked');
-    else if (out.kind === 'failed') setNotice('failed');
+    else if (out.kind === 'blocked') setNotice(out.noCharge === false ? 'unsure' : 'blocked');
+    else if (out.kind === 'failed') setNotice(out.noCharge === false ? 'unsure' : 'failed');
+    else if (out.kind === 'daily' || out.kind === 'tooLong') {
+      setNotice(out.kind);
+      setFreeLine(out.noCharge);
+    }
+    else if (out.kind === 'already') setNotice('already'); // 같은 요청은 이미 처리됨 — 화면의 앞 대화는 그대로 두고 한 줄만
     else setNotice('maint');
-    void reloadBal();
+    if (route !== 'ai-run') void reloadBal(); // 데모 장부는 매번 다시 읽는다(지금 그대로). 실서버 길은 settled 일 때만(onSettled)
     setTimeout(() => scroll.current?.scrollToEnd?.({ animated: false }), 0);
   };
 
@@ -317,6 +329,16 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
           </View>
         ) : null}
         {notice === 'maint' ? <AppText variant="body" testID="saju-talk-maint">{IF5_TEXT['SAJU.status.maint']}</AppText> : null}
+        {notice === 'unsure' ? <AppText variant="body" accessibilityRole="alert" testID="saju-talk-unsure">{IF5_TEXT['SAJU.status.errTitle']}</AppText> : null}
+        {notice === 'already' ? <AppText variant="body" testID="saju-talk-already">{AI_RUN.alreadyDone}</AppText> : null}
+        {notice === 'daily' || notice === 'tooLong' ? (
+          <View style={styles.gap}>
+            <AppText variant="body" accessibilityRole="alert" testID={notice === 'daily' ? 'saju-talk-daily' : 'saju-talk-toolong'}>
+              {notice === 'daily' ? AI_RUN.dailyLimit : ait('AIT.code.too_long')}
+            </AppText>
+            {freeLine ? <AppText variant="caption" testID="saju-talk-free">{AI_RUN.noCharge}</AppText> : null}
+          </View>
+        ) : null}
         {notice === 'declined' ? <AppText variant="body" testID="saju-talk-declined">{IF5_TEXT['SAJU.talk.entry.body']}</AppText> : null}
         {low ? <LowBalance need={low.need} have={low.have} chat onCharge={() => router.push(MILEAGE_HREF as Href)} testID="saju-talk-low" /> : null}
         {!closed ? (
@@ -334,7 +356,7 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
               disabled={busy}
               testID="saju-talk-input"
             />
-            <Button label={notice === 'failed' || notice === 'blocked' ? IF5_TEXT['SAJU.status.retry'] : IF5_TEXT['SAJU.talk.send']} loading={busy} disabled={text.trim() === ''} onPress={() => void send()} testID="saju-talk-send" />
+            <Button label={notice === 'failed' || notice === 'blocked' || notice === 'unsure' ? IF5_TEXT['SAJU.status.retry'] : IF5_TEXT['SAJU.talk.send']} loading={busy} disabled={text.trim() === ''} onPress={() => void send()} testID="saju-talk-send" />
           </View>
         ) : null}
       </>

@@ -1,30 +1,19 @@
 /**
  * @jest-environment node
  */
-// Q2-30 · AI-FIX10 ④ 시험판 AI 기능의 차감 키(love_reading · compat_glance · zodiac · counsel_turn)와 예치 → 확정 · 해제 틀.
-//  스위치가 꺼져 있으면(장부 없음) 차감 경로가 열리지 않는다 · 값은 get_mileage.costs 에서 읽는다 · 위기 카드는 차감 0.
+// Q2-30 · AI-FIX10 ④ 시험판 AI 기능의 차감 키(love_reading · compat_glance · zodiac · counsel_turn) 읽기 + RS2-01(D-253) 순 3 [다] 차감 정리.
+//  예치 · 확정 · 해제는 서버(Edge 함수 ai-run)가 한다 — 이 파일의 앱 쪽 장부 길(runCharged)은 없앴다. 앱은 응답 charge.state 만 읽는다(settled 일 때만 잔액을 다시 읽는다).
+//  값은 get_mileage.costs 에서 읽는다 · 위기 카드는 차감 0.
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { AIT_COST_KEY, aitCostKey, costOf, outcomeOfReply, runCharged } from '@/features/ait/aitCharge';
-import { AIT_CODES } from '@/features/ait/aitTypes';
+import { AIT_COST_KEY, aitCostKey, costOf, outcomeOfReply, shouldReloadBalance } from '@/features/ait/aitCharge';
+import { AIT_CODES, BASE_CODES, EDGE_CODES, parseReply } from '@/features/ait/aitTypes';
 import type { AitReply, AitResult } from '@/features/ait/aitTypes';
-import type { HoldResult, LedgerEdge } from '@/features/mileage/ledgerEdge';
 import { CHARGE_OF_CODE, RESPONSE_CODES } from '@/server/ait/codes';
 import { COST_KEY } from '@/server/ait/features';
 
 const COSTS = [{ feature: 'compat_glance', cost: 10 }, { feature: 'zodiac', cost: 10 }, { feature: 'counsel_turn', cost: 330 }, { feature: 'love_reading', cost: 2900 }];
-
-function edge(hold: HoldResult) {
-  const log: string[] = [];
-  const e: LedgerEdge = {
-    hold: async (a) => (log.push(`hold:${a.feature}:${a.chars}`), hold),
-    settle: async (id) => (log.push(`settle:${id}`), true),
-    release: async (id, why) => (log.push(`release:${id}:${why}`), true),
-  };
-  return { e, log };
-}
-const held: HoldResult = { kind: 'held', holdId: 'h1', amount: 10, replay: false };
 
 describe('차감 키 · 값은 서버 차감표에서', () => {
   test('키 이름이 서버 차감표(백엔드 0058 이관)와 같고, 값은 costs 에서 읽는다 — 앱에 수 0', () => {
@@ -41,47 +30,27 @@ describe('차감 키 · 값은 서버 차감표에서', () => {
   });
 });
 
-describe('예치 → 부르기 → 확정 · 해제', () => {
-  const a = { feature: 'compat' as const, requestId: 'r1', chars: 0, costs: COSTS };
-  test('답이 나가면 확정, 호출은 한 번', async () => {
-    const { e, log } = edge(held);
-    let n = 0;
-    const r = await runCharged(e, a, async () => (n++, { outcome: 'ok' as const, value: 'x' }));
-    expect(r).toEqual({ kind: 'ok', value: 'x' });
-    expect(log).toEqual(['hold:compat_glance:0', 'settle:h1']);
-    expect(n).toBe(1);
+describe('RS2-01 [다] 앱은 예치 · 확정 · 해제를 부르지 않는다 (서버가 한다)', () => {
+  test('aitCharge.ts 에 장부(ledgerEdge) 가져오기 · hold · settle · release 호출이 없다', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'features', 'ait', 'aitCharge.ts'), 'utf8').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(src).not.toMatch(/ledgerEdge|LedgerEdge/);
+    expect(src).not.toMatch(/\.(hold|settle|release)\s*\(/);
+    expect(src).not.toMatch(/runCharged/);
   });
-  test('위기 · 거절 카드와 못 받음은 확정 없이 해제(차감 0)', async () => {
-    for (const [outcome, why] of [['card', 'user_cancel'], ['failed', 'check_failed']] as const) {
-      const { e, log } = edge(held);
-      const r = await runCharged(e, { ...a, feature: 'horoscope' }, async () => ({ outcome, value: 1 }));
-      expect(r.kind).toBe(outcome);
-      expect(log).toEqual(['hold:zodiac:0', `release:h1:${why}`]);
-    }
-    const { e, log } = edge(held);
-    const r = await runCharged(e, a, async () => {
-      throw new Error('x');
-    }); // 던져도 해제
-    expect(r).toEqual({ kind: 'maint' });
-    expect(log).toEqual(['hold:compat_glance:0', 'release:h1:provider_error']);
+
+  test('응답 charge.state 가 settled 일 때만 잔액을 다시 읽는다 · none · off · low 와 charge 없는 답(모의 · EAS 길)은 읽지 않는다', () => {
+    const base = { ok: true, code: 'ok', mode: 'live', display: { a: 1 }, card: null, bundle: null, retryAfterSec: null } as const;
+    expect(shouldReloadBalance({ ...base, charge: { state: 'settled', need: null, have: null } })).toBe(true);
+    for (const state of ['none', 'off', 'low'] as const) expect(shouldReloadBalance({ ...base, charge: { state, need: null, have: null } })).toBe(false);
+    expect(shouldReloadBalance(base)).toBe(false);
   });
-  test('스위치가 꺼져 있으면(off) · 장부 실패 · 너무 큼 · 위기 무료는 차감 경로가 열리지 않는다 — 부르기 0', async () => {
-    for (const hold of [{ kind: 'off' }, { kind: 'fail' }, { kind: 'tooLarge' }, { kind: 'free' }] as HoldResult[]) {
-      const { e, log } = edge(hold);
-      let n = 0;
-      const r = await runCharged(e, a, async () => (n++, { outcome: 'ok' as const, value: 1 }));
-      expect(r).toEqual({ kind: 'maint' });
-      expect(n).toBe(0);
-      expect(log.filter((x) => !x.startsWith('hold:'))).toEqual([]); // 확정 · 해제도 없다
-    }
-  });
-  test('잔액 부족은 부르기 0 · 값을 서버가 안 준 키는 예치조차 안 한다', async () => {
-    const low = edge({ kind: 'low', need: 10, have: 3 });
-    expect(await runCharged(low.e, a, async () => ({ outcome: 'ok' as const, value: 1 }))).toEqual({ kind: 'low', need: 10, have: 3 });
-    const none = edge(held);
-    expect(await runCharged(none.e, { ...a, costs: [] }, async () => ({ outcome: 'ok' as const, value: 1 }))).toEqual({ kind: 'maint' });
-    expect(none.log).toEqual([]);
-    expect(await runCharged(none.e, { ...a, feature: 'coach' as never }, async () => ({ outcome: 'ok' as const, value: 1 }))).toEqual({ kind: 'maint' });
+
+  test('charge 읽기: 모르는 상태는 none(차감 없음)으로 · 숫자만 · 키가 없으면 charge 도 없다', () => {
+    const raw = { ok: false, code: 'low_balance', mode: 'mock', text: '서버 문장은 읽지 않는다', charge: { state: 'low', need: 330, have: 120 } };
+    expect(parseReply(raw)).toEqual({ ok: false, code: 'low_balance', mode: 'mock', display: null, card: null, bundle: null, retryAfterSec: null, charge: { state: 'low', need: 330, have: 120 } });
+    expect(parseReply({ ...raw, charge: { state: 'weird', need: 'x', have: -5 } })?.charge).toEqual({ state: 'none', need: null, have: null });
+    expect(parseReply({ ok: true, code: 'ok' })).toEqual({ ok: true, code: 'ok', mode: null, display: null, card: null, bundle: null, retryAfterSec: null });
+    expect('charge' in (parseReply({ ok: true, code: 'ok' }) as object)).toBe(false);
   });
 });
 
@@ -95,7 +64,7 @@ describe('서버 답 → 차감 결과 (답이 나가야만 확정)', () => {
     expect(outcomeOfReply(reply({ ok: false, code: 'crisis', card, display: null }), parse)).toEqual({ outcome: 'card', value: null });
     expect(outcomeOfReply(reply({ ok: false, code: 'refused_intent', card, display: null }), parse)).toEqual({ outcome: 'card', value: null });
     for (const code of AIT_CODES.filter((c) => c !== 'ok' && c !== 'crisis' && c !== 'refused_intent')) {
-      expect(outcomeOfReply(reply({ ok: false, code, display: null }), parse).outcome).toBe('failed'); // blocked_output(검사 · 심사 탈락 · 판정 실패) 포함
+      expect(outcomeOfReply(reply({ ok: false, code, display: null }), parse).outcome).toBe('failed'); // blocked_output(검사 · 심사 탈락 · 판정 실패) · ai-run 새 코드 셋 포함
     }
     expect(outcomeOfReply({ kind: 'offline' }, parse).outcome).toBe('failed');
     expect(outcomeOfReply(reply({ display: null }), parse).outcome).toBe('failed'); // 글을 못 읽으면 보여 준 게 없다
@@ -103,23 +72,17 @@ describe('서버 답 → 차감 결과 (답이 나가야만 확정)', () => {
     expect(outcomeOfReply(reply({ code: 'crisis', card: null, ok: false, display: null }), parse).outcome).toBe('failed'); // 카드 없는 위기 코드는 카드로 치지 않음(차감은 0 그대로)
   });
 
-  test('판정 실패 · 위기 · 거절이 나온 호출은 끝까지 흘려도 settle 0, release 1 — 이중 차감 0', async () => {
-    for (const code of ['blocked_output', 'timeout', 'upstream', 'crisis', 'refused_intent'] as const) {
-      const log: string[] = [];
-      const e: LedgerEdge = { hold: async () => ({ kind: 'held', holdId: 'h', amount: 10, replay: false }), settle: async () => (log.push('settle'), true), release: async () => (log.push('release'), true) };
-      const res = reply({ ok: false, code, display: null, card: code === 'crisis' || code === 'refused_intent' ? card : null });
-      await runCharged(e, { feature: 'horoscope', requestId: 'r', chars: 0, costs: COSTS }, async () => outcomeOfReply(res, parse) as { outcome: 'ok' | 'card' | 'failed'; value: number | null });
-      expect(log).toEqual(['release']);
-    }
-  });
-
   test('서버 쪽 표와 같은 규칙 · 같은 키: 앱의 차감 키 = AI 서버 모듈(features.ts COST_KEY), 확정은 응답 코드 ok 하나(codes.ts CHARGE_OF_CODE)', () => {
     expect(AIT_COST_KEY).toEqual({ chat: COST_KEY.chat, compat: COST_KEY.compat, horoscope: COST_KEY.horoscope, love_reading: COST_KEY.love_reading });
-    expect([...AIT_CODES].sort()).toEqual([...RESPONSE_CODES].sort());
+    // 앱 코드 = 서버 AI 모듈의 열세 코드 + ai-run 에서만 나오는 셋(low_balance · already_done · daily_limit — 모두 차감 0)
+    expect([...BASE_CODES].sort()).toEqual([...RESPONSE_CODES].sort());
+    expect([...EDGE_CODES]).toEqual(['low_balance', 'already_done', 'daily_limit']);
+    expect([...AIT_CODES].sort()).toEqual([...RESPONSE_CODES, ...EDGE_CODES].sort());
     expect(RESPONSE_CODES.filter((c) => CHARGE_OF_CODE[c] === 'settle')).toEqual(['ok']);
-    for (const c of AIT_CODES) {
+    for (const c of BASE_CODES) {
       const o = outcomeOfReply(reply({ ok: c === 'ok', code: c, card: c === 'crisis' || c === 'refused_intent' ? card : null, display: c === 'ok' ? { a: 1 } : null }), parse).outcome;
       expect(o === 'ok').toBe(CHARGE_OF_CODE[c] === 'settle');
     }
+    for (const c of EDGE_CODES) expect(outcomeOfReply(reply({ ok: false, code: c, display: null }), parse).outcome).toBe('failed'); // 새 코드 셋은 확정하지 않는다
   });
 });

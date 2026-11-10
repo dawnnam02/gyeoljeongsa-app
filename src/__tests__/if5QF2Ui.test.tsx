@@ -69,6 +69,7 @@ function aiRig(opts: { code?: string | null; email?: string; post?: AiServices['
     consent,
     results: createAiResults(memoryInputStorage()),
     code: async () => (opts.code === undefined ? null : opts.code),
+    route: opts.code ? 'eas' : 'mock', // RS2-01: 데모 길(실서버 길은 rs2AiRun.test.tsx)
     post:
       opts.post ??
       (async (kind, body) => {
@@ -225,7 +226,7 @@ describe('IF5-QF2 사주 이야기: 가해 의도 카드 · 겹침 카드', () =
 
   test('runAi: 가해 의도는 코드 없는 길에서도 카드 · 차감 0', async () => {
     const r = aiRig({ code: null });
-    const out = await runAi({ edge: r.ai.edge, code: () => null }, { kind: 'chat', requestId: newRequestId(), chars: 10, text: '남편을 죽이고 싶어요', facts: {} });
+    const out = await runAi({ edge: r.ai.edge, code: () => null, route: 'mock' }, { kind: 'chat', requestId: newRequestId(), chars: 10, text: '남편을 죽이고 싶어요', facts: {} });
     expect(out.kind).toBe('card');
     if (out.kind === 'card') expect(out.card.id).toBe('harm_intent');
     expect(await totalOf(r)).toBe(1000);
@@ -234,6 +235,14 @@ describe('IF5-QF2 사주 이야기: 가해 의도 카드 · 겹침 카드', () =
 
 describe('IF5-QF2 연애 고민 정리: 가해 의도 카드 · 겹침 카드', () => {
   const realFetch = global.fetch;
+  const realDemo = process.env.EXPO_PUBLIC_DEMO_MODE;
+  beforeAll(() => {
+    process.env.EXPO_PUBLIC_DEMO_MODE = '1'; // 고민 정리는 데모 판(AI 서버 판) 기능 — 코드가 있으면 /api/ai/* 길
+  });
+  afterAll(() => {
+    if (realDemo === undefined) delete process.env.EXPO_PUBLIC_DEMO_MODE;
+    else process.env.EXPO_PUBLIC_DEMO_MODE = realDemo;
+  });
   beforeEach(() => {
     mockMem.clear();
     aitStore.reset();

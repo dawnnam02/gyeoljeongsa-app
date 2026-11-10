@@ -315,6 +315,7 @@ function aiRig(opts: { code?: string | null; email?: string; birth?: string | nu
     consent,
     results: createAiResults(memoryInputStorage()),
     code: async () => (opts.code === undefined ? null : opts.code),
+    route: opts.code ? 'eas' : 'mock', // RS2-01: 데모 길(실서버 길은 rs2AiRun.test.tsx)
     post:
       opts.post ??
       (async (kind, body) => {
@@ -646,14 +647,14 @@ describe('IF5-QF 데모 위기 사전: 서버 사전 사본을 쓴다(예전 5�
     ];
     for (const [text, id] of cases) {
       const r = demo();
-      const out = await runAi({ edge: r.ai.edge, code: () => null }, { kind: 'chat', requestId: newRequestId(), chars: 10, text, facts: {} });
+      const out = await runAi({ edge: r.ai.edge, code: () => null, route: 'mock' }, { kind: 'chat', requestId: newRequestId(), chars: 10, text, facts: {} });
       expect(out.kind).toBe('card');
       if (out.kind === 'card') expect(out.card.id).toBe(id);
     }
   });
   test('일상 말투는 카드가 아니다 — 데모 글이 나간다', async () => {
     const r = demo('sj@email.com');
-    const out = await runAi({ edge: r.ai.edge, code: () => null }, { kind: 'chat', requestId: newRequestId(), chars: 10, text: '배고파 죽겠어요 점심 뭐 먹을까요', facts: {} });
+    const out = await runAi({ edge: r.ai.edge, code: () => null, route: 'mock' }, { kind: 'chat', requestId: newRequestId(), chars: 10, text: '배고파 죽겠어요 점심 뭐 먹을까요', facts: {} });
     expect(out.kind).toBe('ok');
   });
   test('화면 쪽 사전 사본 = 서버 사전(같은 함수 · 같은 결과)', () => {

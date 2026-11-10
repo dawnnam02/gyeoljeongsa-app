@@ -103,7 +103,7 @@ function CoachBody({ onSettings, testID }: { onSettings: () => void; testID: str
       <Button label={ait('COACH.send')} loading={busy} onPress={send} testID={`${testID}-send`} />
       {phase.k === 'nocode' ? <AitNoCode feature="coach" onSettings={onSettings} testID={`${testID}-nocode`} /> : null}
       {phase.k === 'loading' ? <AitLoading testID={`${testID}-loading`} /> : null}
-      {phase.k === 'error' ? <AitError code={phase.code} locked={locked} onRetry={send} onSettings={onSettings} testID={`${testID}-error`} /> : null}
+      {phase.k === 'error' ? <AitError code={phase.code} info={phase} locked={locked} onRetry={send} onSettings={onSettings} testID={`${testID}-error`} /> : null}
       {cardNode}
       {phase.k === 'ok' ? (
         <View style={styles.gap} testID={`${testID}-result`}>
