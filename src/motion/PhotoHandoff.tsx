@@ -10,6 +10,7 @@ import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 
 import { create } from 'zustand';
 
 import { reduceMotionStore } from '@/lib/reduceMotion';
+import { onSessionEnd } from '@/lib/sessionGate';
 import { scene } from '@/theme/motion';
 import { colors, radius } from '@/theme/tokens';
 
@@ -21,6 +22,7 @@ type Handoff = { phase: Phase; id: string | null; uri: string | null; from: Rect
 
 const IDLE: Handoff = { phase: 'idle', id: null, uri: null, from: null, to: null, fromRadius: radius.sm, toRadius: radius.md };
 export const useHandoffStore = create<Handoff>(() => IDLE);
+onSessionEnd(() => useHandoffStore.setState(IDLE)); // 로그아웃 · 탈퇴 · 세션 만료: 이어 붙이던 상대 사진 주소 · 자리를 버린다(FB-022)
 
 const valid = (r: Rect | null): r is Rect => !!r && r.width > 0 && r.height > 0;
 

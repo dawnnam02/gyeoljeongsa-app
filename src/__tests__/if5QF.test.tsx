@@ -98,9 +98,9 @@ describe('IF5-QF F-07 탈퇴 확인창 잔액: 마일리지 화면과 같은 읽
     expect(text()).toContain('마일리지 잔액 4,300');
     await press(tree, 'withdraw-confirm-cancel');
     await wait(30);
-    rounds.n = 1; // 장면 단추처럼 탑승 회차가 늘어 다음 읽기에서 탑승 적립 +200 이 붙는다
+    rounds.n = 1; // 장면 단추처럼 탑승 회차가 늘어 다음 읽기에서 탑승권 포함분 +8,700 이 붙는다
     const s = await mockLedgerApi.state(); // 마일리지 화면이 여는 읽기
-    expect(s.ok && s.data.total).toBe(4500);
+    expect(s.ok && s.data.total).toBe(13000); // 4,300 + 8,700
     // 느린 읽기로 바꿔, 읽는 동안 옛 값(4,300)이 비치지 않는지 본다
     const real = mockLedgerApi.state;
     let release: () => void = () => undefined;
@@ -111,8 +111,8 @@ describe('IF5-QF F-07 탈퇴 확인창 잔액: 마일리지 화면과 같은 읽
     expect(text()).not.toContain('마일리지 잔액 4,300');
     release();
     await wait(60);
-    expect(text()).toContain('마일리지 잔액 4,500'); // 마일리지 화면(같은 get_mileage)과 같은 값
-    expect(textOf(tree, 'withdraw-confirm-note-text')).toContain('마일리지 잔액 4,500');
+    expect(text()).toContain('마일리지 잔액 13,000'); // 마일리지 화면(같은 get_mileage)과 같은 값
+    expect(textOf(tree, 'withdraw-confirm-note-text')).toContain('마일리지 잔액 13,000');
   });
 
   test('탈퇴 확인창 줄 = 마일리지 화면 total (같은 읽기) — 무료 탑승 적립이 붙은 뒤에도', async () => {
@@ -124,7 +124,7 @@ describe('IF5-QF F-07 탈퇴 확인창 잔액: 마일리지 화면과 같은 읽
     await wait(60);
     const s = await mockLedgerApi.state();
     const total = s.ok ? s.data.total : -1;
-    expect(total).toBe(1400);
+    expect(total).toBe(18400); // 가입 선물 1,000 + 포함분 8,700 × 2
     const joined = tree.root.findAll((n) => typeof n.props.children === 'string').map((n) => n.props.children as string).join(' | ');
     expect(joined).toContain(`마일리지 잔액 ${total.toLocaleString('en-US')}`);
     expect(IF5_TEXT['MILEAGE.free.leave.bal']).toContain('{N}');

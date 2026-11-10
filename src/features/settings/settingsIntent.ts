@@ -3,9 +3,14 @@
 //  설정 화면이 초점을 받을 때 한 번 꺼내 그 쪽을 연다. 기기 · 서버 저장 0(메모리 한 칸)
 import type { Href } from 'expo-router';
 
+import { onSessionEnd } from '@/lib/sessionGate';
+
 import type { SettingsPage } from './settingsLogic';
 
 let pending: Exclude<SettingsPage, 'list'> | null = null;
+onSessionEnd(() => {
+  pending = null; // 로그아웃 · 탈퇴 · 세션 만료: 열려던 설정 쪽을 버린다(FB-022)
+});
 
 export const SETTINGS_HREF = '/settings' as Href;
 

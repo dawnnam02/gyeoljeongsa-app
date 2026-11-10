@@ -76,8 +76,8 @@ describe('IF5-F2 ⑨ 마일리지 화면 (IF-MILE) — 상태 5종 중 빈 · �
     const r = mileageRig({ rounds: 1 });
     const tree = keep(await mount(<MileageScreen deps={r.deps} />));
     await wait();
-    expect(textOf(tree, 'mileage-total')).toBe('1,200');
-    expect(textOf(tree, 'mileage-split')).toBe('무료 1,200 · 유료 0');
+    expect(textOf(tree, 'mileage-total')).toBe('9,700'); // 가입 선물 1,000 + 탑승권 포함분 8,700(서버 0058 · 구매 시트와 같은 수)
+    expect(textOf(tree, 'mileage-split')).toBe('무료 9,700 · 유료 0');
     expect(textOf(tree, 'mileage-lead')).toBe(IF5_TEXT['MILEAGE.shop.lead']);
     expect(textOf(tree, 'mileage-unlimited')).toBe(IF5_TEXT['MILEAGE.unlimited']);
     expect(textOf(tree, 'mileage-nocash')).toBe(IF5_TEXT['MILEAGE.noCash']);
@@ -143,7 +143,7 @@ describe('IF5-F2 ⑨ 내역 (IF-MILE-LOG)', () => {
     const tree = keep(await mount(<MileageLogScreen deps={r.deps} />));
     await wait(60);
     expect(textOf(tree, 'mileage-log-order')).toBe(IF5_TEXT['MILEAGE.log.order']);
-    expect(textOf(tree, 'mileage-log-total')).toBe('6,500');
+    expect(textOf(tree, 'mileage-log-total')).toBe('15,000'); // 9,700(선물 1,000 + 포함분 8,700) + 충전 5,500 − 사용 200
     const kinds = [...new Map(tree.root.findAll((n) => typeof n.props.testID === 'string' && /^mileage-log-kind-/.test(n.props.testID)).map((n) => [n.props.testID as string, String(n.props.children)])).values()];
     expect(kinds).toEqual(['사용 · 사주 이야기', '충전', '탑승권 포함분', '가입 선물']);
     expect(allTexts(tree).join(' ')).toMatch(/−200/);

@@ -21,22 +21,48 @@ export function createDemoClient(backend: DemoBackend = createDemoBackend()): Su
   // 화면 점검(scripts/web-f3.mjs)이 모의 서버가 알고 있는 것을 볼 수 있게 읽기 전용 창구를 연다. 데모 모드 웹에서만 만들어지고(스토어 빌드에는 이 클라이언트가 없다) 메모리 안에만 있다
   const host = globalThis as { document?: unknown; __demoPeek?: unknown };
   if (host.document !== undefined) host.__demoPeek = backend.peek;
+  // 로그인 상태 알림(QF2-B7 FB-022): 진짜 supabase-js 처럼 구독하면 곧(비동기) INITIAL_SESSION 을 주고, 로그인하면 SIGNED_IN, 로그아웃하면 SIGNED_OUT 을 알린다.
+  //  화면 가드(navigation/loginGuard)가 이 알림으로 로그아웃을 바로 안다. 서버 요청 0 · 기기 저장 0
+  type Listener = (event: string, session: unknown) => void;
+  const listeners = new Set<Listener>();
+  const emit = (event: string, session: unknown) => {
+    for (const fn of [...listeners]) {
+      try {
+        fn(event, session);
+      } catch {
+        // 듣는 쪽 오류가 로그인 · 로그아웃을 막지 않는다
+      }
+    }
+  };
   const auth = {
     getSession: async () => ({ data: { session: backend.getSession() }, error: null }),
     getUser: async () => ({ data: { user: backend.getSession()?.user ?? null }, error: null }),
     setSession: async (tokens: { access_token?: string; refresh_token?: string }) => {
       const session = backend.setSession(tokens);
+      if (session) emit('SIGNED_IN', session);
       return session
         ? { data: { session, user: session.user }, error: null }
         : { data: { session: null, user: null }, error: { code: 'bad_jwt', message: 'invalid token' } };
     },
     signOut: async () => {
       backend.signOut();
+      emit('SIGNED_OUT', null);
       return { error: null };
     },
     startAutoRefresh: async () => undefined,
     stopAutoRefresh: async () => undefined,
-    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => undefined } } }),
+    onAuthStateChange: (callback: Listener) => {
+      listeners.add(callback);
+      void Promise.resolve().then(() => {
+        if (!listeners.has(callback)) return;
+        try {
+          callback('INITIAL_SESSION', backend.getSession());
+        } catch {
+          // 듣는 쪽 오류는 삼킨다
+        }
+      });
+      return { data: { subscription: { unsubscribe: () => void listeners.delete(callback) } } };
+    },
   };
   // 위에 적은 것만 있는 부분 구현이라 SupabaseClient 로 바꿔 부른다. 없는 메서드는 F8 에서 채운다.
   return {

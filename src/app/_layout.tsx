@@ -5,14 +5,19 @@ import { useCallback, useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { bindAuthAppState } from '@/lib/supabase';
+import { bindSessionGate } from '@/lib/sessionGate';
+import { bindAuthAppState, supabase } from '@/lib/supabase';
 import { safeLog } from '@/lib/log';
 import { AppSplash } from '@/features/splash/AppSplash';
 import { PhotoHandoffLayer, reduced, scene2, useReduceMotion } from '@/motion';
+import { loginScreenLayout } from '@/navigation/loginGuard';
 import { useAppFonts } from '@/theme/fonts';
 import { colors } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync();
+
+// 로그인 상태 알림을 앱이 뜨기 전에 듣기 시작한다(화면 가드가 첫 그림부터 로그인 여부를 안다 — navigation/loginGuard, QF2-B7 FB-022)
+bindSessionGate(supabase);
 
 // 화면 전환 틀(react-navigation)의 색도 토큰으로만 정한다. 다크 모드 색은 가이드에 없어서 라이트 하나다.
 const navigationTheme: Theme = {
@@ -49,7 +54,7 @@ export default function RootLayout() {
           화면 전환(2안 '지면' D42-M 명세 5-5 · D-175): native-stack fade 320(동작 줄이기 150). animationDuration 은 iOS 에만 먹고 안드로이드는 시스템 시간.
           iOS 가장자리 스와이프 뒤로: animationMatchesGesture 기본 false 라 손으로 끌 때는 기본 밀기로 돌아간다(실기기 시험 항목 — 안 되면 animation 줄을 지워 기본 slide 로) */}
       <GestureHandlerRootView style={styles.root}>
-        {ready ? <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg }, animation: 'fade', animationDuration: reduce ? reduced.fadeMs : scene2.nav.in, gestureEnabled: true }} /> : null}
+        {ready ? <Stack screenLayout={loginScreenLayout} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg }, animation: 'fade', animationDuration: reduce ? reduced.fadeMs : scene2.nav.in, gestureEnabled: true }} /> : null}
         <PhotoHandoffLayer />
         <AppSplash ready={ready} onShown={hideSystemSplash} />
       </GestureHandlerRootView>

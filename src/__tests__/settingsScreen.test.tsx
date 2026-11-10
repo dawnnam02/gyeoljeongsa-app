@@ -12,6 +12,7 @@ import { pushStatusOf, type PushStatus } from '@/features/settings/deviceDeps';
 import { SettingsScreen, type SettingsDeps } from '@/features/settings/SettingsScreen';
 import { blockedHead, fillContact, reportDate, SETTINGS_ROWS } from '@/features/settings/settingsLogic';
 import type { SettingsApi } from '@/lib/settingsApi';
+import { onSessionEnd } from '@/lib/sessionGate';
 import { arrowsFrom } from '@/navigation/flow';
 import { PREFERENCES_EDIT_ENABLED } from '@/config/flags';
 import { useSecurityStore } from '@/store/securityStore';
@@ -201,6 +202,19 @@ describe('12 목록 화면', () => {
     expect(deps.resetLocal).toHaveBeenCalledTimes(1);
     expect(has(tree, 'settings-ck4-off')).toBe(false); // 확인창 없음
     expect(mockRouter.replace).toHaveBeenCalledWith('/onboarding');
+  });
+
+  test('로그아웃(FB-022): 처음 화면으로 먼저 가고(갈아 끼움 한 번) 그 뒤 로그인 정보를 끊는다 · 화면 메모리 정리를 부른다', async () => {
+    const { deps, api } = setup();
+    const ended = jest.fn();
+    const off = onSessionEnd(ended);
+    mockRouter.replace.mockClear();
+    const tree = await show(deps);
+    await press(tree, 'settings-logout');
+    expect(mockRouter.replace).toHaveBeenCalledTimes(1); // 가드(navigation/loginGuard)가 따로 한 번 더 보내지 않게 이쪽은 한 번뿐
+    expect(mockRouter.replace.mock.invocationCallOrder[0]).toBeLessThan(api.signOut.mock.invocationCallOrder[0]);
+    expect(ended).toHaveBeenCalled();
+    off();
   });
 
   test('로그아웃 동시 두 번 눌림 → 요청 한 번(R9)', async () => {

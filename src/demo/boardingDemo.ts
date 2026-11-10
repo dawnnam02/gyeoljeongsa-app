@@ -16,6 +16,7 @@
 //  · 탑승 관문(검수 B0 · D46-A 덧붙임 10-27): 실서버 ticket_board_check → ticket_profile_ready(0030 · 0036 [8]) = politics_ready(CK15 유효 + 정치 답) · 등급 행 · 종교 답(7코드)과 같은 조건.
 //    회원 상태는 demoBackend 가 profileDetail 로 넘긴다(설문 모의 서버 기록 · 등급 계산 멈춤). 하나라도 없으면 'profile_incomplete' + reason_detail(0039 profile_ready_detail 과 같은 이름)
 //    — T1 '살 수 없음'(BOARDING.ineligible) · 자리 잡기 · 결제 · 크레딧 탑승 모두 0
+import { DEMO_BUNDLE_AMOUNT } from './mileageDemo';
 import { kinOrder, myReligionOf, poolFor } from './people';
 
 type Row = Record<string, unknown>;
@@ -165,7 +166,7 @@ export function createDemoBoarding(options: DemoBoardingOptions = {}) {
     return ok({
       now: iso(now), // 데모만(장면 시각)
       price_krw: 26900,
-      bundle_amount: 8700, // 0058 포함분(연애 풀이 3편값) — 서버가 get_ticket_state 로 알려 줄 때의 모양(가정: 지금 서버 이관 0058 에는 이 키를 주는 함수가 없다). 실서버에 이 키가 없으면 구매 시트에 줄이 없다. 마일리지 데모 장부의 탑승 때 무료분(demo/mileageDemo BOARDING_REWARD 200, 옛 시작값)과 숫자가 다르다 — 시험 숫자 여러 곳이 걸려 그대로 둠
+      bundle_amount: DEMO_BUNDLE_AMOUNT, // 0058 포함분(연애 풀이 3편값 8,700) — 서버 이관 0060 의 get_ticket_state 가 bundle_amount 로 알려 주는 값과 같은 모양(결제로 사는 회차에서만 양수). 마일리지 데모 장부의 탑승 때 들어오는 포함분(demo/mileageDemo)과 같은 수 한 곳
       payment_mode: 'demo',
       round: {
         round_no: r.no,

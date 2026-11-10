@@ -3,6 +3,7 @@
 //  · 칩은 입력창을 채우기만 한다(바로 보내지 않음) · 호감 표시 · 저장 · 상대 알림 0 · 카드를 골랐다는 흔적은 내 화면의 확인 띠뿐
 //  · 카드 답을 문장에 끼울 때: 14자 안(넘으면 단어 끝에서 자르고 …) · 연락처 · 링크 모양이 섞인 답은 쓰지 않는다(그 카드는 일반 칩만)
 import { findContactShapes } from '@/lib/contactShape';
+import { onSessionEnd } from '@/lib/sessionGate';
 
 export const ANSWER_FRONT_MAX = 14;
 
@@ -11,6 +12,9 @@ export type OpenerHandoff = { roomId: string; draft?: string; card?: { question:
 
 const HANDOFF_MS = 30_000; // 건넨 뒤 이 시간이 지나면 버린다(방으로 못 넘어간 건넴이 나중에 되살아나지 않게)
 let pending: (OpenerHandoff & { at: number }) | null = null;
+onSessionEnd(() => {
+  pending = null; // 로그아웃 · 탈퇴 · 세션 만료: 건네던 글(앞 사람의 입력창 글 · 프로필 질문 카드)이 다음 사람에게 넘어가지 않게(FB-022)
+});
 
 export function handOff(h: OpenerHandoff, now: number = Date.now()): void {
   pending = { ...h, at: now };

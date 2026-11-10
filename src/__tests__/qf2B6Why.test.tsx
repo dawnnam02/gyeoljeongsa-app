@@ -56,25 +56,34 @@ describe('Q2-01 줄 고르기: whyLines · readReasonIds', () => {
     expect(whyLines(['score', 'grade', 'rank', 'F99', 'E04', 7, null, { score: 9 }, 'F01'], 5)).toEqual([WHY.line.F01]);
   });
 
-  test('이중 막기: 돈 · 집안(F05 F14 F15 F16)과 필수 일치(F06 지역 · F07 종교)는 서버가 보내도 한 줄도 그리지 않는다 — 줄 표에도 없고 막는 목록에도 있다', () => {
-    expect([...WHY_NEVER].sort()).toEqual(['F05', 'F06', 'F07', 'F14', 'F15', 'F16']);
+  test('이중 막기: 돈 · 집안(F05 F14 F15 F16)과 필수 일치(F06 지역 · F07 종교)와 D-252 결혼관 둘(E05 부모 부양 · E07 돈 관리)은 서버가 보내도 한 줄도 그리지 않는다 — 줄 표에도 없고 막는 목록에도 있다', () => {
+    expect([...WHY_NEVER].sort()).toEqual(['E05', 'E07', 'F05', 'F06', 'F07', 'F14', 'F15', 'F16']);
     for (const id of WHY_NEVER) expect(Object.keys(WHY.line)).not.toContain(id);
-    expect(whyLines(['F05', 'F06', 'F07', 'F14', 'F15', 'F16'], 5)).toEqual([]);
+    expect(whyLines(['F05', 'F06', 'F07', 'F14', 'F15', 'F16', 'E05', 'E07'], 5)).toEqual([]);
     expect(whyLines(['F06', 'F07', 'F05', 'F01', 'F16', 'E01'], 5)).toEqual([WHY.line.F01, WHY.line.E01]);
     // 줄 표에 누가 잘못 더해도 막는 목록이 이긴다
     const lines = WHY.line as unknown as Record<string, string>;
     lines.F05 = '연봉이 바란 조건에 맞아요.';
+    lines.E05 = '부모 부양을 비슷하게 생각해요.';
+    lines.E07 = '돈 관리를 비슷하게 생각해요.';
     try {
-      expect(whyLines(['F05'], 5)).toEqual([]);
+      expect(whyLines(['F05', 'E05', 'E07'], 5)).toEqual([]);
     } finally {
       delete lines.F05;
+      delete lines.E05;
+      delete lines.E07;
     }
   });
 
-  test('글 규칙: 제목 + 줄 13개 모두 해요체 · 느낌표 0 · 숫자 0 · 점수 · 등급 · 순위 · 우열 · 재촉 말 0 · 체크 표시 0', () => {
+  test('D-252: E05 · E07 이 서버 목록 한가운데에 끼어 와도 나머지 줄 순서는 서버 그대로, 자리만 건너뛴다', () => {
+    expect(whyLines(['E01', 'E05', 'E02', 'E07', 'E03', 'E06'], 5)).toEqual([WHY.line.E01, WHY.line.E02, WHY.line.E03, WHY.line.E06]);
+    expect(whyLines(['E05', 'E07'], 3)).toEqual([]);
+  });
+
+  test('글 규칙: 제목 + 줄 11개 모두 해요체 · 느낌표 0 · 숫자 0 · 점수 · 등급 · 순위 · 우열 · 재촉 말 0 · 체크 표시 0', () => {
     const texts = [WHY.title, ...Object.values(WHY.line)];
-    expect(texts).toHaveLength(14);
-    expect(Object.keys(WHY.line)).toHaveLength(13);
+    expect(texts).toHaveLength(12);
+    expect(Object.keys(WHY.line)).toHaveLength(11);
     for (const t of texts) {
       expect(t).not.toMatch(BAN);
       expect(t).not.toMatch(/[✓✔]/);
@@ -255,6 +264,17 @@ describe('10 상대 프로필(공개 뒤 길 from=reveal): 한 분을 보는 화
     expect(has(t, 'candidate-chat')).toBe(true); // 카드는 설명일 뿐 — 아래 [대화 시작하기]는 그대로
   });
 
+  test('QF2-B7 자리: 카드는 한눈에 줄 바로 아래 · 표(candidate-table) 앞 — 표 · 공개한 정보 뒤(옛 "왜 추천했나요" 자리)가 아니다 (디자인 고칠묶음_화면안 3-1)', async () => {
+    const t = await showCand(detail(['F01', 'E02']), () => true);
+    const order = t.root.findAll((n) => typeof n.props.testID === 'string').map((n) => n.props.testID as string);
+    const at = (id: string) => order.indexOf(id);
+    expect(at('candidate-glance')).toBeGreaterThanOrEqual(0);
+    expect(at('candidate-whycard')).toBeGreaterThan(at('candidate-glance'));
+    expect(at('candidate-whycard')).toBeLessThan(at('candidate-table'));
+    if (at('candidate-open') >= 0) expect(at('candidate-whycard')).toBeLessThan(at('candidate-open'));
+    expect(at('candidate-whycard')).toBeLessThan(at('candidate-disclaimer'));
+  });
+
   test('스위치 꺼짐(whyOn=false) → 이유가 와도 카드 0 · 스위치를 못 읽으면(기본) 꺼짐으로 본다', async () => {
     const off = await showCand(detail(['F01', 'E02']), () => false);
     expect(has(off, 'candidate-whycard-title')).toBe(false);
@@ -290,8 +310,8 @@ describe('10 상대 프로필(공개 뒤 길 from=reveal): 한 분을 보는 화
   });
 });
 
-test('줄 표에 있는 ID 는 정책 2-4 이름표 19개 안에서 필수 일치 · 돈 · 집안 6개를 뺀 13개와 같다', () => {
+test('줄 표에 있는 ID 는 정책 2-4 이름표 19개 안에서 필수 일치 · 돈 · 집안 6개와 D-252 결혼관 둘(E05 · E07)을 뺀 11개와 같다', () => {
   const drawable = ALL_IDS.filter((id) => !WHY_NEVER.includes(id));
-  expect(drawable).toHaveLength(13);
+  expect(drawable).toHaveLength(11);
   expect(Object.keys(WHY.line).sort()).toEqual([...drawable].sort());
 });

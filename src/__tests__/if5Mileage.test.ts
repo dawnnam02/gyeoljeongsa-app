@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { IF5_TEXT } from '@/content/if5Copy';
-import { createDemoMileage } from '@/demo/mileageDemo';
+import { createDemoMileage, DEMO_BUNDLE_AMOUNT } from '@/demo/mileageDemo';
 import { createLedgerEdge } from '@/features/mileage/ledgerEdge';
 import { createMileageApi, parseCost, parseHistory, parseMileageState } from '@/features/mileage/mileageApi';
 import { bucketOf, costOf, fmt, KIND_KEY, signed, splitLine, usedKey } from '@/features/mileage/mileageLogic';
@@ -30,20 +30,21 @@ const must = <T,>(r: { ok: true; data: T } | { ok: false; code: string }): T => 
 };
 
 describe('IF5-F2 ⑨ 모의 서버 — get_mileage 꼴 그대로(값은 응답에서 읽는다)', () => {
-  test('가입 선물 1,000 + 탑승 적립 회차마다 200 · 상품 4 · 차감표 10 · 규칙', async () => {
+  test('가입 선물 1,000 + 탑승권 포함분 회차마다 8,700(서버 0058 tbundle_amount · 탑승권 구매 시트가 알리는 값과 같은 수) · 상품 4 · 차감표 10 · 규칙', async () => {
     const r = rig({ rounds: 1 });
     const s = must(await r.api.state());
-    expect(s.free).toBe(1200);
+    expect(DEMO_BUNDLE_AMOUNT).toBe(8700);
+    expect(s.free).toBe(1000 + DEMO_BUNDLE_AMOUNT); // 9,700
     expect(s.paid).toBe(0);
-    expect(s.total).toBe(1200);
+    expect(s.total).toBe(9700);
     expect(s.held).toBe(0);
     expect(s.products.map((p) => p.mileage)).toEqual(s.products.map((p) => p.price)); // 1마일리지 = 1원 · 보너스 0
     expect(s.products).toHaveLength(4);
     expect(s.costs).toHaveLength(10);
     expect(s.rules).toEqual({ confirmFrom: 300, freeChars: 1000, stepChars: 1000, stepCost: 70 });
     r.setRounds(2); // 앱을 다시 열었을 때 내역에서 확인 — 푸시 0
-    expect(must(await r.api.state()).total).toBe(1400);
-    expect(must(await r.api.state()).total).toBe(1400); // 같은 회차는 두 번 적립 0
+    expect(must(await r.api.state()).total).toBe(18400); // 1,000 + 8,700 × 2
+    expect(must(await r.api.state()).total).toBe(18400); // 같은 회차는 두 번 적립 0
   });
   test('쓰기 전에 보이는 최종 마일리지 = 기본 + 길이 가산(1,000자마다 올림) · 300 이상이면 확인', async () => {
     const { api } = rig();

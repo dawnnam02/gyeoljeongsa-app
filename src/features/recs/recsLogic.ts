@@ -44,7 +44,8 @@ export function reasonNames(ids: readonly unknown[], max: number): string[] {
 // 왜 이 분인지(Q2-01): 서버가 준 맞는 점 ID 목록에서 줄이 있는 것만(중복 뺌), 서버 순서 그대로 최대 max줄. 모르는 ID · 점수 같은 키는 줄이 없어 저절로 빠진다
 //  · 돈 · 집안(F05 F14 F15 F16)과 필수 일치(F06 지역 · F07 종교 — 정치는 이유 ID 에 아예 없다)는 서버(pair_reasons)가 걷어 보내지만, 앱도 한 번 더 막는다(이중 장치).
 //    WHY.line 에 줄을 잘못 더해도 이 ID 는 그려지지 않는다(법무 FA1_QF2_글확인 L1 · 필수 일치는 모든 짝이 같아 이 분만의 까닭이 못 됨)
-export const WHY_NEVER: readonly string[] = ['F05', 'F06', 'F07', 'F14', 'F15', 'F16'];
+//  · D-252(팀장 11-10): 결혼관 가운데 부모 부양(E05)과 돈 쓰는 생각(E07)도 이유로 쓰지 않는다 — 돈 · 집안은 이유로 쓰지 않는다는 원칙을 결혼관 문항에도 적용(상대가 공개했어도). 서버 이관 0060도 뺐다
+export const WHY_NEVER: readonly string[] = ['F05', 'F06', 'F07', 'F14', 'F15', 'F16', 'E05', 'E07'];
 export function whyLines(ids: readonly unknown[], max: number): string[] {
   const lines = WHY.line as Readonly<Record<string, string>>;
   const out: string[] = [];

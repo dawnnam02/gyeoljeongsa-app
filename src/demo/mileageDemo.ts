@@ -2,7 +2,7 @@
 //   get_mileage() → {ok, state ready, paid, free, total, held, charge_locked, products[{sku,price,mileage}], costs[{feature,label,cost}], rules{confirm_from,length_free_chars,length_step_chars,length_step_cost}}
 //   list_mileage_history(p_before, p_limit) → {ok, state ready, items[{id,at,kind charge|gift|boarding|ops|demo|use|recovered|restored,amount,feature?,state?}], next}
 //   get_mileage_cost(p_feature, p_chars) → {ok, feature, cost, base, extra, confirm} | {ok:false, code invalid_value|unknown_feature|too_large}
-//  · 앱은 이 값을 하드코딩하지 않고 응답을 그대로 읽는다(수 · 가격 · 차감표 · 규칙은 이 모의 서버 한 곳 — 서버 0048 시작값과 같다: 수익 IF5 상품 4 · 차감표 10 · 가입 선물 1,000 · 탑승 적립 200)
+//  · 앱은 이 값을 하드코딩하지 않고 응답을 그대로 읽는다(수 · 가격 · 차감표 · 규칙은 이 모의 서버 한 곳 — 서버 0048 시작값과 같다: 수익 IF5 상품 4 · 차감표 10 · 가입 선물 1,000 · 탑승 포함분 8,700(0058 · QF2-B7에서 옛 적립 200을 서버 값으로 맞춤))
 //  · 장부는 이 메모리뿐이다(서버 요청 0 · 기기 저장 0 · 결제 호출 0). 데모 판의 가상 잔액이라 새로 고치면 처음으로 돌아간다. 로그아웃 · 탈퇴에서도 다음 사람에게 넘어가지 않는다(회원마다 따로)
 //  · 데모 전용 이름(진짜 서버에는 없다 — 서버에서는 AI Edge 가 서비스 역할로 한다): demo_mileage_charge(p_sku) 충전 흉내 · demo_mileage_hold / settle / release 예치 → 확정 · 해제
 //    mileage_hold 와 같은 규칙: 요청 번호 하나에 예치 하나(같은 요청을 다시 부르면 같은 결과) · 무료분 먼저 → 유료분은 먼저 산 것부터 · 외상 0 · 위기 턴은 0이어도 막지 않고 차감 0 · 인자에 금액 0
@@ -40,7 +40,9 @@ const COSTS = [
 const RULES = { confirm_from: 300, length_free_chars: 1000, length_step_chars: 1000, length_step_cost: 70 } as const;
 const MAX_INPUT_CHARS = 32000;
 const SIGNUP_GIFT = 1000;
-const BOARDING_REWARD = 200;
+// 탑승권을 사서 좌석이 확정될 때 함께 들어오는 포함분(서버 0058 private.tbundle_amount = 8,700, 연애 풀이 3편값). 탑승권 모의 서버가 get_ticket_state.bundle_amount 로 알리는 값(구매 시트 한 줄)과 같은 수 한 곳 — 옛 시작값 200 은 이 수와 어긋났다(QF2-B7)
+export const DEMO_BUNDLE_AMOUNT = 8700;
+const BOARDING_REWARD = DEMO_BUNDLE_AMOUNT;
 const HOLD_TTL_MS = 120_000;
 
 type LotSource = 'signup_gift' | 'boarding' | 'ops_reward' | 'demo';

@@ -27,6 +27,7 @@ import { contactPorts, type ContactPorts } from '@/lib/contactsServices';
 import type { GradeApi } from '@/lib/gradeApi';
 import type { SettingsApi } from '@/lib/settingsApi';
 import { gradeApi, settingsApi } from '@/lib/services';
+import { endSessionState } from '@/lib/sessionGate';
 import { resetGradeSettings } from '@/store/gradeSettingsStore';
 import { dismissAllNow } from '@/navigation/go';
 import { resolveDest } from '@/navigation/resolve';
@@ -294,7 +295,15 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
   };
 
   const leaveToStart = async () => {
+    // QF2-B7 FB-022: 처음 화면으로 가는 일을 로그인 정보를 끊기 전에 먼저 한다. 끊는 순간 화면 가드(navigation/loginGuard)가 가드 안 화면을 모두 비우는데,
+    //  가드도 처음 화면으로 보내는 길이라 끊은 뒤에 여기서 한 번 더 가면 처음 화면이 두 번 갈아 끼워진다(깜빡임). 먼저 가면 갈아 끼움은 한 번이다
+    const target = resolveDest('01');
+    if (target.kind === 'href') {
+      dismissAllNow(router); // 웹에서는 걷어 내기의 뒤늦은 popstate 가 옛 화면을 되살리지 않게(navigation/go.ts, Q2-35)
+      router.replace(target.href);
+    }
     await deps.api.signOut();
+    endSessionState(); // 화면 메모리에 남은 채팅 연결 · 건넨 글 · 사진 이어 붙임 · 알림 글을 비운다(로그아웃 알림에도 같은 정리가 걸려 있다 — 여러 번 불러도 같다)
     deps.resetLocal();
     resetGradeSettings(); // 다음 사람에게 이 사람의 구독 · 멈춤 표시가 남지 않게(F13)
     forgetMyFace(); // 다음에 로그인하는 사람에게 이 사람의 원형 사진이 남지 않게(F11)
@@ -303,11 +312,6 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
     await aitStore.forget(); // AIT-F: 시험용 AI 코드 · 시험자 동의 기록도 지운다(다음 사람에게 넘어가지 않게)
     await forgetInflightNotes(); // IF2-F: 나만 쓰는 글 9종(엽서 · 미리 답 · 표시 · 메모 · 고른 짐 · 본 기록 · 띠 · 접힘)도 지운다(정책 PF-10 · IFF-03)
     await forgetSajuDevice(); // IF5-F1: 내 시각 · 곳(이 휴대폰에만 둔 값)도 지운다(IFF5-31)
-    const target = resolveDest('01');
-    if (target.kind === 'href') {
-      dismissAllNow(router); // 웹에서는 걷어 내기의 뒤늦은 popstate 가 옛 화면을 되살리지 않게(navigation/go.ts, Q2-35)
-      router.replace(target.href);
-    }
   };
 
   const logout = async () => {

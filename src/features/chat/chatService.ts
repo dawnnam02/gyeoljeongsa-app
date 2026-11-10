@@ -2,6 +2,7 @@
 //  lib/services.ts(공용)는 고치지 않으려고 여기서 만든다 — 처음 쓸 때 한 번. 시험은 화면에 api · media 를 직접 넣는다
 import { env } from '@/config/env';
 import { createInflightApi, rpcOf, type InflightApi } from '@/features/inflight/inflightApi';
+import { onSessionEnd } from '@/lib/sessionGate';
 import { supabase } from '@/lib/supabase';
 
 import { createChatApi, type ChatApi } from './chatApi';
@@ -33,6 +34,16 @@ export function chatApi(): ChatApi {
 
 // IF2-F(0043): 대화방 칸(첫마디 실마리 · 이야깃거리 · 꼬리표 글 · 같이 열어 보기). 데모면 데모 채팅이 같은 모양으로 답한다(방 · 글이 데모 채팅 메모리에 있어서)
 let if2: InflightApi | null = null;
+
+// 로그아웃 · 탈퇴 · 세션 만료(lib/sessionGate): 이 연결이 들고 있던 것을 버린다 — 데모에서는 방 · 글 · 상대(메모리), 두 모드 모두 마지막으로 본 이메일.
+//  다음에 로그인하는 사람은 새 연결을 받는다(앞 사람의 방 목록이 이어지지 않는다 — FB-022)
+onSessionEnd(() => {
+  api = null;
+  media = null;
+  if2 = null;
+  email = '';
+});
+
 export function inflightChatApi(): InflightApi {
   if (!if2) {
     const a = chatApi() as ChatApi & { if2Rpc?: Parameters<typeof createInflightApi>[0] };

@@ -11,6 +11,7 @@
 //  표시하지 않는 것: 점수 · 순위(받지도 않는다). "왜 추천했나요" 둘째 문장은 법무가 유지하라고 확인한 글(별도 문자열)
 //  v5(QP-01 치명, 청사진 6-1 '10 바뀜: T3 뒤 상대 프로필로'): T3 [프로필 자세히 보기]로 들어오면(from=reveal) 보기만 한다 —
 //   [넘기기] · [호감 보내기] · 수락/거절 · '왜 추천했나요' · 등급 · '서로 수락한 뒤의 연락 방법' 줄 · 호감 토스트 0. 아래 버튼은 [대화 시작하기](T3 와 같은 글, 대화방이 있을 때만) 하나.
+//   QF2-B7: v5 의 '이 분과 맞는 점' 카드(WhyCard, T3 와 같은 부품)는 한눈에 줄 바로 아래(디자인 고칠묶음_화면안 3-1) — 표 · 공개한 정보 뒤가 아니다.
 //   짝 상태(get_pair_state) · 상대 등급(get_partner_grade)도 읽지 않는다. 뒤로 가면 T3(없으면 탑승권 탭)
 import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -419,6 +420,8 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
             testID="candidate-glance"
           />
         </Rise>
+        {/* QF2-B7(디자인 고칠묶음_화면안 3-1): 왜 이 분인지 카드는 '한눈에' 줄 다음 — 표 · 공개한 정보 뒤(옛 '왜 추천했나요' 자리)가 아니다. 공개 순간 T3 와 같은 부품 하나 */}
+        {v5 ? <WhyCard ids={data.reasonIds} max={WHY_MAX_PROFILE} on={(deps.whyOn ?? whyOnNow)()} testID="candidate-whycard" /> : null}
         <PromptsWithStart prompts={data.prompts} v5={v5} chatId={chatId} roomState={deps.roomState ?? defaultRoomState} startOn={deps.startOn ?? startOnNow} onFail={() => setToast(PROMPT_START.failed)} />
         <MarriageViews answers={data.answers} />
 
@@ -469,7 +472,6 @@ export function CandidateScreen({ deps = defaultDeps }: { deps?: CandidateDeps }
           </Card>
         ) : null}
 
-        {v5 ? <WhyCard ids={data.reasonIds} max={WHY_MAX_PROFILE} on={(deps.whyOn ?? whyOnNow)()} testID="candidate-whycard" /> : null}
         {data.reasons.length > 0 && !v5 ? (
           <Card style={styles.why} testID="candidate-why" accessible accessibilityLabel={`${CANDIDATE.whyTitle}. ${why} ${CANDIDATE.whyNote}`}>
             <AppText variant="bodyBold">{CANDIDATE.whyTitle}</AppText>
