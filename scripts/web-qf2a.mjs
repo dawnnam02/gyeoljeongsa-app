@@ -139,8 +139,8 @@ try {
       await waitGone('boarding-sheet-footer', 4000);
     }
     // ── 사주 동의 시트(F-02)
-    await goto('/saju');
-    await b.waitFor(`location.pathname === '/saju'`, 6000);
+    await goto('/saju-detail'); // TAB-1: 긴 풀이 화면은 /saju-detail(탭 /saju 는 짧은 메뉴)
+    await b.waitFor(`location.pathname === '/saju-detail'`, 6000);
     const agreeOk = await waitVis('saju-ck17-agree', 10000);
     check('2', `${w} 폭: 사주 마당에 [동의하고 보기]가 보인다(동의 전)`, agreeOk, '');
     if (agreeOk) {
@@ -166,7 +166,7 @@ try {
 
   // ═══ 3. 사주 마당(운세 정리 처음값) ═══
   await b.viewport(390, 844);
-  await goto('/saju');
+  await goto('/saju-detail'); // TAB-1
   await waitVis('saju-ck17-agree', 8000);
   await tap('saju-ck17-agree');
   await waitVis('if2-ck17-a', 6000);

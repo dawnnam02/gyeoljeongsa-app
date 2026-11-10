@@ -87,6 +87,17 @@ describe('W10 ③ 들어가는 길', () => {
     }
     await mount(<Probe />);
     await act(async () => new Promise((r) => setTimeout(r, 0)));
-    expect(seen[seen.length - 1]).toEqual({ ready: true, dailyRecs: false, likes: true, shop: false });
+    expect(seen[seen.length - 1]).toEqual({ ready: true, dailyRecs: false, likes: true, shop: false, sajuYard: false }); // sajuYard(TAB-1): 스위치 saju_yard 는 켜지 않았다
+  });
+  test('useV4Screens.sajuYard(TAB-1): 스위치 saju_yard 를 켠 것만 true — 하단 탭 사주 마당 칸', async () => {
+    const seen: ReturnType<typeof useV4Screens>[] = [];
+    const store = storeWith({ saju_yard: true });
+    function Probe() {
+      seen.push(useV4Screens(store));
+      return null;
+    }
+    await mount(<Probe />);
+    await act(async () => new Promise((r) => setTimeout(r, 0)));
+    expect(seen[seen.length - 1]).toMatchObject({ ready: true, sajuYard: true, dailyRecs: false, likes: false, shop: false });
   });
 });

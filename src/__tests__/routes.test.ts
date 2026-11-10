@@ -34,8 +34,8 @@ function routeFiles(dir: string, base = ''): string[] {
 
 describe('화면 ID 16개 = 라우트 16개 (F-1)', () => {
   test('화면 ID는 01~16 열여섯 개 + V5 새 화면 T1 · T3 · T5 · T4 · T4R + 16G(내 등급, D-200 ②) + T6(탑승객 라운지, D-220 LG-F)이고 겹치지 않는다', () => {
-    expect(SCREEN_IDS).toHaveLength(33); // + IF2-F 기내지 · 내 여행 타입 · 짝에게 보이는 내 모습(D-223) + IF3-F 하늘 도감(3부-카) + IF5-F1 사주 마당 · 달력 · 오늘 하루
-    expect(new Set(SCREENS.map((s) => s.id)).size).toBe(33);
+    expect(SCREEN_IDS).toHaveLength(34); // + TAB-1 내 사주 자세히(IF-SJ-DETAIL) + IF2-F 기내지 · 내 여행 타입 · 짝에게 보이는 내 모습(D-223) + IF3-F 하늘 도감(3부-카) + IF5-F1 사주 마당 · 달력 · 오늘 하루
+    expect(new Set(SCREENS.map((s) => s.id)).size).toBe(34);
     expect(SCREENS.map((s) => s.id)).toEqual([...SCREEN_IDS]);
   });
 
@@ -43,37 +43,41 @@ describe('화면 ID 16개 = 라우트 16개 (F-1)', () => {
     const files = routeFiles(APP_DIR).sort();
     const registry = SCREENS.map((s) => s.route).sort();
     expect(files).toEqual(registry);
-    expect(files).toHaveLength(33);
+    expect(files).toHaveLength(34);
   });
 
   test('13 · 14 · 15 는 09 · 11 · 02 의 상태이고, 나머지 13개는 K2 화면이다(16 상점 포함)', () => {
     expect(screenById('13').stateOf).toBe('09');
     expect(screenById('14').stateOf).toBe('11');
     expect(screenById('15').stateOf).toBe('02');
-    expect(SCREENS.filter((s) => !s.stateOf)).toHaveLength(30); // K2 13 + V5 T1 · T3 · T5 · T4 · T4R + 16G + T6(LG-F) + IF-MAG · IF-TYPE · IF-PREVIEW(IF2-F) + IF-BOOK(IF3-F) + IF-MADANG · IF-SJ-CAL · IF-SJ-TODAY(IF5-F1)
+    expect(SCREENS.filter((s) => !s.stateOf)).toHaveLength(31); // TAB-1 IF-SJ-DETAIL + K2 13 + V5 T1 · T3 · T5 · T4 · T4R + 16G + T6(LG-F) + IF-MAG · IF-TYPE · IF-PREVIEW(IF2-F) + IF-BOOK(IF3-F) + IF-MADANG · IF-SJ-CAL · IF-SJ-TODAY(IF5-F1)
   });
 
-  test('탭바는 추천 · 호감 · 상점 · 설정 4개이고 탭 화면은 09 · 11 · 16 · 12 (그리고 상태 13 · 14). 08 내 프로필은 탭 밖 화면이다(F11)', () => {
+  test('탭 화면은 탑승권 · 채팅 · (숨긴 추천 · 호감 · 상점) · 사주 마당(TAB-1) · 설정이고 상태 13 · 14 가 따른다. 08 내 프로필은 탭 밖 화면이다(F11)', () => {
     expect(TAB_SCREEN_IDS.map((id) => screenById(id).route)).toEqual([
       '/boarding',
       '/chat',
       '/recommendations',
       '/likes',
       '/shop',
+      '/saju',
       '/settings',
     ]);
     expect(
       SCREENS.filter((s) => s.tabBar)
         .map((s) => s.id)
         .sort(),
-    ).toEqual(['09', '11', '12', '13', '14', '16', 'T1', 'T4']);
+    ).toEqual(['09', '11', '12', '13', '14', '16', 'IF-MADANG', 'T1', 'T4']);
+    expect(fs.existsSync(path.join(APP_DIR, '(tabs)', 'saju.tsx'))).toBe(true); // TAB-1: 사주 마당 탭의 첫 화면(메뉴)
+    expect(fs.existsSync(path.join(APP_DIR, 'saju.tsx'))).toBe(false); // 같은 주소를 가진 탭 밖 파일이 없다(옛 긴 화면은 saju-detail.tsx)
+    expect(fs.existsSync(path.join(APP_DIR, 'saju-detail.tsx'))).toBe(true);
     expect(screenById('08').tabBar).toBe(false);
     expect(fs.existsSync(path.join(APP_DIR, '(tabs)', 'profile.tsx'))).toBe(false); // 08 은 (tabs) 그룹 밖 src/app/profile.tsx
     expect(fs.existsSync(path.join(APP_DIR, 'profile.tsx'))).toBe(true);
     const layout = fs.readFileSync(path.join(APP_DIR, '(tabs)', '_layout.tsx'), 'utf8');
     const order = [...layout.matchAll(/<Tabs\.Screen name="([a-z-]+)"/g)].map((m) => m[1]);
-    expect(order.slice(0, 6)).toEqual(['boarding', 'chat', 'recommendations', 'likes', 'shop', 'settings']); // V5: 탑승권 · 채팅 · (숨긴 09 · 11 · 16) · 설정
-    expect(order.slice(6)).toEqual(['recommendations-empty', 'likes-empty']); // 탭 칸 없는 상태 화면
+    expect(order.slice(0, 7)).toEqual(['boarding', 'chat', 'recommendations', 'likes', 'shop', 'saju', 'settings']); // V5: 탑승권 · 채팅 · (숨긴 09 · 11 · 16) · TAB-1 사주 마당 · 설정
+    expect(order.slice(7)).toEqual(['recommendations-empty', 'likes-empty']); // 탭 칸 없는 상태 화면
   });
 });
 

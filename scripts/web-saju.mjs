@@ -90,26 +90,28 @@ async function signUp(email) {
 let exitCode = 0;
 try {
   await signUp('sj1fortuneon@email.com'); // 운세 정리(D-245)로 끈 날짜 고르기 · 달력 스위치를 켜는 데모 장면(끈 모습은 web-qf2a.mjs)
-  // ═══ 1. 설정 줄 → 사주 마당 · 동의 · 입력 시트 ═══
+  // ═══ 1. 하단 탭 '사주 마당'(TAB-1) → 메뉴 · 동의 · 입력 시트 → [내 네 기둥과 결 읽기] 줄 → 내 사주 자세히 ═══
+  const tabLabels = await b.evaluate(`[...document.querySelectorAll('[role=tab]')].filter((e) => window.__visible(e)).map((e) => e.getAttribute('aria-label'))`);
+  check('1', '하단 탭: 탑승권 · 채팅 · 사주 마당 · 설정 네 칸(숫자 배지 · 새 점 0)', JSON.stringify(tabLabels.filter((t) => ['탑승권', '채팅', '사주 마당', '설정'].includes(t))) === JSON.stringify(['탑승권', '채팅', '사주 마당', '설정']) && tabLabels.length === 4, tabLabels.join(' · '));
   await goto('/settings');
   await waitVis('settings-rows', 10000);
-  check('1', "12 설정에 '사주 마당' 줄(숫자 · 새 점 0)", await vis('settings-row-saju-yard'), await visText('settings-row-saju-yard'));
-  await tap('settings-row-saju-yard');
-  check('1', '줄 → 사주 마당', await b.waitFor(`location.pathname === '/saju'`, 8000), await b.evaluate('location.pathname'));
-  check('1', "동의 전엔 카드 0 · [동의하고 보기] · 시트가 저절로 안 뜸", (await waitVis('saju-ck17-off', 8000)) && !(await vis('saju-pillars')) && !(await vis('if2-ck17')), '');
+  check('1', "12 설정에 '사주 마당' 줄이 없다(탭으로 옮김)", !(await vis('settings-row-saju-yard')), '');
+  await b.click('[role=tab][aria-label="사주 마당"]');
+  check('1', '탭 → 사주 마당 메뉴', await b.waitFor(`location.pathname === '/saju'`, 8000), await b.evaluate('location.pathname'));
+  check('1', "동의 전엔 상태 칸 하나 · 카드 0 · [동의하고 보기] · 시트가 저절로 안 뜸", (await waitVis('saju-yard-status-consent', 8000)) && !(await vis('saju-yard-status-birth')) && !(await vis('saju-pillars')) && !(await vis('if2-ck17')), '');
   await words('동의 전');
   await measure('동의 전');
   await b.shot(`SAJU_동의전_${width}.png`);
-  await tap('saju-ck17-agree');
+  await tap('saju-yard-agree');
   check('1', '동의 시트(미리 체크 0)', (await waitVis('if2-ck17', 6000)) && (await b.evaluate(`(${visQ('if2-ck17-a')}).getAttribute('aria-checked')`)) === 'false', '');
   await tap('if2-ck17-a');
   await tap('if2-ck17-c'); // IF5-F2: ③ 태어난 시각 · ④ 성별(대운)은 항목별 동의 — 동의해야 요청에 실린다(D-247: 태어난 곳 칸은 없다)
   await tap('if2-ck17-d');
   await tap('if2-ck17-go');
-  check('1', '동의 뒤 → 내 정보 안내 한 줄 + [내 정보 넣기]', await waitVis('saju-empty', 8000), '');
+  check('1', '동의 뒤 → 상태 칸이 바뀜: 내 정보 안내 한 줄 + [내 정보 넣기]', (await waitVis('saju-yard-status-birth', 8000)) && !(await vis('saju-yard-status-consent')), '');
   await measure('빈 상태');
   await b.shot(`SAJU_빈_${width}.png`);
-  await tap('saju-fill');
+  await tap('saju-yard-fill');
   check('1', '입력 시트: 시각 모름 처음값 · 저장 칸 하나 미리 체크 0', (await waitVis('saju-in-time-unknown', 6000)) && (await b.evaluate(`(${visQ('saju-in-save-time')}).getAttribute('aria-checked')`)) === 'false', '');
   const placeParts = await b.evaluate(`document.querySelectorAll('[data-testid^="saju-in-place"], [data-testid="saju-in-save-place"], [data-testid="saju-in-abroad"]').length`);
   check('1', '태어난 곳 칸 · 저장 칸 · 한국 밖 안내 0(D-247)', placeParts === 0 && !/태어난 곳|한국 밖/.test(await pageText()), String(placeParts));
@@ -117,6 +119,9 @@ try {
   await measure('입력 시트');
   await b.shot(`SAJU_입력_${width}.png`);
   await tap('saju-in-save');
+  check('1', '저장하면 상태 칸이 오늘 하루 한 줄로 바뀜(준비됨) · 메뉴 줄이 보임', (await waitVis('saju-yard-status-today', 8000)) && (await vis('saju-yard-row-pillars')) && (await vis('saju-yard-row-year')), '');
+  await tap('saju-yard-row-pillars');
+  check('1', '줄 → 내 사주 자세히(/saju-detail)', await b.waitFor(`location.pathname === '/saju-detail'`, 8000), await b.evaluate('location.pathname'));
 
   // ═══ 2. 카드 ═══
   check('2', '저장하고 보기 → 내 네 기둥(시각 모름 세 칸 + 흐린 칸)', (await waitVis('saju-pillars', 12000)) && (await vis('saju-pillar-table-hour-unknown')), '');

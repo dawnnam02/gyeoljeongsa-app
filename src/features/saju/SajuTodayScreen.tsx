@@ -55,7 +55,7 @@ function Today({ svc, store: injectedStore, morning }: { svc: SajuDeps; store?: 
   const my = useMemo(() => (ready ? chartOf(ready) : null), [ready]);
   const view = my && day ? todayView(my, day) : null;
   useAlwaysCaptureBlock(view !== null);
-  const back = () => (router.canGoBack() ? router.back() : router.replace('/boarding' as Href));
+  const back = () => (router.canGoBack() ? router.back() : router.replace('/saju' as Href)); // TAB-1: 주소로 바로 열렸으면 사주 마당 탭으로(탭이 꺼져 있으면 탭 화면이 홈으로 보낸다)
 
   return (
     <Screen edges={['top']} testID="screen-saju-today">

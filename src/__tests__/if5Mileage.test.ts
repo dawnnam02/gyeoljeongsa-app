@@ -182,11 +182,11 @@ describe('IF5-F2 ⑨ 화면 규칙 · 결제 호출 0 · 하드코딩 0', () => 
     // 데모 모의 서버만 값(시작값)을 안다
     expect(fs.readFileSync(path.join(__dirname, '..', 'demo', 'mileageDemo.ts'), 'utf8')).toContain('3300');
   });
-  test('상점 탭 0: 탭 화면 목록에 마일리지 없음 · 새 입구는 설정 줄 + 사주 마당 머리 + 잔액 부족뿐', () => {
+  test('상점 탭 0: 탭 화면 목록에 마일리지 없음 · 새 입구는 설정 줄 + 사주 마당 탭 잔액 · 내 사주 자세히 머리 + 잔액 부족뿐', () => {
     const screens = fs.readFileSync(path.join(__dirname, '..', 'navigation', 'screens.ts'), 'utf8');
-    expect(screens).toMatch(/TAB_SCREEN_IDS = \['T1', 'T4', '09', '11', '16', '12'\]/);
+    expect(screens).toMatch(/TAB_SCREEN_IDS = \['T1', 'T4', '09', '11', '16', 'IF-MADANG', '12'\]/); // TAB-1: 사주 마당 탭(마일리지 탭은 여전히 0)
     const flow = fs.readFileSync(path.join(__dirname, '..', 'navigation', 'flow.ts'), 'utf8');
     const into = [...flow.matchAll(/a\('([^']+)', 'IF-MILE'/g)].map((m) => m[1]);
-    expect(into.sort()).toEqual(['12', 'IF-MADANG', 'IF-MILE-LOG', 'IF-SJ-TALK']);
+    expect(into.sort()).toEqual(['12', 'IF-MADANG', 'IF-MILE-LOG', 'IF-SJ-DETAIL', 'IF-SJ-TALK']); // TAB-1: 사주 마당 탭의 잔액 · 내 사주 자세히 머리
   });
 });

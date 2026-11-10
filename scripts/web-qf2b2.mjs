@@ -1,6 +1,6 @@
 // QF2-B2 웹 점검(첫마디 길 · 마지막 날 · 크레딧/마일리지 구분 · 가격표 · 엽서 먼저 · 안심 공유). 무료 · 네트워크 없음(로컬 서버 + 로컬 헤드리스 브라우저, 데모 모드 모의 서버).
 //  먼저 데모 모드 웹 번들을 만든 뒤 쓴다(스크래치 폴더 인자 권장). 폭마다(SHOT_WIDTH 360 · 390 · 430) 한 번씩 돌린다. 사람이 하는 순서대로 누른다.
-//  1 가입 → 설정 목록: 크레딧 줄 위 '탑승권과 크레딧' · 사주 마당/마일리지 줄 위 '사주 마당과 마일리지' 그룹 제목
+//  1 가입 → 설정 목록: 크레딧 줄 위 '탑승권과 크레딧' · 마일리지 줄 위 '마일리지' 그룹 제목(TAB-1: 사주 마당 줄이 하단 탭으로 옮겨 가 제목을 줄에 맞춤)
 //  2 크레딧: 정체 한 줄 '크레딧은 탑승권을 탈 때만 써요.' + 맨 아래 '서로 바꿀 수 없어요'
 //  3 마일리지: 가격표 3줄(서버 값) · 정체 한 줄 둘째 문장 · 맨 아래 '서로 바꿀 수 없어요'
 //  4 오늘 하루: 웹은 아침 알림 줄이 없다(기기 안 예약 알림은 앱에서만)
@@ -101,7 +101,7 @@ try {
   const settingsText = await pageText();
   check('1', "설정 목록: 크레딧 줄 위 '탑승권과 크레딧' 제목", settingsText.includes('탑승권과 크레딧') && (await vis('settings-group-credits')), '');
   const hasMileageGroup = await vis('settings-group-mileage');
-  check('1', "마일리지 줄 위 '사주 마당과 마일리지' 제목(크레딧 줄과 이웃하지 않게)", settingsText.includes('사주 마당과 마일리지') && hasMileageGroup, `마일리지 위 ${hasMileageGroup}`);
+  check('1', "마일리지 줄 위 '마일리지' 제목(크레딧 줄과 이웃하지 않게 · 옛 '사주 마당과 마일리지' 제목 0)", !settingsText.includes('사주 마당과 마일리지') && hasMileageGroup, `마일리지 위 ${hasMileageGroup}`);
   await shot('설정목록');
   await measure('설정 목록');
 

@@ -5,7 +5,7 @@ import type { Href } from 'expo-router';
 
 // V5(W6 · 청사진 v5 초안 6-1): 새 화면 T1 탑승권(T2 기다림은 T1 의 상태 — 같은 주소) · T3 공개 순간 · T5 크레딧. T4 채팅 목록(탭) · T4R 대화방(W5 · D-159)
 export const SCREEN_IDS = [
-  '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', 'T1', 'T3', 'T5', 'T4', 'T4R', '16G', 'T6', 'IF-MAG', 'IF-TYPE', 'IF-PREVIEW', 'IF-BOOK', 'IF-MADANG', 'IF-SJ-CAL', 'IF-MILE', 'IF-MILE-LOG', 'IF-SJ-TALK', 'IF-SJ-TODAY',
+  '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', 'T1', 'T3', 'T5', 'T4', 'T4R', '16G', 'T6', 'IF-MAG', 'IF-TYPE', 'IF-PREVIEW', 'IF-BOOK', 'IF-MADANG', 'IF-SJ-DETAIL', 'IF-SJ-CAL', 'IF-MILE', 'IF-MILE-LOG', 'IF-SJ-TALK', 'IF-SJ-TODAY',
 ] as const;
 export type ScreenId = (typeof SCREEN_IDS)[number];
 
@@ -71,7 +71,9 @@ export const SCREENS: readonly ScreenDef[] = [
   // IF3-F(3부-카 · G-03): 하늘 도감 — 기내지 뒤표지 길 · 12 정보 줄에서만 들어간다(홈 입구 0)
   { id: 'IF-BOOK', name: '하늘 도감', route: '/sky-book', href: '/sky-book' as Href, tabBar: false, filledBy: 'IF3-F', k2: '화면_요구사항 IF3 · 정책 PG-31 ~ PG-33' },
   // IF5-F1(D-237): 사주 마당 한 화면(새 탭 0) + 달력 · 날짜 고르기 + 홈 '오늘 하루' 화면. 입구 = 홈 B6 칸 · B7 줄 · 오늘 하루 띠 · 12 설정 '사주 마당' 줄
-  { id: 'IF-MADANG', name: '사주 마당', route: '/saju', href: '/saju' as Href, tabBar: false, filledBy: 'IF5-F', k2: '화면_요구사항 IF-MADANG · 정책 PS-31 ~ PS-38' },
+  // TAB-1(D-254 · 본인 지시 11-10): 사주 마당이 하단 탭이 됐다 — 탭 첫 화면은 짧은 메뉴(/saju), 옛 긴 풀이 화면은 /saju-detail 로 옮겼다. 스위치 saju_yard 가 꺼지면 탭 칸 0
+  { id: 'IF-MADANG', name: '사주 마당', route: '/saju', href: '/saju' as Href, tabBar: true, filledBy: 'IF5-F', k2: '화면_요구사항 IF-MADANG · 정책 PS-31 ~ PS-38 · TAB-1 하단 탭' },
+  { id: 'IF-SJ-DETAIL', name: '내 사주 자세히', route: '/saju-detail', href: '/saju-detail' as Href, tabBar: false, filledBy: 'IF5-F', k2: 'TAB-1 — 옛 사주 마당 긴 풀이 화면(탭 밖). 메뉴 줄이 구역을 맨 위로 열어 준다' },
   { id: 'IF-SJ-CAL', name: '만세력 달력 · 날짜 고르기', route: '/saju-calendar', href: '/saju-calendar' as Href, tabBar: false, filledBy: 'IF5-F', k2: '화면_요구사항 IF-SJ-CAL · 정책 PS-35 · PS-36 · PS-71 · PS-72' },
   // IF5-F2(D-237): 마일리지(상점 탭 0 — 설정 줄 + [충전] 길) · 내역 · 사주 이야기 나누기. 확인 시트 셋(IF-MILE-OK)은 시트라 화면 ID 0
   { id: 'IF-MILE', name: '마일리지', route: '/mileage', href: '/mileage' as Href, tabBar: false, filledBy: 'IF5-F', k2: '화면_요구사항 IF-MILE · 정책 PS-41 ~ PS-47' },
@@ -88,4 +90,4 @@ export function screenById(id: ScreenId): ScreenDef {
 
 // 탭바 4개: 추천 · 호감 · 상점 · 설정 (K2 R6 · K7, 가이드 5장). 순서가 곧 탭 순서다. 내 프로필(08)은 탭이 아니라 머리 오른쪽 위 원형 사진으로 들어간다.
 // V5(W6): 탑승권(T1)이 첫 탭. 09 · 11 · 16 은 스위치로 숨긴 탭(navigation/v5Hide — 켜면 다시 칸이 생긴다)
-export const TAB_SCREEN_IDS = ['T1', 'T4', '09', '11', '16', '12'] as const satisfies readonly ScreenId[]; // V5 W5: 채팅(T4)이 둘째 탭
+export const TAB_SCREEN_IDS = ['T1', 'T4', '09', '11', '16', 'IF-MADANG', '12'] as const satisfies readonly ScreenId[]; // V5 W5: 채팅(T4)이 둘째 탭

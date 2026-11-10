@@ -192,9 +192,8 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
       }
       case 'B6': {
         const cells = (home.me?.cells ?? []).filter((c) => c !== 'type' || !!type);
-        const sajuCell = sajuIn && cells.length + (aitOn ? 1 : 0) < 3; // 칸 3 이하 — 넘치면 B7 접힘 줄로
-        if (cells.length === 0 && !sajuCell) return null;
-        const names = [...cells.map((c) => (c === 'type' ? tx('TYPE_CARD.home.name') : tx('PREVIEW_ME.home.name'))), ...(sajuCell ? [IF5_TEXT['SAJU.entry.name']] : [])];
+        if (cells.length === 0) return null; // TAB-1: 사주 마당 칸 · 줄은 하단 탭으로 옮겨 갔다 — 홈에는 오늘 하루 띠만 남는다
+        const names = cells.map((c) => (c === 'type' ? tx('TYPE_CARD.home.name') : tx('PREVIEW_ME.home.name')));
         return (
           <HomeBlock key={b} title={tx('HOME.me.title')} cellNames={aitOn ? [...names, ait('CONCERN.name')] : names} testID={`${testID}-B6`}>
             {cells.map((c) =>
@@ -204,7 +203,6 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
                 <HomeCell key={c} icon="postmark" name={tx('PREVIEW_ME.home.name')} line={tx('PREVIEW_ME.home.line')} onPress={() => nav.open('/preview-me' as Href)} testID={`${testID}-B6-preview`} />
               ),
             )}
-            {sajuCell ? <HomeCell icon="story" name={IF5_TEXT['SAJU.entry.name']} line={IF5_TEXT['SAJU.entry.line']} onPress={() => nav.open('/saju' as Href)} testID={`${testID}-B6-saju`} /> : null}
             {aitOn ? <HomeCell icon="memo" name={ait('CONCERN.name')} line={ait('CONCERN.home.line')} onPress={() => setSheet('concern')} testID={`${testID}-B6-concern`} /> : null}
           </HomeBlock>
         );
@@ -227,11 +225,10 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
     setSheet('memo');
   }
   function foldRowsOf(): FoldRow[] {
-    return foldRows(home, { hasPastChat: boarding.past.some((p) => !!p.chatId), memoElsewhere: code !== 'reflect' && hasReflectMemo(home, n, now()), typeOn: isOn('type_card') && !!type, previewOn: isOn('profile_preview'), sajuRow: sajuIn && home.me !== null && (home.me.cells.filter((c) => c !== 'type' || !!type).length + (aitOn ? 1 : 0)) >= 3 });
+    return foldRows(home, { hasPastChat: boarding.past.some((p) => !!p.chatId), memoElsewhere: code !== 'reflect' && hasReflectMemo(home, n, now()), typeOn: isOn('type_card') && !!type, previewOn: isOn('profile_preview') });
   }
   function onFoldRow(r: FoldRow) {
-    if (r === 'saju') nav.open('/saju' as Href);
-    else if (r === 'profile') nav.open('/profile' as Href);
+    if (r === 'profile') nav.open('/profile' as Href);
     else if (r === 'survey') nav.open({ pathname: '/survey/[step]', params: { step: '01' } } as Href);
     else if (r === 'avoid') nav.settings('avoid');
     else if (r === 'chats') {
@@ -289,9 +286,9 @@ function TodayStrip({ line, onPress, testID }: { line: string | null; onPress: (
 
 function FoldBlock({ rows, open, onToggle, onRow, boarding, testID }: { rows: FoldRow[]; open: boolean; onToggle: () => void; onRow: (r: FoldRow) => void; boarding: BoardingState; testID: string }) {
   const nameOf = (r: FoldRow) =>
-    r === 'profile' ? BOARDING.tasks.profile.name : r === 'survey' ? BOARDING.tasks.survey.name : r === 'avoid' ? BOARDING.tasks.avoid.name : r === 'chats' ? BOARDING.tasks.chats.name : r === 'memo' ? tx('MEET_MEMO.home.name') : r === 'type' ? tx('TYPE_CARD.home.name') : r === 'saju' ? IF5_TEXT['SAJU.entry.name'] : tx('PREVIEW_ME.home.name');
+    r === 'profile' ? BOARDING.tasks.profile.name : r === 'survey' ? BOARDING.tasks.survey.name : r === 'avoid' ? BOARDING.tasks.avoid.name : r === 'chats' ? BOARDING.tasks.chats.name : r === 'memo' ? tx('MEET_MEMO.home.name') : r === 'type' ? tx('TYPE_CARD.home.name') : tx('PREVIEW_ME.home.name');
   const lineOf = (r: FoldRow) =>
-    r === 'profile' ? BOARDING.tasks.profile.line : r === 'survey' ? BOARDING.tasks.survey.line : r === 'avoid' ? BOARDING.tasks.avoid.line : r === 'chats' ? BOARDING.tasks.chats.line(boarding.past.length) : r === 'memo' ? tx('MEET_MEMO.home.lineWritten') : r === 'type' ? tx('TYPE_CARD.home.open') : r === 'saju' ? IF5_TEXT['SAJU.entry.line'] : tx('PREVIEW_ME.home.line');
+    r === 'profile' ? BOARDING.tasks.profile.line : r === 'survey' ? BOARDING.tasks.survey.line : r === 'avoid' ? BOARDING.tasks.avoid.line : r === 'chats' ? BOARDING.tasks.chats.line(boarding.past.length) : r === 'memo' ? tx('MEET_MEMO.home.lineWritten') : r === 'type' ? tx('TYPE_CARD.home.open') : tx('PREVIEW_ME.home.line');
   return (
     <View style={styles.fold} testID={testID}>
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} aria-expanded={open} accessibilityLabel={open ? tx('HOME.fold.a11yClose') : tx('HOME.fold.a11yOpen')} onPress={onToggle} effect="none" style={({ pressed }) => [styles.foldRow, pressed && styles.pressed]} testID={`${testID}-toggle`}>

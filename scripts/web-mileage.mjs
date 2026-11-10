@@ -116,8 +116,8 @@ try {
   await measure('내역');
   await b.shot(`MILE_내역_${width}.png`);
 
-  // ═══ 2. 사주 마당 AI 칸 ═══
-  await goto('/saju');
+  // ═══ 2. 사주 마당 AI 칸 ═══ (TAB-1: 긴 풀이 화면은 /saju-detail 로 옮겼다 — 탭 /saju 는 짧은 메뉴)
+  await goto('/saju-detail');
   await tap('saju-ck17-agree');
   await waitVis('if2-ck17', 8000);
   // D-247: 동의 시트의 '태어난 곳' 칸이 빠져 체크 칸은 a(생년월일) · c(시각) · d(성별) — 곳 칸(옛 d/e)이 다시 생기면 아래 '없음' 확인이 실패한다

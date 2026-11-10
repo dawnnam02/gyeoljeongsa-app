@@ -9,8 +9,13 @@ import Svg, { Path } from 'react-native-svg';
 import { colors } from '@/theme/tokens';
 
 import { ICON_PATHS, type IconName } from './iconPaths';
+import { ICON_PATHS_EXTRA, type ExtraIconName } from './iconPathsExtra';
 
 export type { IconName } from './iconPaths';
+export type { ExtraIconName } from './iconPathsExtra';
+
+// 1안 원본(iconPaths) + 앱이 더한 것(iconPathsExtra — 하단 탭 '사주 마당')
+const ALL_ICONS: Readonly<Record<IconName | ExtraIconName, { readonly parts: readonly { readonly role: 'shape' | 'line' | 'dot'; readonly d: string }[] }>> = { ...ICON_PATHS, ...ICON_PATHS_EXTRA };
 
 export const ICON_STROKE = 1.5;
 export const ICON_STROKE_SMALL = 1.75;
@@ -18,7 +23,7 @@ export const ICON_SMALL_MAX = 20;
 export const iconStroke = (size: number) => (size <= ICON_SMALL_MAX ? ICON_STROKE_SMALL : ICON_STROKE);
 
 type Props = {
-  name: IconName;
+  name: IconName | ExtraIconName;
   size?: number;
   color?: string;
   on?: boolean; // 켜진 탭: 닫힌 면을 accentSoft 로 채운다
@@ -44,7 +49,7 @@ export function Icon({ name, size = 24, color = colors.text, on = false, flip = 
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       testID={testID}>
-      {ICON_PATHS[name].parts.map((p, i) =>
+      {ALL_ICONS[name].parts.map((p, i) =>
         p.role === 'dot' ? (
           <Path key={i} d={p.d} fill={color} stroke="none" />
         ) : (

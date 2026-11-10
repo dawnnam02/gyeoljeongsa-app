@@ -70,7 +70,6 @@ export type SettingsDeps = SupportDeps & {
   ticketPhase?: () => Promise<'before' | 'after' | 'none'>; // QF2-B5 FA3-02: 탈퇴 확인창 크레딧 줄 — 이번 회차 탑승권이 마감 전 / 마감 뒤 공개 전 / 없음
   boarded?: () => Promise<boolean>; // 3부-아: 판매 마감 전 · 이번 회차 탑승권이 있나(동의 관리 CK4 · CK15 끄기 확인창 한 줄). 없으면 그 줄 없음
   mileage?: () => boolean; // IF5-F2: 12-1 '마일리지' 줄(스위치 mileage 가 켜졌을 때만). 없으면 줄 없음
-  sajuYard?: () => boolean; // IF5-F1: 12-1 '사주 마당' 줄(스위치 saju_yard 가 켜졌을 때만). 없으면 줄 없음
   skyBook?: () => boolean; // IF3-F: 정보 묶음 '하늘 도감' 줄(스위치 sky_book 이 켜졌을 때만). 없으면 줄 없음
   flagOn?: (key: string) => boolean; // D-238: 서류 인증 제출 줄(doc_verify) · 동의 관리 CK12(selfie_verify) · CK14(doc_verify) 줄은 스위치가 켜졌을 때만. 없으면 줄 없음(처음값 꺼짐)
   ait?: () => boolean; // AIT-F ⑤: 시험용 AI 코드 줄(데모 판에서만 참 — 실서버 판엔 줄 0). 없으면 줄 없음
@@ -93,7 +92,6 @@ export function defaultSettingsDeps(): SettingsDeps {
     ck17: ck17Now,
     morning: morningNow,
     skyBook: skyBookNow,
-    sajuYard: sajuYardNow,
     mileage: mileageNow,
     flagOn: flagNow,
     ait: aitEnabled,
@@ -146,15 +144,6 @@ function flagNow(key: string): boolean {
   const { isOn } = require('@/lib/featureFlagsApi') as typeof import('@/lib/featureFlagsApi');
   /* eslint-enable @typescript-eslint/no-require-imports */
   return isOn(appFlagsStore().get(), key);
-}
-
-// IF5-F1: 사주 마당 줄은 스위치 saju_yard 가 켜졌을 때만(처음값 꺼짐 — 실서버엔 줄 0)
-function sajuYardNow(): boolean {
-  /* eslint-disable @typescript-eslint/no-require-imports */
-  const { appFlagsStore } = require('@/hooks/useFeatureFlags') as typeof import('@/hooks/useFeatureFlags');
-  const { isOn } = require('@/lib/featureFlagsApi') as typeof import('@/lib/featureFlagsApi');
-  /* eslint-enable @typescript-eslint/no-require-imports */
-  return isOn(appFlagsStore().get(), 'saju_yard');
 }
 
 // IF5-F2: 마일리지 줄은 스위치 mileage 가 켜졌을 때만(처음값 꺼짐 — 실서버엔 줄 0)
@@ -279,9 +268,6 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
       case 'skyBook':
         go('/sky-book' as Href, false);
         return;
-      case 'saju':
-        go('/saju' as Href, false);
-        return;
       case 'mileage':
         go('/mileage' as Href, false);
         return;
@@ -384,7 +370,7 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
     }
   })();
 
-  const main = [...SETTINGS_ROWS.filter((r) => r.group === 'main' && (r.key !== 'saju-yard' || deps.sajuYard?.() === true) && (r.key !== 'mileage' || deps.mileage?.() === true) && (r.key !== 'verification' || deps.flagOn?.('doc_verify') === true)), ...(deps.ait?.() === true ? [AIT_ROW] : [])];
+  const main = [...SETTINGS_ROWS.filter((r) => r.group === 'main' && (r.key !== 'mileage' || deps.mileage?.() === true) && (r.key !== 'verification' || deps.flagOn?.('doc_verify') === true)), ...(deps.ait?.() === true ? [AIT_ROW] : [])];
   const info = SETTINGS_ROWS.filter((r) => r.group === 'info' && (r.key !== 'business-info' || bizRows !== null) && (r.key !== 'sky-book' || deps.skyBook?.() === true));
 
   return (
@@ -395,9 +381,9 @@ export function SettingsScreen({ deps: given }: { deps?: SettingsDeps }) {
           <Animated.ScrollView contentContainerStyle={styles.list} onScroll={collapse.onScroll} scrollEventThrottle={16} testID="settings-list">
             <RowGroup testID="settings-rows">
               {main.map((row) => {
-                // QF2 Q2-10e: 크레딧(탑승권)과 마일리지(사주 마당) 줄이 이웃해 헷갈리지 않게 줄 위에 그룹 제목을 둔다. 마일리지 줄이 빠지면(스위치 꺼짐) 그 제목도 없다. 줄 차례는 Figma 12 그대로
-                const hasMileage = main.some((r) => r.key === 'mileage');
-                const groupText = row.key === 'credits' ? QF2_SETTINGS.group.boarding : row.key === 'mileage' ? QF2_SETTINGS.group.saju : row.key === 'saju-yard' && !hasMileage ? QF2_SETTINGS.group.sajuOnly : null; // 마일리지 줄이 없으면 '마일리지'를 말하지 않는 제목(26-1 F-2)
+                // QF2 Q2-10e: 크레딧(탑승권)과 마일리지 줄이 이웃해 헷갈리지 않게 줄 위에 그룹 제목을 둔다. 마일리지 줄이 빠지면(스위치 꺼짐) 그 제목도 없다. 줄 차례는 Figma 12 그대로
+                //  TAB-1: 사주 마당 줄은 하단 탭으로 옮겨 갔다 — 이 목록에는 마일리지 줄만 남아 제목도 '마일리지'다(탭과 겹치는 길 0)
+                const groupText = row.key === 'credits' ? QF2_SETTINGS.group.boarding : row.key === 'mileage' ? QF2_SETTINGS.group.saju : null;
                 return (
                   <View key={row.key}>
                     {groupText ? (

@@ -8,6 +8,7 @@ import { usePushRegistration } from '@/hooks/usePushRegistration';
 import { useV4Screens } from '@/navigation/v5Hide';
 import { useChromeStore } from '@/store/chromeStore';
 import { BOARDING } from '@/features/boarding/boardingCopy';
+import { IF5_TEXT } from '@/content/if5Copy';
 import { CHAT } from '@/features/chat/chatCopy';
 import { TABS } from '@/content/copy';
 import type { TabIconName } from '@/theme/tabIcons';
@@ -27,6 +28,7 @@ function tabOptions(name: TabIconName, title: string): BottomTabNavigationOption
   };
 }
 
+// TAB-1(D-254): 탭 순서 탑승권 · 채팅 · 사주 마당 · 설정. 사주 마당 칸은 스위치 saju_yard 가 켜졌을 때만 생기고(꺼지면 탭 3칸 · 빈자리 0), 시작 화면은 탑승권 그대로다. 탭에 빨간 점 · 숫자 배지 · 새 글 표시 0
 // V5(W10 · D-152): 스위치로 숨긴 탭(추천 v4_daily_recs · 호감 v4_likes · 상점 v4_shop)은 칸을 만들지 않는다(href null). 새 탭(탑승권)은 앱 C 몫
 const hidden = { href: null } as const;
 
@@ -58,6 +60,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="recommendations" options={v4.dailyRecs ? tabOptions('recommendations', TABS.recommendations) : hidden} />
       <Tabs.Screen name="likes" options={v4.likes ? tabOptions('likes', TABS.likes) : hidden} />
       <Tabs.Screen name="shop" options={v4.shop ? tabOptions('shop', TABS.shop) : hidden} />
+      <Tabs.Screen name="saju" options={v4.sajuYard ? tabOptions('saju', IF5_TEXT['SAJU.madang.title']) : hidden} />
       <Tabs.Screen name="settings" options={tabOptions('settings', TABS.settings)} />
       {/* 13 추천 없음 · 14 호감 없음은 탭 화면의 상태라 탭바에 칸을 만들지 않는다(탭바는 보이고, 켜진 탭은 추천 · 호감이다) */}
       <Tabs.Screen name="recommendations-empty" options={{ href: null }} />

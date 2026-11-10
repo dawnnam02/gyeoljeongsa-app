@@ -1,12 +1,13 @@
 // IF-MADANG 사주 마당 한 화면(IF5-F1 ③ · 기능 F5-01 ~ 18 무료 층 · 정책 PS-31 ~ PS-39 · 디자인 HUB-1 · 2 · SUM-1 · 2 · DETAIL-1 · HELP-1).
-//  · 새 탭 0 · 탭 밖 화면. 위에서 아래: 머리 → 내 네 기둥 → 내 결 읽기 → 올해 · 이번 달 → 인연 이야기 → 일 · 돈 · 사람 → 인생 계절표 → 날짜 고르기 → 둘이 맞춰 보기 → 만세력 달력 → 읽는 법 → 끝줄
+//  · TAB-1: 이 화면은 이제 하단 탭 '사주 마당'(SajuYardScreen — 짧은 메뉴)의 '내 사주 자세히'(/saju-detail)다. 탭 밖 화면이고, 메뉴 줄이 앱 안 메모리(sajuSection)로 건넨 구역이 맨 위에 오게 열린다. 뒤로 = 사주 마당 탭
+//  · 탭 밖 화면. 위에서 아래: 머리 → 내 네 기둥 → 내 결 읽기 → 올해 · 이번 달 → 인연 이야기 → 일 · 돈 · 사람 → 인생 계절표 → 날짜 고르기 → 둘이 맞춰 보기 → 만세력 달력 → 읽는 법 → 끝줄
 //  · 판단 차례: 스위치 → CK17A → 내 정보 → 범위 → 시각. 범위 밖 · 시각 모름은 그 카드 안에서만 처리(화면 전체를 막지 않음). '시각 모름'은 오류가 아니다 — 경고 색 · 느낌표 0 · 재촉 0
 //  · 점수 · 퍼센트 · 판정 · 순위 · 숫자 배지 · 깜빡임 · 무한 스크롤 · 진행 막대 · 새 점 · 공유 · 복사 0. 재회 갈래 0. 결과는 짝 · 줄에 쓰이지 않는다
 //  · IF5-F2: 머리 오른쪽 [마일리지] · 맨 위 '사주 이야기 나누기' 입구 · 결 읽기 / 올해 / 인생 계절표(대운) 카드 아래 [AI 맞춤 풀이 받기] · 종합 한 칸 — 스위치 saju_ai · saju_talk · mileage 가 켜졌을 때만. AI 는 사용자가 눌렀을 때만(열기 · 홈에서 호출 0)
 //    사주 값이 보이는 동안은 캡처 · 녹화를 막는다(useAlwaysCaptureBlock · 공유 · 복사 단추를 그리지 않는다)
 import { Redirect, useRouter, type Href } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
@@ -25,6 +26,7 @@ import { useAlwaysCaptureBlock } from '@/lib/captureBlock';
 import { colors, radius, size, space } from '@/theme/tokens';
 
 import { inputStore, useInputStore, type InputStore } from './deviceInput';
+import { clearSajuSection, peekSajuSection, type SajuSection } from './sajuSection';
 import { PartnerSheet } from './PartnerSheet';
 import { SajuInputSheet } from './SajuInputSheet';
 import type { SajuFailCode } from './sajuApi';
@@ -39,7 +41,10 @@ import { AiBlock } from './ai/AiBlock';
 import { daewoonFacts, readingFacts, sinyeonFacts } from './ai/aiFacts';
 import { aiServices, type AiServices } from './ai/aiService';
 
-export const SAJU_HREF = '/saju';
+const SETTLE_MS = 2500; // 구역 맞춤: 카드가 하나씩 나타나는 동안 구역의 자리를 다시 맞추는 시간(손으로 밀면 바로 멈춘다)
+
+export const SAJU_HREF = '/saju'; // 하단 탭 사주 마당(메뉴)
+export const SAJU_DETAIL_HREF = '/saju-detail'; // 이 화면(내 사주 자세히 · 탭 밖)
 export const SAJU_CAL_HREF = '/saju-calendar';
 
 // 앱 기본 연결: 스위치는 훅 하나, 서버 연결은 처음 쓸 때 만든다
@@ -107,8 +112,31 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
     setSheet('in');
     if (deps.birthDate) void deps.birthDate().then(setBirthDate);
   };
-  const back = () => (router.canGoBack() ? router.back() : router.replace('/boarding' as Href));
+  const back = () => (router.canGoBack() ? router.back() : router.replace(SAJU_HREF as Href)); // 뒤로 = 사주 마당 탭(주소로 바로 열렸으면 탭으로)
   const on = deps.isOn;
+
+  // 메뉴 줄이 건넨 구역을 맨 위에 올린다(TAB-1). 카드는 서버 값이 도착하는 대로 하나씩 나타나 위 카드의 높이가 바뀌므로, 사용자가 손으로 밀기 전(최대 SETTLE_MS)까지는 구역의 현재 자리로 다시 맞춘다
+  const [section] = useState(() => peekSajuSection());
+  const scrollRef = useRef<ScrollView>(null);
+  const settled = useRef(false); // SETTLE_MS 가 지났거나 사용자가 손으로 밀었다
+  useEffect(() => {
+    const timer = setTimeout(() => (settled.current = true), SETTLE_MS);
+    return () => {
+      clearTimeout(timer);
+      clearSajuSection(); // 화면을 떠나면 건넨 것을 지운다(다시 들어와도 되살지 않음)
+    };
+  }, []);
+  const place = (id: SajuSection, y: number) => {
+    if (section !== id || settled.current) return;
+    scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: false });
+  };
+  // 구역 표시: 구역 카드를 감싸 자리를 잰다(없는 카드는 감싸지 않는다)
+  const at = (id: SajuSection, node: React.ReactNode): React.ReactNode =>
+    node ? (
+      <View key={`anchor-${id}`} onLayout={(e: LayoutChangeEvent) => place(id, e.nativeEvent.layout.y)} testID={`saju-anchor-${id}`}>
+        {node}
+      </View>
+    ) : null;
 
   const cards = useMemo(() => {
     if (!my) return null;
@@ -185,14 +213,14 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
     if (!ready || !my || !cards) return <ErrorBlock id="saju-error" onRetry={data.reload} />;
     return (
       <>
-        {on('three_pillars') ? pillarsBlock(ready) : null}
-        {on('saju_reading') && cards.reading ? <SummaryCard id="saju-kyeol" label={IF5_TEXT['SAJU.kyeol.label']} one={cards.reading.one} lines={cards.reading.three} more={cards.reading.more} bottom={aiBlock('saju-kyeol', 'reading')} /> : null}
+        {at('pillars', on('three_pillars') ? pillarsBlock(ready) : null)}
+        {on('saju_reading') && cards.reading ? (on('three_pillars') ? kyeolCard(cards.reading) : at('pillars', kyeolCard(cards.reading))) : null}
         {(on('saju_year') && luck !== null) || (on('saju_calendar') && dayReady) ? <AppText variant="bodyBold" accessibilityRole="header">{IF5_TEXT['SAJU.madang.group.flow']}</AppText> : null}
-        {on('saju_year') ? yearBlock() : null}
+        {on('saju_year') ? at('year', yearBlock()) : null}
         {on('saju_calendar') && cards.month ? <SummaryCard id="saju-month" label={IF5_TEXT['SAJU.month.label']} one={cards.month.one} lines={cards.month.three} more={cards.month.more} /> : null}
-        {on('saju_reading') && cards.love ? loveBlock(cards.love) : null}
+        {on('saju_reading') && cards.love ? at('love', loveBlock(cards.love)) : null}
         {on('saju_reading') && FORTUNE_TRIM.workMoneyPeople ? workBlock() : null}
-        {on('saju_season') ? seasonBlock() : null}
+        {on('saju_season') ? at('season', seasonBlock()) : null}
         {FORTUNE_TRIM.fullReading && aiOn && deps.ai && luck?.daewoon && consent.items.gender ? (
           <View style={styles.card} testID="saju-full-card">
             <AiBlock
@@ -229,6 +257,9 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
       );
     }
     return <ErrorBlock id={`saju-fail-${code}`} onRetry={data.reload} noRetry={failIsMissing(code)} />;
+  }
+  function kyeolCard(c: CardView): React.ReactNode {
+    return <SummaryCard id="saju-kyeol" label={IF5_TEXT['SAJU.kyeol.label']} one={c.one} lines={c.three} more={c.more} bottom={aiBlock('saju-kyeol', 'reading')} />;
   }
   function pillarsBlock(r: ReadyChart): React.ReactNode {
     if (!my || !cards) return null;
@@ -421,7 +452,7 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
         onRight={on('mileage') ? () => router.push(MILEAGE_HREF as Href) : undefined}
         testID="saju-header"
       />
-      <ScrollView contentContainerStyle={styles.body} testID="saju-scroll">
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.body} onScrollBeginDrag={() => (settled.current = true)} testID="saju-scroll">
         <View style={sajuStyles.row}>
           <AppText variant="caption" tone="text" style={sajuStyles.flex} testID="saju-fun">
             {IF5_TEXT['SAJU.card.fun']}
@@ -450,9 +481,9 @@ function Hub({ deps, store: injectedStore }: { deps: SajuDeps; store?: InputStor
         {personal()}
 
         {on('saju_pickday') ? pickBlock() : null}
-        {on('saju_partner') && ck.slot.kind === 'on' ? partnerBlock() : null}
+        {on('saju_partner') && ck.slot.kind === 'on' ? at('partner', partnerBlock()) : null}
         {on('saju_calendar') ? calBlock() : null}
-        {on('read_guide') ? guideBlock() : null}
+        {on('read_guide') ? at('guide', guideBlock()) : null}
 
         <AppText variant="bodyMedium" testID="saju-end">
           {IF5_TEXT['SAJU.card.end']}

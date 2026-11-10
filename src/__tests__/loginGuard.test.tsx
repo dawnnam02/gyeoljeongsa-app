@@ -267,7 +267,7 @@ describe('FB-022 로그인 가드: 어느 화면이 가드 안인가', () => {
     const names = stackNames();
     const guarded = names.filter((n) => isGuardedRoute(n));
     expect(guarded.sort()).toEqual(names.filter((n) => !PUBLIC_ROUTES.includes(n)).sort());
-    for (const must of ['(tabs)', 'chat/[id]', 'candidate/[id]', 'profile', 'reveal', 'grade', 'credits', 'mileage-log', 'survey/[step]', 'photos', 'analysis', 'traits']) expect(guarded).toContain(must);
+    for (const must of ['(tabs)', 'chat/[id]', 'candidate/[id]', 'profile', 'reveal', 'grade', 'credits', 'mileage-log', 'survey/[step]', 'photos', 'analysis', 'traits', 'saju-detail']) expect(guarded).toContain(must);
     expect(isGuardedRoute('어떤-새-화면')).toBe(true);
     expect([...PUBLIC_ROUTES].sort()).toEqual(['+not-found', 'consent', 'index', 'onboarding', 'sign-in', 'sign-in-code-error']);
   });

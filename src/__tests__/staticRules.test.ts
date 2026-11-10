@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { ICON_PATHS } from '@/components/iconPaths';
+import { ICON_PATHS_EXTRA } from '@/components/iconPathsExtra';
 import { PHOTO_ICONS } from '@/theme/photoIcons';
 import { TAB_ICONS } from '@/theme/tabIcons';
 
@@ -257,10 +258,10 @@ describe('누르는 효과 · 탭바 (팀장 지시 2026-10-14, 디자인 D10)',
     expect(tabsLayout).not.toContain('captionMedium'); // 가이드 5장의 '활성 Medium'은 Bold 로 바뀌었다
   });
 
-  test('탭 아이콘 6개는 공용 아이콘(1안) 이름이고, 옛 PNG(require)는 없다(D42-C)', () => {
+  test('탭 아이콘 7개는 공용 아이콘 이름(1안 원본 6개 + TAB-1 사주 마당 하나는 iconPathsExtra)이고, 옛 PNG(require)는 없다(D42-C)', () => {
     expect(tabIcons).not.toMatch(/require\(/);
-    for (const name of Object.values(TAB_ICONS)) expect(Object.keys(ICON_PATHS)).toContain(name);
-    expect(TAB_ICONS).toEqual({ boarding: 'boarding', chat: 'chat', recommendations: 'recommend', likes: 'like', shop: 'shop', settings: 'settings' });
+    for (const name of Object.values(TAB_ICONS)) expect([...Object.keys(ICON_PATHS), ...Object.keys(ICON_PATHS_EXTRA)]).toContain(name);
+    expect(TAB_ICONS).toEqual({ boarding: 'boarding', chat: 'chat', saju: 'saju', recommendations: 'recommend', likes: 'like', shop: 'shop', settings: 'settings' });
     expect(fs.existsSync(path.join(APP_DIR, 'assets', 'icons', 'tab'))).toBe(false);
   });
 

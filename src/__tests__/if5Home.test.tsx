@@ -61,16 +61,15 @@ async function open(opts: { ck17: boolean; over?: Record<string, boolean>; cells
   return { tree, nav, calls };
 }
 
-describe('IF5-F1 ③ 홈 B6 입구 · B7 줄 · 오늘 하루 띠', () => {
-  test('스위치 + CK17A 켠 분: B6 에 [사주 마당] 칸(이름 + 한 줄 · 내 글자 0 · 숫자 · 점 · 새 0) → /saju', async () => {
-    const { tree, nav } = await open({ ck17: true });
-    expect(has(tree, 'home-B6-saju')).toBe(true);
-    expect(textOf(tree, 'home-B6-saju-name')).toBe(IF5_TEXT['SAJU.entry.name']);
-    expect(textOf(tree, 'home-B6-saju-line')).toBe(IF5_TEXT['SAJU.entry.line']);
-    await press(tree, 'home-B6-saju');
-    expect(nav.open).toHaveBeenCalledWith('/saju');
+describe('IF5-F1 ③ 홈 오늘 하루 띠 (TAB-1: 사주 마당 칸 · 접힘 줄은 하단 탭으로 옮겨 갔다)', () => {
+  test('TAB-1: 스위치 + CK17A 를 켠 분의 홈에도 B6 [사주 마당] 칸 · B7 [사주 마당] 줄이 없다(탭이 그 길이다) — 칸 이름 · 한 줄 글 0', async () => {
+    const { tree } = await open({ ck17: true });
+    expect(has(tree, 'home-B6-saju')).toBe(false);
+    expect(has(tree, 'home-B7-row-saju')).toBe(false);
+    expect(allTexts(tree)).not.toContain(IF5_TEXT['SAJU.entry.name']);
+    expect(allTexts(tree)).not.toContain(IF5_TEXT['SAJU.entry.line']);
   });
-  test('CK17A 꺼짐 · saju_home 꺼짐 · saju_yard 꺼짐이면 칸 · 띠째 0(권유 0)', async () => {
+  test('CK17A 꺼짐 · saju_home 꺼짐 · saju_yard 꺼짐이면 띠째 0(권유 0)', async () => {
     for (const t of [{ ck17: false }, { ck17: true, over: { saju_home: false } }, { ck17: true, over: { saju_yard: false } }] as { ck17: boolean; over?: Record<string, boolean> }[]) {
       const { tree } = await open(t);
       expect(has(tree, 'home-B6-saju')).toBe(false);
@@ -87,24 +86,20 @@ describe('IF5-F1 ③ 홈 B6 입구 · B7 줄 · 오늘 하루 띠', () => {
     const strip = allTexts(tree).filter((t) => t === IF5_TEXT['SAJU.today.title'] || t === todayBaseLine(nowIso(NOW)));
     expect(strip.join(' ')).not.toMatch(/\d+일째|연속|새/);
   });
-  test('saju_today 만 꺼지면 띠 0 · 칸은 그대로', async () => {
+  test('saju_today 만 꺼지면 띠 0', async () => {
     const { tree } = await open({ ck17: true, over: { saju_today: false } });
     expect(has(tree, 'home-today')).toBe(false);
-    expect(has(tree, 'home-B6-saju')).toBe(true);
   });
-  test('칸 3 이하: 서버 칸 둘 + AI 입구가 이미 셋이면 B6 칸 대신 B7 접힘 줄 [사주 마당]', async () => {
-    const { tree, nav } = await open({ ck17: true, cells: ['type', 'preview'], ait: true, typeId: 'tt-01' });
-    expect(has(tree, 'home-B6-saju')).toBe(false);
+  test('칸 3 이하: 서버 칸 둘 + AI 입구가 이미 셋이어도 B7 접힘 줄에 [사주 마당]이 없다(TAB-1)', async () => {
+    const { tree } = await open({ ck17: true, cells: ['type', 'preview'], ait: true, typeId: 'tt-01' });
     await press(tree, 'home-B7-toggle');
-    expect(has(tree, 'home-B7-row-saju')).toBe(true);
-    await press(tree, 'home-B7-row-saju');
-    expect(nav.open).toHaveBeenCalledWith('/saju');
+    expect(has(tree, 'home-B7-row-saju')).toBe(false);
+    expect(allTexts(tree)).not.toContain(IF5_TEXT['SAJU.entry.name']);
   });
-  test('접힘 줄: foldRows 는 sajuRow 일 때만 saju 를 더한다(줄 8 이하 그대로)', () => {
+  test('접힘 줄: foldRows 에는 사주 마당 줄이 없다(줄 8 이하 그대로 — TAB-1)', () => {
     const s = parseHomeState({ stage: 'matched', blocks: ['B7'] }) as never;
-    expect(foldRows(s, { hasPastChat: true, memoElsewhere: true, typeOn: true, previewOn: true })).not.toContain('saju');
-    const rows = foldRows(s, { hasPastChat: true, memoElsewhere: true, typeOn: true, previewOn: true, sajuRow: true });
-    expect(rows).toContain('saju');
+    const rows = foldRows(s, { hasPastChat: true, memoElsewhere: true, typeOn: true, previewOn: true });
+    expect(rows).not.toContain('saju' as never);
     expect(rows.length).toBeLessThanOrEqual(8);
   });
   test('홈을 열 때 서버 호출은 홈 상태 · 동의 읽기뿐 — 사주 계산(get_my_*) · AI 0', async () => {

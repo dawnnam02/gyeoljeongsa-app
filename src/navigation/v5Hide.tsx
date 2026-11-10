@@ -29,7 +29,8 @@ function defaultStore(): FlagsStore {
 }
 
 // 스위치를 한 번 읽어 본 뒤(ready) 화면 셋이 켜졌는지. 못 읽으면 live 값(꺼짐)
-export function useV4Screens(store?: FlagsStore): { ready: boolean; dailyRecs: boolean; likes: boolean; shop: boolean } {
+//  sajuYard(TAB-1): 하단 탭 '사주 마당' 칸이 있는지 — 스위치 saju_yard 가 켜졌을 때만(꺼지면 지금처럼 탭 3칸, 빈자리 0). 같은 스위치 저장소를 읽는다
+export function useV4Screens(store?: FlagsStore): { ready: boolean; dailyRecs: boolean; likes: boolean; shop: boolean; sajuYard: boolean } {
   const { flags, refresh } = useFeatureFlags(store ?? defaultStore());
   const [tried, setTried] = useState(flags.loaded);
   useEffect(() => {
@@ -43,7 +44,7 @@ export function useV4Screens(store?: FlagsStore): { ready: boolean; dailyRecs: b
     };
   }, [tried, refresh]);
   const ready = tried || flags.loaded;
-  return { ready, dailyRecs: v4ScreenOn(flags, 'dailyRecs'), likes: v4ScreenOn(flags, 'likes'), shop: v4ScreenOn(flags, 'shop') };
+  return { ready, dailyRecs: v4ScreenOn(flags, 'dailyRecs'), likes: v4ScreenOn(flags, 'likes'), shop: v4ScreenOn(flags, 'shop'), sajuYard: isOn(flags, 'saju_yard') };
 }
 
 // 숨긴 화면의 라우트를 감싼다: 켜져 있으면 그대로, 꺼져 있으면 그리지 않고 V5_HOME 으로.
