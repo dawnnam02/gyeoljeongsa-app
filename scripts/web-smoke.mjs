@@ -14,12 +14,14 @@
 // 사용: node scripts/web-smoke.mjs [번들 폴더]   (스크린샷은 확인/스크린샷/ 에 저장)
 // 종료 코드: 0 통과 · 1 실패 · 2 브라우저가 없어 못 봄(미확인)
 import { Buffer } from 'node:buffer';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { killBrowserTree } from './lib/browser.mjs';
 
 const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const distDir = path.resolve(appDir, process.argv[2] ?? 'dist'); // 인자로 번들 폴더를 줄 수 있다(스크래치에 만든 번들 등)
@@ -131,14 +133,7 @@ const proc = spawn(
 );
 
 // T1-10(QF2-A): 브라우저가 답하지 않거나 전체 시간(기본 10분, WEB_TOTAL_MS)이 지나면 브라우저(프로세스 나무)를 닫고 끝낸다 · 끝난 뒤에도 남은 Edge 한 벌이 없게 한다
-const killBrowser = () => {
-  try {
-    if (process.platform === 'win32' && proc.pid) spawnSync('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
-    else proc.kill();
-  } catch {
-    /* 이미 끝남 */
-  }
-};
+const killBrowser = () => killBrowserTree(proc, profile); // RS2-01 [마]3: 공용 종료 처리(처음 프로세스 + 프로필로 찾은 나무)
 process.once('exit', killBrowser);
 const totalMs = Number(process.env.WEB_TOTAL_MS ?? 600000);
 function hardStop(why) {

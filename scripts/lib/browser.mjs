@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -142,6 +143,40 @@ const HELPERS = `
   };
 `;
 
+/**
+ * RS2-01 [마]3 · 헤드리스 브라우저를 프로세스 나무째 확실히 닫는 공용 처리(모든 웹 점검이 이 함수 하나를 쓴다).
+ *  왜: Windows 의 Edge 는 처음 띄운 프로세스가 자식(렌더러 · GPU · 유틸리티)을 남기고 먼저 끝나기도 해서, 처음 pid 만 /T 로 끝내면 부모가 없는 자식 나무가 그대로 남았다(점검마다 쌓임).
+ *  어떻게: ① 처음 pid 를 나무째 끝낸다 ② 그 점검만의 프로필 폴더(--user-data-dir=<임시 폴더>)가 명령줄에 든 브라우저 프로세스를 모두 찾아 나무째 끝낸다(부모가 사라진 고아도 명령줄은 같다) — 최대 3번 확인.
+ *  프로필 폴더는 점검마다 새로 만드는 임시 폴더라 다른 사람의 브라우저는 건드리지 않는다. 이름 거름(nameRe)은 시험이 가짜 프로세스로 확인할 때만 바꾼다.
+ */
+export function killBrowserTree(proc, profile, nameRe = /^(msedge|chrome)/i) {
+  try {
+    if (proc?.pid) {
+      if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+      else proc.kill();
+    }
+  } catch {
+    /* 이미 끝남 */
+  }
+  if (!profile) return;
+  try {
+    if (process.platform === 'win32') {
+      const quote = (v) => `'${String(v).replace(/'/g, "''")}'`;
+      const script =
+        `$p = ${quote(profile)}; $n = ${quote(nameRe.source)}; ` +
+        `for ($i = 0; $i -lt 3; $i++) { ` +
+        `$l = @(Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains($p) -and ($_.Name -match $n) }); ` +
+        `if ($l.Count -eq 0) { break }; ` +
+        `$l | ForEach-Object { & taskkill /pid $_.ProcessId /T /F | Out-Null }; Start-Sleep -Milliseconds 300 }`;
+      spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { stdio: 'ignore', timeout: 30000, windowsHide: true });
+    } else {
+      spawnSync('pkill', ['-f', `--user-data-dir=${profile}`], { stdio: 'ignore' });
+    }
+  } catch {
+    /* 닫지 못해도 점검 결과는 그대로 — 남은 수는 부르는 쪽이 센다 */
+  }
+}
+
 export async function openBrowser({ distDir, shotDir, width = 360, height = 740 }) {
   const browser = findBrowser();
   if (!browser) throw new Error('Edge 또는 Chrome 을 찾지 못했어요. BROWSER_PATH 에 실행 파일 경로를 주면 돼요.');
@@ -163,13 +198,22 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
       targets = await waitJson(`http://127.0.0.1:${port}/json/list`, 120);
       break;
     } catch (error) {
-      try {
-        proc.kill();
-      } catch {
-        /* 이미 끝남 */
-      }
+      killBrowserTree(proc, profile); // 뜨다 만 브라우저도 나무째(다음 시도가 새 프로필을 쓰므로 이 프로필은 곧 버린다)
       if (attempt >= 3) throw error;
+      try {
+        fs.rmSync(profile, { recursive: true, force: true });
+      } catch {
+        /* 아직 쥐고 있을 수 있다 */
+      }
     }
+  }
+  // 이 점검(node)이 알림 없이 죽어도 브라우저 나무가 남지 않게 감시 프로세스를 하나 둔다(Edge 는 node 의 작업 묶음에서 빠져나와 산다) — 정상으로 끝나면 close() 가 먼저 끝낸다
+  let reaper = null;
+  try {
+    reaper = spawn(process.execPath, [fileURLToPath(new URL('./browser-reaper.mjs', import.meta.url)), String(process.pid), profile, String(proc.pid ?? 0)], { detached: true, stdio: 'ignore', windowsHide: true });
+    reaper.unref();
+  } catch {
+    reaper = null; // 감시를 못 띄워도 점검은 계속(exit · close 길은 그대로 있다)
   }
   const page = targets.find((t) => t.type === 'page');
   const ws = new WebSocket(page.webSocketDebuggerUrl);
@@ -233,15 +277,14 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
   }
   const guard = setTimeout(() => hardStop(`점검 전체 시간 ${Math.round(totalMs / 1000)}초 초과`), totalMs);
   guard.unref();
-  const killTree = () => {
-    try {
-      if (process.platform === 'win32' && proc.pid) spawnSync('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
-      else proc.kill();
-    } catch {
-      /* 이미 끝남 */
-    }
-  };
+  const killTree = () => killBrowserTree(proc, profile);
   process.once('exit', killTree); // 어떤 길로 끝나도 남은 Edge 한 벌이 없게
+  for (const sig of ['SIGINT', 'SIGTERM']) {
+    process.once(sig, () => {
+      killTree();
+      process.exit(sig === 'SIGINT' ? 130 : 143);
+    });
+  }
   const viewport = (w, h) => cdp.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 2, mobile: true });
   await viewport(width, height);
 
@@ -380,10 +423,10 @@ export async function openBrowser({ distDir, shotDir, width = 360, height = 740 
       } catch {
         /* 이미 닫힘 */
       }
+      // Windows 의 Edge 는 자식 프로세스를 따로 띄워 proc.kill() 로는 주 창만 끝난다(T1) · 처음 프로세스가 먼저 끝나면 /T 도 못 찾는다(RS2-01) → 프로필로 찾은 나무까지 모두
+      killBrowserTree(proc, profile);
       try {
-        // Windows 의 Edge 는 자식 프로세스를 따로 띄워 proc.kill() 로는 주 창만 끝난다 → 프로세스 나무째 끝낸다(T1: 점검 끝 뒤 node · Edge 가 남던 것)
-        if (process.platform === 'win32' && proc.pid) spawnSync('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
-        else proc.kill();
+        reaper?.kill();
       } catch {
         /* 이미 끝남 */
       }

@@ -166,7 +166,7 @@ export function createDemoBoarding(options: DemoBoardingOptions = {}) {
     return ok({
       now: iso(now), // 데모만(장면 시각)
       price_krw: 26900,
-      bundle_amount: DEMO_BUNDLE_AMOUNT, // 0058 포함분(연애 풀이 3편값 8,700) — 서버 이관 0060 의 get_ticket_state 가 bundle_amount 로 알려 주는 값과 같은 모양(결제로 사는 회차에서만 양수). 마일리지 데모 장부의 탑승 때 들어오는 포함분(demo/mileageDemo)과 같은 수 한 곳
+      bundle_amount: DEMO_BUNDLE_AMOUNT, // 0058 포함분(연애 풀이 3편값 8,700) — 서버 이관 0062 부터 get_ticket_state.bundle_amount 는 '이 회원이 이 회차에 지금 결제하면 실제로 들어올 양'(회원 몫)이다: 리허설 회차 · 결제 닫힘 · 스위치 꺼짐 · 이미 다 받은 회원은 0 → 앱은 0 이면 구매 시트 줄을 그리지 않는다(boardingApi positive · qf2B6Mileage 시험). 데모는 처음 결제하는 회원이라 양수. 마일리지 데모 장부의 탑승 때 들어오는 포함분(demo/mileageDemo)과 같은 수 한 곳
       payment_mode: 'demo',
       round: {
         round_no: r.no,

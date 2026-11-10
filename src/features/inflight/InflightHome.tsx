@@ -6,7 +6,7 @@
 //  · 궁합 카드 · 꼭 나눌 이야기는 접힌 한 줄 → 시트(PF-42) · 방이 닫히면(차단 · 나가기) 다시 읽을 때 블록 · 시트 · 캐시 0
 //  · 쉬는 중 · 졸업 단계 · 1.1 피드백 칸은 그리지 않는다(PF-84 · PF-87)
 import { useFocusEffect, type Href } from 'expo-router';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
@@ -95,16 +95,39 @@ export function InflightHome({ deps, home, boarding, nav, onToast, testID = 'hom
   // IF5-F1 사주 마당 입구(정책 PS-34): 스위치 saju_yard · saju_home 이 켜지고 CK17A 를 켠 분에게만 B6 칸 · B7 줄 · 오늘 하루 띠 — 꺼져 있으면 칸째 0(권유 0 · 숫자 · 점 · '새' 0). 홈을 열 때 서버 호출은 동의 읽기뿐 — 사주 계산 · AI 0
   const sajuHomeOn = isOn('saju_yard') && isOn('saju_home');
   const [ck17On, setCk17On] = useState(false);
+  const readCk17 = useCallback(
+    (alive: () => boolean) => {
+      void Promise.resolve(deps.ck17?.load?.())
+        .then((r) => alive() && setCk17On(!!r && r.ok && r.data.a))
+        .catch(() => undefined);
+    },
+    [deps.ck17],
+  );
   useEffect(() => {
     if (!sajuHomeOn) return undefined;
     let alive = true;
-    void Promise.resolve(deps.ck17?.load?.())
-      .then((r) => alive && setCk17On(!!r && r.ok && r.data.a))
-      .catch(() => undefined);
+    readCk17(() => alive);
     return () => {
       alive = false;
     };
-  }, [sajuHomeOn, deps.ck17]);
+  }, [sajuHomeOn, readCk17]);
+  // FB-024(RS2-01): 하단 탭 화면은 다른 탭에 갔다 와도 그대로 떠 있어 위 읽기가 다시 돌지 않는다 — 사주 마당 탭에서 동의를 마치고 돌아와도 띠가 안 보였다.
+  //  탭으로 돌아올 때(포커스)마다 동의를 다시 읽는다(서버 호출은 여전히 동의 읽기뿐). 처음 포커스 = 홈을 여는 때는 위 읽기가 하므로 건너뛴다
+  const seenFocus = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!seenFocus.current) {
+        seenFocus.current = true;
+        return undefined;
+      }
+      if (!sajuHomeOn) return undefined;
+      let alive = true;
+      readCk17(() => alive);
+      return () => {
+        alive = false;
+      };
+    }, [sajuHomeOn, readCk17]),
+  );
   const sajuIn = sajuHomeOn && ck17On;
 
   const type = travelTypeOf(typeId);

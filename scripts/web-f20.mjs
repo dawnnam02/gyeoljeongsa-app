@@ -195,7 +195,7 @@ try {
       sawDecline = true;
       await tap('v2-C05-opt-decline');
       await sleep(700);
-      check('2', "'말하고 싶지 않아요' → '답하면 등급이 오를 수 있어요.' · 자동으로 넘어가지 않음 · 구간 공개 줄", (await currentId()) === 'C05' && (await text('v2-decline-hint')) === '답하면 등급이 오를 수 있어요.' && (await text('v2-visibility')).includes('구간'), await text('v2-decline-hint'));
+      check('2', "'말하고 싶지 않아요' → 돈 문항 고지(D-248: 가장 낮은 구간으로 센다) · 자동으로 넘어가지 않음 · 구간 공개 줄", (await currentId()) === 'C05' && (await text('v2-decline-hint')) === "'말하고 싶지 않아요'를 고르면 이 항목은 등급 계산에서 가장 낮은 구간으로 세어요." && (await text('v2-visibility')).includes('구간'), await text('v2-decline-hint'));
       await shot('06_말하고싶지않아요');
       await tap('v2-C05-opt-inc06');
       await wait(`!${q('v2-block-C05')}`, 3000);
