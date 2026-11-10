@@ -61,7 +61,7 @@ async function open(answers: boolean[], over: Record<string, boolean> = {}) {
     record: async () => ({ ok: true }),
     revoke: async () => ({ ok: true }),
   };
-  const api = { home: async () => ({ ok: true as const, data: home as never }), pairCard: async () => ({ ok: false as const, code: 'x' }), preQuestions: async () => ({ ok: false as const, code: 'x' }) } as unknown;
+  const api = { home: async () => ({ ok: true as const, data: home as never }), pairCard: async () => ({ ok: false as const, code: 'x' }), preQuestions: async () => ({ ok: false as const, code: 'x' }) } as never;
   const home = parseHomeState({ stage: 'inflight', blocks: ['B6', 'B7'], me: { cells: ['preview'] } });
   if (!home) throw new Error('home');
   const nav = { open: jest.fn(), chat: jest.fn(), settings: jest.fn() };
@@ -110,7 +110,7 @@ describe('FB-024 홈 오늘 하루 띠: 탭에 돌아올 때 동의를 다시 �
     const f = flags();
     const ck17: Ck17Api = { load: async () => (calls.push('ck17'), { ok: true, data: { a: true, b: false } }), record: async () => ({ ok: true }), revoke: async () => ({ ok: true }) };
     const home = parseHomeState({ stage: 'inflight', blocks: ['B6', 'B7'], me: { cells: ['preview'] } });
-    const api = { home: async () => (calls.push('home'), { ok: true as const, data: home as never }) } as unknown;
+    const api = { home: async () => (calls.push('home'), { ok: true as const, data: home as never }) } as never;
     const tree = await mount(
       <InflightHome deps={{ api, ck17, type: { mine: async () => null }, isOn: (k) => f[k] === true, notes: createDeviceNotes(), now: () => NOW, ait: false }} home={home!} boarding={boarding} nav={{ open: jest.fn(), chat: jest.fn(), settings: jest.fn() }} onToast={() => undefined} />,
     );
