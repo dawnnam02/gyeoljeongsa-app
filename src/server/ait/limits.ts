@@ -14,8 +14,10 @@ import { ONE_SHOT } from './features.ts';
 
 // ---------------------------------------------------------------- 접근 코드 (AC-13 · AC-14)
 export const ACCESS_HEADER = 'x-ait-code';
-/** ait- + 4글자 묶음 4개(헷갈리는 i l o 0 1 뺀 31글자) */
-export const ACCESS_CODE_RE = /^ait-[a-hjkmnp-z2-9]{4}-[a-hjkmnp-z2-9]{4}-[a-hjkmnp-z2-9]{4}-[a-hjkmnp-z2-9]{4}$/;
+/** ait- + 4글자 묶음 4개(헷갈리는 i l o 0 1 뺀 31글자) — **권장 형식**(약 79비트).
+ *  AI-FIX11 RS2-06: 서버는 이 형식을 강제하지 않는다. 8자 이상이고 앞뒤 공백이 없으면 받는다(본인이 이미 정해 둔 코드가 막히지 않게 — 최소 길이 기준은 그대로).
+ *  짧은 코드는 무차별 대입에 약하므로 20자 이상 무작위 또는 이 형식을 쓰는 것을 권한다(문서: ai/AIT/README.md '접근 코드'). 틀린 코드 연타는 아래 authLocked 가 최선 노력으로 막는다. */
+export const ACCESS_CODE_RE =/^ait-[a-hjkmnp-z2-9]{4}-[a-hjkmnp-z2-9]{4}-[a-hjkmnp-z2-9]{4}-[a-hjkmnp-z2-9]{4}$/;
 
 const enc = new TextEncoder();
 async function sha256(s: string): Promise<Uint8Array> {
@@ -32,6 +34,27 @@ export async function checkAccessCode(provided: unknown, expected: unknown): Pro
   for (let i = 0; i < hp.length; i++) diff |= hp[i] ^ he[i];
   const configured = e.trim().length >= 8 && e === e.trim();
   return configured && diff === 0;
+}
+
+// ---------------------------------------------------------------- 틀린 접근 코드 연타 막기 (AI-FIX11 RS2-06)
+// 서버 함수는 상태가 없어 이 셈은 '이 격리 안에서만 아는 최선 노력'이다(격리가 여럿이면 격리마다 따로). 누가 부르는지 모르므로(로그인 확인 0) 호출자별로 나누지 못하고 격리 하나에 한 칸이다.
+// 대가: 틀린 코드가 한 창에 AUTH_FAIL_PER_MINUTE 번 쌓이면 그 창이 지날 때까지 맞는 코드도 429 로 닫힌다(그렇게 하지 않으면 맞는 코드를 찾을 때까지 계속 시도할 수 있다). 최대 약 1분.
+/** 60초 안에 틀린 코드가 이만큼이면 잠금 */
+export const AUTH_FAIL_PER_MINUTE = 20;
+const AUTH_BUCKET = 'auth_fail';
+function authWindow(counters: Counters, nowMs: number): number[] {
+  const win = (counters.minute[AUTH_BUCKET] ?? []).filter((t) => nowMs - t < 60_000);
+  counters.minute[AUTH_BUCKET] = win;
+  return win;
+}
+/** 지금 틀린 코드 연타로 잠겨 있나(맞는 코드도 닫힘). 접근 코드 비교 **앞**에서 부른다 */
+export function authLocked(counters: Counters, nowMs: number, max: number = AUTH_FAIL_PER_MINUTE): boolean {
+  return authWindow(counters, nowMs).length >= max;
+}
+/** 틀린 코드(없음 · 틀림 · 서버 미설정 모두) 한 번을 기록한다 */
+export function noteAuthFail(counters: Counters, nowMs: number, max: number = AUTH_FAIL_PER_MINUTE): void {
+  const win = authWindow(counters, nowMs);
+  if (win.length < max) win.push(nowMs);                      // 잠금 전에는 max 개까지만 쌓는다(메모리 상한)
 }
 
 // ---------------------------------------------------------------- 예산 (정보용 — 하루 상한은 없다)
@@ -85,8 +108,13 @@ export function monthlyCapacity(chatModel: ModelId = FEATURE_MODEL.chat): Array<
 
 // ---------------------------------------------------------------- 기계 폭주 막기 (연타 간격 + 분당) — 사람이 치는 속도는 걸리지 않는다
 /** minGapMs: 같은 기능의 연속 호출 사이 최소 간격(초 단위 연타 차단). perMinute: 60초 안 최대 호출 수. 넘으면 'rate' + retry-after */
-export interface Guard { minGapMs: number; perMinute: Readonly<Record<Feature, number>> }
-export const GUARD: Guard = { minGapMs: 1200, perMinute: { chat: 12, coach: 10, compat: 12, horoscope: 12 } };
+export interface Guard { minGapMs: number; perMinute: Readonly<Record<Feature, number>>; vendorPerMinute?: Readonly<Record<VendorKind, number>> }
+/** AI-FIX11 RS2-08 · 업체 호출 **하나마다** 세는 분당 한도. 요청 하나가 업체를 여러 번 부르게 되어(입력 판정 · 본 호출 · 출력 판정 · 칸 고쳐 쓰기 · 접기 요약) 요청 단위 한도(perMinute)만으로는 실제 호출 수를 못 잡았다.
+ *  main = 본 호출 · 칸 고쳐 쓰기 · 접기 요약(비싼 쪽): 요청 한도 12 × 3(고쳐 쓰기 · 요약 여유) / judge = 입력 · 출력 판정(값싼 쪽): 사주 풀이 한 번이 판정 묶음 3~5개(실패 때 한 번 더)라 요청 12 × 10.
+ *  사람이 쓰는 속도로는 닿지 않는 값이고, 한 사람이 풀을 채우는 폭주만 막는다. 격리 메모리 안의 최선 노력(주인이 달라지는 RS2-01 서버 로그인 연결 뒤에는 사람별 키로 나눈다). 환불 대상 아님(호출이 나갔다는 사실은 되돌리지 않는다). */
+export type VendorKind = 'main' | 'judge';
+export const VENDOR_PER_MINUTE: Readonly<Record<VendorKind, number>> = { main: 36, judge: 120 };
+export const GUARD: Guard = { minGapMs: 1200, perMinute: { chat: 12, coach: 10, compat: 12, horoscope: 12 }, vendorPerMinute: VENDOR_PER_MINUTE };
 /** 이전 이름 호환 */
 export const PER_MINUTE: Readonly<Record<Feature, number>> = GUARD.perMinute;
 
@@ -124,6 +152,20 @@ export function consume(counters: Counters, key: string, feature: Feature, nowMs
 /** 챗봇의 업체 호출 하나마다 부른다(턴 · 검사 탈락 · 사용자 재전송 포함). 횟수 한도는 없고 연타 · 분당만 본다. */
 export function consumeChatCall(counters: Counters, key: string, nowMs: number, guard: Guard = GUARD, estWon = 0): ConsumeResult {
   return take(counters, key + '|chat_call', guard.perMinute.chat, guard, nowMs, estWon);
+}
+
+/** 업체 호출 하나를 보내기 **직전**에 부른다(AI-FIX11 RS2-08). 한도 안이면 분 창에 기록하고 ok, 아니면 rate(그 호출은 나가지 않는다). 요청 단위 consume · consumeChatCall 과 다른 칸(`vendor_main` · `vendor_judge`)이라
+ *  `refund`(분 창 마지막 기록을 뺌) · `refundCount`(차감만 되돌림)와 섞이지 않는다 — 호출 수는 되돌리지 않는다. 연타 간격(minGapMs)은 보지 않는다(한 요청 안의 판정 재시도가 곧바로 이어지기 때문). */
+export function takeVendorCall(counters: Counters, key: string, kind: VendorKind, nowMs: number, guard: Guard = GUARD): ConsumeResult {
+  roll(counters, nowMs);
+  const cap = (guard.vendorPerMinute ?? VENDOR_PER_MINUTE)[kind];
+  const bucket = key + '|vendor_' + kind;
+  const win = (counters.minute[bucket] ?? []).filter((t) => nowMs - t < 60_000);
+  if (win.length >= cap) { counters.minute[bucket] = win; return { ok: false, code: 'rate' }; }
+  win.push(nowMs);
+  counters.minute[bucket] = win;
+  counters.used[bucket] = (counters.used[bucket] ?? 0) + 1;
+  return { ok: true };
 }
 
 /** 판정(심사) 때문에 챗봇 · 단발 본 호출을 안 부른 턴의 **차감만** 되돌린다(AI-FIX6 ⑥). 분 창(연타 간격 · 분당)에는 그대로 남겨, 판정 실패 · harm 로 같은 시각에 연타해도 한도에 걸리게 한다.

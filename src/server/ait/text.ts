@@ -22,7 +22,7 @@ export function sanitize(input: string): string {
 
 export interface MaskPattern { name: string; source: string; flags: string; mask: string }
 export const MASK_PATTERNS: readonly MaskPattern[] = [
-  { name: 'email', source: '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}', flags: '', mask: '[연락처]' },
+  { name: 'email', source: '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}', flags: '', mask: '[연락처]' },   // AI-FIX11 RS2-03: 이 무늬만 n² 이 남아 있다(2,000자 3ms · 10,000자 약 100ms) — 모든 호출 자리가 2,000자 안으로 막혀 있어 그대로 둔다. 앞 글자에서만 시작하게 바꾸면 붙은 이메일('a@b.co-c@d.co')을 놓쳐서 되돌렸다
   { name: 'phone', source: '(?<!\\d)(?:\\+?82[-\\s]?)?0?1[016789][-\\s.]?\\d{3,4}[-\\s.]?\\d{4}(?!\\d)', flags: '', mask: '[연락처]' },
   { name: 'url', source: '\\b(?:https?:\\/\\/|www\\.)\\S+', flags: 'i', mask: '[링크]' },
   { name: 'handle', source: '(?<![A-Za-z0-9])@[A-Za-z0-9_.]{3,}', flags: '', mask: '[링크]' },
@@ -44,7 +44,10 @@ const ANIMAL = '(?:쥐|소|호랑이|범|토끼|용|뱀|말|양|원숭이|닭|�
 const BORN_END = '생(?:(?![가-힣])|(?=이|인|은|입|임|도|으로|과|와|들|만|에|의|을|를))';   // 생각 · 생활 · 생일은 제외
 const YEARWORD = '(?:(?:19|20)\\d{2}|\\d{2})\\s*년(?:\\s*' + BORN_END + ')?';
 const GJ = '[갑을병정무기경신임계甲乙丙丁戊己庚辛壬癸][자축인묘진사오미신유술해子丑寅卯辰巳午未申酉戌亥]';
-const TIME = '(?:(?:오전|오후|새벽|아침|낮|저녁|밤|한밤중|한밤|정오|자정)\\s*)?(?:\\d{1,2}\\s*시(?:\\s*(?:\\d{1,2}\\s*분|반))?|\\d{1,2}:\\d{2})\\s*(?:쯤|경|무렵|께)?';
+// AI-FIX11 RS2-03: 빈칸 문자 \s* 가 선택 묶음 하나만 사이에 두고 이어지면(\s*(?:…)?\s*) 빈칸이 n 개일 때 n² ~ n³ 으로 느려진다 — 무늬마다 빈칸을 한 곳에서만 먹도록 고쳤다(받아들이는 글은 그대로, 시험: 옛 판과 무작위 대조).
+const TIME_CORE = '(?:(?:오전|오후|새벽|아침|낮|저녁|밤|한밤중|한밤|정오|자정)\\s*)?(?:\\d{1,2}\\s*시(?:\\s*(?:\\d{1,2}\\s*분|반))?|\\d{1,2}:\\d{2})';
+const TIME_TAIL = '(?:쯤|경|무렵|께)';
+const TIME = TIME_CORE + '\\s*' + TIME_TAIL + '?';
 const SIJIN = '[자축인묘진사오미신유술해]시';
 const BORNWORD = '(?:에\\s*)?(?:태어[가-힣]*|출생(?!신고|지|률|증명)|낳았|낳은|' + BORN_END + ')';
 const PILLAR_HZ = '[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥][年月日時时]?';
@@ -52,7 +55,7 @@ const PILLAR_HG = '[갑을병정무기경신임계][자축인묘진사오미신�
 const PILLAR_SEP = '[\\s,，、·/-]*';
 export const BIRTH_PATTERNS: readonly MaskPattern[] = [
   // 띠 + 연도: '85년생 소띠' · '소띠 85년생' · '1985년 소띠'
-  { name: 'birth_zodiac', source: '(?<!\\d)' + YEARWORD + '\\s*,?\\s*' + ANIMAL + '|' + ANIMAL + '\\s*,?\\s*(?:인|의)?\\s*' + YEARWORD, flags: '', mask: '[번호]' },
+  { name: 'birth_zodiac', source: '(?<!\\d)' + YEARWORD + '\\s*(?:,\\s*)?' + ANIMAL + '|' + ANIMAL + '\\s*(?:,\\s*)?(?:(?:인|의)\\s*)?' + YEARWORD, flags: '', mask: '[번호]' },
   // ○○년생: '85년생' · '1985년생' · '85년 3월생' · '85년도생' · '85년 출생'
   { name: 'birth_year', source: '(?<![\\d.])(?:' + YYYY + '|' + YY + ')\\s*년도?\\s*(?:' + MON + '\\s*월\\s*)?(?:' + BORN_END + '|출생(?!신고|지|률|증명))', flags: '', mask: '[번호]' },
   // 두 자리 연도 날짜: '85년 3월 12일' · '85.3.12' · '85/3/12' · '85-3-12'
@@ -64,13 +67,13 @@ export const BIRTH_PATTERNS: readonly MaskPattern[] = [
   // 간지 연월일: '갑자년 3월 12일' · '을축년생' · '갑자년 병인월 정묘일' · '병인월 정묘일' (한자 포함). 간지 연도만('병오년')은 세운 이야기라 두지 않는다
   { name: 'birth_ganji', source: '(?<![가-힣])' + GJ + '(?:년|年)\\s*(?:' + BORN_END + '|(?:(?:음력|양력)\\s*)?' + MON + '\\s*[월月]\\s*' + DAY + '\\s*[일日]?|' + GJ + '(?:월|月)(?:\\s*' + GJ + '(?:일|日))?)|(?<![가-힣])' + GJ + '(?:월|月)\\s*' + GJ + '(?:일|日)', flags: '', mask: '[번호]' },
   // 태어난 시각: '오후 3시 반에 태어난' · '새벽 2시생' · '자시에 태어난' · '생시는 오후 3시'
-  { name: 'birth_time', source: '(?:' + TIME + '|' + SIJIN + ')\\s*' + BORNWORD + '|(?:생시|태어난\\s*(?:시각|시간)|출생\\s*(?:시각|시간))\\s*(?:은|는|이|가|:)?\\s*(?:' + TIME + '|' + SIJIN + ')', flags: '', mask: '[번호]' },
+  { name: 'birth_time', source: '(?:' + TIME_CORE + '\\s*(?:' + TIME_TAIL + '\\s*)?|' + SIJIN + '\\s*)' + BORNWORD + '|(?:생시|태어난\\s*(?:시각|시간)|출생\\s*(?:시각|시간))\\s*(?:(?:은|는|이|가|:)\\s*)?(?:' + TIME + '|' + SIJIN + ')', flags: '', mask: '[번호]' },
 ];
 // ---- Q2-26 · 맨주소(http 없는 주소)와 카톡 · 인스타 아이디를 말로 알려 주는 꼴. 기존 7개(MASK_PATTERNS)와 따로 둔다 — hasResidualPii · hasContactShape(모델 출력 검사)에 섞이지 않게(BIRTH_PATTERNS 와 같은 이유).
 //  AI-FIX10 ③: 백엔드 공통 입출력 표(backend/시험/mask_cases.json 36줄 → fixtures/mask_cases.json)에 맞춰 backend/functions/_shared/ai/mask.ts 의 CONTACT_EXTRA_PATTERNS 4개(bare_domain · chat_id · id_word · kr_digits)와 MASK_ORDER 를 그대로 옮겼다.
 export const CONTACT_EXTRA_PATTERNS: readonly MaskPattern[] = [
   { name: 'bare_domain', source: '(?<![A-Za-z0-9@.-])(?:[A-Za-z0-9-]+\\.)+(?:com|kr|net|io|org|me|app|link|ly|gg)(?:\\/\\S*)?(?![A-Za-z0-9])', flags: 'i', mask: '[링크]' },
-  { name: 'chat_id', source: '(?:카톡|카카오톡|카카오|인스타그램|인스타|오픈채팅|텔레그램|디엠|DM|라인|LINE|위챗|스냅챗|페이스북|페북|트위터|틱톡|디스코드)\\s*(?:아이디|ID|id|계정)?\\s*(?:[:：=]|은|는|이|가)?\\s*(?:주세요|주시면|줘요)?\\s*[A-Za-z][A-Za-z0-9._-]{3,}', flags: '', mask: '[연락처]' },
+  { name: 'chat_id', source: '(?:카톡|카카오톡|카카오|인스타그램|인스타|오픈채팅|텔레그램|디엠|DM|라인|LINE|위챗|스냅챗|페이스북|페북|트위터|틱톡|디스코드)\\s*(?:(?:아이디|ID|id|계정)\\s*)?(?:(?:[:：=]|은|는|이|가)\\s*)?(?:(?:주세요|주시면|줘요)\\s*)?[A-Za-z][A-Za-z0-9._-]{3,}', flags: '', mask: '[연락처]' },
   { name: 'id_word', source: '(?<![가-힣A-Za-z])(?:아이디|ID|id)(?!어)\\s*(?:[:：=]|은|는|이|가)\\s*[A-Za-z][A-Za-z0-9._-]{3,}', flags: '', mask: '[연락처]' },
   { name: 'kr_digits', source: '(?<![가-힣])(?=(?:[공영일이삼사오육륙칠팔구][\\s.-]*){8})[공영일이삼사오육륙칠팔구](?:[\\s.-]*[공영일이삼사오육륙칠팔구])*', flags: '', mask: '[연락처]' },
 ];
@@ -88,6 +91,14 @@ const TITLE_SUFFIX = '(?:\\s?(?:씨|님|오빠|언니|누나|형|선배|군|양)
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** AI-FIX11 RS2-03 · 길이 검사 **앞**에서 가리기를 부르는 곳(폭력 낱말 · 오용 사전에 걸린 글을 입력 판정에 넘길 글)의 글자 수 상한(코드 포인트).
+ *  그 자리는 질문자 600 · 상대 800 · 사주 1,000자 검사보다 앞이라 본문 상한(96KB)까지 올 수 있었다. 판정은 가린 글의 앞 700 · 900자만 보므로(judge.ts clipChars) 넉넉히 2,000자까지만 가린다.
+ *  카드 고르기(위기 · 폭력 · 오용 사전)는 자르지 않은 전체 글로 이미 끝났다 — 이 자르기는 판정에 넘기는 글에만 닿는다. */
+export const MASK_EARLY_CLIP = 2000;
+export function clipForMask(s: string, max: number = MASK_EARLY_CLIP): string {
+  return s.length <= max ? s : Array.from(s).slice(0, max).join('');
 }
 
 /** 개인정보 가리기. 가린 횟수를 함께 돌려준다. 원문은 어디에도 남기지 않는다. 꺾쇠는 마지막에 전각으로 바꾼다. */

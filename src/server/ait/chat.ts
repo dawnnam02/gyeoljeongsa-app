@@ -8,7 +8,7 @@
 import type { ApiMessage, ChatSlots, Kind, ModelFlag, StageId } from './types.ts';
 import { KINDS, MODEL_FLAGS } from './types.ts';
 import type { ResponseCode } from './codes.ts';
-import { charLen, endsWithHaeyo, hasResidualPii, maskText, quoteInSource, sanitize, strayScriptChars, wrapState, wrapTurn } from './text.ts';
+import { charLen, clipForMask, endsWithHaeyo, hasResidualPii, maskText, quoteInSource, sanitize, strayScriptChars, wrapState, wrapTurn } from './text.ts';
 import { MANIPULATE_OBJ, classifyHits, hasDiagnosisAsk, hasDiagnosisRequest, hasInjectionShape, hasMoneyHint, hasVerdictRequest } from './lexicon.ts';
 import type { FixedCard } from './fixed.ts';
 import { composeSafety, composeSafetyFromFlags } from './safety.ts';
@@ -36,7 +36,7 @@ export const CHAT_LIMITS = {
   partnerMax: 800,      // 상대가 보낸 말 칸 한 번 (보안 제안 1,500자)
   aliasMax: 20,
   maxCrisisCards: 5,    // 위기 카드가 이만큼 나오면 세션을 닫는다
-  maxBlocked: 6,        // 검사 탈락(blocked_output)이 연속 이만큼 쌓이면 세션을 닫는다(재전송 반복으로 돈이 새는 길 차단). AI-FIX1: 4 → 6 — 평가에서 질문 칸 형식 때문에 4연속 탈락으로 일반 세션이 전부 S2 에서 닫혔다
+  maxBlocked: 6,        // 검사 탈락(blocked_output)이 연속 이만큼 쌓이면 세션을 닫는다(재전송 반복으로 돈이 새는 길 차단 — 단 이 수는 봉투 안 숫자라 새 세션 · 옛 봉투로는 0 부터 다시 센다: 최선 노력, AI-FIX11 RS2-02). AI-FIX1: 4 → 6 — 평가에서 질문 칸 형식 때문에 4연속 탈락으로 일반 세션이 전부 S2 에서 닫혔다
   sentenceMax: 140,
   sentenceMin: 4,
   quoteMax: 60,
@@ -107,7 +107,7 @@ export interface ChatState {
   checked?: boolean;
   /** 방금 검사에 걸려 보여 주지 못한 답에서 걸린 낱말(최대 6개) — 다음 시도에서 모델이 그 낱말을 피해 풀어 쓰게 상태 줄로 알린다(막다른 길 줄이기, AI-FIX6 ②) */
   avoid?: string[];
-  /** 이 세션에서 가해 의도(오용) 카드로 닫은 글의 수. 닫은 글은 이력에 남지 않아 "아까 말한 대로 할게요" 같은 글이 앞 말 창에 안 보이므로, 2번 이상이면 입력 판정을 엄하게 한다(AI-FIX7 ⑤). 서명 봉투 안이라 사용자가 못 지운다 */
+  /** 이 세션에서 가해 의도(오용) 카드로 닫은 글의 수. 닫은 글은 이력에 남지 않아 "아까 말한 대로 할게요" 같은 글이 앞 말 창에 안 보이므로, 2번 이상이면 입력 판정을 엄하게 한다(AI-FIX7 ⑤). 서명 봉투 안이라 **고쳐 쓸 수는 없지만**, 옛 봉투를 다시 보내거나 봉투 없이 새 세션을 열면 이 수가 되돌아간다 — 최선 노력이다(AI-FIX11 RS2-02, 계정 단위 저장은 RS2-01 설계에 합침) */
   misuse?: number;
   /** 연속으로 stop:max_tokens 로 막힌 수 — 다음 시도의 max_tokens 를 키운다(AI-FIX7 ②, 같은 글이 3번 연속 길이 한도로 막히던 것) */
   boost?: number;
@@ -367,7 +367,7 @@ export function prepareTurn(envIn: ChatEnvelope, input: ChatInput): Prepared {
     st.safety = true;
     if (safe.endSession) st.ended = true;
     const kn = { partnerNames: [] as string[] };
-    const violenceJudge = safe.endSession ? undefined : { texts: { asker: maskText(askerRaw, kn).text, partner: maskText(partnerRaw, kn).text }, plainEnv };
+    const violenceJudge = safe.endSession ? undefined : { texts: { asker: maskText(clipForMask(askerRaw), kn).text, partner: maskText(clipForMask(partnerRaw), kn).text }, plainEnv };
     return { kind: 'card', code: 'crisis', card: safe.card, env, violenceJudge };
   }
   if (st.ended) {
@@ -384,7 +384,7 @@ export function prepareTurn(envIn: ChatEnvelope, input: ChatInput): Prepared {
       const plainEnv = cloneEnv(env);                                          // 위기 판정이 crisis 면 오용 횟수를 올리지 않은 봉투로 위기 카드를 낸다
       st.misuse = (st.misuse ?? 0) + 1;
       const kn = { partnerNames: [] as string[] };
-      return { kind: 'card', code: 'refused_intent', card: MISUSE_CARD, env, crisisJudge: { texts: { asker: maskText(askerRaw, kn).text, partner: maskText(partnerRaw, kn).text }, plainEnv } };
+      return { kind: 'card', code: 'refused_intent', card: MISUSE_CARD, env, crisisJudge: { texts: { asker: maskText(clipForMask(askerRaw), kn).text, partner: maskText(clipForMask(partnerRaw), kn).text }, plainEnv } };
     }
   }
   if (hits.includes('minor')) { st.ended = true; return { kind: 'card', code: 'refused_intent', card: MINOR_CARD, env }; }

@@ -8,7 +8,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
 import { handleSaju5 } from './sajuRoute.ts';
-import { createCounters, GUARD, handleAi, MAX_BODY_BYTES, replyError } from './index.ts';
+import { createCounters, gateRequest, GUARD, handleAi, MAX_BODY_BYTES, replyError } from './index.ts';
 import type { Counters, HandlerDeps, HttpReply, MessagesBody, ModelResult, UpstreamFailure } from './index.ts';
 
 export const UPSTREAM_TIMEOUT_MS = 60_000;
@@ -88,6 +88,42 @@ export function anthropicUpstream(apiKey: string): Upstream {
 
 const BASE_HEADERS: Record<string, string> = { 'referrer-policy': 'no-referrer', 'x-robots-tag': 'noindex' };
 
+/** 상한을 넘긴 본문 대신 핸들러에 넘기는 자리 글 — 핸들러가 (형식 검사 뒤) 같은 413 으로 답하게 한다 */
+const OVERSIZE_BODY = ' '.repeat(MAX_BODY_BYTES + 1);
+
+/** 본문을 MAX_BODY_BYTES(96KB)까지만 읽는다(AI-FIX11 RS2-04). 선언된 Content-Length 가 이미 상한 위면 읽지 않고, 선언이 없거나(chunked) 거짓이어도 흘러온 바이트가 상한을 넘는 순간 읽기를 끊는다(스트림 취소).
+ *  넘긴 요청은 자리 글(OVERSIZE_BODY)로 바꿔 핸들러가 형식 검사(415) 뒤에 같은 413 으로 답한다. 읽은 바이트는 한 번에 UTF-8 로 풀어, 글자 사이에서 끊긴 것도 안전하다. */
+export async function readBodyCapped(request: Request): Promise<string> {
+  const declared = Number(request.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) return OVERSIZE_BODY;
+  const stream = request.body;
+  if (!stream) return '';
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_BODY_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        return OVERSIZE_BODY;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock?.();
+  }
+  const all = new Uint8Array(total);
+  let at = 0;
+  for (const c of chunks) {
+    all.set(c, at);
+    at += c.byteLength;
+  }
+  return new TextDecoder().decode(all);
+}
+
 function toResponse(res: HttpReply): Response {
   return new Response(JSON.stringify(res.body), { status: res.status, headers: { ...res.headers, ...BASE_HEADERS } });
 }
@@ -131,9 +167,10 @@ export function createAitRoute(opts: RouteOptions): (request: Request) => Promis
         lock: opts.lock,
       };
 
-      const declared = Number(request.headers.get('content-length'));
-      // 너무 큰 본문은 읽지 않는다 — 코드 검사 뒤에 handler 가 같은 413 으로 답하게 상한을 넘긴 자리 글을 넘긴다
-      const bodyText = Number.isFinite(declared) && declared > MAX_BODY_BYTES ? ' '.repeat(MAX_BODY_BYTES + 1) : await request.text();
+      // AI-FIX11 RS2-04: 본문을 읽기 **전에** 문(방법 · 출처 · 틀린 코드 연타 잠금 · 접근 코드)을 먼저 지난다. 접근 코드 없는 요청은 본문을 한 바이트도 읽지 않고 같은 401 로 끝난다(기존에는 Content-Length 없는 chunked 본문을 끝까지 읽은 뒤에야 코드를 봤다).
+      const gate = await gateRequest({ method: request.method, headers: Object.fromEntries(request.headers) }, { accessCode: env.AI_ACCESS_CODE, counters: opts.counters, now: opts.now() });
+      if (gate) return toResponse(gate);
+      const bodyText = await readBodyCapped(request);
       // IF5-F2: 사주 AI 맞춤(feature 가 s5_ 로 시작)은 같은 문 순서를 따르는 사주 핸들러로 — 접근 코드가 먼저라 코드 없는 요청은 어느 쪽이든 같은 401
       const isSaju = /"feature"\s*:\s*"s5_/.test(bodyText);
       const res = await (isSaju ? handleSaju5 : handleAi)({ method: request.method, headers: Object.fromEntries(request.headers), bodyText }, deps);

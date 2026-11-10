@@ -8,8 +8,8 @@ import { AitError } from './codes.ts';
 import type { ResponseCode } from './codes.ts';
 import type { HttpReply, Mode } from './reply.ts';
 import { replyCard, replyError, replyOk } from './reply.ts';
-import type { Counters, Guard, LogRecord } from './limits.ts';
-import { checkAccessCode, consume, consumeChatCall, featureCosts, logRecord, refund, refundCount, ACCESS_HEADER, GUARD } from './limits.ts';
+import type { Counters, Guard, LogRecord, VendorKind } from './limits.ts';
+import { authLocked, checkAccessCode, consume, consumeChatCall, featureCosts, logRecord, noteAuthFail, refund, refundCount, takeVendorCall, ACCESS_HEADER, GUARD } from './limits.ts';
 import type { MessagesBody } from './request.ts';
 import { buildChatRequest, buildOneShotRequest, pickChatModel } from './request.ts';
 import type { ChatEnvelope, ChatInput } from './chat.ts';
@@ -61,6 +61,8 @@ const ALLOWED_KEYS: Readonly<Record<Feature, readonly string[]>> = {
 };
 const FEATURES: readonly string[] = ['chat', 'compat', 'coach', 'horoscope'];
 const POOL = 'pool';
+/** 업체 호출 수 세는 칸의 열쇠(AI-FIX11 RS2-08). 업체 계정의 지출은 하나라 AIT 와 사주 경로가 한 칸을 같이 쓴다. 호출한 사람을 알 수 있게 되면(RS2-01 서버 로그인) 사람별 열쇠로 나눈다 */
+export const VENDOR_KEY = 'vendor';
 
 let cache: { cards: EvidenceCard[]; index: Map<string, EvidenceCard>; chatSystem: string } | null = null;
 function loaded() {
@@ -83,12 +85,11 @@ function plain(code: ResponseCode): Exclude<ResponseCode, 'ok' | 'crisis' | 'ref
 }
 const costOf = Object.fromEntries(featureCosts().map((c) => [c.feature, c.planningWon])) as Record<Feature, number>;
 
-export async function handleAi(req: HandlerRequest, deps: HandlerDeps): Promise<HttpReply> {
-  const t0 = deps.now();
+/** 본문을 읽기 **전에** 끝나는 문(AI-FIX11 RS2-04): 방법 → 출처 → 틀린 코드 연타 잠금 → 접근 코드. 걸리면 그 응답을, 통과하면 null.
+ *  호출하는 쪽(앱 route.ts)이 본문을 읽기 전에 이 함수를 먼저 불러, 접근 코드 없는 요청이 본문을 끝까지 읽게 만들지 못하게 한다. handleAi · handleSaju5 도 같은 함수를 첫 문으로 쓴다(응답이 한 곳에서만 정해진다).
+ *  접근 코드 — 닫힘이 기본. 없음 / 틀림 / 서버 미설정은 같은 상태 · 같은 본문 · 같은 머리 (AC-14 · AC-15). 틀린 코드는 격리 안 최선 노력으로 연타를 막는다(limits.ts authLocked · RS2-06). */
+export async function gateRequest(req: { method: string; headers: Record<string, string | undefined> }, ctx: { accessCode: string | undefined; counters: Counters; now: number }): Promise<HttpReply | null> {
   const h = lower(req.headers);
-  const mode: Mode = deps.env.AIT_MODE === 'live' && deps.liveReady && !deps.lock?.live ? 'live' : 'mock';
-  const emit = (feature: Feature, extra: Record<string, unknown>) => deps.log(logRecord({ t: t0, f: feature, ms: deps.now() - t0, mode, ...extra }));
-
   // 1) 방법 · 출처 (AC-15 · AC-17)
   if (req.method !== 'POST') return replyError('bad_request', 'mock', { status: 405 });
   const origin = h['origin'];
@@ -98,10 +99,24 @@ export async function handleAi(req: HandlerRequest, deps: HandlerDeps): Promise<
     if (!sameHost) return replyError('auth', 'mock', { status: 403 });
   }
   if (h['sec-fetch-site'] === 'cross-site') return replyError('auth', 'mock', { status: 403 });
+  // 2) 접근 코드
+  if (authLocked(ctx.counters, ctx.now)) return replyError('rate', 'mock', { retryAfterSec: 60 });
+  if (!(await checkAccessCode(h[ACCESS_HEADER], ctx.accessCode))) {
+    noteAuthFail(ctx.counters, ctx.now);
+    return replyError('auth', 'mock');
+  }
+  return null;
+}
 
-  // 2) 접근 코드 — 닫힘이 기본. 없음 / 틀림 / 서버 미설정은 같은 상태 · 같은 본문 · 같은 머리 (AC-14 · AC-15)
-  const okCode = await checkAccessCode(h[ACCESS_HEADER], deps.env.AI_ACCESS_CODE);
-  if (!okCode) return replyError('auth', 'mock');
+export async function handleAi(req: HandlerRequest, deps: HandlerDeps): Promise<HttpReply> {
+  const t0 = deps.now();
+  const h = lower(req.headers);
+  const mode: Mode = deps.env.AIT_MODE === 'live' && deps.liveReady && !deps.lock?.live ? 'live' : 'mock';
+  const emit = (feature: Feature, extra: Record<string, unknown>) => deps.log(logRecord({ t: t0, f: feature, ms: deps.now() - t0, mode, ...extra }));
+
+  // 1) 방법 · 출처 → 2) 접근 코드(gateRequest)
+  const gate = await gateRequest(req, { accessCode: deps.env.AI_ACCESS_CODE, counters: deps.counters, now: t0 });
+  if (gate) return gate;
 
   // 3) 형식 · 크기
   if (!/^application\/json(\s*;|$)/i.test(h['content-type'] ?? '')) return replyError('bad_request', 'mock', { status: 415 });
@@ -126,7 +141,11 @@ export async function handleAi(req: HandlerRequest, deps: HandlerDeps): Promise<
 
 type Emit = (feature: Feature, extra: Record<string, unknown>) => void;
 
-async function callLive(deps: HandlerDeps, body: MessagesBody): Promise<{ ok: true; res: ModelResult } | { ok: false; code: ReturnType<typeof classifyUpstream> }> {
+/** 업체 호출 한 번. AI-FIX11 RS2-08: 보내기 **직전**에 업체 호출 수 한도(limits.ts takeVendorCall)를 본다 — 넘으면 호출은 나가지 않고 rate.
+ *  kind: main = 본 호출 · 칸 고쳐 쓰기 · 접기 요약 / judge = 입력 · 출력 판정(judgeCall 이 부른다). 요청 단위 한도(consume)와 별개로 실제 호출 수를 센다 */
+export async function callLive(deps: HandlerDeps, body: MessagesBody, kind: VendorKind = 'main'): Promise<{ ok: true; res: ModelResult } | { ok: false; code: ReturnType<typeof classifyUpstream> }> {
+  const v = takeVendorCall(deps.counters, VENDOR_KEY, kind, deps.now(), deps.guard ?? GUARD);
+  if (!v.ok) return { ok: false, code: v.code };
   try {
     return { ok: true, res: await deps.callModel(body) };
   } catch (e) {
@@ -143,7 +162,7 @@ export async function judgeCall<T>(deps: HandlerDeps, body: MessagesBody, parse:
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => resolve('timeout'), deps.judgeTimeoutMs ?? JUDGE_TIMEOUT_MS); });
   try {
-    const r = await Promise.race([callLive(deps, body), timeout]);
+    const r = await Promise.race([callLive(deps, body, 'judge'), timeout]);
     if (r === 'timeout') return { ok: false, code: 'timeout' };
     if (!r.ok) return { ok: false, code: r.code };
     const v = parse({ stop_reason: r.res.stop_reason, content: r.res.content });
@@ -162,6 +181,10 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
 
   let env: ChatEnvelope;
   let ctx: { nonce: string; seq: number; now: number; prev: string };
+  // AI-FIX11 RS2-02 · 사실대로: 서버에는 대화 저장소가 없어 세션 상태(가해 표지 misuse · 연속 탈락 blocked · 위기 카드 수 · 턴 수)를 서명 봉투에 실어 앱이 들고 다닌다.
+  //  서명은 **위변조**를 막을 뿐이다. 앱(또는 앱을 고친 사람)이 옛 봉투를 다시 보내거나 봉투 없이 새 세션을 열면 이 상태는 그 값으로 되돌아가고, 서버는 알 길이 없다.
+  //  그래서 이 상태로 만든 한도(가해 표지 누적 · 연속 탈락 6번 닫힘)는 **'최선 노력'**이다 — 정직한 앱의 안전 장치이지 막아 내는 보증이 아니다. 실제 돈 상한은 격리별 분당 한도(RS2-08의 업체 호출 수 한도 포함)와 콘솔 월 상한이다.
+  //  계정 단위로 서버가 저장하는 길은 RS2-01 설계(backend/RS2-01_AI차감_서버결합_설계.md)에 합친다. 읽기 자리: 아래 isNew 분기(newSession)와 openEnvelope 결과 사이 — ai/평가결과_EV1/고칠것.md 'RS2-02 연결 지점'.
   const isNew = body.bundle === undefined;
   if (isNew) { env = newSession(); ctx = { nonce: newNonce(), seq: 0, now, prev: '' }; }
   else {

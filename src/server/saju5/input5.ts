@@ -5,7 +5,7 @@ import { classifyHits } from '../ait/lexicon.ts';
 import { composeSafety } from '../ait/safety.ts';
 import { MISUSE_CARD } from '../ait/fixed.ts';
 import type { FixedCard } from '../ait/fixed.ts';
-import { charLen, hasResidualPii, maskText, sanitize } from '../ait/text.ts';
+import { charLen, clipForMask, hasResidualPii, maskText, sanitize } from '../ait/text.ts';
 
 /** calc5.py BIRTH_PLACES 와 같은 이름(시험이 파이썬 파일과 대조) */
 export const BIRTH_PLACES: Readonly<Record<string, number>> = {
@@ -76,10 +76,10 @@ export function prepareChatText(raw: unknown): ChatPrep5 {
   const hits = classifyHits(clean);
   const safe = composeSafety(hits);
   if (safe && safe.kinds[0] !== 'minor') {
-    const jt = safe.kinds[0] === 'violence' && !safe.endSession ? maskText(clean).text : undefined;
+    const jt = safe.kinds[0] === 'violence' && !safe.endSession ? maskText(clipForMask(clean)).text : undefined;
     return { kind: 'card', code: 'crisis', card: safe.card, endSession: safe.endSession, ...(jt !== undefined ? { judgeText: jt, judgeFor: 'violence' as const } : {}) };
   }
-  if (hits.includes('misuse')) return { kind: 'card', code: 'refused_intent', card: MISUSE_CARD, endSession: false, judgeText: maskText(clean).text, judgeFor: 'misuse' };
+  if (hits.includes('misuse')) return { kind: 'card', code: 'refused_intent', card: MISUSE_CARD, endSession: false, judgeText: maskText(clipForMask(clean)).text, judgeFor: 'misuse' };
   if (safe) return { kind: 'card', code: safe.code, card: safe.card, endSession: true };
   if (charLen(clean) > CHAT5_LIMITS.textMax) return { kind: 'reject', code: 'too_long', why: 'length' };
   const m = maskText(clean);

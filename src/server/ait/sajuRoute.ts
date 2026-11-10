@@ -7,11 +7,10 @@
 //  · 마일리지 예치 · 확정은 이 함수의 일이 아니다(진짜 서버에서는 Edge 가 한다 — P0 는 기기 안 가상 잔액이 앱 쪽에서 한다). 위기 · 거절 카드는 업체 호출 0
 import { AitError } from './codes.ts';
 import type { ResponseCode } from './codes.ts';
-import { classifyUpstream, shouldLockLive } from './upstream.ts';
-import type { UpstreamFailure } from './upstream.ts';
-import { checkAccessCode, consume, consumeChatCall, ACCESS_HEADER, GUARD } from './limits.ts';
+import type { classifyUpstream } from './upstream.ts';
+import { consume, consumeChatCall, GUARD } from './limits.ts';
 import type { HandlerDeps, HandlerRequest, ModelResult } from './handler.ts';
-import { MAX_BODY_BYTES, judgeCall } from './handler.ts';
+import { MAX_BODY_BYTES, callLive, gateRequest, judgeCall } from './handler.ts';   // AI-FIX11: 문(gateRequest)과 업체 호출 한 번(callLive — 업체 호출 수 한도 RS2-08)은 AIT 핸들러와 한 벌
 import { replyCard, replyError, replyOk } from './reply.ts';
 import type { HttpReply, Mode } from './reply.ts';
 import { newNonce } from './seal.ts';
@@ -128,22 +127,9 @@ export async function handleSaju5(req: HandlerRequest, deps: HandlerDeps): Promi
   // 로그: 허용 키(t f ms code mode in out)뿐 — 입력 · 사실 · 코드 값 0
   const emit: Emit = (extra) => deps.log(logRecord5({ t: t0, f: feature, ms: deps.now() - t0, mode, ...extra }) as never); // 런타임 방어선: 허용 키 필터를 반드시 거친다(AIT handler 의 logRecord 와 같은 꼴 — IF5-F1b ⓙ)
 
-  // 1) 방법 · 출처
-  if (req.method !== 'POST') return replyError('bad_request', 'mock', { status: 405 });
-  const origin = h['origin'];
-  if (origin) {
-    let sameHost = false;
-    try {
-      sameHost = new URL(origin).host === h['host'];
-    } catch {
-      sameHost = false;
-    }
-    if (!sameHost) return replyError('auth', 'mock', { status: 403 });
-  }
-  if (h['sec-fetch-site'] === 'cross-site') return replyError('auth', 'mock', { status: 403 });
-
-  // 2) 접근 코드 — 닫힘이 기본. 없음 / 틀림 / 서버 미설정은 같은 상태 · 같은 본문
-  if (!(await checkAccessCode(h[ACCESS_HEADER], deps.env.AI_ACCESS_CODE))) return replyError('auth', 'mock');
+  // 1) 방법 · 출처 → 2) 접근 코드 — 닫힘이 기본. 없음 / 틀림 / 서버 미설정은 같은 상태 · 같은 본문. AIT 핸들러와 같은 함수 한 벌(gateRequest, 틀린 코드 연타 잠금 포함 — AI-FIX11 RS2-06)
+  const gate = await gateRequest(req, { accessCode: deps.env.AI_ACCESS_CODE, counters: deps.counters, now: t0 });
+  if (gate) return gate;
 
   // 3) 형식 · 크기
   if (!/^application\/json(\s*;|$)/i.test(h['content-type'] ?? '')) return replyError('bad_request', 'mock', { status: 415 });
@@ -168,16 +154,7 @@ export async function handleSaju5(req: HandlerRequest, deps: HandlerDeps): Promi
   }
 }
 
-async function callLive(deps: HandlerDeps, body: MessagesBody): Promise<{ ok: true; res: ModelResult } | { ok: false; code: ReturnType<typeof classifyUpstream> }> {
-  try {
-    return { ok: true, res: await deps.callModel(body) };
-  } catch (e) {
-    const f = e as UpstreamFailure;
-    const code = classifyUpstream({ status: typeof f?.status === 'number' ? f.status : undefined, errorType: typeof f?.errorType === 'string' ? f.errorType : undefined, messageHead: typeof f?.messageHead === 'string' ? f.messageHead : undefined, timeout: f?.timeout === true });
-    if (shouldLockLive(code) && deps.lock) deps.lock.live = true;
-    return { ok: false, code };
-  }
-}
+// 업체 호출 한 번(callLive)은 handler.ts 의 것을 쓴다 — 업체 호출 수 한도(AI-FIX11 RS2-08)가 AIT 와 사주 경로에 한 벌로 걸리게. 이 파일의 본 호출 · 칸 고쳐 쓰기 · 접기 요약은 'main', 판정(judgeCall)은 'judge'로 센다.
 
 // ================================================================ AI 심사층 (Q2-30 남은 몫) — 고민 정리(AIT handler.ts)와 같은 틀
 /** 출력 판정: 화면에 나갈 글의 문장을 값싼 모델이 한 번 더 본다. 걸린 문장만 빼고 하한 아래로 내려가는 칸이 있을 때만 닫는다. 묶음마다 실패는 한 번 다시 부르고, 그래도 실패하면 fail(안전한 쪽으로 닫힘 · 차감 0) */
@@ -309,6 +286,8 @@ async function handleChat(body: Record<string, unknown>, deps: HandlerDeps, mode
     return replyOk({ pass: true }, mode);
   }
 
+  // AI-FIX11 RS2-02 · 사실대로: 사주 이야기의 세션 상태(위기 카드 수 · 가해 표지 misuse · 탈락 수 · 턴 수)도 서명 봉투에 실려 앱이 들고 다닌다. 서명은 위변조를 막을 뿐, 옛 봉투 다시 보내기 · 봉투 없이 새 세션 열기로 상태가 되돌아가는 것은 못 막는다.
+  //  그러므로 이 상태로 만든 한도는 '최선 노력'이다. 계정 단위 서버 저장은 RS2-01 설계에 합친다(읽기 자리: 아래 새 세션 분기 newChatEnv 와 open5 결과 사이 — ai/평가결과_EV1/고칠것.md 'RS2-02 연결 지점').
   let env: ChatEnv5;
   let ctx: { nonce: string; seq: number; now: number; prev: string };
   if (body.bundle === undefined) {
