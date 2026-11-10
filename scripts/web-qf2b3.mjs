@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { findBrowser, openBrowser, sleep } from './lib/browser.mjs';
+import { goInApp, signUpToSurvey } from './lib/demoLogin.mjs';
 import { APP_DIR } from './lib/legal-source.mjs';
 import { fillSurveyV2 } from './lib/surveyV2Driver.mjs';
 
@@ -93,7 +94,10 @@ async function signUp(email, until) {
 
 try {
   // ═══ 1. 정식 설문 v2: 돈 문항 ═══
-  await b.open('/survey/v2', `!!window.__q('v2-intro') || !!window.__q('v2-screen')`);
+  // FB-022: 로그인 없이 /survey/v2 를 직접 열 수 없다 → 가입(약관 동의까지) 뒤 앱 안 이동으로 연다(점검의 뜻은 그대로: 돈 문항 걸음)
+  await signUpToSurvey(b, 'qf2b3v2@email.com');
+  await goInApp(b, '/survey/v2');
+  await b.waitFor(`!!window.__q('v2-intro') || !!window.__q('v2-screen')`, 15000);
   await b.waitFor(`!window.__q('splash')`, 8000);
   await b.waitFor(`!!window.__q('v2-intro')`, 8000);
   const targets = ['C05', 'C06', 'D08', 'D09', 'D04'];

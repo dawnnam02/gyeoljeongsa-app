@@ -90,7 +90,8 @@ async function open(d: YardDeps, store: InputStore) {
   return tree;
 }
 
-const ROW_ORDER = ['today', 'pillars', 'year', 'season', 'love', 'partner', 'talk'];
+const ROW_ORDER = ['today', 'pillars', 'year', 'season', 'love', 'partner', 'talk']; // 준비 전(동의 전 · 생일 전)에 그리는 줄
+const READY_ROWS = ROW_ORDER.filter((k) => k !== 'today'); // 준비됨: 상태 칸(오늘 하루 한 줄)이 '오늘 하루'로 가는 문이라 메뉴에서는 그 줄이 빠진다(QF2-B8)
 const rowKeys = (tree: ReactTestRenderer) => ['today', 'pillars', 'year', 'season', 'love', 'partner', 'talk', 'pick', 'calendar'].filter((k) => has(tree, `saju-yard-row-${k}`));
 
 describe('TAB-1 사주 마당 탭 · 상태 한 칸(한 번에 하나만)', () => {
@@ -154,9 +155,15 @@ describe('TAB-1 사주 마당 탭 · 상태 한 칸(한 번에 하나만)', () =
 
 describe('TAB-1 메뉴 줄 · 스위치대로 나타남 · 사라짐', () => {
   test('데모 처음 스위치: 오늘 하루 · 내 네 기둥과 결 읽기 · 올해 흐름 · 인생 계절표 · 인연 이야기 · 둘이 맞춰 보기 · 사주 이야기 나누기 순서 — 달력 · 날짜 고르기(꺼짐)는 줄 0', async () => {
+    const notReady = await open(deps(), freshStore());
+    expect(rowKeys(notReady)).toEqual(ROW_ORDER); // 생일 전: 오늘 하루 줄도 그린다(누르면 다음 걸음)
+    expect(textOf(notReady, 'saju-yard-row-today-line')).toBe(YARD.rows.today.line);
+    const noConsent = await open(deps({ ck17: false }), freshStore(true));
+    expect(rowKeys(noConsent)).toEqual(ROW_ORDER); // 동의 전도 같다
     const tree = await open(deps(), freshStore(true));
-    expect(rowKeys(tree)).toEqual(ROW_ORDER);
-    expect(textOf(tree, 'saju-yard-row-today-line')).toBe(YARD.rows.today.line);
+    expect(rowKeys(tree)).toEqual(READY_ROWS); // 준비됨: '오늘 하루'가 상태 칸과 메뉴 줄 두 번 나오지 않는다
+    expect(has(tree, 'saju-yard-row-today')).toBe(false);
+    expect(allTexts(tree).filter((t) => t === IF5_TEXT['SAJU.today.title'])).toHaveLength(1); // 글 '오늘 하루'는 상태 칸의 작은 이름 한 번뿐
     expect(allTexts(tree)).toContain(YARD.rows.pillars.name);
     expect(textOf(tree, 'saju-yard-row-pillars-line')).toBe(YARD.rows.pillars.line);
     expect(allTexts(tree)).toContain(IF5_TEXT['SAJU.year.label']);
@@ -186,10 +193,15 @@ describe('TAB-1 메뉴 줄 · 스위치대로 나타남 · 사라짐', () => {
     expect(yardRows({ isOn: (k) => noPillarsNoReading[k] === true, aiAvailable: true }).map((r) => r.key)).toEqual(ROW_ORDER.filter((k) => k !== 'love' && k !== 'pillars'));
     // AI 연결이 없으면(시험판 AI 꺼짐 · 못 만듦) 사주 이야기 나누기 줄 0
     expect(yardRows({ isOn: base.isOn, aiAvailable: false }).map((r) => r.key)).toEqual(ROW_ORDER.filter((k) => k !== 'talk'));
+    // 상태 칸이 오늘 하루의 문일 때(준비됨)는 오늘 하루 줄이 빠지고, 스위치가 꺼지면 어느 쪽이든 줄 0
+    expect(yardRows({ ...base, todayIsStatus: true }).map((r) => r.key)).toEqual(READY_ROWS);
+    const noToday = flagsAll({ saju_today: false });
+    expect(yardRows({ isOn: (k) => noToday[k] === true, aiAvailable: true, todayIsStatus: false }).map((r) => r.key)).toEqual(READY_ROWS);
+    expect(yardRows({ isOn: (k) => noToday[k] === true, aiAvailable: true, todayIsStatus: true }).map((r) => r.key)).toEqual(READY_ROWS);
   });
   test('날짜 고르기 · 만세력 달력은 스위치가 켜졌을 때만 줄이 생긴다(끝에)', async () => {
     const tree = await open(deps({ flags: { saju_pickday: true, saju_calendar: true } }), freshStore(true));
-    expect(rowKeys(tree)).toEqual([...ROW_ORDER, 'pick', 'calendar']);
+    expect(rowKeys(tree)).toEqual([...READY_ROWS, 'pick', 'calendar']);
     await press(tree, 'saju-yard-row-calendar');
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/saju-calendar', params: { mode: 'cal' } });
     await press(tree, 'saju-yard-row-pick');
@@ -205,9 +217,9 @@ describe('TAB-1 메뉴 줄 · 스위치대로 나타남 · 사라짐', () => {
 });
 
 describe('TAB-1 줄을 누르면 — 지금 있는 화면으로 · 구역이 맨 위에 오게', () => {
-  test('오늘 하루 → /saju-today · 사주 이야기 나누기 → /saju-talk', async () => {
+  test('오늘 하루(준비됨: 상태 칸) → /saju-today · 사주 이야기 나누기 → /saju-talk', async () => {
     const tree = await open(deps(), freshStore(true));
-    await press(tree, 'saju-yard-row-today');
+    await press(tree, 'saju-yard-status-today');
     expect(mockRouter.push).toHaveBeenLastCalledWith('/saju-today');
     await press(tree, 'saju-yard-row-talk');
     expect(mockRouter.push).toHaveBeenLastCalledWith('/saju-talk');
@@ -307,7 +319,12 @@ describe('TAB-1 글 규칙 · 접근성', () => {
   });
   test('줄 · 맨 아래 길은 모두 버튼 역할 · 이름(이름 + 한 줄 설명) · 열기 힌트를 가진다 · 한 줄에 아이콘이 있다', async () => {
     const tree = await open(deps({ mileage: mileageOf().load }), freshStore(true));
-    for (const k of ROW_ORDER) {
+    const door = must(tree, 'saju-yard-status-today'); // 준비됨: 상태 칸이 오늘 하루로 가는 문 — 메뉴 줄과 같은 버튼 · 힌트 · chevron
+    expect(door.props.accessibilityRole).toBe('button');
+    expect(String(door.props.accessibilityLabel)).toBe(`${IF5_TEXT['SAJU.today.title']}. ${todayBaseLine(nowIso(NOW))}`);
+    expect(door.props.accessibilityHint).toBe(SETTINGS.rowA11yHint);
+    expect(has(tree, 'saju-yard-status-today-chevron')).toBe(true);
+    for (const k of READY_ROWS) {
       const node = must(tree, `saju-yard-row-${k}`);
       expect(node.props.accessibilityRole).toBe('button');
       expect(String(node.props.accessibilityLabel)).toContain(textOf(tree, `saju-yard-row-${k}-line`) as string);

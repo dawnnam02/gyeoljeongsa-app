@@ -99,7 +99,8 @@ function Yard({ deps, store: injectedStore }: { deps: YardDeps; store?: InputSto
   const [birthDate, setBirthDate] = useState<string | null>(null);
   const on = deps.isOn;
   const state = yardState(ck.slot.kind, loaded, input.answered);
-  const rows = useMemo(() => yardRows({ isOn: on, aiAvailable: !!deps.ai }), [on, deps.ai]);
+  // 준비됨 + 오늘 하루 스위치 켜짐: 상태 칸(오늘 하루 한 줄)이 '오늘 하루'로 가는 문이다 → 메뉴에서는 그 줄을 그리지 않는다(같은 곳으로 가는 두 칸 0, QF2-B8)
+  const rows = useMemo(() => yardRows({ isOn: on, aiAvailable: !!deps.ai, todayIsStatus: state === 'ready' }), [on, deps.ai, state]);
   const mileage = useYardMileage(deps.mileage, on('mileage'));
   const nowFn = deps.now ?? Date.now;
 
@@ -156,14 +157,17 @@ function Yard({ deps, store: injectedStore }: { deps: YardDeps; store?: InputSto
             accessibilityHint={SETTINGS.rowA11yHint}
             onPress={() => router.push('/saju-today' as Href)}
             effect="none"
-            style={styles.card}
+            style={[styles.card, styles.statusDoor]}
             testID="saju-yard-status-today">
-            <AppText variant="captionMedium" tone="sub">
-              {IF5_TEXT['SAJU.today.title']}
-            </AppText>
-            <AppText variant="body" testID="saju-yard-today-line">
-              {todayBaseLine(nowIso(nowFn()))}
-            </AppText>
+            <View style={styles.rowText}>
+              <AppText variant="captionMedium" tone="sub">
+                {IF5_TEXT['SAJU.today.title']}
+              </AppText>
+              <AppText variant="body" testID="saju-yard-today-line">
+                {todayBaseLine(nowIso(nowFn()))}
+              </AppText>
+            </View>
+            <Icon name="chevron" size={20} color={colors.sub} testID="saju-yard-status-today-chevron" />
           </Pressable>
         ) : null;
     }
@@ -280,6 +284,7 @@ function Yard({ deps, store: injectedStore }: { deps: YardDeps; store?: InputSto
 const styles = StyleSheet.create({
   body: { padding: size.screenPadding, paddingBottom: space.s40, gap: space.s16 },
   card: { backgroundColor: colors.bg, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.line, padding: space.s16, gap: space.s8 },
+  statusDoor: { flexDirection: 'row', alignItems: 'center', gap: space.s12 }, // 상태 칸 오른쪽 chevron — 메뉴 줄과 같은 모양으로 누를 수 있는 칸임이 보이게
   group: { backgroundColor: colors.bg, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.line, overflow: 'hidden' },
   row: { minHeight: size.touchMin, flexDirection: 'row', alignItems: 'center', gap: space.s12, paddingHorizontal: space.s16, paddingVertical: space.s12 },
   rowText: { flex: 1, gap: space.s4 },

@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { findBrowser, openBrowser, sleep } from './lib/browser.mjs';
+import { goInApp, signUpToSurvey } from './lib/demoLogin.mjs';
 import { APP_DIR } from './lib/legal-source.mjs';
 
 const args = process.argv.slice(2);
@@ -105,7 +106,10 @@ const nextScene = async (label) => {
 let exitCode = 0;
 try {
   // ═══ 1. 목록 ═══
-  check('1', '/chat 가 열리고 대화방 줄이 보인다', await b.open('/chat', `!!window.__q('chat-row-0') || !!window.__q('chat-list-failed')`), '');
+  // FB-022: 로그인 없이 /chat 을 직접 열 수 없다 → 가입(약관 동의까지) 뒤 앱 안 이동으로 연다(점검의 뜻은 그대로)
+  await signUpToSurvey(b, 'w5chatif2off@email.com'); // if2off: 기내 서비스(IF2) 스위치를 끈다 — 로그인 없이 열던 때의 스위치 처음값(live 와 같음)과 같은 지금의 채팅 흐름(나가기 확인창 등)을 잰다
+  await goInApp(b, '/chat');
+  check('1', '/chat 가 열리고 대화방 줄이 보인다', await b.waitFor(`location.pathname === '/chat' && (!!window.__q('chat-row-0') || !!window.__q('chat-list-failed'))`, 15000), '');
   await b.waitFor(`!window.__q('splash')`, 8000);
   await sleep(800);
   // 3부-사 FB-016: 데모 기본 방은 막 열린 방(글 0) — 이 점검은 대화가 이어진 '열린 방'을 보므로 데모 줄로 두 번 넘긴다(막 열린 방 → 상대가 먼저 보냄 → 열린 방)

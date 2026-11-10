@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { findBrowser, openBrowser, sleep } from './lib/browser.mjs';
+import { goInApp } from './lib/demoLogin.mjs';
 import { APP_DIR } from './lib/legal-source.mjs';
 
 const distDir = path.resolve(APP_DIR, process.argv[2] ?? 'dist-demo');
@@ -111,8 +112,11 @@ try {
   }
   await measure('온보딩');
 
-  // ═══ 3. 채팅 빈 목록(가입 전에도 데모 목록이 열린다) ═══
-  check('3', '/chat 가 열린다', await b.open('/chat', `!!window.__q('chat-row-0') || !!window.__q('chat-list-empty') || !!window.__q('chat-list-failed')`), '');
+  // ═══ 2 먼저: 가입 ═══ FB-022: 채팅은 로그인이 필요한 화면이라 가입 전에는 직접 열 수 없다(앱 가드) → 가입을 먼저 마치고 앱 안 이동으로 채팅 빈 목록을 본다(점검의 뜻은 그대로)
+  check('2', '가입을 마치면 탑승권(판매 중)', await signUp(`d42i${width}${mode}@email.com`, `location.pathname === '/boarding' && !!${visQ('boarding-status-on_sale')}`), '');
+  // ═══ 3. 채팅 빈 목록 ═══
+  await goInApp(b, '/chat');
+  check('3', '/chat 가 열린다', await wait(`location.pathname === '/chat' && (!!window.__q('chat-row-0') || !!window.__q('chat-list-empty') || !!window.__q('chat-list-failed'))`, 15000), '');
   // 3부-카(FB-019): 데모 장면이 여덟 가지(막 열린 방 · 상대가 먼저 … 방 없음)로 늘어 '방 없음'까지 일곱 번 눌러야 한다 — 아홉 번까지 본다
   for (let n = 0; n < 9 && !(await b.evaluate(`!!${visQ('chat-list-empty')}`)); n++) {
     await tap('chat-demo-scene');
@@ -124,8 +128,9 @@ try {
   await shot('10_채팅빈목록');
   await measure('채팅 빈 목록');
 
-  // ═══ 2. 탑승권 상태마다 그림 ═══
-  check('2', '가입을 마치면 탑승권(판매 중)', await signUp(`d42i${width}${mode}@email.com`, `location.pathname === '/boarding' && !!${visQ('boarding-status-on_sale')}`), '');
+  // ═══ 2. 탑승권 상태마다 그림 ═══ (가입은 위에서 마쳤다 — 채팅을 보고 탑승권 홈으로 돌아온다)
+  await goInApp(b, '/boarding');
+  await wait(`location.pathname === '/boarding' && !!${visQ('boarding-status-on_sale')}`, 15000);
   await sleep(800);
   const scenes = [
     [null, 'on_sale', '05', '판매 중 = 탑승권'],

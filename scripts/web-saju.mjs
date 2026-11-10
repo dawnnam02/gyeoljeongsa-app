@@ -119,7 +119,7 @@ try {
   await measure('입력 시트');
   await b.shot(`SAJU_입력_${width}.png`);
   await tap('saju-in-save');
-  check('1', '저장하면 상태 칸이 오늘 하루 한 줄로 바뀜(준비됨) · 메뉴 줄이 보임', (await waitVis('saju-yard-status-today', 8000)) && (await vis('saju-yard-row-pillars')) && (await vis('saju-yard-row-year')), '');
+  check('1', '저장하면 상태 칸이 오늘 하루 한 줄로 바뀜(준비됨, 오른쪽 chevron = 누르는 칸) · 메뉴 줄이 보임 · 오늘 하루 메뉴 줄은 없다(상태 칸이 그 문 — QF2-B8)', (await waitVis('saju-yard-status-today', 8000)) && (await vis('saju-yard-status-today-chevron')) && !(await vis('saju-yard-row-today')) && (await vis('saju-yard-row-pillars')) && (await vis('saju-yard-row-year')), '');
   await tap('saju-yard-row-pillars');
   check('1', '줄 → 내 사주 자세히(/saju-detail)', await b.waitFor(`location.pathname === '/saju-detail'`, 8000), await b.evaluate('location.pathname'));
 

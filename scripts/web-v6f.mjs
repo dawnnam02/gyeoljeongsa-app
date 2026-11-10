@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { findBrowser, openBrowser, sleep } from './lib/browser.mjs';
+import { signUpToSurvey } from './lib/demoLogin.mjs';
 import { APP_DIR } from './lib/legal-source.mjs';
 
 const args = process.argv.slice(2);
@@ -199,7 +200,9 @@ async function answer(id) {
 let exitCode = 0;
 try {
   // ═══ A. 시작 ═══
-  await b.open('/survey/01', `!!${q('chat-intro')} || !!${q('chat-screen')}`);
+  // FB-022: 로그인 없이 /survey/01 을 직접 열 수 없다 → 데모 가입(약관 동의까지)을 마치면 앱이 /survey/01 로 보내 준다(점검의 뜻은 그대로: 대화형 설문 시작)
+  await signUpToSurvey(b, 'v6f1@email.com');
+  await b.waitFor(`!!${q('chat-intro')} || !!${q('chat-screen')}`, 15000);
   await b.waitFor(`!${q('splash')}`, 8000);
   check('A', '/survey/01 = 대화형 설문 시작(AI와 이야기해요 고지 · 30분 안내)', await wait(`!!${q('chat-intro')} && window.__text().includes('AI와 이야기해요') && window.__text().includes('30분')`, 10000));
   await shot('01_시작');

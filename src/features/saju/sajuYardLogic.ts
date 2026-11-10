@@ -33,13 +33,19 @@ export type YardRow = {
   costKind?: 'ai' | 'turn';
 };
 
-export type YardFlags = { isOn: (key: string) => boolean; aiAvailable: boolean };
+export type YardFlags = {
+  isOn: (key: string) => boolean;
+  aiAvailable: boolean;
+  /** 준비됨 상태의 상태 칸(오늘 하루 한 줄)이 이미 '오늘 하루'로 가는 문이면 true — 같은 곳으로 가는 메뉴 줄을 또 그리지 않는다(QF2-B8). 동의 전 · 생일 전에는 false(줄이 다음 걸음으로 안내) */
+  todayIsStatus?: boolean;
+};
 
 // 줄 차례: 오늘 하루 · 내 네 기둥과 결 읽기 · 올해 흐름 · 인생 계절표 · 인연 이야기 · 둘이 맞춰 보기 · 사주 이야기 나누기 · (꺼져 있는 것이 켜지면) 날짜 고르기 · 만세력 달력
-export function yardRows({ isOn, aiAvailable }: YardFlags): YardRow[] {
+//  오늘 하루 줄: 스위치 saju_today 가 켜졌을 때만 · 준비됨이면 상태 칸이 그 문이라 줄은 그리지 않는다(todayIsStatus)
+export function yardRows({ isOn, aiAvailable, todayIsStatus = false }: YardFlags): YardRow[] {
   const aiCost = isOn('saju_ai') && aiAvailable; // AI 맞춤 풀이 칸이 열려 있을 때만 값을 보인다
   const rows: (YardRow | null)[] = [
-    isOn('saju_today') ? { key: 'today', name: IF5_TEXT['SAJU.today.title'], line: YARD.rows.today.line, icon: 'sun', to: { kind: 'screen', href: '/saju-today' as Href } } : null,
+    isOn('saju_today') && !todayIsStatus ? { key: 'today', name: IF5_TEXT['SAJU.today.title'], line: YARD.rows.today.line, icon: 'sun', to: { kind: 'screen', href: '/saju-today' as Href } } : null,
     isOn('three_pillars') || isOn('saju_reading')
       ? { key: 'pillars', name: YARD.rows.pillars.name, line: YARD.rows.pillars.line, icon: 'pillars', to: { kind: 'detail', section: 'pillars' }, ...(aiCost && isOn('saju_reading') ? { costFeature: 'saju_reading', costKind: 'ai' as const } : {}) }
       : null,

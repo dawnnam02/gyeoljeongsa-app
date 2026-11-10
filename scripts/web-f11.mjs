@@ -14,6 +14,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { findBrowser, openBrowser } from './lib/browser.mjs';
+import { goInApp } from './lib/demoLogin.mjs';
 import { APP_DIR } from './lib/legal-source.mjs';
 
 const distDir = path.resolve(APP_DIR, process.argv[2] ?? 'dist-demo');
@@ -125,10 +126,10 @@ try {
   check('A', '[확인했어요] → 09', await confirmFirst(), `경로 ${await path0()}`);
 
   const t1 = await tabs();
-  // V5 W6: 탭이 6개(탑승권 · 채팅 · 추천 · 호감 · 상점 · 설정). 프로필 칸은 여전히 없다. 탭 이름은 카피 TABS 와 BOARDING · 채팅 이름이 같아야 한다
-  check('A', '탭 6개: 탑승권 · 채팅 · 추천 · 호감 · 상점 · 설정 순서, 프로필 칸 없음', t1.map((t) => t.text).join(',') === '탑승권,채팅,추천,호감,상점,설정' && ['추천', '호감', '상점', '설정'].join(',') === Object.values(TABS).join(','), t1.map((t) => t.text).join(','));
+  // V5 W6: 탭이 6개(탑승권 · 채팅 · 추천 · 호감 · 상점 · 설정) → TAB-1(D-254): 사주 마당 칸이 설정 앞에 더해져 7개. 프로필 칸은 여전히 없다. 탭 이름은 카피 TABS 와 BOARDING · 채팅 이름이 같아야 한다
+  check('A', '탭 7개: 탑승권 · 채팅 · 추천 · 호감 · 상점 · 사주 마당 · 설정 순서(TAB-1), 프로필 칸 없음', t1.map((t) => t.text).join(',') === '탑승권,채팅,추천,호감,상점,사주 마당,설정' && ['추천', '호감', '상점', '설정'].join(',') === Object.values(TABS).join(','), t1.map((t) => t.text).join(','));
   const on1 = t1.filter((t) => t.selected === 'true');
-  check('A', '현재 탭 1개(추천) = 면 accentSoft 아이콘 + Bold, 나머지 5개 = 선만(D42-C)', on1.length === 1 && on1[0].text === '추천' && on1[0].icon === 'filled' && /Bold/.test(on1[0].family) && t1.filter((t) => t.icon === 'line').length === 5, JSON.stringify(t1.map((t) => `${t.text}:${t.icon}`)));
+  check('A', '현재 탭 1개(추천) = 면 accentSoft 아이콘 + Bold, 나머지 6개 = 선만(D42-C)', on1.length === 1 && on1[0].text === '추천' && on1[0].icon === 'filled' && /Bold/.test(on1[0].family) && t1.filter((t) => t.icon === 'line').length === 6, JSON.stringify(t1.map((t) => `${t.text}:${t.icon}`)));
 
   // B. 09 머리 오른쪽 위 원형 사진
   const btn = await rect('[aria-label="내 프로필"]');
@@ -237,11 +238,13 @@ try {
   check('B', '14 호감 없음 모양도 머리 오른쪽 위 원형 사진', (await goTab('호감', '/likes')) && (await b.waitFor(`!!window.__q('screen-14')`, 8000)) && (await q('profile-button')), '');
   await note('F11_탭_14_호감없음_360x740.png');
 
-  // 프로필 탭 주소를 바로 연다(링크가 깨지지 않는다): 세션이 없어도 08 이 열리고 ‹ 는 09 로
-  await b.open('/profile', `!!window.__q('profile-header') || document.body.innerText.includes('내 프로필')`);
+  // 프로필 탭 주소(/profile)로 간다(링크가 깨지지 않는다): FB-022 — 로그인이 필요한 주소라 로그인 없이 직접 열 수 없다(앱 가드) → 로그인한 채로 앱 안 이동으로 연다
+  await goInApp(b, '/profile');
+  await b.waitFor(`location.pathname === '/profile' && (!!window.__q('profile-header') || document.body.innerText.includes('내 프로필'))`, 10000);
   check('D', '옛 프로필 탭 주소(/profile)를 바로 열어도 08 이 열린다(탭바 없음 · ‹ 있음)', (await path0()) === '/profile' && (await has('내 프로필')) && (await visibleCount('[role=tab]')) === 0 && (await q('profile-header-back')), `경로 ${await path0()}`);
   await b.click(sel('profile-header-back'));
-  check('D', '쌓인 화면이 없을 때 ‹ → 홈(/boarding · V5 W6 부터 홈이 탑승권)', await b.waitFor(`location.pathname === '/boarding'`, 8000), `경로 ${await path0()}`);
+  // FB-022: 로그인한 채로는 주소를 새로 열 수 없어(데모 세션은 메모리뿐) 앱 안 이동으로 연 것이라 쌓인 화면이 있다 → ‹ 는 한 칸 뒤(09). 쌓인 화면이 없을 때 ‹ → 09 는 jest profileScreen 이 본다(canGoBack 거짓 → replace /recommendations)
+  check('D', '쌓인 화면이 있을 때 ‹ → 한 칸 뒤(09, 앱 안 이동으로 연 프로필)', await b.waitFor(`location.pathname === '/recommendations'`, 8000), `경로 ${await path0()}`);
 
   // ═══ G. 공통 ═══
   const bad = b.errors.filter((e) => !/Failed to load resource/.test(e));

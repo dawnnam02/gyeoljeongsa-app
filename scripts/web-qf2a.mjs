@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { findBrowser, openBrowser, sleep } from './lib/browser.mjs';
+import { goInApp, signUpToSurvey } from './lib/demoLogin.mjs';
 import { APP_DIR } from './lib/legal-source.mjs';
 import { fillSurveyV2 } from './lib/surveyV2Driver.mjs';
 
@@ -48,6 +49,18 @@ const tap = async (id) => {
 const goto = (p) => b.evaluate(`(() => { history.pushState(null, '', ${JSON.stringify(p)}); dispatchEvent(new PopStateEvent('popstate', { state: null })); return true; })()`);
 const rectOf = (id) => b.evaluate(`(() => { const el = ${visQ(id)}; if (!el) return null; const r = el.getBoundingClientRect(); return { t: r.top, b: r.bottom, l: r.left, r: r.right, h: r.height, ih: window.innerHeight, iw: window.innerWidth }; })()`);
 // 요소가 화면 안(위 0 이상 · 아래 innerHeight 이하 · 좌우 안)에 통째로 보이는가
+// 시트가 열리는 움직임(약 520ms)이 끝나 단추 자리가 멈출 때까지 기다린다(두 번 연속 같은 자리 · 최대 8초). 고정 700ms 로는 컴퓨터가 바쁠 때 움직이는 도중(시트가 아직 화면 아래)에 재서
+//  '단추가 화면 밖'으로 잘못 나오는 일이 있었다(QF2-B8: 측정 경쟁이지 배치 결함이 아니었다 — 걸린 시간을 함께 적는다)
+const settleRect = async (id) => {
+  let prev = null;
+  const t0 = Date.now();
+  for (;;) {
+    await sleep(120);
+    const r = await rectOf(id);
+    if ((r && prev && Math.abs(r.t - prev.t) < 0.5) || Date.now() - t0 > 8000) return { ms: Date.now() - t0 };
+    prev = r;
+  }
+};
 const inside = (r) => !!r && r.t >= -0.5 && r.b <= r.ih + 0.5 && r.l >= -0.5 && r.r <= r.iw + 0.5;
 const scrollInfo = (id) => b.evaluate(`(() => { const el = ${visQ(id)}; if (!el) return null; const sc = [el, ...el.querySelectorAll('*')].find((n) => n.scrollHeight > n.clientHeight + 2 && ['auto', 'scroll'].includes(getComputedStyle(n).overflowY)); return sc ? { sh: sc.scrollHeight, ch: sc.clientHeight } : { sh: el.scrollHeight, ch: el.clientHeight, none: true }; })()`);
 const scrollBottom = (id) => b.evaluate(`(() => { const el = ${visQ(id)}; if (!el) return false; const sc = [el, ...el.querySelectorAll('*')].find((n) => n.scrollHeight > n.clientHeight + 2 && ['auto', 'scroll'].includes(getComputedStyle(n).overflowY)); if (sc) sc.scrollTop = sc.scrollHeight; return true; })()`);
@@ -91,7 +104,10 @@ try {
   check('1', '[홈으로] → 앱 시작(/)이 알맞은 첫 화면으로(로그인 전 01 온보딩)', await b.waitFor(`location.pathname === '/onboarding'`, 8000), await b.evaluate('location.pathname'));
 
   // ═══ 1b. 설문 세부사항(어필 AI 끔 · D-246) — 스위치 appeal_ai 꺼짐(데모 처음값) ═══
-  await b.open('/survey/v2', `!!window.__q('v2-intro') || !!window.__q('v2-screen')`);
+  // FB-022: 로그인 없이 /survey/v2 를 직접 열 수 없다 → 가입(약관 동의까지) 뒤 앱 안 이동으로 연다(점검의 뜻은 그대로: 설문 v2 시작 안내 · 걸음)
+  await signUpToSurvey(b, 'qf2a1b@email.com');
+  await goInApp(b, '/survey/v2');
+  await b.waitFor(`!!window.__q('v2-intro') || !!window.__q('v2-screen')`, 15000);
   await b.waitFor(`!window.__q('splash')`, 8000);
   await b.waitFor(`!!window.__q('v2-intro')`, 8000);
   const introText = await pageText();
@@ -119,7 +135,8 @@ try {
     if (hasBuy) {
       await tap('boarding-buy');
       check('2', `${w} 폭: 사기 시트가 열린다`, await waitVis('boarding-sheet-footer', 8000), '');
-      await sleep(700); // 열리는 움직임(520ms)이 끝난 뒤
+      const settled = await settleRect('boarding-pay'); // 열리는 움직임(520ms)이 끝나 단추 자리가 멈출 때까지
+      console.log(`       시트 자리가 멈춘 데 ${settled.ms}ms`);
       const pay = await rectOf('boarding-pay');
       const price = await rectOf('boarding-sheet-price');
       const dead = await rectOf('boarding-sheet-deadline');
@@ -146,7 +163,7 @@ try {
     if (agreeOk) {
       await tap('saju-ck17-agree');
       check('2', `${w} 폭: 동의 시트가 열린다`, await waitVis('if2-ck17-go', 8000), '');
-      await sleep(700);
+      await settleRect('if2-ck17-go');
       const go = await rectOf('if2-ck17-go');
       check('2', `${w} 폭: [이어 가기]가 스크롤 없이 화면 안에 보인다(F-02)`, inside(go), go ? `단추 ${Math.round(go.t)}~${Math.round(go.b)} / 화면 ${go.ih}` : '단추 없음');
       check('2', `${w} 폭: [이어 가기] 터치 높이 48 이상`, !!go && go.h >= 47.5, go ? `${Math.round(go.h)}` : '');
@@ -161,6 +178,28 @@ try {
       console.log(`       스크린샷 ${await b.shot(`QF2A_동의시트_아래_${w}x${h}.png`)}`);
       await tap('if2-ck17-close');
       await waitGone('if2-ck17-go', 4000);
+    }
+  }
+
+  // ── 세로가 짧은 화면: 글자를 크게 키우면 시트 아래 줄(가격 · 마감 · 단추)이 늘어 위 칸이 눌린다 — 웹에는 글자 배율이 없어 화면 높이를 줄여 같은 압박을 본다(QF2-B8)
+  for (const [w, h] of [[360, 568], [360, 480]]) {
+    await b.viewport(w, h);
+    await sleep(300);
+    await goto('/boarding');
+    await b.waitFor(`location.pathname === '/boarding'`, 6000);
+    if (await waitVis('boarding-buy', 10000)) {
+      await tap('boarding-buy');
+      await waitVis('boarding-sheet-footer', 8000);
+      const settled = await settleRect('boarding-pay');
+      const pay = await rectOf('boarding-pay');
+      const price = await rectOf('boarding-sheet-price');
+      const dead = await rectOf('boarding-sheet-deadline');
+      const sc = await scrollInfo('boarding-sheet-scroll');
+      check('2', `${w}x${h} 짧은 화면: [결제하기] · 가격 · 마감 안내가 화면 안에 남고 위 칸만 스크롤`, inside(pay) && inside(price) && inside(dead) && !!sc && sc.sh > sc.ch, `${pay ? `단추 ${Math.round(pay.t)}~${Math.round(pay.b)} / 화면 ${pay.ih}` : '단추 없음'} · 위 칸 ${sc ? `${sc.sh}/${sc.ch}` : '없음'} · 멈춘 데 ${settled.ms}ms`);
+      check('2', `${w}x${h} 짧은 화면: [결제하기] 터치 높이 48 이상`, !!pay && pay.h >= 47.5, pay ? `${Math.round(pay.h)}` : '');
+      console.log(`       스크린샷 ${await b.shot(`QF2B8_사기시트_짧은화면_${w}x${h}.png`)}`);
+      await b.click(sel('boarding-sheet-scrim'));
+      await waitGone('boarding-sheet-footer', 4000);
     }
   }
 
