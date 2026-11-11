@@ -276,7 +276,7 @@ describe('Q2-10d 마일리지 가격표', () => {
   test('서버 차감표에서 쓰는 흐름 순서 세 줄(풀이 · 사주 이야기 · 날짜 설명) · 풀이처럼 값이 갈리면 "부터" · 없는 기능의 줄은 빠짐', () => {
     const costs = [
       { feature: 'saju_reading', cost: 800 },
-      { feature: 'saju_full', cost: 2000 },
+      { feature: 'daewoon', cost: 1000 },
       { feature: 'saju_chat_turn', cost: 200 },
       { feature: 'taekil_explain', cost: 30 },
       { feature: 'polish_short', cost: 10 },
@@ -287,6 +287,9 @@ describe('Q2-10d 마일리지 가격표', () => {
       { key: 'pick', cost: 30, from: false },
     ]);
     expect(priceRows([{ feature: 'saju_reading', cost: 800 }])).toEqual([{ key: 'read', cost: 800, from: false }]);
+    // QF2-B9: 종합 풀이(saju_full)는 꺼져 있는 동안 값 줄에 끼지 않는다 — 서버가 다른 값을 내려 줘도 "부터"가 붙지 않고, 그것만 있으면 풀이 줄이 없다
+    expect(priceRows([{ feature: 'saju_reading', cost: 800 }, { feature: 'saju_full', cost: 2000 }])).toEqual([{ key: 'read', cost: 800, from: false }]);
+    expect(priceRows([{ feature: 'saju_full', cost: 2000 }])).toEqual([]);
     expect(priceRows([])).toEqual([]);
   });
 
