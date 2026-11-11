@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { FORTUNE_TRIM } from '@/config/fortuneTrim';
 import { demoHelpHit } from '@/demo/crisisWords';
 import { createDemoSaju } from '@/demo/sajuDemo';
 import { createDemoMileage } from '@/demo/mileageDemo';
@@ -267,7 +268,15 @@ describe('IF5-F2 ⑨ ⑩ 예치 → 확정 · 해제 흐름(runAi)', () => {
     expect((await runAi(demo.deps, { kind: 'chat', requestId: newRequestId(), chars: 10, text: '사라지고 싶어요', facts: {} })).kind).toBe('card');
     expect(demoHelpHit('사라지고 싶어요')).toBe(true);
   });
-  test('종합: 풀이 · 대운 · 올해 세 번을 한 예치로 — 하나라도 못 받으면 전부 해제', async () => {
+  test('종합: 풀이 · 대운 · 올해 세 번을 한 예치로 — 하나라도 못 받으면 전부 해제 (QF2-B9: 종합 풀이는 꺼져 있어 이 시험은 켠 상태에서 — 켜면 그대로 돌아온다)', async () => {
+    Object.assign(FORTUNE_TRIM, { fullReading: true });
+    try {
+      await fullCase();
+    } finally {
+      Object.assign(FORTUNE_TRIM, { fullReading: false });
+    }
+  });
+  const fullCase = async () => {
     const seq: string[] = [];
     const okReply = { ok: true, code: 'ok', mode: 'mock', display: { reply: 'x' }, card: null, bundle: null, retryAfterSec: null } as const;
     const r = rig({
@@ -288,6 +297,13 @@ describe('IF5-F2 ⑨ ⑩ 예치 → 확정 · 해제 흐름(runAi)', () => {
     const ok = await runAi(r2.deps, { kind: 'full', requestId: newRequestId(), chars: 0, facts, full: { reading: facts, daewoon: null, sinyeon: { kind: 'sinyeon' } } }); // 대운 칸 없는 분은 그 편만 빠진다
     expect(ok.kind).toBe('ok');
     expect(await r2.total()).toBe(2300);
+  };
+  test('QF2-B9: 종합 풀이가 꺼져 있으면 runAi 는 점검 한 줄 — 예치 0 · 호출 0', async () => {
+    const r = rig();
+    const out = await runAi(r.deps, { kind: 'full', requestId: newRequestId(), chars: 0, facts, full: { reading: facts, daewoon: null, sinyeon: null } });
+    expect(out).toEqual({ kind: 'maint' });
+    expect(r.posts).toHaveLength(0);
+    expect(await r.total()).toBe(1000);
   });
   test('기능 이름 → 차감표 이름(서버 mileage_features)', () => {
     expect(COST_FEATURE).toEqual({ reading: 'saju_reading', daewoon: 'daewoon', sinyeon: 'sinyeon', full: 'saju_full', compat: 'compat', taekil: 'taekil_explain', chat: 'saju_chat_turn' });

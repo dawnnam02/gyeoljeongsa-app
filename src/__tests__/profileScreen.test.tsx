@@ -240,10 +240,34 @@ describe('08 내 프로필 화면', () => {
     expect(mockRouter.replace).toHaveBeenCalledWith('/recommendations');
     mockParams.first = '1';
     mockRouter.replace.mockClear();
-    mockRouter.canGoBack.mockReturnValueOnce(false);
-    const first = await show(setup());
+    const first = await show(setup()); // QF2-B9: 처음 한 번 확인은 쌓인 화면을 보지 않고 늘 09 로 갈아 끼운다
     await press(first, 'profile-header-back'); // 처음 한 번 확인 상태의 뒤로 = 09 (2-5 T5)
     expect(mockRouter.replace).toHaveBeenCalledWith('/recommendations');
+  });
+
+  test('QF2-B9: 처음 한 번 확인(?first=1)의 ‹ 는 쌓인 화면이 있어도(웹: dismissAll 을 안 쓴다) 설문으로 돌아가지 않고 홈으로 갈아 끼운다 · 기기(쌓인 화면 없음)도 같다', async () => {
+    mockParams.first = '1';
+    mockRouter.canGoBack.mockReset();
+    mockRouter.canGoBack.mockReturnValue(true); // 웹: 방금 끝낸 설문이 쌓여 있다
+    const web = await show(setup());
+    await press(web, 'profile-header-back');
+    expect(mockRouter.back).not.toHaveBeenCalled(); // 설문(/survey/01)으로 되돌아가지 않는다
+    expect(mockRouter.replace).toHaveBeenCalledWith('/recommendations'); // 09 — 지금 판은 09 가 꺼져 있어 V4Gate 가 탑승권 홈으로 보낸다(확인했어요 버튼과 같은 도착)
+    mockRouter.replace.mockClear();
+    mockRouter.canGoBack.mockReturnValue(false); // 기기: 쌓인 화면 없음
+    const device = await show(setup());
+    await press(device, 'profile-header-back');
+    expect(mockRouter.back).not.toHaveBeenCalled();
+    expect(mockRouter.replace).toHaveBeenCalledWith('/recommendations');
+    // 처음 한 번이 아닌 08 은 그대로: 쌓인 화면이 있으면 한 칸 뒤로
+    delete mockParams.first;
+    mockRouter.replace.mockClear();
+    mockRouter.canGoBack.mockReturnValue(true);
+    const plain = await show(setup());
+    await press(plain, 'profile-header-back');
+    expect(mockRouter.back).toHaveBeenCalledTimes(1);
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+    mockRouter.canGoBack.mockImplementation(() => true);
   });
 
   test('F11: 얼굴 사진이 확인 중이면 큰 사진 칸에 사진, 반려 · 없음이면 기본 프로필 그림(R16)', async () => {

@@ -14,6 +14,7 @@ import { setAiRunEnvForTest, type AiRunEnv } from '@/features/ait/aiCall';
 import { ConcernChat } from '@/features/ait/ConcernChat';
 import { StarAiBlock } from '@/features/ait/StarAiBlock';
 import { aitStore } from '@/features/ait/aitStore';
+import { takeSettingsPage } from '@/features/settings/settingsIntent';
 import { rpcOf } from '@/features/inflight/inflightApi';
 import type { Ck17Api } from '@/features/inflight/inflightService';
 import { createLedgerEdge } from '@/features/mileage/ledgerEdge';
@@ -49,6 +50,7 @@ const keep = (t: ReactTestRenderer) => (mounted.push(t), t);
 afterEach(async () => {
   await act(async () => mounted.splice(0).forEach((t) => t.unmount()));
   mockRouter.push.mockClear();
+  mockRouter.navigate.mockClear();
   setAiRunEnvForTest(null);
 });
 
@@ -70,7 +72,7 @@ const CLOSED = reply(403, 'unavailable', NONE);
 const NO_LOGIN = reply(401, 'auth', NONE);
 const BLOCKED = reply(200, 'blocked_output', NONE);
 
-function server(served: Served[]) {
+function server(served: Served[], beforeReply?: () => Promise<void>) {
   const requests: { url: string; headers: Record<string, string>; body: Record<string, unknown> }[] = [];
   const lost = jest.fn();
   const queue = [...served];
@@ -81,6 +83,7 @@ function server(served: Served[]) {
     onAuthLost: lost,
     fetch: async (url, init) => {
       requests.push({ url, headers: init.headers, body: JSON.parse(init.body) as Record<string, unknown> });
+      await beforeReply?.();
       const next = queue.shift();
       if (next === 'throw') throw new TypeError('network');
       return next ? { status: next.status, json: async () => next.body } : { status: 500, json: async () => ({}) };
@@ -89,7 +92,7 @@ function server(served: Served[]) {
   return { env, requests, lost };
 }
 
-function rig(served: Served[], opts: { route?: 'ai-run' | 'mock'; cost?: AiServices['mileage']['cost'] } = {}) {
+function rig(served: Served[], opts: { route?: 'ai-run' | 'mock'; cost?: AiServices['mileage']['cost']; beforeReply?: (ai: AiServices) => Promise<void> } = {}) {
   const flags = flagsAll();
   const mile = createDemoMileage({ flags: async () => flags });
   const saju = createDemoSaju({ flags: async () => flags, account: () => ({ birthDate: '1994-03-14', consentOn: () => true }), today: () => '2027-03-20' });
@@ -99,7 +102,8 @@ function rig(served: Served[], opts: { route?: 'ai-run' | 'mock'; cost?: AiServi
     calls.push({ fn, args });
     return (mile.handles(fn) ? mile.rpc(u, fn, args) : saju.rpc(u, fn, args)) as never;
   };
-  const srv = server(served);
+  const aiRef: { current: AiServices | null } = { current: null };
+  const srv = server(served, opts.beforeReply ? () => opts.beforeReply!(aiRef.current as AiServices) : undefined);
   const consent = createIf5ConsentStore();
   void consent.setItems({ time: true, gender: true });
   const api = createMileageApi(call);
@@ -113,6 +117,7 @@ function rig(served: Served[], opts: { route?: 'ai-run' | 'mock'; cost?: AiServi
     env: srv.env,
     newId: () => 'req-' + Math.random().toString(36).slice(2, 12),
   };
+  aiRef.current = ai;
   const ck17: Ck17Api = { load: async () => ({ ok: true, data: { a: true, b: false } }), record: jest.fn(async () => ({ ok: true as const })), revoke: jest.fn(async () => ({ ok: true as const })) };
   const deps: SajuDeps = { api: createSajuApi(rpcOf({ rpc: call } as never)), ck17, isOn: (k) => flags[k] === true, now: () => NOW, birthDate: async () => '1994-03-14', consent, ai };
   const ledgerWrites = () => calls.filter((c) => /^demo_mileage_(hold|settle|release)$/.test(c.fn));
@@ -190,14 +195,35 @@ describe('RS2-01 실서버 길 · AI 맞춤 칸(결 읽기)', () => {
     expect(has(t2, 'saju-kyeol-ai-low-go')).toBe(true);
   });
 
-  test('409 already_done: 이미 처리됨 한 줄(다시 차감 0) · 다시 시도 단추 0', async () => {
+  test('409 already_done · 화면에 앞 답이 없을 때: 사실 한 줄 → 답이 안 보이면 고객센터 한 줄 + 고객센터 길 → 마일리지 사실 한 줄(맨 뒤) · 돌려 준다는 약속 0 · 다시 시도 단추 0', async () => {
     const r = rig([ALREADY]);
     const tree = await open(r);
     await runKyeol(r, tree);
     expect(textOf(tree, 'saju-kyeol-ai-already')).toBe(AI_RUN.alreadyDone);
+    expect(textOf(tree, 'saju-kyeol-ai-already-help')).toBe(AI_RUN.alreadyHelp);
+    expect(textOf(tree, 'saju-kyeol-ai-already-free')).toBe(AI_RUN.alreadyNoCharge);
+    const texts = allTexts(tree);
+    expect(texts.indexOf(AI_RUN.alreadyDone)).toBeLessThan(texts.indexOf(AI_RUN.alreadyHelp)); // 마일리지 사실은 맨 뒤 — 끝난 일처럼 읽히지 않게
+    expect(texts.indexOf(AI_RUN.alreadyHelp)).toBeLessThan(texts.indexOf(AI_RUN.alreadyNoCharge));
+    expect(`${AI_RUN.alreadyDone} ${AI_RUN.alreadyHelp} ${AI_RUN.alreadyNoCharge}`).not.toMatch(/돌려|환불|보상|[0-9]|!/); // 단정 · 숫자 · 느낌표 0
     expect(has(tree, 'saju-kyeol-ai-retry')).toBe(false);
+    expect(has(tree, 'saju-kyeol-ai-already-support')).toBe(true);
+    await press(tree, 'saju-kyeol-ai-already-support'); // 설정의 고객센터와 같은 길
+    expect(mockRouter.navigate).toHaveBeenCalledWith('/settings');
+    expect(takeSettingsPage()).toBe('support');
     expect(await r.total()).toBe(1000);
     expect(r.ledgerWrites()).toHaveLength(0);
+  });
+
+  test('409 already_done · 화면에 앞 답이 있을 때(저장본): 아무 안내도 더하지 않고 앞 답을 그대로 — 조용히', async () => {
+    const r = rig([ALREADY], { beforeReply: (ai) => ai.results.put('reading', { tag: 'v1', display: { headline: '앞서 받은 풀이예요', sections: [] } }) });
+    const tree = await open(r);
+    await runKyeol(r, tree);
+    expect(allTexts(tree)).toContain('앞서 받은 풀이예요');
+    expect(has(tree, 'saju-kyeol-ai-already')).toBe(false);
+    expect(allTexts(tree)).not.toContain(AI_RUN.alreadyDone);
+    expect(allTexts(tree)).not.toContain(AI_RUN.alreadyHelp);
+    expect(has(tree, 'saju-kyeol-ai-retry')).toBe(false);
   });
 
   test('429 daily_limit: 오늘은 여기까지 · 응답이 차감 없음(none)일 때만 "마일리지는 쓰이지 않았어요" · 잔액 그대로 · 재촉 0', async () => {
@@ -339,6 +365,9 @@ describe('RS2-01 실서버 길 · 사주 이야기', () => {
     await press(tree, 'saju-talk-send');
     await wait(100);
     expect(textOf(tree, 'saju-talk-already')).toBe(AI_RUN.alreadyDone);
+    expect(textOf(tree, 'saju-talk-already-help')).toBe(AI_RUN.alreadyHelp);
+    expect(textOf(tree, 'saju-talk-already-free')).toBe(AI_RUN.alreadyNoCharge);
+    expect(has(tree, 'saju-talk-already-support')).toBe(true);
     await press(tree, 'saju-talk-send');
     await wait(100);
     expect(textOf(tree, 'saju-talk-daily')).toBe(AI_RUN.dailyLimit);
@@ -399,6 +428,10 @@ describe('RS2-01 실서버 길 · 시험판 기능(고민 정리 · 별자리 �
     await press(tree, 'concern-send');
     await wait(100);
     expect(textOf(tree, 'concern-error-text')).toBe(AI_RUN.alreadyDone);
+    expect(textOf(tree, 'concern-error-text-help')).toBe(AI_RUN.alreadyHelp);
+    expect(textOf(tree, 'concern-error-text-free')).toBe(AI_RUN.alreadyNoCharge);
+    await press(tree, 'concern-error-text-support');
+    expect(mockRouter.navigate).toHaveBeenCalledWith('/settings');
     expect(has(tree, 'concern-error-retry')).toBe(false);
     await press(tree, 'concern-send');
     await wait(100);

@@ -19,7 +19,7 @@ import { TextButton } from '@/components/TextButton';
 import { TextField } from '@/components/TextField';
 import { AI_RUN } from '@/content/aiRunCopy';
 import { IF5_TEXT, t5 } from '@/content/if5Copy';
-import { AitCardView, cardView } from '@/features/ait/AitParts';
+import { AiAlreadyDone, AitCardView, cardView } from '@/features/ait/AitParts';
 import { aiRouteOf, createKeyKeeper, type KeyKeeper } from '@/features/ait/aiCall';
 import { ait } from '@/features/ait/aitText';
 import type { AitCard } from '@/features/ait/aitTypes';
@@ -32,6 +32,7 @@ import { costOf, fmt } from '@/features/mileage/mileageLogic';
 import { MILEAGE_HREF } from '@/features/mileage/MileageScreen';
 import { LowBalance, TalkStartSheet } from '@/features/mileage/MileageSheets';
 import { useMileageState } from '@/features/mileage/useMileage';
+import { openSettingsPage } from '@/features/settings/settingsIntent';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useAlwaysCaptureBlock } from '@/lib/captureBlock';
 import { colors, radius, size, space } from '@/theme/tokens';
@@ -330,7 +331,7 @@ function Talk({ deps, ai, store: injectedStore }: { deps: SajuDeps; ai?: AiServi
         ) : null}
         {notice === 'maint' ? <AppText variant="body" testID="saju-talk-maint">{IF5_TEXT['SAJU.status.maint']}</AppText> : null}
         {notice === 'unsure' ? <AppText variant="body" accessibilityRole="alert" testID="saju-talk-unsure">{IF5_TEXT['SAJU.status.errTitle']}</AppText> : null}
-        {notice === 'already' ? <AppText variant="body" testID="saju-talk-already">{AI_RUN.alreadyDone}</AppText> : null}
+        {notice === 'already' ? <AiAlreadyDone onSupport={() => openSettingsPage(router, 'support')} id="saju-talk-already" /> : null}
         {notice === 'daily' || notice === 'tooLong' ? (
           <View style={styles.gap}>
             <AppText variant="body" accessibilityRole="alert" testID={notice === 'daily' ? 'saju-talk-daily' : 'saju-talk-toolong'}>

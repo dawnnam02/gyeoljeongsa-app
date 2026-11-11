@@ -12,8 +12,10 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
+import { FORTUNE_TRIM } from '@/config/fortuneTrim';
 import { AI_RUN } from '@/content/aiRunCopy';
 import { IF5_TEXT } from '@/content/if5Copy';
+import { AiAlreadyDone } from '@/features/ait/AitParts';
 import { aiRouteOf, createKeyKeeper, type KeyKeeper } from '@/features/ait/aiCall';
 import { ait } from '@/features/ait/aitText';
 import { Ck17dSheet } from '@/features/consent/If5ConsentSheets';
@@ -22,6 +24,7 @@ import { MILEAGE_HREF } from '@/features/mileage/MileageScreen';
 import { ConfirmSpendSheet, LowBalance } from '@/features/mileage/MileageSheets';
 import type { CostInfo } from '@/features/mileage/mileageApi';
 import { useMileageState } from '@/features/mileage/useMileage';
+import { openSettingsPage } from '@/features/settings/settingsIntent';
 import { colors, space } from '@/theme/tokens';
 
 import { COST_FEATURE, newRequestId, runAi, type AiKind } from './aiRun';
@@ -178,6 +181,7 @@ export function AiBlock(p: Props) {
     await quote();
   };
 
+  if (p.kind === 'full' && !FORTUNE_TRIM.fullReading) return null; // QF2-B9: 종합 풀이는 꺼짐 — 문이 어디서 와도 칸 · 값 줄 0
   const facts = p.kind === 'full' ? (p.fullFacts?.() ? {} : null) : p.facts();
   if (facts === null && phase.k !== 'done') return null; // 보낼 사실이 없으면(예: 대운 칸 없음) 칸 자체가 없다
 
@@ -229,11 +233,7 @@ export function AiBlock(p: Props) {
           <Button label={IF5_TEXT['SAJU.status.retry']} variant="secondary" onPress={() => void run()} testID={`${p.id}-ai-retry`} />
         </View>
       ) : null}
-      {phase.k === 'already' ? (
-        <AppText variant="body" testID={`${p.id}-ai-already`}>
-          {AI_RUN.alreadyDone}
-        </AppText>
-      ) : null}
+      {phase.k === 'already' ? <AiAlreadyDone onSupport={() => openSettingsPage(router, 'support')} id={`${p.id}-ai-already`} /> : null}
       {phase.k === 'daily' ? (
         <View style={styles.gapSmall}>
           <AppText variant="body" accessibilityRole="alert" testID={`${p.id}-ai-daily`}>

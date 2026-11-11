@@ -102,19 +102,23 @@ export function ProfileScreen({ deps = defaultDeps }: { deps?: ProfileDeps }) {
   );
 
   // ‹ 와 Android 뒤로가기: 들어온 화면으로. 쌓인 화면이 없으면(07 확정 직후 · 앱을 다시 연 직후) 09 로 간다(2-5 T3 · T5)
+  //  QF2-B9: 처음 한 번 확인(?first=1)의 ‹ 는 쌓인 화면과 상관없이 홈(09 — 지금 판은 09 가 꺼져 있어 V4Gate 가 탑승권 홈으로 보낸다)으로 갈아 끼운다.
+  //   기기는 07 확정 뒤 쌓인 화면을 걷어 내(dismissAll) 이미 그랬는데, 웹은 걷어 내지 않아(go.ts · Q2-35 — dismissAll 을 되살리지 않는다) 방금 끝낸 설문(/survey/01)으로 되돌아갔다
   const goBack = useCallback(() => {
     const to = resolveDest('09');
-    goBackOr(router, to.kind === 'href' ? to.href : '/recommendations');
-  }, [router]);
+    const home = to.kind === 'href' ? to.href : '/recommendations';
+    if (firstVisit) router.replace(home);
+    else goBackOr(router, home);
+  }, [router, firstVisit]);
   useFocusEffect(
     useCallback(() => {
       const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-        if (router.canGoBack()) return false; // 쌓인 화면이 있으면 화면 스택이 한 칸 뒤로 보낸다
+        if (!firstVisit && router.canGoBack()) return false; // 쌓인 화면이 있으면 화면 스택이 한 칸 뒤로 보낸다(처음 한 번 확인은 늘 홈)
         goBack();
         return true;
       });
       return () => subscription.remove();
-    }, [router, goBack]),
+    }, [router, goBack, firstVisit]),
   );
 
   // 사진 열람 URL: 사진 id 마다 한 번(300초 안에서 쓰고, 저장하지 않는다)

@@ -5,6 +5,7 @@
 //  · 앱 자동 재시도 0 — 사용자가 다시 누르면 같은 요청 번호로 다시 예치한다. 결제 호출(consumeAsync …) 0 · 금액 인자 0
 //  실서버 길(RS2-01 · ai-run): 예치 · 확정 · 해제는 서버가 한다 — 이 길에서 앱은 edge(hold · settle · release)를 한 번도 부르지 않는다. 위기 앞거름은 화면 쪽 사전만(서버 요청 0 · 서버가 다시 거른다).
 //  앱은 응답의 code 와 charge.state 만 읽는다(settled 일 때만 잔액을 다시 읽는다). 길은 aiCall.ts aiRouteOf 가 정한다.
+import { FORTUNE_TRIM } from '@/config/fortuneTrim';
 import { aiRouteOf, createKeyKeeper, postAiRunKeyed, type AiRoute, type AiRunEnv, type KeyKeeper } from '@/features/ait/aiCall';
 import { shouldReloadBalance } from '@/features/ait/aitCharge';
 import type { AitCard, AitResult } from '@/features/ait/aitTypes';
@@ -188,6 +189,7 @@ async function runViaServer(d: AiDeps, req: AiRequest): Promise<AiOutcome> {
 }
 
 export async function runAi(d: AiDeps, req: AiRequest): Promise<AiOutcome> {
+  if (req.kind === 'full' && !FORTUNE_TRIM.fullReading) return { kind: 'maint' }; // QF2-B9: 종합 풀이는 모든 길에서 꺼짐 — 어떤 문으로 와도 요청 0 · 장부 0 · 차감 0
   if ((d.route ?? aiRouteOf({ code: d.code() })) === 'ai-run') return runViaServer(d, req);
   // 0) 위기 앞거름(대화)
   if (req.kind === 'chat' && req.text) {

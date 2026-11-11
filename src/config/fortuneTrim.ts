@@ -4,7 +4,7 @@
 //  · 연애 풀이가 켜진 뒤 끄기로 한 칸(인연 이야기 · 사랑하는 방식 · 말하는 방식, LV-2 3장)은 지금 끄지 않는다
 export const FORTUNE_TRIM: {
   workMoneyPeople: boolean; // 일 · 돈 · 사람 이야기 카드(F5-04) — 칩당 140자, 연애 앱과 겉돎
-  fullReading: boolean; // 종합 풀이 — 세 풀이를 이어 부를 뿐 새 내용 0
+  fullReading: boolean; // 종합 풀이 — 세 풀이를 이어 부를 뿐 새 내용 0. QF2-B9: ai-run 에 종합 기능이 없어 세 풀이가 따로 차감돼(합 1,500) 값 고지(saju_full 1,400)와 청구가 어긋난다 → 모든 길(데모 · 실서버 · AI 서버 판)에서 입구 · 실행 · 값 줄을 함께 끈다. 서버에 종합 기능이 생기면 이 값 한 줄 true 로 켠다
   zodiacLine: boolean; // 띠 한 줄(F5-18) — 네 기둥이 있는데 띠는 얕음
   inflightAiTrial: boolean; // 기내지 안 별자리 · 사주 AI 시험판 — 시험용
 } = {

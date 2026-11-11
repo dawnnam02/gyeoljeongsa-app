@@ -12,12 +12,13 @@ import { CheckBox } from '@/components/CheckBox';
 import { Chip } from '@/components/Chip';
 import { Pressable } from '@/components/Pressable';
 import { TextButton } from '@/components/TextButton';
-import { A11Y } from '@/content/copy';
+import { A11Y, SUPPORT } from '@/content/copy';
 import { AI_RUN } from '@/content/aiRunCopy';
 import { IF5_TEXT } from '@/content/if5Copy';
 import { BOARDING } from '@/features/boarding/boardingCopy';
 import { MILEAGE_HREF } from '@/features/mileage/MileageScreen';
 import { LowBalance } from '@/features/mileage/MileageSheets';
+import { openSettingsPage } from '@/features/settings/settingsIntent';
 import { alpha, colors, radius, space } from '@/theme/tokens';
 
 import { AIT_KEEP_NOTE_ON } from './aitConfig';
@@ -114,10 +115,33 @@ export function AitLoading({ testID = 'ait-loading' }: { testID?: string }) {
  *  · auth → [시험용 AI 코드 넣기]만(다시 시도 0)  · spend_limit → 다시 시도 0(미리 쓴 글이 있는 기능은 아래 줄)  · limit → [새 고민 시작하기](CONCERN.end.again · onRestart)만(대화 기록이 너무 길어짐 — 같은 묶음으로 다시 보내지 않는다)
  *  · rate → [다시 시도]는 잠깐 잠김(남은 시간 글 0)  · 그 밖 → [다시 시도]
  */
+/**
+ * RS2-01 · QF2-B9 이미 처리됨(409): 서버가 같은 요청을 이미 확정했다고 알렸는데 화면에 그 요청의 답이 없을 때(연결이 끊긴 뒤 같은 키로 다시 보낸 경우 — 서버는 답 글을 저장하지 않는다).
+ *  순서: 사실 한 줄 → 답이 안 보이면 고객센터로 문의 한 줄 + [고객센터](설정의 고객센터와 같은 길) → 마일리지 사실 한 줄(끝난 일처럼 읽히지 않게 맨 뒤). 돌려 준다는 약속 0 · 다시 시도 단추 0.
+ *  화면에 앞 답이 있으면 이 부품을 그리지 않는다(조용히) — 부르는 쪽이 정한다.
+ */
+export function AiAlreadyDone({ onSupport, id }: { onSupport: () => void; id: string }) { // 속성 이름을 testID 로 두지 않는다 — 부품 자신이 같은 testID 로 잡혀 글 읽기를 가리지 않게
+  return (
+    <View style={styles.gapSmall}>
+      <AppText variant="body" accessibilityRole="alert" testID={id}>
+        {AI_RUN.alreadyDone}
+      </AppText>
+      <AppText variant="body" testID={`${id}-help`}>
+        {AI_RUN.alreadyHelp}
+      </AppText>
+      <TextButton label={SUPPORT.rowName} align="start" onPress={onSupport} testID={`${id}-support`} />
+      <AppText variant="caption" testID={`${id}-free`}>
+        {AI_RUN.alreadyNoCharge}
+      </AppText>
+    </View>
+  );
+}
+
 export function AitError({ code, fallback = false, locked = false, info, onRetry, onRestart, onSettings, testID = 'ait-error' }: { code: AitErrorCode; fallback?: boolean; locked?: boolean; info?: AitErrorInfo; onRetry?: () => void; onRestart?: () => void; onSettings: () => void; testID?: string }) {
   // RS2-01: 잔액 모자람은 마일리지 쪽 틀(제목 · 사실 한 줄 · 충전하러 가기)을 그대로 쓴다 — 다시 시도 단추 0
   if (code === 'low_balance') return <LowBalance need={info?.need ?? null} have={info?.have ?? null} onCharge={() => router.push(MILEAGE_HREF as Href)} testID={testID} />;
-  const noRetry = code === 'auth' || code === 'spend_limit' || code === 'limit' || code === 'already_done' || code === 'daily_limit';
+  if (code === 'already_done') return <AiAlreadyDone onSupport={() => openSettingsPage(router, 'support')} id={`${testID}-text`} />;
+  const noRetry = code === 'auth' || code === 'spend_limit' || code === 'limit' || code === 'daily_limit';
   const free = info?.noCharge === true && (code === 'too_long' || code === 'daily_limit');
   return (
     <View style={styles.gapSmall} testID={testID}>

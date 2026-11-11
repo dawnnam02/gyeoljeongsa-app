@@ -1,4 +1,5 @@
 // 마일리지 화면의 순수 규칙(IF5-F2 ⑨ · 화면 없이 시험한다). 값(수 · 가격 · 차감표 · 규칙)은 서버 응답(get_mileage · get_mileage_cost)에서만 온다 — 여기에 마일리지 수 · 가격 0.
+import { FORTUNE_TRIM } from '@/config/fortuneTrim';
 import { IF5_TEXT, type If5Key } from '@/content/if5Copy';
 
 import type { CostInfo, HistoryItem, HistoryKind, MileageState } from './mileageApi';
@@ -68,11 +69,12 @@ export function usedKey(feature: string | null): If5Key | null {
  *  QF2-B5(FA3-12): 시험판 기능이 앱에 있을 때(ait = aitEnabled)만 두 줄 더 — 연애 고민 정리 한 번 말할 때(counsel_turn) · 문장 다듬기(polish_short · polish_long, 값이 다르면 '부터').
  *  값은 서버 응답 그대로(앱에 마일리지 수 0). 풀이처럼 기능마다 값이 다르면 가장 작은 값에 '부터'(from). 서버가 안 준 기능의 줄은 빠진다. 인기 · 추천 · 할인 표시 0 */
 export type PriceRow = { key: 'read' | 'talk' | 'pick' | 'concern' | 'polish'; cost: number; from: boolean };
-const READ_FEATURES = ['saju_reading', 'daewoon', 'sinyeon', 'compat', 'saju_full'];
+//  QF2-B9: 종합 풀이(saju_full)는 꺼져 있는 동안 서버가 값을 내려 줘도 그리지 않는다(FORTUNE_TRIM.fullReading) — 풀이 값 줄에 끼지 않는다
+const READ_FEATURES = ['saju_reading', 'daewoon', 'sinyeon', 'compat'];
 export function priceRows(costs: readonly Pick<CostInfo, 'feature' | 'cost'>[], ait = false): PriceRow[] {
   const of = (features: string[]) => costs.filter((c) => features.includes(c.feature)).map((c) => c.cost);
   const rows: PriceRow[] = [];
-  const read = of(READ_FEATURES);
+  const read = of(FORTUNE_TRIM.fullReading ? [...READ_FEATURES, 'saju_full'] : READ_FEATURES);
   if (read.length > 0) rows.push({ key: 'read', cost: Math.min(...read), from: new Set(read).size > 1 });
   const talk = of(['saju_chat_turn']);
   if (talk.length > 0) rows.push({ key: 'talk', cost: talk[0], from: false });
